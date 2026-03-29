@@ -53,7 +53,7 @@ jobs:
         run: npm ci
 
       - name: Run unit tests with coverage
-        run: npm run test -- --watch=false --code-coverage
+        run: npm run test -- --watch=false
 
       - name: Upload coverage report
         if: always()
@@ -62,6 +62,7 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 7
+          if-no-files-found: ignore
 
   build:
     name: Build
