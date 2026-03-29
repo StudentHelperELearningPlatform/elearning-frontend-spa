@@ -1,5 +1,6 @@
-export const environment = {
-  production: false,
-  useMocks: true,
-  apiBaseUrl: 'http://localhost:4200/api',
-};
+// environment.ts — base (imported by other envs)
+export interface Environment {
+  production: boolean;
+  useMocks: boolean;
+  apiBaseUrl: string;
+}

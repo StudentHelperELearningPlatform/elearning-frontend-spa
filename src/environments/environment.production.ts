@@ -1,5 +1,7 @@
-export const environment = {
+import { Environment } from './environment';
+
+export const environment: Environment = {
   production: true,
   useMocks: false,
-  apiBaseUrl: 'https://api.elearning-platform.example.com',
+  apiBaseUrl: 'https://api.learnspace.io',
 };

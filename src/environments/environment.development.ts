@@ -1,5 +1,7 @@
-export const environment = {
+import { Environment } from './environment';
+
+export const environment: Environment = {
   production: false,
-  useMocks: true,
-  apiBaseUrl: 'http://localhost:4200/api',
+  useMocks: true,       // MSW intercepts all /api/* calls in dev
+  apiBaseUrl: '/api',
 };

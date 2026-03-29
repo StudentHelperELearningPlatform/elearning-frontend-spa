@@ -1,0 +1,336 @@
+// App shell layout — uses design tokens from _variables.scss (S1-04).
+// Fallback values keep it compilable before design tokens land.
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-background, #f8f7f4);
+}
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; // prevent flex child from overflowing
+}
+
+.page-content {
+  flex: 1;
+  padding: var(--spacing-xl, 2rem);
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+
+$sidebar-width: 240px;
+
+.sidebar {
+  width: $sidebar-width;
+  background: var(--color-surface, #ffffff);
+  border-right: 1px solid var(--color-border, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+
+  @media (max-width: 768px) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 200;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+
+    &--open {
+      transform: translateX(0);
+    }
+  }
+}
+
+.sidebar-backdrop {
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 199;
+  }
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg, 1.5rem) var(--spacing-md, 1rem);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.5rem);
+}
+
+.sidebar-logo__icon {
+  font-size: 1.25rem;
+}
+
+.sidebar-logo__text {
+  font-family: var(--font-heading, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--font-size-md, 1rem);
+  font-weight: 700;
+  color: var(--color-text, #111827);
+  letter-spacing: -0.01em;
+}
+
+.sidebar-close {
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+  }
+}
+
+// ── Role badge ────────────────────────────────────────────────────────────────
+
+.sidebar-role {
+  padding: var(--spacing-sm, 0.75rem) var(--spacing-md, 1rem);
+}
+
+.role-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 99px;
+
+  &--student  { background: #dbeafe; color: #1d4ed8; }
+  &--teacher  { background: #d1fae5; color: #065f46; }
+  &--parent   { background: #ede9fe; color: #5b21b6; }
+  &--admin    { background: #fee2e2; color: #991b1b; }
+}
+
+// ── Nav ───────────────────────────────────────────────────────────────────────
+
+.sidebar-nav {
+  flex: 1;
+  padding: var(--spacing-sm, 0.5rem) var(--spacing-sm, 0.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.75rem);
+  padding: 0.6rem 0.875rem;
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 500;
+  color: var(--color-text-muted, #6b7280);
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+
+  &:hover {
+    background: var(--color-background, #f3f4f6);
+    color: var(--color-text, #111827);
+  }
+
+  &--active {
+    background: #eff6ff;
+    color: var(--color-primary, #2563eb);
+
+    .nav-item__icon {
+      color: var(--color-primary, #2563eb);
+    }
+  }
+}
+
+.nav-item__icon {
+  font-size: 1rem;
+  width: 1.25rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.nav-item__label {
+  white-space: nowrap;
+}
+
+// ── Sidebar footer ────────────────────────────────────────────────────────────
+
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.5rem);
+  padding: var(--spacing-md, 1rem);
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.sidebar-user {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.625rem);
+  min-width: 0;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary, #2563eb);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &--sm {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-email {
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ── Topbar ────────────────────────────────────────────────────────────────────
+
+.topbar {
+  height: 56px;
+  background: var(--color-surface, #ffffff);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-lg, 1.5rem);
+  gap: var(--spacing-md, 1rem);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-hamburger {
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+  }
+}
+
+.topbar-title {
+  font-family: var(--font-heading, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--font-size-md, 1rem);
+  font-weight: 700;
+  color: var(--color-text, #111827);
+
+  // Hide on desktop — sidebar already shows the logo
+  @media (min-width: 769px) {
+    display: none;
+  }
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.75rem);
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.5rem);
+}
+
+.topbar-user-name {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 500;
+  color: var(--color-text, #111827);
+
+  @media (max-width: 480px) {
+    display: none;
+  }
+}
+
+// Hide logout in topbar on desktop — sidebar footer already has it
+.btn-logout-top {
+  @media (min-width: 769px) {
+    display: none !important;
+  }
+}
+
+// ── Shared button utilities ───────────────────────────────────────────────────
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted, #6b7280);
+  transition: background 0.12s ease, color 0.12s ease;
+
+  &:hover {
+    background: var(--color-background, #f3f4f6);
+    color: var(--color-text, #111827);
+  }
+
+  i {
+    font-size: 0.875rem;
+  }
+}
+
+.btn-logout {
+  color: var(--color-text-muted, #9ca3af);
+
+  &:hover {
+    background: #fef2f2;
+    color: #ef4444;
+  }
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+
+.app-footer {
+  padding: var(--spacing-md, 1rem) var(--spacing-xl, 2rem);
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #9ca3af);
+  text-align: center;
+}

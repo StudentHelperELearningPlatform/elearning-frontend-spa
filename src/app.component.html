@@ -1,0 +1,110 @@
+<!-- Auth pages get no chrome — just the bare router outlet -->
+@if (hideShell()) {
+  <router-outlet />
+} @else {
+  <div class="app-layout">
+
+    <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+    <aside class="sidebar" [class.sidebar--open]="sidebarOpen">
+
+      <!-- Sidebar header -->
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span class="sidebar-logo__icon">📚</span>
+          <span class="sidebar-logo__text">LearnSpace</span>
+        </div>
+        <!-- Close button (mobile only) -->
+        <button class="sidebar-close btn-icon" (click)="closeSidebar()" aria-label="Close sidebar">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      <!-- Role badge -->
+      <div class="sidebar-role">
+        <span class="role-badge role-badge--{{ authStore.user()?.role | lowercase }}">
+          {{ authStore.user()?.role }}
+        </span>
+      </div>
+
+      <!-- Nav links -->
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        @for (item of navItems(); track item.route) {
+          <a
+            class="nav-item"
+            [routerLink]="item.route"
+            routerLinkActive="nav-item--active"
+            [routerLinkActiveOptions]="{ exact: true }"
+            (click)="closeSidebar()"
+          >
+            <i class="pi {{ item.icon }} nav-item__icon"></i>
+            <span class="nav-item__label">{{ item.label }}</span>
+          </a>
+        }
+      </nav>
+
+      <!-- Sidebar footer: user + logout -->
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar">{{ authStore.user()?.name?.charAt(0) }}</div>
+          <div class="user-info">
+            <span class="user-name">{{ authStore.user()?.name }}</span>
+            <span class="user-email">{{ authStore.user()?.email }}</span>
+          </div>
+        </div>
+        <button
+          class="btn-logout btn-icon"
+          (click)="authStore.logout()"
+          aria-label="Log out"
+          title="Log out"
+        >
+          <i class="pi pi-sign-out"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Backdrop (mobile) -->
+    @if (sidebarOpen) {
+      <div class="sidebar-backdrop" (click)="closeSidebar()"></div>
+    }
+
+    <!-- ── Main area ─────────────────────────────────────────────────────────── -->
+    <div class="main-area">
+
+      <!-- Top header bar -->
+      <header class="topbar">
+        <!-- Hamburger (mobile) -->
+        <button class="btn-icon topbar-hamburger" (click)="toggleSidebar()" aria-label="Open menu">
+          <i class="pi pi-bars"></i>
+        </button>
+
+        <span class="topbar-title">LearnSpace</span>
+
+        <div class="topbar-right">
+          <div class="topbar-user">
+            <div class="user-avatar user-avatar--sm">{{ authStore.user()?.name?.charAt(0) }}</div>
+            <span class="topbar-user-name">{{ authStore.user()?.name }}</span>
+          </div>
+          <button
+            class="btn-logout-top btn-icon"
+            (click)="authStore.logout()"
+            aria-label="Log out"
+            title="Log out"
+          >
+            <i class="pi pi-sign-out"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Page content -->
+      <main class="page-content">
+        <router-outlet />
+      </main>
+
+      <!-- Footer -->
+      <footer class="app-footer">
+        <span>© {{ currentYear }} LearnSpace. All rights reserved.</span>
+      </footer>
+    </div>
+
+  </div>
+}
