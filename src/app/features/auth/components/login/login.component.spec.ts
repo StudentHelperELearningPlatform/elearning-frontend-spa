@@ -62,13 +62,13 @@ describe('LoginComponent', () => {
     });
 
     it('should not submit when form is invalid', () => {
-      const loginSpy = jest.spyOn(component['authStore'], 'login');
+      const loginSpy = vi.spyOn(component['authStore'], 'login');
       component.onSubmit();
       expect(loginSpy).not.toHaveBeenCalled();
     });
 
     it('should call authStore.login with form values when valid', () => {
-      const loginSpy = jest.spyOn(component['authStore'], 'login');
+      const loginSpy = vi.spyOn(component['authStore'], 'login');
       component.emailControl?.setValue('student@test.com');
       component.passwordControl?.setValue('password');
       component.onSubmit();

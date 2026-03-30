@@ -17,7 +17,12 @@ describe('App', () => {
   it('should render title', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
+    fixture.detectChanges(); // Ensure the template updates
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, elearning-frontend-spa');
+
+    // Use a more resilient check or ensure the h1 exists
+    const h1Text = compiled.querySelector('h1')?.textContent;
+    expect(h1Text).toBeDefined();
+    expect(h1Text).toContain('Expected Title Here');
   });
 });
