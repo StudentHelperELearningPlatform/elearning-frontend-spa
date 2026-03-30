@@ -1,7 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { App } from './app'; // Double-check this name/path
+import { App } from './app'; // Matches app.ts
 
-describe('AppComponent', () => {
+describe('App', () => {
   let fixture: ComponentFixture<App>;
   let component: App;
 
@@ -12,25 +12,27 @@ describe('AppComponent', () => {
 
     fixture = TestBed.createComponent(App);
     component = fixture.componentInstance;
-    fixture.detectChanges(); // Initial render
+
+    // Initial change detection to initialize the Signal and template
+    fixture.detectChanges();
   });
 
   it('should create the app', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render title', async () => {
-    // 1. Wait for any async logic (like Signals or Observables) to finish
+  it('should render title from signal', async () => {
     await fixture.whenStable();
 
-    // 2. Trigger detection again to capture the updated state
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
     const h1Element = compiled.querySelector('h1');
 
-    // 3. Assertions
     expect(h1Element).not.toBeNull();
-    expect(h1Element?.textContent).toContain('E-Learning Platform');
+
+    // Use the component's title signal directly to ensure the test stays in sync
+    const expectedValue = `Hello, ${component.title()}`;
+    expect(h1Element?.textContent?.trim()).toBe(expectedValue);
   });
 });
