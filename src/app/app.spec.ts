@@ -1,28 +1,36 @@
-import { TestBed } from '@angular/core/testing';
-import { App } from './app';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { App } from './app'; // Double-check this name/path
 
-describe('App', () => {
+describe('AppComponent', () => {
+  let fixture: ComponentFixture<App>;
+  let component: App;
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
     }).compileComponents();
+
+    fixture = TestBed.createComponent(App);
+    component = fixture.componentInstance;
+    fixture.detectChanges(); // Initial render
   });
 
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+    expect(component).toBeTruthy();
   });
 
   it('should render title', async () => {
-    const fixture = TestBed.createComponent(App);
+    // 1. Wait for any async logic (like Signals or Observables) to finish
     await fixture.whenStable();
-    fixture.detectChanges(); // Ensure the template updates
-    const compiled = fixture.nativeElement as HTMLElement;
 
-    // Use a more resilient check or ensure the h1 exists
-    const h1Text = compiled.querySelector('h1')?.textContent;
-    expect(h1Text).toBeDefined();
-    expect(h1Text).toContain('Expected Title Here');
+    // 2. Trigger detection again to capture the updated state
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const h1Element = compiled.querySelector('h1');
+
+    // 3. Assertions
+    expect(h1Element).not.toBeNull();
+    expect(h1Element?.textContent).toContain('E-Learning Platform');
   });
 });
