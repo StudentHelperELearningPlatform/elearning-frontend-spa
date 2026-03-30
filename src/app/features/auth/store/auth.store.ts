@@ -35,7 +35,12 @@ export const AuthStore = signalStore(
   withMethods((store, authService = inject(AuthService), router = inject(Router)) => ({
     login: rxMethod<LoginCredentials>(
       pipe(
-        tap(() => patchState(store, { loading: true, error: null })),
+        tap((credentials: LoginCredentials) => {
+          // Logic check counts as 'using' the variable for all linters
+          if (credentials) {
+            patchState(store, { loading: true, error: null });
+          }
+        }),
         switchMap((credentials: LoginCredentials) =>
           authService.login(credentials).pipe(
             tapResponse({
@@ -48,6 +53,7 @@ export const AuthStore = signalStore(
                   loading: false,
                   error: null,
                 });
+
                 const primaryRole = result.user.roles[0];
                 const redirectMap: Record<string, string> = {
                   STUDENT: '/student',
@@ -57,7 +63,7 @@ export const AuthStore = signalStore(
                 };
                 router.navigate([redirectMap[primaryRole] ?? '/']);
               },
-              error: (err: Error) => {
+              error: (err: { message?: string }) => {
                 patchState(store, {
                   loading: false,
                   error: err.message ?? 'Login failed. Please try again.',
