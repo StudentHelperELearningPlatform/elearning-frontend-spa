@@ -22,15 +22,13 @@ describe('authGuard', () => {
   });
 
   it('should allow access when authenticated', () => {
-    const authStore = TestBed.inject(AuthStore);
-    // Simulate authenticated state by patching the store
-    (authStore as any)._isAuthenticated = () => true;
+    const authStore = TestBed.inject(AuthStore) as unknown as { isAuthenticated: () => boolean };
 
-    // Guard uses store signal — mock at the store level
-    // We test the redirect path here (unauthenticated is the default)
+    // Now TypeScript knows exactly what you're trying to override
+    authStore.isAuthenticated = () => true;
+
     const result = runGuard('/student');
-    // Default state is unauthenticated, should redirect
-    expect(result).not.toBe(true);
+    expect(result).toBe(true);
   });
 
   it('should redirect to /auth/login when not authenticated', () => {
