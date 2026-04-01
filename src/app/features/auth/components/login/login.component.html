@@ -1,0 +1,119 @@
+<div class="login-page">
+  <div class="login-card">
+    <!-- Logo / Brand -->
+    <div class="login-header">
+      <div class="brand-logo">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="36" height="36" rx="8" fill="var(--color-primary)"/>
+          <path d="M10 24L18 10L26 24H10Z" fill="white" opacity="0.9"/>
+          <circle cx="18" cy="22" r="3" fill="white"/>
+        </svg>
+      </div>
+      <h1 class="brand-name">EduLearn</h1>
+      <p class="login-subtitle">Sign in to your account</p>
+    </div>
+
+    <!-- Error Alert -->
+    @if (authStore.error()) {
+      <div class="alert alert-error" role="alert" aria-live="polite">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ authStore.error() }}</span>
+      </div>
+    }
+
+    <!-- Login Form -->
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+
+      <!-- Email Field -->
+      <div class="form-group">
+        <label for="email" class="form-label">Email address</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          class="form-input"
+          [class.is-invalid]="emailControl?.invalid && emailControl?.touched"
+          placeholder="you@example.com"
+          autocomplete="email"
+          aria-describedby="email-error"
+        />
+        @if (emailControl?.invalid && emailControl?.touched) {
+          <span id="email-error" class="form-error" role="alert">
+            @if (emailControl?.errors?.['required']) { Email is required. }
+            @else if (emailControl?.errors?.['email']) { Please enter a valid email address. }
+          </span>
+        }
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <div class="input-wrapper">
+          <input
+            id="password"
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            class="form-input"
+            [class.is-invalid]="passwordControl?.invalid && passwordControl?.touched"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            aria-describedby="password-error"
+          />
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="togglePassword()"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+          >
+            @if (showPassword) {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            } @else {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            }
+          </button>
+        </div>
+        @if (passwordControl?.invalid && passwordControl?.touched) {
+          <span id="password-error" class="form-error" role="alert">
+            Password is required.
+          </span>
+        }
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        class="btn btn-primary btn-full"
+        [disabled]="authStore.loading()"
+        [attr.aria-busy]="authStore.loading()"
+      >
+        @if (authStore.loading()) {
+          <span class="spinner" aria-hidden="true"></span>
+          Signing in...
+        } @else {
+          Sign in
+        }
+      </button>
+    </form>
+
+    <!-- Dev helper — mock user quick-fill (only shown when useful) -->
+    <div class="dev-helpers">
+      <p class="dev-label">Quick sign-in (dev only)</p>
+      <div class="dev-buttons">
+        <button type="button" class="btn-dev" (click)="fillMockUser('student@test.com')">Student</button>
+        <button type="button" class="btn-dev" (click)="fillMockUser('teacher@test.com')">Teacher</button>
+        <button type="button" class="btn-dev" (click)="fillMockUser('parent@test.com')">Parent</button>
+        <button type="button" class="btn-dev" (click)="fillMockUser('admin@test.com')">Admin</button>
+      </div>
+    </div>
+  </div>
+</div>

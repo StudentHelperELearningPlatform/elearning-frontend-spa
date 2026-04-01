@@ -3,10 +3,18 @@ import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
   imports: [RouterOutlet],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styles: [
+    `
+      :host {
+        display: block;
+        height: 100dvh;
+      }
+    `,
+  ],
 })
 export class App {
-  protected readonly title = signal('elearning-frontend-spa');
+  title = signal('E-Learning Platform');
 }
