@@ -4,6 +4,8 @@ export const TEACHER_ROUTES: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./pages/dashboard/dashboard.component').then((m) => m.TeacherDashboardComponent),
+      import('./analytics-dashboard/analytics-dashboard.component').then(
+        (m) => m.TeacherDashboardComponent,
+      ),
   },
 ];

@@ -4,6 +4,6 @@ export const ADMIN_ROUTES: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./pages/dashboard/dashboard.component').then((m) => m.AdminDashboardComponent),
+      import('./user-management/user-management.component').then((m) => m.AdminDashboardComponent),
   },
 ];

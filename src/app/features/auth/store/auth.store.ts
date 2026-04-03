@@ -29,7 +29,6 @@ export const AuthStore = signalStore(
   withComputed((store) => ({
     isStudent: computed(() => store.roles().includes('STUDENT')),
     isTeacher: computed(() => store.roles().includes('TEACHER')),
-    isParent: computed(() => store.roles().includes('PARENT')),
     isAdmin: computed(() => store.roles().includes('ADMIN')),
   })),
   withMethods((store, authService = inject(AuthService), router = inject(Router)) => ({
@@ -58,7 +57,6 @@ export const AuthStore = signalStore(
                 const redirectMap: Record<string, string> = {
                   STUDENT: '/student',
                   TEACHER: '/teacher',
-                  PARENT: '/parent',
                   ADMIN: '/admin',
                 };
                 router.navigate([redirectMap[primaryRole] ?? '/']);
