@@ -37,7 +37,6 @@ export const AuthStore = signalStore(
     isTeacher: computed(() => state.role() === 'TEACHER'),
     isStudent: computed(() => state.role() === 'STUDENT'),
     isAdmin: computed(() => state.role() === 'ADMIN'),
-
   })),
   withMethods((store) => {
     const authService = inject(AuthService);
@@ -48,39 +47,53 @@ export const AuthStore = signalStore(
           patchState(store, { isAuthReady: true });
         }, 500);
       },
-      login(email: string, role?: string) {
+
+      // 1. Updated signature to accept the credentials object
+      login(credentials: { email: string; password?: string }) {
         patchState(store, { loading: true, error: null });
-        authService.login(email, role).subscribe({
+
+        // 2. Pass the object directly to the updated AuthService
+        authService.login(credentials).subscribe({
           next: (res) => {
+            // 3. AuthService now returns an array of roles, so we grab the first one
+            const primaryRole = res.user.roles[0] || 'STUDENT';
+
             const mockUser: User = {
               id: '1',
               name: 'Andrei Paraschiv',
-              email: email,
-              role: res.role,
-              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+              email: credentials.email,
+              role: primaryRole,
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${credentials.email}`,
               memberSince: '2024-01-15',
-              grade: res.role === 'STUDENT' ? 10 : undefined,
-              school: res.role === 'TEACHER' ? 'Lincoln High School' : undefined
+              grade: primaryRole === 'STUDENT' ? 10 : undefined,
+              school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
             };
-            patchState(store, { 
-              token: res.token, 
-              role: res.role, 
+
+            patchState(store, {
+              token: res.accessToken, // 4. Map to the new accessToken property
+              role: primaryRole,
               user: mockUser,
-              loading: false 
+              loading: false,
             });
+
+            // 5. Sync the store state with the service state
+            authService.setSession(res);
           },
-          error: () => patchState(store, { error: 'Login failed', loading: false })
+          error: (err) =>
+            patchState(store, { error: err.message || 'Login failed', loading: false }),
         });
       },
+
       updateProfile(updatedUser: Partial<User>) {
         if (store.user()) {
           patchState(store, { user: { ...store.user()!, ...updatedUser } });
         }
       },
+
       logout() {
         authService.logout();
         patchState(store, { user: null, token: null, role: null });
-      }
+      },
     };
-  })
+  }),
 );

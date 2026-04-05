@@ -8,19 +8,16 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   const router = inject(Router);
   const requiredRoles = route.data['roles'] as string[];
 
-  if (!authStore.isAuthenticated()) {
-    return router.parseUrl('/auth/login');
-  }
-
-  if (requiredRoles && requiredRoles.includes(authStore.role() || '')) {
+  // 1. If no roles are required, allow access immediately
+  if (!requiredRoles || requiredRoles.length === 0) {
     return true;
   }
 
-  // Redirect to appropriate dashboard if role doesn't match
-  const role = authStore.role();
-  if (role === 'STUDENT') return router.parseUrl('/student/dashboard');
-  if (role === 'TEACHER') return router.parseUrl('/teacher/dashboard');
-  if (role === 'ADMIN') return router.parseUrl('/admin/dashboard');
+  // 2. If the user is authenticated and has a matching role, allow access
+  if (authStore.isAuthenticated() && requiredRoles.includes(authStore.role() || '')) {
+    return true;
+  }
 
-  return router.parseUrl('/auth/login');
+  // 3. Otherwise (unauthenticated or wrong role), redirect to /unauthorized
+  return router.createUrlTree(['/unauthorized']);
 };
