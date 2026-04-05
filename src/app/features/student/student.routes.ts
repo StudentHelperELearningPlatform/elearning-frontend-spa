@@ -4,6 +4,8 @@ export const STUDENT_ROUTES: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./pages/dashboard/dashboard.component').then((m) => m.StudentDashboardComponent),
+      import('./progress-dashboard/progress-dashboard.component').then(
+        (m) => m.StudentDashboardComponent,
+      ),
   },
 ];

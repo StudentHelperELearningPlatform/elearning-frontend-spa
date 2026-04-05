@@ -34,16 +34,6 @@ const MOCK_USERS: Record<string, MockUserRecord> = {
       roles: ['TEACHER'],
     },
   },
-  'parent@test.com': {
-    password: 'password',
-    token: 'mock-jwt-parent-token',
-    user: {
-      id: 'usr-003',
-      email: 'parent@test.com',
-      name: 'David Chen',
-      roles: ['PARENT'],
-    },
-  },
   'admin@test.com': {
     password: 'password',
     token: 'mock-jwt-admin-token',

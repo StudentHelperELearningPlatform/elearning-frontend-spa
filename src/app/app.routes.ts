@@ -32,14 +32,6 @@ export const routes: Routes = [
     loadChildren: () => import('./features/teacher/teacher.routes').then((m) => m.TEACHER_ROUTES),
   },
 
-  // Parent area (protected, role-restricted)
-  {
-    path: 'parent',
-    canActivate: [authGuard, roleGuard],
-    data: { roles: ['PARENT'] },
-    loadChildren: () => import('./features/parent/parent.routes').then((m) => m.PARENT_ROUTES),
-  },
-
   // Admin area (protected, role-restricted)
   {
     path: 'admin',
