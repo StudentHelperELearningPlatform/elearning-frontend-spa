@@ -1,23 +1,26 @@
+// src/app/core/guards/role.guard.ts
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { Router, CanActivateFn, ActivatedRouteSnapshot } from '@angular/router';
 import { AuthStore } from '../../features/auth/store/auth.store';
 
-export const roleGuard: CanActivateFn = (route) => {
-  const authStore = inject(AuthStore) as InstanceType<typeof AuthStore>;
+export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
+  const authStore = inject(AuthStore);
   const router = inject(Router);
+  const requiredRoles = route.data['roles'] as string[];
 
-  const requiredRoles: string[] = route.data['roles'] ?? [];
+  if (!authStore.isAuthenticated()) {
+    return router.parseUrl('/auth/login');
+  }
 
-  if (requiredRoles.length === 0) {
+  if (requiredRoles && requiredRoles.includes(authStore.role() || '')) {
     return true;
   }
 
-  const userRoles = authStore.roles();
-  const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
+  // Redirect to appropriate dashboard if role doesn't match
+  const role = authStore.role();
+  if (role === 'STUDENT') return router.parseUrl('/student/dashboard');
+  if (role === 'TEACHER') return router.parseUrl('/teacher/dashboard');
+  if (role === 'ADMIN') return router.parseUrl('/admin/dashboard');
 
-  if (hasRequiredRole) {
-    return true;
-  }
-
-  return router.createUrlTree(['/unauthorized']);
+  return router.parseUrl('/auth/login');
 };

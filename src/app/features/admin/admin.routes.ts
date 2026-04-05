@@ -1,9 +1,9 @@
 import { Routes } from '@angular/router';
+import { UserManagementComponent } from './user-management/user-management.component';
+import { PlatformSettingsComponent } from './platform-settings/platform-settings.component';
 
-export const ADMIN_ROUTES: Routes = [
-  {
-    path: '',
-    loadComponent: () =>
-      import('./user-management/user-management.component').then((m) => m.AdminDashboardComponent),
-  },
-];
+export default [
+  { path: 'user-management', component: UserManagementComponent },
+  { path: 'platform-settings', component: PlatformSettingsComponent },
+  { path: '', redirectTo: 'user-management', pathMatch: 'full' }
+] as Routes;

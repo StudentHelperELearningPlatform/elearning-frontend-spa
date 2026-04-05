@@ -1,52 +1,95 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Component, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
 import { AuthStore } from '../../store/auth.store';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.scss',
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  template: `
+    <div class="min-h-screen flex items-center justify-center bg-white p-4 font-sans">
+      <div class="w-full max-w-md bg-white border-4 border-black rounded-3xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-8">
+        <h2 class="text-4xl font-black text-black mb-8 text-center uppercase italic tracking-tighter">Welcome Back</h2>
+        
+        @if (authStore.error()) {
+          <div class="mb-6 p-4 bg-red-100 border-2 border-red-500 text-red-700 rounded-xl font-bold text-sm uppercase">
+            {{ authStore.error() }}
+          </div>
+        }
+
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-6">
+          <div>
+            <label for="email" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Email Address</label>
+            <input id="email" type="email" formControlName="email" placeholder="john@example.com" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold transition-all">
+          </div>
+          <div>
+            <label for="password" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Password</label>
+            <input id="password" type="password" formControlName="password" placeholder="••••••••" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold transition-all">
+          </div>
+          <div>
+            <label for="role" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Login As (Mock)</label>
+            <select id="role" formControlName="role" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold bg-white transition-all">
+              <option value="STUDENT">Student</option>
+              <option value="TEACHER">Teacher</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </div>
+          
+          <div class="flex items-center justify-between pt-2">
+            <a routerLink="/auth/forgot-password" class="text-sm font-bold text-gray-500 hover:text-black transition-colors">Forgot Password?</a>
+          </div>
+
+          <button type="submit" [disabled]="loginForm.invalid || authStore.loading()" class="w-full py-4 px-6 bg-[#0ABAB5] text-white font-black rounded-xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest text-lg">
+            {{ authStore.loading() ? 'Authenticating...' : 'Log In' }}
+          </button>
+        </form>
+
+        <div class="mt-10 pt-8 border-t-4 border-black/10 text-center">
+          <a routerLink="/auth/register" class="text-black font-black uppercase tracking-widest text-sm hover:text-[#0ABAB5] transition-colors">Create New Account</a>
+        </div>
+      </div>
+    </div>
+  `
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent {
   private fb = inject(FormBuilder);
-  protected authStore = inject(AuthStore) as InstanceType<typeof AuthStore>;
+  private router = inject(Router);
+  authStore = inject(AuthStore);
 
-  loginForm!: FormGroup;
-  showPassword = false;
+  loginForm = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', Validators.required],
+    role: ['STUDENT', Validators.required]
+  });
 
-  ngOnInit(): void {
-    this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(1)]],
+  constructor() {
+    // Effect to handle navigation after successful login
+    effect(() => {
+      const role = this.authStore.role();
+      const isAuthenticated = this.authStore.isAuthenticated();
+
+      if (isAuthenticated && role) {
+        switch (role) {
+          case 'STUDENT':
+            this.router.navigate(['/student/dashboard']);
+            break;
+          case 'TEACHER':
+            this.router.navigate(['/teacher/dashboard']);
+            break;
+          case 'ADMIN':
+            this.router.navigate(['/admin/user-management']);
+            break;
+        }
+      }
     });
   }
 
-  get emailControl() {
-    return this.loginForm.get('email');
-  }
-
-  get passwordControl() {
-    return this.loginForm.get('password');
-  }
-
-  onSubmit(): void {
-    if (this.loginForm.invalid) {
-      this.loginForm.markAllAsTouched();
-      return;
+  onSubmit() {
+    if (this.loginForm.valid) {
+      const { email, role } = this.loginForm.value;
+      this.authStore.login(email!, role!);
     }
-
-    this.authStore.login(this.loginForm.value);
-  }
-
-  togglePassword(): void {
-    this.showPassword = !this.showPassword;
-  }
-
-  fillMockUser(email: string): void {
-    this.loginForm.patchValue({ email, password: 'password' });
   }
 }

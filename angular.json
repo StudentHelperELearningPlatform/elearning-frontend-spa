@@ -6,9 +6,8 @@
     "schematicCollections": [
       "angular-eslint"
     ],
-    "analytics": "0dd1dae2-1bb4-4eff-bf1a-d81aa87a18a2"
+    "analytics": false
   },
-  "newProjectRoot": "projects",
   "projects": {
     "elearning-frontend-spa": {
       "projectType": "application",
@@ -27,44 +26,24 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
-            ],
-            "styles": ["src/styles.scss"]
+            "assets": [{ "glob": "**/*", "input": "public" }],
+            "styles": ["src/styles.css", "src/styles/styles.scss"],
+            "stylePreprocessorOptions": {
+              "includePaths": ["src/styles"]
+            }
           },
           "configurations": {
             "production": {
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
-                }
-              ],
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
                   "with": "src/environments/environment.production.ts"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "budgets": [{ "type": "initial", "maximumWarning": "500kB", "maximumError": "1MB" }]
             },
             "staging": {
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
-                }
-              ],
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -75,7 +54,6 @@
             },
             "development": {
               "optimization": false,
-              "extractLicenses": false,
               "sourceMap": true,
               "fileReplacements": [
                 {
@@ -90,26 +68,24 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "configurations": {
-            "production": {
-              "buildTarget": "elearning-frontend-spa:build:production"
-            },
-            "staging": {
-              "buildTarget": "elearning-frontend-spa:build:staging"
-            },
-            "development": {
-              "buildTarget": "elearning-frontend-spa:build:development"
-            }
+            "production": { "buildTarget": "elearning-frontend-spa:build:production" },
+            "staging": { "buildTarget": "elearning-frontend-spa:build:staging" },
+            "development": { "buildTarget": "elearning-frontend-spa:build:development" }
           },
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "styles": ["src/styles.css", "src/styles/styles.scss"],
+            "stylePreprocessorOptions": {
+              "includePaths": ["src/styles"]
+            }
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
-          "options": {
-            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
-          }
+          "options": { "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"] }
         }
       }
     }

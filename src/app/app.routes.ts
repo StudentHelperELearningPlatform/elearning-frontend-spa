@@ -3,17 +3,28 @@ import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
-  // Default redirect
+  // Landing pages (public)
   {
     path: '',
-    redirectTo: '/auth/login',
-    pathMatch: 'full',
+    loadComponent: () => import('./features/landing/landing.component').then(m => m.LandingComponent)
+  },
+  {
+    path: 'for-students',
+    loadComponent: () => import('./features/landing/student-landing/student-landing.component').then(m => m.StudentLandingComponent)
+  },
+  {
+    path: 'for-teachers',
+    loadComponent: () => import('./features/landing/teacher-landing/teacher-landing.component').then(m => m.TeacherLandingComponent)
+  },
+  {
+    path: 'for-parents',
+    loadComponent: () => import('./features/landing/parent-landing/parent-landing.component').then(m => m.ParentLandingComponent)
   },
 
-  // Auth feature (public)
+  // Auth feature (public) — uses default export
   {
     path: 'auth',
-    loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
+    loadChildren: () => import('./features/auth/auth.routes'),
   },
 
   // Student area (protected, role-restricted)
@@ -21,7 +32,8 @@ export const routes: Routes = [
     path: 'student',
     canActivate: [authGuard, roleGuard],
     data: { roles: ['STUDENT'] },
-    loadChildren: () => import('./features/student/student.routes').then((m) => m.STUDENT_ROUTES),
+    loadComponent: () => import('./shared/components/app-shell/app-shell.component').then(m => m.AppShellComponent),
+    loadChildren: () => import('./features/student/student.routes'),
   },
 
   // Teacher area (protected, role-restricted)
@@ -29,7 +41,8 @@ export const routes: Routes = [
     path: 'teacher',
     canActivate: [authGuard, roleGuard],
     data: { roles: ['TEACHER'] },
-    loadChildren: () => import('./features/teacher/teacher.routes').then((m) => m.TEACHER_ROUTES),
+    loadComponent: () => import('./shared/components/app-shell/app-shell.component').then(m => m.AppShellComponent),
+    loadChildren: () => import('./features/teacher/teacher.routes'),
   },
 
   // Admin area (protected, role-restricted)
@@ -37,7 +50,8 @@ export const routes: Routes = [
     path: 'admin',
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ADMIN'] },
-    loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
+    loadComponent: () => import('./shared/components/app-shell/app-shell.component').then(m => m.AppShellComponent),
+    loadChildren: () => import('./features/admin/admin.routes'),
   },
 
   // Unauthorized page
@@ -50,8 +64,5 @@ export const routes: Routes = [
   },
 
   // 404 — catch-all
-  {
-    path: '**',
-    redirectTo: '/auth/login',
-  },
+  { path: '**', redirectTo: '' },
 ];
