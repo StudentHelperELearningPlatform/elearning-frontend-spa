@@ -109,7 +109,8 @@ describe('LoginComponent', () => {
     it('should show dev helper buttons', () => {
       const compiled = fixture.nativeElement as HTMLElement;
       const devButtons = compiled.querySelectorAll('.btn-dev');
-      expect(devButtons.length).toBe(4);
+      // Changed from 4 to 3 to reflect the removal of the Parent role
+      expect(devButtons.length).toBe(3);
     });
   });
 });
