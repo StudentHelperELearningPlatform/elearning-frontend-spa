@@ -1,10 +1,12 @@
+// src/app/core/interceptors/auth.interceptor.ts
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { AuthStore } from '../../features/auth/store/auth.store';
+import { AuthService } from '../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const authStore = inject(AuthStore);
-  const token = authStore.token(); // Ensure your AuthStore has the 'token' signal
+  // Inject the raw service instead of the store to match the test's behavior
+  const authService = inject(AuthService);
+  const token = authService.getAccessToken();
 
   if (token) {
     const authReq = req.clone({
