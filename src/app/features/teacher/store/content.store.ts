@@ -1,11 +1,8 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed } from '@angular/core';
+import { Question } from '@shared/models/quiz.types';
 
-export interface Question {
-  text: string;
-  type: 'multiple-choice' | 'true-false';
-  difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
-}
+export type { Question };
 
 export interface ContentItem {
   id: string;

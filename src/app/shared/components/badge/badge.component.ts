@@ -25,9 +25,9 @@ export class BadgeComponent {
   variantClasses = {
     primary: 'bg-[#0ABAB5] text-white',
     secondary: 'bg-white text-black',
-    success: 'bg-black text-white',
-    warning: 'bg-white text-black',
-    danger: 'bg-black text-white',
+    success: 'bg-green-500 text-white border-green-700',
+    warning: 'bg-yellow-400 text-black border-yellow-600',
+    danger: 'bg-red-500 text-white border-red-700',
     neutral: 'bg-gray-100 text-gray-600 border-gray-300'
   };
 }

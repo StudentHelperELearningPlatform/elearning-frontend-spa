@@ -20,10 +20,13 @@ import { CommonModule } from '@angular/common';
       @if (loading()) {
         <span class="material-icons animate-spin mr-2 text-sm">autorenew</span>
       }
-      @if (icon() && !loading()) {
+      @if (icon() && !loading() && iconPosition() !== 'right') {
         <span class="material-icons mr-2 text-lg">{{ icon() }}</span>
       }
       <ng-content></ng-content>
+      @if (icon() && !loading() && iconPosition() === 'right') {
+        <span class="material-icons ml-2 text-lg">{{ icon() }}</span>
+      }
     </button>
   `
 })
@@ -33,6 +36,7 @@ export class ButtonComponent {
   disabled = input<boolean>(false);
   loading = input<boolean>(false);
   icon = input<string>('');
+  iconPosition = input<'left' | 'right'>('left');
   btnClick = output<MouseEvent>();
 
   variantClasses = {

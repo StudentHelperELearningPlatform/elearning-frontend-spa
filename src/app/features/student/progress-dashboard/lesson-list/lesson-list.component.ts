@@ -56,7 +56,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 
                 <div class="flex justify-between items-center mt-auto pt-4 border-t-4 border-black/10">
                   <span class="text-base font-black uppercase tracking-wide" [ngClass]="{'text-[#0ABAB5]': lesson.status === 'In Progress', 'text-gray-400': lesson.status === 'Not Started'}">{{ lesson.status }}</span>
-                  <app-button [variant]="lesson.status === 'In Progress' ? 'primary' : 'secondary'" size="sm" routerLink="/student/quizzes/1">
+                  <app-button [variant]="lesson.status === 'In Progress' ? 'primary' : 'secondary'" size="sm" [routerLink]="['/student/lesson-viewer', lesson.id]">
                     {{ lesson.status === 'In Progress' ? 'Continue' : 'Start' }}
                   </app-button>
                 </div>

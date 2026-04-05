@@ -1,32 +1,8 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed } from '@angular/core';
+import { Question, Quiz, QuizResult } from '@shared/models/quiz.types';
 
-export interface Option {
-  id: string;
-  text: string;
-}
-
-export interface Question {
-  id: string;
-  text: string;
-  type: string;
-  points: number;
-  options: Option[];
-}
-
-export interface Quiz {
-  id: string;
-  title: string;
-  timeLimit: number;
-  questions: Question[];
-}
-
-export interface QuizResult {
-  score: number;
-  totalPoints: number;
-  timeSpent: number;
-  percentage: number;
-}
+export type { Question, Quiz, QuizResult };
 
 interface QuizzesState {
   currentQuiz: Quiz | null;
