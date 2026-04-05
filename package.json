@@ -7,8 +7,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "vitest",
-    "lint": "ng lint"
+    "test": "vitest --run",
+    "lint": "ng lint",
+    "test:ci": "vitest --run --reporter=verbose"
   },
   "dependencies": {
     "@angular/animations": "^21.0.0",
@@ -36,7 +37,9 @@
     "@angular/cli": "^21.0.0",
     "@angular/compiler-cli": "^21.0.0",
     "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^22.0.0",
     "angular-eslint": "21.1.0",
+    "jsdom": "^26.0.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.9.2",
