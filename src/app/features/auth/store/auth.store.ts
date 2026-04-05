@@ -1,88 +1,99 @@
-import { computed, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { tapResponse } from '@ngrx/operators';
-import { pipe, switchMap, tap } from 'rxjs';
-import { AuthResult, LoginCredentials, User } from '../../../core/types/user.types';
+import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+import { inject, computed } from '@angular/core';
 import { AuthService } from '../../../core/services/auth.service';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar?: string;
+  memberSince: string;
+  grade?: number;
+  school?: string;
+}
 
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean;
-  roles: string[];
+  token: string | null;
+  role: string | null;
   loading: boolean;
+  isAuthReady: boolean;
   error: string | null;
 }
 
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  roles: [],
-  loading: false,
-  error: null,
-};
-
 export const AuthStore = signalStore(
   { providedIn: 'root' },
-  withState<AuthState>(initialState),
-  withComputed((store) => ({
-    isStudent: computed(() => store.roles().includes('STUDENT')),
-    isTeacher: computed(() => store.roles().includes('TEACHER')),
-    isParent: computed(() => store.roles().includes('PARENT')),
-    isAdmin: computed(() => store.roles().includes('ADMIN')),
+  withState<AuthState>({
+    user: null,
+    token: null,
+    role: null,
+    loading: false,
+    isAuthReady: false,
+    error: null,
+  }),
+  withComputed((state) => ({
+    isAuthenticated: computed(() => !!state.token()),
+    isTeacher: computed(() => state.role() === 'TEACHER'),
+    isStudent: computed(() => state.role() === 'STUDENT'),
+    isAdmin: computed(() => state.role() === 'ADMIN'),
   })),
-  withMethods((store, authService = inject(AuthService), router = inject(Router)) => ({
-    login: rxMethod<LoginCredentials>(
-      pipe(
-        tap((credentials: LoginCredentials) => {
-          // Logic check counts as 'using' the variable for all linters
-          if (credentials) {
-            patchState(store, { loading: true, error: null });
-          }
-        }),
-        switchMap((credentials: LoginCredentials) =>
-          authService.login(credentials).pipe(
-            tapResponse({
-              next: (result: AuthResult) => {
-                authService.setSession(result);
-                patchState(store, {
-                  user: result.user,
-                  isAuthenticated: true,
-                  roles: result.user.roles,
-                  loading: false,
-                  error: null,
-                });
+  withMethods((store) => {
+    const authService = inject(AuthService);
+    return {
+      init() {
+        // Simulate checking for existing session
+        setTimeout(() => {
+          patchState(store, { isAuthReady: true });
+        }, 500);
+      },
 
-                const primaryRole = result.user.roles[0];
-                const redirectMap: Record<string, string> = {
-                  STUDENT: '/student',
-                  TEACHER: '/teacher',
-                  PARENT: '/parent',
-                  ADMIN: '/admin',
-                };
-                router.navigate([redirectMap[primaryRole] ?? '/']);
-              },
-              error: (err: { message?: string }) => {
-                patchState(store, {
-                  loading: false,
-                  error: err.message ?? 'Login failed. Please try again.',
-                });
-              },
-            }),
-          ),
-        ),
-      ),
-    ),
+      // 1. Updated signature to accept the credentials object
+      login(credentials: { email: string; password?: string }) {
+        patchState(store, { loading: true, error: null });
 
-    logout(): void {
-      authService.logout();
-      patchState(store, initialState);
-      router.navigate(['/auth/login']);
-    },
+        // 2. Pass the object directly to the updated AuthService
+        authService.login(credentials).subscribe({
+          next: (res) => {
+            // 3. AuthService now returns an array of roles, so we grab the first one
+            const primaryRole = res.user.roles[0] || 'STUDENT';
 
-    clearError(): void {
-      patchState(store, { error: null });
-    },
-  })),
+            const mockUser: User = {
+              id: '1',
+              name: 'Andrei Paraschiv',
+              email: credentials.email,
+              role: primaryRole,
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${credentials.email}`,
+              memberSince: '2024-01-15',
+              grade: primaryRole === 'STUDENT' ? 10 : undefined,
+              school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
+            };
+
+            patchState(store, {
+              token: res.accessToken, // 4. Map to the new accessToken property
+              role: primaryRole,
+              user: mockUser,
+              loading: false,
+            });
+
+            // 5. Sync the store state with the service state
+            authService.setSession(res);
+          },
+          error: (err) =>
+            patchState(store, { error: err.message || 'Login failed', loading: false }),
+        });
+      },
+
+      updateProfile(updatedUser: Partial<User>) {
+        if (store.user()) {
+          patchState(store, { user: { ...store.user()!, ...updatedUser } });
+        }
+      },
+
+      logout() {
+        authService.logout();
+        patchState(store, { user: null, token: null, role: null });
+      },
+    };
+  }),
 );

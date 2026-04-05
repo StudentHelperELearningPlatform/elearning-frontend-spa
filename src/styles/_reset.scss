@@ -1,13 +1,9 @@
+// Minimal reset — box-sizing only. Do NOT zero margins/padding as it conflicts with Tailwind utilities.
 *, *::before, *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 body {
-  font-family: $font-family-base;
-  font-size: $font-size-base;
-  color: $color-text-primary;
-  background-color: $color-background;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
