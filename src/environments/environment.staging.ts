@@ -1,5 +1,10 @@
+// src/environments/environment.staging.ts
 export const environment = {
-  production: true,
-  useMocks: false,
-  apiBaseUrl: 'https://staging-api.elearning-platform.example.com',
+  production: false,
+  apiUrl: 'https://staging-api.elearning.com',
+  keycloak: {
+    url: 'https://staging-auth.elearning.com',
+    realm: 'elearning',
+    clientId: 'elearning-spa'
+  }
 };

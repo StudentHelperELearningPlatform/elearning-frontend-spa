@@ -1,5 +1,10 @@
+// src/environments/environment.development.ts
 export const environment = {
   production: false,
-  useMocks: true,
-  apiBaseUrl: 'http://localhost:4200/api',
+  apiUrl: 'http://localhost:8080',
+  keycloak: {
+    url: 'http://localhost:8180',
+    realm: 'elearning',
+    clientId: 'elearning-spa'
+  }
 };
