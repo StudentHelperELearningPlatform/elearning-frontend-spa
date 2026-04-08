@@ -10,7 +10,7 @@ import { ButtonComponent } from '../../../../shared/components/button/button.com
     <div class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 max-w-2xl mx-auto text-center">
       
       <!-- Mascot/Illustration -->
-      <div class="w-40 h-40 mx-auto bg-[#0ABAB5]/20 rounded-full border-4 border-black flex items-center justify-center mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <div class="w-40 h-40 mx-auto bg-[var(--color-primary)]/20 rounded-full border-4 border-black flex items-center justify-center mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <img [src]="getMascotUrl()" alt="Result Mascot" class="w-32 h-32 object-contain" referrerpolicy="no-referrer" />
       </div>
 
@@ -26,7 +26,7 @@ import { ButtonComponent } from '../../../../shared/components/button/button.com
       <div class="grid grid-cols-2 gap-4 mb-10">
         <div class="bg-gray-50 p-6 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <span class="block text-gray-500 font-bold uppercase tracking-wider text-sm mb-2">Accuracy</span>
-          <span class="text-3xl font-black text-[#0ABAB5]">{{ getPercentage() }}%</span>
+          <span class="text-3xl font-black text-[var(--color-primary)]">{{ getPercentage() }}%</span>
         </div>
         <div class="bg-gray-50 p-6 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <span class="block text-gray-500 font-bold uppercase tracking-wider text-sm mb-2">Time Taken</span>
@@ -77,3 +77,4 @@ export class ResultsSummaryComponent {
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 }
+

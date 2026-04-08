@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
     ]">
       <div class="relative w-16 h-16">
         <div class="absolute inset-0 border-8 border-gray-100 rounded-full"></div>
-        <div class="absolute inset-0 border-8 border-[#0ABAB5] border-t-transparent rounded-full animate-spin border-black/10"></div>
+        <div class="absolute inset-0 border-8 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin border-black/10"></div>
         <div class="absolute inset-0 border-8 border-transparent border-t-black rounded-full animate-spin duration-700"></div>
       </div>
       @if (message()) {
@@ -27,3 +27,4 @@ export class LoadingSpinnerComponent {
   fullScreen = input<boolean>(false);
   message = input<string>('Loading...');
 }
+

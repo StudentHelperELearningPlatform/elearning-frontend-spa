@@ -16,8 +16,8 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       <!-- Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div class="flex items-center space-x-4">
-          <div class="w-16 h-16 bg-[#0ABAB5]/20 rounded-2xl border-4 border-black flex items-center justify-center">
-            <span class="material-icons text-[#0ABAB5] text-3xl">groups</span>
+          <div class="w-16 h-16 bg-[var(--color-primary)]/20 rounded-2xl border-4 border-black flex items-center justify-center">
+            <span class="material-icons text-[var(--color-primary)] text-3xl">groups</span>
           </div>
           <div>
             <h1 class="text-3xl font-black text-black tracking-tight">Class Management</h1>
@@ -47,7 +47,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                 tabindex="0"
                 class="p-5 rounded-2xl border-4 cursor-pointer transition-all duration-200 group relative overflow-hidden"
                 [ngClass]="{
-                  'border-black bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]': selectedClass()?.id === cls.id,
+                  'border-black bg-[var(--color-primary)] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]': selectedClass()?.id === cls.id,
                   'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]': selectedClass()?.id !== cls.id
                 }">
                 
@@ -113,7 +113,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                         <td class="p-4">
                           <div class="flex items-center space-x-2">
                             <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300 w-24">
-                              <div class="h-full bg-[#0ABAB5]" [style.width.%]="student.progress"></div>
+                              <div class="h-full bg-[var(--color-primary)]" [style.width.%]="student.progress"></div>
                             </div>
                             <span class="text-sm font-bold text-gray-600">{{ student.progress }}%</span>
                           </div>
@@ -174,3 +174,4 @@ export class ClassManagementComponent implements OnInit {
     }
   }
 }
+

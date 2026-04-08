@@ -14,8 +14,8 @@ import { NotificationService } from '../../../../core/services/notification.serv
     <div class="min-h-screen flex items-center justify-center bg-white p-4 font-sans text-black">
       <app-card class="w-full max-w-md p-8 md:p-10 border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] rounded-3xl">
         <div class="text-center mb-8">
-          <div class="inline-flex items-center justify-center w-20 h-20 bg-[#0ABAB5]/10 rounded-full border-4 border-black mb-4">
-            <span class="material-icons text-4xl text-[#0ABAB5]">vpn_key</span>
+          <div class="inline-flex items-center justify-center w-20 h-20 bg-[var(--color-primary)]/10 rounded-full border-4 border-black mb-4">
+            <span class="material-icons text-4xl text-[var(--color-primary)]">vpn_key</span>
           </div>
           <h2 class="text-4xl font-black text-black tracking-tighter uppercase italic">Reset Password</h2>
           <p class="text-gray-600 font-bold mt-2">Enter your new password below.</p>
@@ -29,7 +29,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
               type="password" 
               formControlName="password" 
               placeholder="••••••••"
-              class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold transition-all"
+              class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold transition-all"
             >
             <div class="mt-2 flex gap-1 h-2">
               @for (i of [1,2,3,4]; track i) {
@@ -46,7 +46,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
               type="password" 
               formControlName="confirmPassword" 
               placeholder="••••••••"
-              class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold transition-all"
+              class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold transition-all"
             >
             @if (resetForm.errors?.['passwordMismatch'] && resetForm.get('confirmPassword')?.touched) {
               <p class="text-red-500 text-xs font-bold mt-1 uppercase">Passwords do not match</p>
@@ -63,7 +63,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
         </form>
 
         <div class="mt-8 pt-6 border-t-4 border-black/10 text-center">
-          <a routerLink="/auth/login" class="inline-flex items-center text-black font-black uppercase tracking-widest text-sm hover:text-[#0ABAB5] transition-colors">
+          <a routerLink="/auth/login" class="inline-flex items-center text-black font-black uppercase tracking-widest text-sm hover:text-[var(--color-primary)] transition-colors">
             <span class="material-icons text-sm mr-2">arrow_back</span> Back to Login
           </a>
         </div>
@@ -129,8 +129,8 @@ export class ResetPasswordComponent implements OnInit {
     if (index <= strength) {
       if (strength <= 1) return 'bg-red-500';
       if (strength <= 2) return 'bg-yellow-500';
-      if (strength <= 3) return 'bg-[#0ABAB5]/60';
-      return 'bg-[#0ABAB5]';
+      if (strength <= 3) return 'bg-[var(--color-primary)]/60';
+      return 'bg-[var(--color-primary)]';
     }
     return 'bg-gray-100';
   }
@@ -147,3 +147,4 @@ export class ResetPasswordComponent implements OnInit {
     }
   }
 }
+

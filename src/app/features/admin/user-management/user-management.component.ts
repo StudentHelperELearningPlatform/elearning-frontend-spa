@@ -24,8 +24,8 @@ interface User {
       <!-- Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div class="flex items-center space-x-4">
-          <div class="w-16 h-16 bg-[#0ABAB5]/20 rounded-2xl border-4 border-black flex items-center justify-center">
-            <span class="material-icons text-[#0ABAB5] text-3xl">admin_panel_settings</span>
+          <div class="w-16 h-16 bg-[var(--color-primary)]/20 rounded-2xl border-4 border-black flex items-center justify-center">
+            <span class="material-icons text-[var(--color-primary)] text-3xl">admin_panel_settings</span>
           </div>
           <div>
             <h1 class="text-3xl font-black text-black tracking-tight">Admin Dashboard</h1>
@@ -41,8 +41,8 @@ interface User {
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         <app-card class="block">
           <div class="p-6 text-center">
-            <div class="w-12 h-12 bg-[#0ABAB5]/10 rounded-xl border-2 border-black flex items-center justify-center mx-auto mb-4">
-              <span class="material-icons text-[#0ABAB5]">people</span>
+            <div class="w-12 h-12 bg-[var(--color-primary)]/10 rounded-xl border-2 border-black flex items-center justify-center mx-auto mb-4">
+              <span class="material-icons text-[var(--color-primary)]">people</span>
             </div>
             <p class="text-gray-500 font-bold text-sm uppercase tracking-wider mb-1">Total Users</p>
             <p class="text-3xl font-black text-black">1,248</p>
@@ -90,7 +90,7 @@ interface User {
           <div class="flex space-x-2 w-full sm:w-auto">
             <div class="relative flex-1 sm:w-64">
               <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
-              <input type="text" placeholder="Search users..." class="w-full pl-10 pr-4 py-2 bg-gray-50 border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[#0ABAB5] focus:bg-white transition-colors">
+              <input type="text" placeholder="Search users..." class="w-full pl-10 pr-4 py-2 bg-gray-50 border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:bg-white transition-colors">
             </div>
             <app-button variant="secondary" icon="filter_list">Filter</app-button>
           </div>
@@ -125,7 +125,7 @@ interface User {
                     <div class="flex items-center space-x-2">
                       <div class="w-2.5 h-2.5 rounded-full border border-black" 
                            [ngClass]="{
-                             'bg-[#0ABAB5]': user.status === 'ACTIVE',
+                             'bg-[var(--color-primary)]': user.status === 'ACTIVE',
                              'bg-gray-400': user.status === 'INACTIVE',
                              'bg-yellow-400': user.status === 'PENDING'
                            }"></div>
@@ -154,7 +154,7 @@ interface User {
             <button class="w-8 h-8 rounded-lg border-2 border-black bg-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
               <span class="material-icons text-sm">chevron_left</span>
             </button>
-            <button class="w-8 h-8 rounded-lg border-2 border-black bg-[#0ABAB5] text-white flex items-center justify-center font-black">
+            <button class="w-8 h-8 rounded-lg border-2 border-black bg-[var(--color-primary)] text-white flex items-center justify-center font-black">
               1
             </button>
             <button class="w-8 h-8 rounded-lg border-2 border-black bg-white flex items-center justify-center hover:bg-gray-100">
@@ -191,3 +191,4 @@ export class UserManagementComponent {
     }
   }
 }
+

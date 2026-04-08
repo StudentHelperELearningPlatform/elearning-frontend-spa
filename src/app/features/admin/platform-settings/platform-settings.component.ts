@@ -13,8 +13,8 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
       <!-- Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div class="flex items-center space-x-4">
-          <div class="w-16 h-16 bg-[#0ABAB5]/20 rounded-2xl border-4 border-black flex items-center justify-center">
-            <span class="material-icons text-[#0ABAB5] text-3xl">settings</span>
+          <div class="w-16 h-16 bg-[var(--color-primary)]/20 rounded-2xl border-4 border-black flex items-center justify-center">
+            <span class="material-icons text-[var(--color-primary)] text-3xl">settings</span>
           </div>
           <div>
             <h1 class="text-3xl font-black text-black tracking-tight">Platform Settings</h1>
@@ -29,7 +29,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <!-- Sidebar Navigation -->
         <div class="md:col-span-1 space-y-2">
-          <button class="w-full text-left px-6 py-4 rounded-2xl border-4 border-black bg-[#0ABAB5] text-white font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between">
+          <button class="w-full text-left px-6 py-4 rounded-2xl border-4 border-black bg-[var(--color-primary)] text-white font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between">
             <div class="flex items-center space-x-3">
               <span class="material-icons">tune</span>
               <span>General</span>
@@ -65,13 +65,13 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
               <!-- Site Name -->
               <div class="space-y-2">
                 <label for="platformName" class="block font-black text-black">Platform Name</label>
-                <input id="platformName" type="text" value="EduLearn Platform" class="w-full px-4 py-3 bg-gray-50 border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[#0ABAB5] focus:bg-white transition-colors">
+                <input id="platformName" type="text" value="EduLearn Platform" class="w-full px-4 py-3 bg-gray-50 border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:bg-white transition-colors">
               </div>
               
               <!-- Support Email -->
               <div class="space-y-2">
                 <label for="supportEmail" class="block font-black text-black">Support Email</label>
-                <input id="supportEmail" type="email" value="support@edulearn.com" class="w-full px-4 py-3 bg-gray-50 border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[#0ABAB5] focus:bg-white transition-colors">
+                <input id="supportEmail" type="email" value="support@edulearn.com" class="w-full px-4 py-3 bg-gray-50 border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:bg-white transition-colors">
               </div>
               
               <!-- Registration Toggle -->
@@ -82,7 +82,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" checked class="sr-only peer">
-                  <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer border-2 border-black peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-black after:border-2 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0ABAB5]"></div>
+                  <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer border-2 border-black peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-black after:border-2 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
                 </label>
               </div>
               
@@ -94,7 +94,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" class="sr-only peer">
-                  <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer border-2 border-black peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-black after:border-2 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0ABAB5]"></div>
+                  <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer border-2 border-black peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-black after:border-2 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
                 </label>
               </div>
             </div>
@@ -105,3 +105,4 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
   `
 })
 export class PlatformSettingsComponent {}
+

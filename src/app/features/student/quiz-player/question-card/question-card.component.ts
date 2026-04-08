@@ -10,7 +10,7 @@ import { Question } from '../../store/quizzes.store';
     <div class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12">
       <!-- Question Header -->
       <div class="flex justify-between items-center mb-8">
-        <span class="text-[#0ABAB5] font-black uppercase tracking-widest text-sm">Question {{ index() + 1 }} of {{ total() }}</span>
+        <span class="text-[var(--color-primary)] font-black uppercase tracking-widest text-sm">Question {{ index() + 1 }} of {{ total() }}</span>
         <span class="bg-gray-100 text-gray-600 font-bold px-3 py-1 rounded-full border-2 border-gray-300 text-sm">
           {{ question().points || 10 }} pts
         </span>
@@ -28,19 +28,19 @@ import { Question } from '../../store/quizzes.store';
             (click)="selectOption(option.id)"
             class="w-full text-left p-6 rounded-2xl border-4 transition-all duration-200 flex items-center group relative overflow-hidden"
             [ngClass]="{
-              'border-[#0ABAB5] bg-[#0ABAB5]/10 shadow-[4px_4px_0px_0px_#0ABAB5] translate-x-[-2px] translate-y-[-2px]': selectedOptionId() === option.id,
+              'border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-[4px_4px_0px_0px_var(--color-primary)] translate-x-[-2px] translate-y-[-2px]': selectedOptionId() === option.id,
               'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]': selectedOptionId() !== option.id
             }">
             
             <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg mr-4 border-2"
                  [ngClass]="{
-                   'bg-[#0ABAB5] text-white border-[#0ABAB5]': selectedOptionId() === option.id,
+                   'bg-[var(--color-primary)] text-white border-[var(--color-primary)]': selectedOptionId() === option.id,
                    'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black': selectedOptionId() !== option.id
                  }">
               {{ getLetter(i) }}
             </div>
             
-            <span class="font-bold text-lg" [ngClass]="{'text-[#0ABAB5]': selectedOptionId() === option.id, 'text-black': selectedOptionId() !== option.id}">
+            <span class="font-bold text-lg" [ngClass]="{'text-[var(--color-primary)]': selectedOptionId() === option.id, 'text-black': selectedOptionId() !== option.id}">
               {{ option.text }}
             </span>
           </button>
@@ -65,3 +65,4 @@ export class QuestionCardComponent {
     return String.fromCharCode(65 + index); // A, B, C, D...
   }
 }
+

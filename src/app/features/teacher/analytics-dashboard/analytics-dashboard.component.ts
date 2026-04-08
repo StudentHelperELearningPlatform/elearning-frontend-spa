@@ -15,8 +15,8 @@ import { CardComponent } from '../../../shared/components/card/card.component';
       <!-- Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div class="flex items-center space-x-4">
-          <div class="w-16 h-16 bg-[#0ABAB5]/20 rounded-2xl border-4 border-black flex items-center justify-center">
-            <span class="material-icons text-[#0ABAB5] text-3xl">insights</span>
+          <div class="w-16 h-16 bg-[var(--color-primary)]/20 rounded-2xl border-4 border-black flex items-center justify-center">
+            <span class="material-icons text-[var(--color-primary)] text-3xl">insights</span>
           </div>
           <div>
             <h1 class="text-3xl font-black text-black tracking-tight">Analytics Dashboard</h1>
@@ -43,7 +43,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
             <div class="space-y-4">
               <div class="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border-2 border-black">
                 <span class="font-bold text-gray-600">Published Lessons</span>
-                <span class="bg-[#0ABAB5] text-white px-3 py-1 rounded-xl font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <span class="bg-[var(--color-primary)] text-white px-3 py-1 rounded-xl font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                   {{ contentStore.publishedLessons().length }}
                 </span>
               </div>
@@ -88,7 +88,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
                     <tr class="border-b-2 border-gray-100 hover:bg-gray-50 transition-colors group">
                       <td class="p-4">
                         <div class="flex items-center space-x-3">
-                          <div class="w-10 h-10 bg-[#0ABAB5]/20 rounded-xl border-2 border-black flex items-center justify-center font-black text-[#0ABAB5]">
+                          <div class="w-10 h-10 bg-[var(--color-primary)]/20 rounded-xl border-2 border-black flex items-center justify-center font-black text-[var(--color-primary)]">
                             {{ cls.name.charAt(0) }}
                           </div>
                           <div>
@@ -101,7 +101,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
                       <td class="p-4">
                         <div class="flex items-center space-x-2">
                           <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300 w-24">
-                            <div class="h-full bg-[#0ABAB5]" [style.width.%]="cls.averageGrade"></div>
+                            <div class="h-full bg-[var(--color-primary)]" [style.width.%]="cls.averageGrade"></div>
                           </div>
                           <span class="text-sm font-bold text-gray-600">{{ cls.averageGrade }}%</span>
                         </div>
@@ -131,3 +131,4 @@ export class AnalyticsDashboardComponent implements OnInit {
     this.classStore.loadClasses();
   }
 }
+

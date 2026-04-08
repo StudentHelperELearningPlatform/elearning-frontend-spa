@@ -28,7 +28,7 @@ interface PathNode {
           
           <div class="mt-6 flex items-center gap-4">
             <div class="flex-1 h-4 bg-gray-100 border-2 border-black rounded-full overflow-hidden w-64">
-              <div class="h-full bg-[#0ABAB5] transition-all duration-500 border-r-2 border-black" [style.width.%]="overallProgress()"></div>
+              <div class="h-full bg-[var(--color-primary)] transition-all duration-500 border-r-2 border-black" [style.width.%]="overallProgress()"></div>
             </div>
             <span class="font-black text-xl">{{ completedCount() }}/{{ nodes().length }}</span>
           </div>
@@ -49,7 +49,7 @@ interface PathNode {
               <app-card 
                 [hoverable]="node.status !== 'LOCKED'" 
                 class="transition-all"
-                [ngClass]="{'opacity-60 grayscale': node.status === 'LOCKED', 'border-[#0ABAB5]': node.status === 'COMPLETED'}"
+                [ngClass]="{'opacity-60 grayscale': node.status === 'LOCKED', 'border-[var(--color-primary)]': node.status === 'COMPLETED'}"
               >
                 <div class="flex gap-4">
                   <div class="w-24 h-24 rounded-xl border-4 border-black overflow-hidden flex-shrink-0 bg-gray-100 relative">
@@ -65,7 +65,7 @@ interface PathNode {
                     <div class="flex justify-between items-start mb-2">
                       <h3 class="text-xl font-black leading-tight">{{ node.title }}</h3>
                       @if (node.status === 'COMPLETED') {
-                        <span class="material-icons text-[#0ABAB5] font-black">check_circle</span>
+                        <span class="material-icons text-[var(--color-primary)] font-black">check_circle</span>
                       }
                     </div>
                     
@@ -92,7 +92,7 @@ interface PathNode {
             <!-- Connector Dot -->
             <div class="relative z-10 w-12 h-12 rounded-full border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-colors"
                  [ngClass]="{
-                   'bg-[#0ABAB5] text-white': node.status === 'COMPLETED',
+                   'bg-[var(--color-primary)] text-white': node.status === 'COMPLETED',
                    'bg-white text-black': node.status === 'AVAILABLE',
                    'bg-gray-200 text-gray-400': node.status === 'LOCKED'
                  }">
@@ -156,3 +156,4 @@ export class LearningPathComponent {
     return (this.completedCount() / this.nodes().length) * 100;
   }
 }
+

@@ -17,8 +17,8 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       <!-- Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div class="flex items-center space-x-4">
-          <div class="w-16 h-16 bg-[#0ABAB5]/20 rounded-2xl border-4 border-black flex items-center justify-center">
-            <span class="material-icons text-[#0ABAB5] text-3xl">edit_document</span>
+          <div class="w-16 h-16 bg-[var(--color-primary)]/20 rounded-2xl border-4 border-black flex items-center justify-center">
+            <span class="material-icons text-[var(--color-primary)] text-3xl">edit_document</span>
           </div>
           <div>
             <h1 class="text-3xl font-black text-black tracking-tight">Content Editor</h1>
@@ -36,13 +36,13 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
         <button 
           (click)="activeTab.set('lessons')"
           class="px-6 py-3 rounded-xl font-bold transition-all duration-200"
-          [ngClass]="{'bg-[#0ABAB5] text-white border-2 border-black': activeTab() === 'lessons', 'text-gray-600 hover:bg-gray-100': activeTab() !== 'lessons'}">
+          [ngClass]="{'bg-[var(--color-primary)] text-white border-2 border-black': activeTab() === 'lessons', 'text-gray-600 hover:bg-gray-100': activeTab() !== 'lessons'}">
           Lessons
         </button>
         <button 
           (click)="activeTab.set('quizzes')"
           class="px-6 py-3 rounded-xl font-bold transition-all duration-200"
-          [ngClass]="{'bg-[#0ABAB5] text-white border-2 border-black': activeTab() === 'quizzes', 'text-gray-600 hover:bg-gray-100': activeTab() !== 'quizzes'}">
+          [ngClass]="{'bg-[var(--color-primary)] text-white border-2 border-black': activeTab() === 'quizzes', 'text-gray-600 hover:bg-gray-100': activeTab() !== 'quizzes'}">
           Quizzes
         </button>
       </div>
@@ -62,8 +62,8 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
               <app-card class="block group">
                 <div class="p-6">
                   <div class="flex justify-between items-start mb-4">
-                    <div class="w-12 h-12 bg-gray-100 rounded-xl border-2 border-black flex items-center justify-center group-hover:bg-[#0ABAB5]/20 transition-colors">
-                      <span class="material-icons text-black group-hover:text-[#0ABAB5] transition-colors">menu_book</span>
+                    <div class="w-12 h-12 bg-gray-100 rounded-xl border-2 border-black flex items-center justify-center group-hover:bg-[var(--color-primary)]/20 transition-colors">
+                      <span class="material-icons text-black group-hover:text-[var(--color-primary)] transition-colors">menu_book</span>
                     </div>
                     <app-badge [variant]="lesson.status === 'PUBLISHED' ? 'success' : 'warning'">
                       {{ lesson.status }}
@@ -108,8 +108,8 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
               <app-card class="block group">
                 <div class="p-6">
                   <div class="flex justify-between items-start mb-4">
-                    <div class="w-12 h-12 bg-gray-100 rounded-xl border-2 border-black flex items-center justify-center group-hover:bg-[#0ABAB5]/20 transition-colors">
-                      <span class="material-icons text-black group-hover:text-[#0ABAB5] transition-colors">quiz</span>
+                    <div class="w-12 h-12 bg-gray-100 rounded-xl border-2 border-black flex items-center justify-center group-hover:bg-[var(--color-primary)]/20 transition-colors">
+                      <span class="material-icons text-black group-hover:text-[var(--color-primary)] transition-colors">quiz</span>
                     </div>
                     <app-badge [variant]="quiz.status === 'PUBLISHED' ? 'success' : 'warning'">
                       {{ quiz.status }}
@@ -173,3 +173,4 @@ export class ContentEditorComponent implements OnInit {
     }
   }
 }
+

@@ -35,12 +35,12 @@ import { CardComponent } from '../../../shared/components/card/card.component';
             <p class="text-2xl font-bold italic text-gray-500 max-w-lg">
               Get real-time insights into your child's learning journey. Understand their strengths and support their growth with AI-driven reports.
             </p>
-            <app-button variant="primary" size="lg" class="text-2xl px-12 py-6 bg-[#0ABAB5] text-black" (btnClick)="navigateToAuth()">
+            <app-button variant="primary" size="lg" class="text-2xl px-12 py-6 bg-[var(--color-primary)] text-black" (btnClick)="navigateToAuth()">
               Join for Free
             </app-button>
           </div>
           <div class="relative">
-            <div class="absolute inset-0 bg-[#0ABAB5] translate-x-4 translate-y-4 -z-10 border-4 border-black rounded-3xl"></div>
+            <div class="absolute inset-0 bg-[var(--color-primary)] translate-x-4 translate-y-4 -z-10 border-4 border-black rounded-3xl"></div>
             <div class="bg-white border-4 border-black rounded-3xl p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
               <img 
                 src="https://api.dicebear.com/7.x/bottts/svg?seed=parent-ai&backgroundColor=ffffff" 
@@ -54,7 +54,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
       </section>
 
       <!-- Features -->
-      <section class="px-6 py-20 bg-[#0ABAB5] border-b-4 border-black">
+      <section class="px-6 py-20 bg-[var(--color-primary)] border-b-4 border-black">
         <div class="max-w-7xl mx-auto space-y-20">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
             <div class="order-2 md:order-1">
@@ -114,3 +114,4 @@ export class ParentLandingComponent {
   private router = inject(Router);
   navigateToAuth() { this.router.navigate(['/auth/login']); }
 }
+

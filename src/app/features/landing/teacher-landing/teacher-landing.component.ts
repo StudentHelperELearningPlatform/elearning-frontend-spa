@@ -28,7 +28,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
       <section class="px-6 py-20 bg-white border-b-4 border-black relative overflow-hidden">
         <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div class="space-y-8">
-            <span class="inline-block px-4 py-2 bg-[#0ABAB5] text-black font-black uppercase tracking-widest text-xs">For Teachers</span>
+            <span class="inline-block px-4 py-2 bg-[var(--color-primary)] text-black font-black uppercase tracking-widest text-xs">For Teachers</span>
             <h1 class="text-6xl md:text-8xl font-black uppercase italic tracking-tighter leading-none text-black drop-shadow-[4px_4px_0px_rgba(0,ABAB5,1)]">
               AI-Powered<br>Curriculum.
             </h1>
@@ -40,7 +40,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
             </app-button>
           </div>
           <div class="relative">
-            <div class="absolute inset-0 bg-[#0ABAB5] translate-x-4 translate-y-4 -z-10 border-4 border-black rounded-3xl"></div>
+            <div class="absolute inset-0 bg-[var(--color-primary)] translate-x-4 translate-y-4 -z-10 border-4 border-black rounded-3xl"></div>
             <div class="bg-white border-4 border-black rounded-3xl p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
               <img 
                 src="https://api.dicebear.com/7.x/bottts/svg?seed=teacher-ai&backgroundColor=ffffff" 
@@ -58,12 +58,12 @@ import { CardComponent } from '../../../shared/components/card/card.component';
         <div class="max-w-7xl mx-auto space-y-20">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
             <div class="space-y-6">
-              <h2 class="text-4xl md:text-6xl font-black uppercase italic tracking-tight text-[#0ABAB5]">Smart Content</h2>
+              <h2 class="text-4xl md:text-6xl font-black uppercase italic tracking-tight text-[var(--color-primary)]">Smart Content</h2>
               <p class="text-xl font-bold text-gray-400 italic">Generate comprehensive lesson plans and interactive content that aligns with your curriculum goals instantly.</p>
               <ul class="space-y-4 font-black uppercase text-sm tracking-widest">
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">auto_fix_high</span> Instant Lesson Plans</li>
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">auto_fix_high</span> Dynamic Quiz Generation</li>
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">auto_fix_high</span> Custom Media Integration</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">auto_fix_high</span> Instant Lesson Plans</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">auto_fix_high</span> Dynamic Quiz Generation</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">auto_fix_high</span> Custom Media Integration</li>
               </ul>
             </div>
             <div>
@@ -80,12 +80,12 @@ import { CardComponent } from '../../../shared/components/card/card.component';
               </div>
             </div>
             <div class="space-y-6 order-1 md:order-2">
-              <h2 class="text-4xl md:text-6xl font-black uppercase italic tracking-tight text-[#0ABAB5]">Deep Analytics</h2>
+              <h2 class="text-4xl md:text-6xl font-black uppercase italic tracking-tight text-[var(--color-primary)]">Deep Analytics</h2>
               <p class="text-xl font-bold text-gray-400 italic">Monitor class performance in real-time. Identify struggling students before they fall behind with AI-driven insights.</p>
               <ul class="space-y-4 font-black uppercase text-sm tracking-widest">
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">trending_up</span> Performance Heatmaps</li>
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">trending_up</span> Individual Skill Tracking</li>
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">trending_up</span> Automated Grading</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">trending_up</span> Performance Heatmaps</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">trending_up</span> Individual Skill Tracking</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">trending_up</span> Automated Grading</li>
               </ul>
             </div>
           </div>
@@ -114,3 +114,4 @@ export class TeacherLandingComponent {
   private router = inject(Router);
   navigateToAuth() { this.router.navigate(['/auth/login']); }
 }
+

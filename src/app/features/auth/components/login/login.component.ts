@@ -39,7 +39,7 @@ import { AuthStore } from '../../store/auth.store';
               type="email"
               formControlName="email"
               placeholder="john@example.com"
-              class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold transition-all"
+              class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold transition-all"
             />
           </div>
           <div>
@@ -54,7 +54,7 @@ import { AuthStore } from '../../store/auth.store';
                 [type]="showPassword ? 'text' : 'password'"
                 formControlName="password"
                 placeholder="••••••••"
-                class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold transition-all"
+                class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold transition-all"
               />
               <button
                 type="button"
@@ -101,7 +101,7 @@ import { AuthStore } from '../../store/auth.store';
           <button
             type="submit"
             [disabled]="loginForm.invalid || authStore.loading()"
-            class="w-full py-4 px-6 bg-[#0ABAB5] text-white font-black rounded-xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest text-lg"
+            class="w-full py-4 px-6 bg-[var(--color-primary)] text-white font-black rounded-xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest text-lg"
           >
             {{ authStore.loading() ? 'Authenticating...' : 'Log In' }}
           </button>
@@ -110,7 +110,7 @@ import { AuthStore } from '../../store/auth.store';
         <div class="mt-10 pt-8 border-t-4 border-black/10 text-center">
           <a
             routerLink="/auth/register"
-            class="text-black font-black uppercase tracking-widest text-sm hover:text-[#0ABAB5] transition-colors"
+            class="text-black font-black uppercase tracking-widest text-sm hover:text-[var(--color-primary)] transition-colors"
             >Create New Account</a
           >
         </div>
@@ -183,3 +183,4 @@ export class LoginComponent {
     }
   }
 }
+

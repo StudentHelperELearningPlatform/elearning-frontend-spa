@@ -15,7 +15,7 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
         <app-skeleton height="1rem" width="80%" />
       </div>
     } @else {
-      <div class="prose prose-lg max-w-none prose-headings:font-black prose-headings:text-black prose-p:text-gray-800 prose-a:text-[#0ABAB5] prose-a:font-bold prose-strong:text-black">
+      <div class="prose prose-lg max-w-none prose-headings:font-black prose-headings:text-black prose-p:text-gray-800 prose-a:text-[var(--color-primary)] prose-a:font-bold prose-strong:text-black">
         <div [innerHTML]="content()"></div>
       </div>
     }
@@ -25,3 +25,4 @@ export class ModuleContentComponent {
   content = input.required<string>();
   loading = input<boolean>(false);
 }
+

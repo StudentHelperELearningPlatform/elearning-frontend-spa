@@ -14,7 +14,7 @@ import { ReactiveFormsModule } from '@angular/forms';
       <div class="relative group">
         <ng-content></ng-content>
         @if (icon()) {
-          <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#0ABAB5] transition-colors">
+          <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[var(--color-primary)] transition-colors">
             {{ icon() }}
           </span>
         }
@@ -31,3 +31,4 @@ export class FormFieldComponent {
   icon = input<string>('');
   error = input<string>('');
 }
+

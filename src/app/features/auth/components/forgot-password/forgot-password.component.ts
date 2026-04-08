@@ -15,8 +15,8 @@ import { NotificationService } from '../../../../core/services/notification.serv
       <app-card class="w-full max-w-md p-8 md:p-10 border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] rounded-3xl">
         @if (!emailSent()) {
           <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-[#0ABAB5]/10 rounded-full border-4 border-black mb-4">
-              <span class="material-icons text-4xl text-[#0ABAB5]">lock_reset</span>
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-[var(--color-primary)]/10 rounded-full border-4 border-black mb-4">
+              <span class="material-icons text-4xl text-[var(--color-primary)]">lock_reset</span>
             </div>
             <h2 class="text-4xl font-black text-black tracking-tighter uppercase italic">Forgot Password?</h2>
             <p class="text-gray-600 font-bold mt-2">No worries, we'll send you reset instructions.</p>
@@ -30,7 +30,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
                 type="email" 
                 formControlName="email" 
                 placeholder="Enter your email"
-                class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold transition-all"
+                class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold transition-all"
               >
               @if (forgotForm.get('email')?.touched && forgotForm.get('email')?.errors?.['email']) {
                 <p class="text-red-500 text-xs font-bold mt-1 uppercase">Please enter a valid email</p>
@@ -62,7 +62,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
         }
 
         <div class="mt-8 pt-6 border-t-4 border-black/10 text-center">
-          <a routerLink="/auth/login" class="inline-flex items-center text-black font-black uppercase tracking-widest text-sm hover:text-[#0ABAB5] transition-colors">
+          <a routerLink="/auth/login" class="inline-flex items-center text-black font-black uppercase tracking-widest text-sm hover:text-[var(--color-primary)] transition-colors">
             <span class="material-icons text-sm mr-2">arrow_back</span> Back to Login
           </a>
         </div>
@@ -93,3 +93,4 @@ export class ForgotPasswordComponent {
     }
   }
 }
+

@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
       [disabled]="disabled() || loading()"
       (click)="btnClick.emit($event)"
       [ngClass]="[
-        'relative font-bold rounded-2xl border-2 border-black transition-all duration-200 flex items-center justify-center outline-none focus:ring-4 focus:ring-[#0ABAB5]/30',
+        'relative font-bold rounded-2xl border-2 border-black transition-all duration-200 flex items-center justify-center outline-none focus:ring-4 focus:ring-[var(--color-primary)]/30',
         sizeClasses[size()],
         variantClasses[variant()],
         disabled() || loading() ? 'opacity-50 cursor-not-allowed translate-y-[4px] shadow-none' : 'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[4px] active:shadow-none'
@@ -40,7 +40,7 @@ export class ButtonComponent {
   btnClick = output<MouseEvent>();
 
   variantClasses = {
-    primary: 'bg-[#0ABAB5] text-white',
+    primary: 'bg-[var(--color-primary)] text-white',
     secondary: 'bg-white text-black',
     danger: 'bg-black text-white'
   };
@@ -50,3 +50,4 @@ export class ButtonComponent {
     lg: 'px-8 py-4 text-lg uppercase tracking-wide'
   };
 }
+

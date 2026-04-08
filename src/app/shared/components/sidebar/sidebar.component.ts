@@ -12,57 +12,57 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
     <aside class="w-72 bg-white border-r-4 border-black h-[calc(100vh-84px)] sticky top-[84px] hidden md:block overflow-y-auto p-6">
       <nav class="space-y-4">
         @if (authStore.isStudent()) {
-          <a routerLink="/student/dashboard" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/student/dashboard" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">dashboard</span>
             <span>Dashboard</span>
           </a>
-          <a routerLink="/student/lessons" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/student/lessons" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">library_books</span>
             <span>Lessons</span>
           </a>
-          <a routerLink="/student/lesson-viewer" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/student/lesson-viewer" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">menu_book</span>
             <span>Lesson Viewer</span>
           </a>
-          <a routerLink="/student/quiz-player" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/student/quiz-player" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">quiz</span>
             <span>Quiz Player</span>
           </a>
-          <a routerLink="/student/milestones" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/student/milestones" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">emoji_events</span>
             <span>Achievements</span>
           </a>
-          <a routerLink="/student/learning-path" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/student/learning-path" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">route</span>
             <span>Learning Path</span>
           </a>
         }
 
         @if (authStore.isTeacher()) {
-          <a routerLink="/teacher/dashboard" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/teacher/dashboard" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">insights</span>
             <span>Analytics</span>
           </a>
-          <a routerLink="/teacher/classes" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/teacher/classes" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">groups</span>
             <span>Classes</span>
           </a>
-          <a routerLink="/teacher/content" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/teacher/content" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">edit_document</span>
             <span>Content Editor</span>
           </a>
-          <a routerLink="/teacher/quiz-builder" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/teacher/quiz-builder" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">psychology</span>
             <span>Quiz Builder</span>
           </a>
         }
 
         @if (authStore.isAdmin()) {
-          <a routerLink="/admin/user-management" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/admin/user-management" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">manage_accounts</span>
             <span>User Management</span>
           </a>
-          <a routerLink="/admin/platform-settings" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+          <a routerLink="/admin/platform-settings" routerLinkActive="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">settings</span>
             <span>Platform Settings</span>
           </a>
@@ -74,3 +74,4 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
 export class SidebarComponent {
   authStore = inject(AuthStore);
 }
+

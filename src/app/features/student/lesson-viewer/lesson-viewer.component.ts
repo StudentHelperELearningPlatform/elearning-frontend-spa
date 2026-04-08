@@ -27,8 +27,8 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
       
       <!-- Sidebar / Modules List -->
       <div class="w-full md:w-80 bg-white border-r-4 border-black flex flex-col h-full z-10 shadow-[4px_0px_0px_0px_rgba(0,0,0,1)]">
-        <div class="p-6 border-b-4 border-black bg-[#0ABAB5]/10">
-          <button (click)="goBack()" class="flex items-center text-black font-bold hover:text-[#0ABAB5] transition-colors mb-4">
+        <div class="p-6 border-b-4 border-black bg-[var(--color-primary)]/10">
+          <button (click)="goBack()" class="flex items-center text-black font-bold hover:text-[var(--color-primary)] transition-colors mb-4">
             <span class="material-icons mr-2">arrow_back</span>
             Back to Lessons
           </button>
@@ -54,13 +54,13 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
                 tabindex="0"
                 class="p-4 rounded-2xl border-4 cursor-pointer transition-all duration-200 flex items-center group relative overflow-hidden"
                 [ngClass]="{
-                  'border-black bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]': currentModuleIndex() === idx,
+                  'border-black bg-[var(--color-primary)] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]': currentModuleIndex() === idx,
                   'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]': currentModuleIndex() !== idx
                 }">
                 
                 <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg mr-4 border-2"
                      [ngClass]="{
-                       'bg-white text-[#0ABAB5] border-black': currentModuleIndex() === idx,
+                       'bg-white text-[var(--color-primary)] border-black': currentModuleIndex() === idx,
                        'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black': currentModuleIndex() !== idx
                      }">
                   {{ idx + 1 }}
@@ -101,7 +101,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
             <div class="max-w-4xl mx-auto">
               <div class="mb-8">
                 <h1 class="text-4xl md:text-5xl font-black text-black mb-4 tracking-tight">{{ currentModule()?.title }}</h1>
-                <div class="h-2 w-24 bg-[#0ABAB5] rounded-full"></div>
+                <div class="h-2 w-24 bg-[var(--color-primary)] rounded-full"></div>
               </div>
 
               @if (currentModule()?.type === 'video' || currentModule()?.type === 'image' || currentModule()?.type === 'audio') {
@@ -144,7 +144,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
           <div class="hidden md:flex items-center space-x-2">
             @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
               <div class="w-3 h-3 rounded-full border-2 border-black transition-colors"
-                   [ngClass]="{'bg-[#0ABAB5]': idx <= currentModuleIndex(), 'bg-gray-200': idx > currentModuleIndex()}">
+                   [ngClass]="{'bg-[var(--color-primary)]': idx <= currentModuleIndex(), 'bg-gray-200': idx > currentModuleIndex()}">
               </div>
             }
           </div>
@@ -230,3 +230,4 @@ export class LessonViewerComponent implements OnInit {
     }
   }
 }
+

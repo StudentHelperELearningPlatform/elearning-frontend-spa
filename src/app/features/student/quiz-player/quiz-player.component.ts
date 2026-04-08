@@ -24,7 +24,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
       
       @if (store.loading()) {
         <div class="flex-1 flex items-center justify-center z-10">
-          <div class="w-16 h-16 border-8 border-gray-200 border-t-[#0ABAB5] rounded-full animate-spin"></div>
+          <div class="w-16 h-16 border-8 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin"></div>
         </div>
       } @else if (store.showResults()) {
         <div class="flex-1 flex items-center justify-center p-6 z-10">
@@ -49,7 +49,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
           <!-- Progress Bar -->
           <div class="flex-1 max-w-md mx-4 hidden md:block">
             <div class="h-4 bg-gray-200 rounded-full border-2 border-black overflow-hidden">
-              <div class="h-full bg-[#0ABAB5] transition-all duration-300" [style.width.%]="progressPercentage()"></div>
+              <div class="h-full bg-[var(--color-primary)] transition-all duration-300" [style.width.%]="progressPercentage()"></div>
             </div>
           </div>
           
@@ -59,7 +59,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
         <!-- Mobile Progress Bar -->
         <div class="md:hidden bg-white border-b-4 border-black p-4 z-20">
           <div class="h-3 bg-gray-200 rounded-full border-2 border-black overflow-hidden">
-            <div class="h-full bg-[#0ABAB5] transition-all duration-300" [style.width.%]="progressPercentage()"></div>
+            <div class="h-full bg-[var(--color-primary)] transition-all duration-300" [style.width.%]="progressPercentage()"></div>
           </div>
         </div>
 
@@ -189,4 +189,5 @@ export class QuizPlayerComponent implements OnInit {
     this.router.navigate(['/student/dashboard']);
   }
 }
+
 

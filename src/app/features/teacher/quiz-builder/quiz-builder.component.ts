@@ -46,7 +46,7 @@ interface GeneratedQuestion {
                   <input 
                     id="title" 
                     formControlName="title" 
-                    class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold" 
+                    class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold" 
                     placeholder="e.g. Fractions Mastery Test"
                   >
                 </div>
@@ -55,7 +55,7 @@ interface GeneratedQuestion {
                   <input 
                     id="subject" 
                     formControlName="subject" 
-                    class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold" 
+                    class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold" 
                     placeholder="e.g. Mathematics"
                   >
                 </div>
@@ -83,7 +83,7 @@ interface GeneratedQuestion {
                       <span class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black bg-gray-100">{{ i + 1 }}</span>
                       <input 
                         formControlName="text" 
-                        class="flex-1 px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:bg-[#0ABAB5]/5 font-bold" 
+                        class="flex-1 px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold" 
                         placeholder="Enter your question..."
                       >
                     </div>
@@ -151,8 +151,8 @@ interface GeneratedQuestion {
       >
         @if (aiLoading()) {
           <div class="text-center py-12 space-y-6">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-[#0ABAB5]/10 rounded-full border-4 border-black animate-pulse">
-              <span class="material-icons text-4xl text-[#0ABAB5] animate-spin">auto_awesome</span>
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-[var(--color-primary)]/10 rounded-full border-4 border-black animate-pulse">
+              <span class="material-icons text-4xl text-[var(--color-primary)] animate-spin">auto_awesome</span>
             </div>
             <h3 class="text-2xl font-black uppercase italic tracking-tight">AI is thinking...</h3>
             <p class="text-gray-500 font-bold italic">Generating high-quality questions for your quiz.</p>
@@ -166,7 +166,7 @@ interface GeneratedQuestion {
                   <input type="checkbox" [(ngModel)]="q.selected" class="mt-1 w-5 h-5 border-2 border-black rounded">
                   <div>
                     <p class="font-black text-sm">{{ q.text }}</p>
-                    <span class="text-[10px] font-black uppercase tracking-widest text-[#0ABAB5]">{{ q.type }}</span>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-[var(--color-primary)]">{{ q.type }}</span>
                   </div>
                 </div>
               }
@@ -184,7 +184,7 @@ interface GeneratedQuestion {
               <textarea 
                 id="aiPrompt"
                 [(ngModel)]="aiPrompt"
-                class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold" 
+                class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold" 
                 rows="5" 
                 placeholder="e.g. Basic arithmetic with fractions, or paste a lesson summary here..."
               ></textarea>
@@ -326,3 +326,4 @@ export class QuizBuilderComponent implements OnInit {
     }
   }
 }
+

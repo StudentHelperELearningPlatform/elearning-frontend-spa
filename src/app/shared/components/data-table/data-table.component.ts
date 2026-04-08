@@ -34,12 +34,12 @@ interface TableColumn {
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-rowData let-columns="columns">
-          <tr class="border-b-2 border-black/10 hover:bg-[#0ABAB5]/5 transition-colors">
+          <tr class="border-b-2 border-black/10 hover:bg-[var(--color-primary)]/5 transition-colors">
             @for (col of columns; track col.field) {
               <td class="p-4 font-bold text-black border-r-2 border-black/10 last:border-r-0">
                 @if (col.type === 'badge') {
                   <span class="px-3 py-1 rounded-full text-xs font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                        [ngClass]="rowData[col.field] === 'ACTIVE' ? 'bg-[#0ABAB5] text-white' : 'bg-white text-black'">
+                        [ngClass]="rowData[col.field] === 'ACTIVE' ? 'bg-[var(--color-primary)] text-white' : 'bg-white text-black'">
                     {{ rowData[col.field] }}
                   </span>
                 } @else {
@@ -64,7 +64,7 @@ interface TableColumn {
         padding: 1rem;
       }
       .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
-        background: #0ABAB5;
+        background: var(--color-primary);
         color: white;
         border: 2px solid black;
       }
@@ -77,3 +77,4 @@ export class DataTableComponent {
   paginator = input<boolean>(true);
   rows = input<number>(10);
 }
+

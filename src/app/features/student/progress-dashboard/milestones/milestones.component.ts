@@ -26,8 +26,8 @@ interface Milestone {
           <h1 class="text-4xl font-black text-black tracking-tight uppercase italic">Your Achievements</h1>
           <p class="text-gray-600 mt-2 text-lg font-bold">Collect badges and celebrate your progress!</p>
         </div>
-        <div class="flex items-center gap-4 bg-[#0ABAB5]/10 p-4 border-4 border-black rounded-2xl">
-          <span class="material-icons text-4xl text-[#0ABAB5]">emoji_events</span>
+        <div class="flex items-center gap-4 bg-[var(--color-primary)]/10 p-4 border-4 border-black rounded-2xl">
+          <span class="material-icons text-4xl text-[var(--color-primary)]">emoji_events</span>
           <div>
             <p class="text-xs font-black uppercase tracking-widest text-gray-500">Total Badges</p>
             <p class="text-3xl font-black">{{ earnedCount() }}/{{ milestones().length }}</p>
@@ -41,7 +41,7 @@ interface Milestone {
           <button 
             (click)="selectedCategory.set(cat)"
             class="px-6 py-2 border-4 border-black rounded-xl font-black uppercase tracking-tight transition-all"
-            [ngClass]="selectedCategory() === cat ? 'bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : 'bg-white hover:bg-gray-50'"
+            [ngClass]="selectedCategory() === cat ? 'bg-[var(--color-primary)] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : 'bg-white hover:bg-gray-50'"
           >
             {{ cat }}
           </button>
@@ -53,11 +53,11 @@ interface Milestone {
         @for (m of filteredMilestones(); track m.id) {
           <app-card 
             class="transition-all"
-            [ngClass]="{'opacity-60 grayscale': !m.earnedDate, 'border-[#0ABAB5] shadow-[#0ABAB5]/20': m.earnedDate}"
+            [ngClass]="{'opacity-60 grayscale': !m.earnedDate, 'border-[var(--color-primary)] shadow-[var(--color-primary)]/20': m.earnedDate}"
           >
             <div class="text-center py-4">
               <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border-4 border-black mb-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                   [ngClass]="m.earnedDate ? 'bg-[#0ABAB5]/10 text-[#0ABAB5]' : 'bg-gray-100 text-gray-400'">
+                   [ngClass]="m.earnedDate ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'bg-gray-100 text-gray-400'">
                 <span class="material-icons text-4xl">{{ m.icon }}</span>
               </div>
               
@@ -66,7 +66,7 @@ interface Milestone {
               
               @if (m.earnedDate) {
                 <div class="pt-4 border-t-2 border-black/5">
-                  <p class="text-xs font-black text-[#0ABAB5] uppercase tracking-widest">Earned on {{ m.earnedDate }}</p>
+                  <p class="text-xs font-black text-[var(--color-primary)] uppercase tracking-widest">Earned on {{ m.earnedDate }}</p>
                 </div>
               } @else {
                 <div class="space-y-2">
@@ -168,3 +168,4 @@ export class MilestonesComponent {
     return this.milestones().filter(m => m.earnedDate).length;
   }
 }
+

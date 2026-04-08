@@ -53,7 +53,7 @@ interface PathNode {
                 @for (node of pathNodes(); track node.id; let i = $index) {
                   <div class="relative flex items-center gap-6 group">
                     <!-- Order Dot -->
-                    <div class="z-10 w-12 h-12 rounded-full border-4 border-black bg-white flex items-center justify-center font-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] group-hover:bg-[#0ABAB5] group-hover:text-white transition-colors">
+                    <div class="z-10 w-12 h-12 rounded-full border-4 border-black bg-white flex items-center justify-center font-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors">
                       {{ i + 1 }}
                     </div>
 
@@ -95,7 +95,7 @@ interface PathNode {
           <app-card title="Lesson Library">
             <div class="space-y-4 max-h-[600px] overflow-y-auto pr-2">
               @for (lesson of store.lessons(); track lesson.id) {
-                <div class="p-4 border-4 border-black rounded-xl bg-white hover:bg-[#0ABAB5]/5 transition-colors cursor-pointer group focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/50"
+                <div class="p-4 border-4 border-black rounded-xl bg-white hover:bg-[var(--color-primary)]/5 transition-colors cursor-pointer group focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/50"
                      (click)="addLessonToPath(lesson)"
                      (keydown.enter)="addLessonToPath(lesson)"
                      (keydown.space)="addLessonToPath(lesson)"
@@ -104,7 +104,7 @@ interface PathNode {
                      [attr.aria-label]="'Add ' + lesson.title + ' to path'">
                   <div class="flex justify-between items-start">
                     <h4 class="font-black text-sm leading-tight">{{ lesson.title }}</h4>
-                    <span class="material-icons text-[#0ABAB5] opacity-0 group-hover:opacity-100 transition-opacity">add_circle</span>
+                    <span class="material-icons text-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-opacity">add_circle</span>
                   </div>
                   <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-2">{{ lesson.subject }}</p>
                 </div>
@@ -120,7 +120,7 @@ interface PathNode {
                   id="pathTitle"
                   type="text" 
                   [(ngModel)]="pathName"
-                  class="w-full px-4 py-3 border-4 border-black rounded-xl font-bold focus:outline-none focus:bg-[#0ABAB5]/5"
+                  class="w-full px-4 py-3 border-4 border-black rounded-xl font-bold focus:outline-none focus:bg-[var(--color-primary)]/5"
                   placeholder="e.g. Algebra Fundamentals"
                 >
               </div>
@@ -215,3 +215,4 @@ export class PathBuilderComponent {
     this.router.navigate(['/teacher/content']);
   }
 }
+

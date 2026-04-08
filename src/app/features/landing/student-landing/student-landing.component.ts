@@ -14,7 +14,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
       <!-- Navigation -->
       <nav class="flex items-center justify-between px-6 py-6 border-b-4 border-black sticky top-0 bg-white z-50">
         <div class="flex items-center gap-2 cursor-pointer" routerLink="/">
-          <div class="w-10 h-10 bg-[#0ABAB5] border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center">
+          <div class="w-10 h-10 bg-[var(--color-primary)] border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center">
             <span class="material-icons text-white font-black">school</span>
           </div>
           <span class="text-2xl font-black uppercase tracking-tighter italic">E-Tutor</span>
@@ -25,7 +25,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
       </nav>
 
       <!-- Hero Section -->
-      <section class="px-6 py-20 bg-[#0ABAB5] border-b-4 border-black relative overflow-hidden">
+      <section class="px-6 py-20 bg-[var(--color-primary)] border-b-4 border-black relative overflow-hidden">
         <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div class="space-y-8">
             <span class="inline-block px-4 py-2 bg-black text-white font-black uppercase tracking-widest text-xs">For Students</span>
@@ -59,7 +59,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
           <div class="grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
             <div class="order-2 md:order-1">
               <div class="bg-white border-4 border-black rounded-3xl p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative group">
-                <div class="absolute -top-6 -right-6 w-20 h-20 bg-[#0ABAB5] border-4 border-black rounded-full flex items-center justify-center animate-spin-slow">
+                <div class="absolute -top-6 -right-6 w-20 h-20 bg-[var(--color-primary)] border-4 border-black rounded-full flex items-center justify-center animate-spin-slow">
                   <span class="material-icons text-white text-4xl">auto_awesome</span>
                 </div>
                 <img src="https://api.dicebear.com/7.x/shapes/svg?seed=path-1" alt="Learning Path" class="w-full h-auto opacity-80" referrerpolicy="no-referrer">
@@ -69,9 +69,9 @@ import { CardComponent } from '../../../shared/components/card/card.component';
               <h2 class="text-4xl md:text-6xl font-black uppercase italic tracking-tight">Adaptive Paths</h2>
               <p class="text-xl font-bold text-gray-500 italic">No more "one size fits all". Our AI analyzes your strengths and weaknesses to build a path that's uniquely yours.</p>
               <ul class="space-y-4 font-black uppercase text-sm tracking-widest">
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">bolt</span> Instant Feedback</li>
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">bolt</span> Skill-Based Progression</li>
-                <li class="flex items-center gap-3"><span class="material-icons text-[#0ABAB5]">bolt</span> Dynamic Difficulty</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">bolt</span> Instant Feedback</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">bolt</span> Skill-Based Progression</li>
+                <li class="flex items-center gap-3"><span class="material-icons text-[var(--color-primary)]">bolt</span> Dynamic Difficulty</li>
               </ul>
             </div>
           </div>
@@ -84,7 +84,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
                 <div class="w-16 h-16 bg-yellow-400 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center rotate-12">
                   <span class="material-icons text-black">emoji_events</span>
                 </div>
-                <div class="w-16 h-16 bg-[#0ABAB5] border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center -rotate-12">
+                <div class="w-16 h-16 bg-[var(--color-primary)] border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center -rotate-12">
                   <span class="material-icons text-white">local_fire_department</span>
                 </div>
                 <div class="w-16 h-16 bg-black border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center rotate-6">
@@ -105,7 +105,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
       <footer class="px-6 py-12 border-t-4 border-black bg-white">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div class="flex items-center gap-2 cursor-pointer" routerLink="/">
-            <div class="w-8 h-8 bg-[#0ABAB5] border-2 border-black flex items-center justify-center">
+            <div class="w-8 h-8 bg-[var(--color-primary)] border-2 border-black flex items-center justify-center">
               <span class="material-icons text-white text-sm">school</span>
             </div>
             <span class="text-xl font-black uppercase tracking-tighter italic">E-Tutor</span>
@@ -125,3 +125,4 @@ export class StudentLandingComponent {
   private router = inject(Router);
   navigateToAuth() { this.router.navigate(['/auth/login']); }
 }
+

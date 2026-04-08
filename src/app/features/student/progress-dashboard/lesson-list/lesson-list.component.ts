@@ -41,7 +41,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           @for (lesson of lessonsStore.publishedLessons(); track lesson.id) {
             <app-card [hoverable]="true" class="h-full flex flex-col">
-              <div class="-mx-6 -mt-6 mb-6 h-40 bg-[#0ABAB5]/20 border-b-4 border-black flex items-center justify-center relative overflow-hidden">
+              <div class="-mx-6 -mt-6 mb-6 h-40 bg-[var(--color-primary)]/20 border-b-4 border-black flex items-center justify-center relative overflow-hidden">
                 <img [src]="'https://api.dicebear.com/7.x/shapes/svg?seed=' + lesson.id" alt="Lesson Cover" class="absolute inset-0 w-full h-full object-cover opacity-50" referrerpolicy="no-referrer" />
                 <span class="material-icons text-black text-6xl relative z-10 drop-shadow-[2px_2px_0px_rgba(255,255,255,1)]">menu_book</span>
               </div>
@@ -55,7 +55,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <p class="text-base font-bold text-gray-600 mb-6 flex-1">Grade {{ lesson.grade }} &bull; {{ lesson.difficulty }}</p>
                 
                 <div class="flex justify-between items-center mt-auto pt-4 border-t-4 border-black/10">
-                  <span class="text-base font-black uppercase tracking-wide" [ngClass]="{'text-[#0ABAB5]': lesson.status === 'In Progress', 'text-gray-400': lesson.status === 'Not Started'}">{{ lesson.status }}</span>
+                  <span class="text-base font-black uppercase tracking-wide" [ngClass]="{'text-[var(--color-primary)]': lesson.status === 'In Progress', 'text-gray-400': lesson.status === 'Not Started'}">{{ lesson.status }}</span>
                   <app-button [variant]="lesson.status === 'In Progress' ? 'primary' : 'secondary'" size="sm" [routerLink]="['/student/lesson-viewer', lesson.id]">
                     {{ lesson.status === 'In Progress' ? 'Continue' : 'Start' }}
                   </app-button>
@@ -75,3 +75,4 @@ export class LessonListComponent implements OnInit {
     this.lessonsStore.loadLessons();
   }
 }
+

@@ -24,32 +24,32 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
           
           <!-- Progress Bar -->
           <div class="mt-6 h-4 bg-gray-100 border-2 border-black rounded-full overflow-hidden">
-            <div class="h-full bg-[#0ABAB5] transition-all duration-500 border-r-2 border-black" [style.width.%]="progress()"></div>
+            <div class="h-full bg-[var(--color-primary)] transition-all duration-500 border-r-2 border-black" [style.width.%]="progress()"></div>
           </div>
         </div>
 
         <!-- Step 1: Role Selection -->
         @if (currentStep() === 'ROLE') {
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <app-card [hoverable]="true" (click)="selectRole('STUDENT')" [class.ring-4]="selectedRole() === 'STUDENT'" class="cursor-pointer border-black ring-[#0ABAB5]">
+            <app-card [hoverable]="true" (click)="selectRole('STUDENT')" [selected]="selectedRole() === 'STUDENT'" class="cursor-pointer border-black">
               <div class="text-center py-4">
-                <span class="material-icons text-5xl mb-4 text-[#0ABAB5]">school</span>
+                <span class="material-icons text-5xl mb-4 text-[var(--color-primary)]">school</span>
                 <h3 class="text-xl font-black mb-2">Student</h3>
                 <p class="text-sm font-bold text-gray-600">Learn at your own pace with AI help.</p>
               </div>
             </app-card>
             
-            <app-card [hoverable]="true" (click)="selectRole('TEACHER')" [class.ring-4]="selectedRole() === 'TEACHER'" class="cursor-pointer border-black ring-[#0ABAB5]">
+            <app-card [hoverable]="true" (click)="selectRole('TEACHER')" [selected]="selectedRole() === 'TEACHER'" class="cursor-pointer border-black">
               <div class="text-center py-4">
-                <span class="material-icons text-5xl mb-4 text-[#0ABAB5]">co_present</span>
+                <span class="material-icons text-5xl mb-4 text-[var(--color-primary)]">co_present</span>
                 <h3 class="text-xl font-black mb-2">Teacher</h3>
                 <p class="text-sm font-bold text-gray-600">Create content and track class progress.</p>
               </div>
             </app-card>
             
-            <app-card [hoverable]="true" (click)="selectRole('PARENT')" [class.ring-4]="selectedRole() === 'PARENT'" class="cursor-pointer border-black ring-[#0ABAB5]">
+            <app-card [hoverable]="true" (click)="selectRole('PARENT')" [selected]="selectedRole() === 'PARENT'" class="cursor-pointer border-black">
               <div class="text-center py-4">
-                <span class="material-icons text-5xl mb-4 text-[#0ABAB5]">family_restroom</span>
+                <span class="material-icons text-5xl mb-4 text-[var(--color-primary)]">family_restroom</span>
                 <h3 class="text-xl font-black mb-2">Parent</h3>
                 <p class="text-sm font-bold text-gray-600">Monitor your child's learning journey.</p>
               </div>
@@ -69,18 +69,18 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label for="name" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Full Name</label>
-                <input id="name" type="text" formControlName="name" placeholder="John Doe" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                <input id="name" type="text" formControlName="name" placeholder="John Doe" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold">
               </div>
               <div>
                 <label for="email" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Email Address</label>
-                <input id="email" type="email" formControlName="email" placeholder="john@example.com" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                <input id="email" type="email" formControlName="email" placeholder="john@example.com" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold">
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label for="password" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Password</label>
-                <input id="password" type="password" formControlName="password" placeholder="••••••••" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                <input id="password" type="password" formControlName="password" placeholder="••••••••" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold">
                 
                 <!-- Password Strength -->
                 <div class="mt-2 flex gap-1 h-2">
@@ -92,7 +92,7 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
               </div>
               <div>
                 <label for="confirmPassword" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Confirm Password</label>
-                <input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="••••••••" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                <input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="••••••••" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold">
                 @if (commonForm.errors?.['passwordMismatch'] && commonForm.get('confirmPassword')?.touched) {
                   <p class="text-red-500 text-xs font-bold mt-1 uppercase">Passwords do not match</p>
                 }
@@ -117,7 +117,7 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
             @if (selectedRole() === 'STUDENT') {
               <div>
                 <label for="gradeLevel" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Grade Level</label>
-                <select id="gradeLevel" formControlName="gradeLevel" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold bg-white">
+                <select id="gradeLevel" formControlName="gradeLevel" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold bg-white">
                   <option value="">Select Grade</option>
                   @for (grade of grades; track grade) {
                     <option [value]="grade">Grade {{ grade }}</option>
@@ -130,15 +130,15 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
               <div class="space-y-6">
                 <div>
                   <label for="schoolName" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">School Name</label>
-                  <input id="schoolName" type="text" formControlName="schoolName" placeholder="Lincoln High School" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                  <input id="schoolName" type="text" formControlName="schoolName" placeholder="Lincoln High School" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold">
                 </div>
                 <div>
                   <label for="subjects" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Subjects Taught</label>
                   <div id="subjects" class="grid grid-cols-2 gap-4">
                     @for (subject of subjects; track subject) {
-                      <label class="flex items-center p-3 border-4 border-black rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" [class.bg-[#0ABAB5]/10]="isSubjectSelected(subject)">
+                      <label class="flex items-center p-3 border-4 border-black rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" [class.bg-[var(--color-primary)]/10]="isSubjectSelected(subject)">
                         <input type="checkbox" [value]="subject" (change)="toggleSubject(subject)" class="hidden">
-                        <span class="material-icons mr-2 text-[#0ABAB5]">@if (isSubjectSelected(subject)) { check_box } @else { check_box_outline_blank }</span>
+                        <span class="material-icons mr-2 text-[var(--color-primary)]">@if (isSubjectSelected(subject)) { check_box } @else { check_box_outline_blank }</span>
                         <span class="font-bold">{{ subject }}</span>
                       </label>
                     }
@@ -149,7 +149,7 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
 
             @if (selectedRole() === 'PARENT') {
               <div class="text-center py-8">
-                <span class="material-icons text-7xl text-[#0ABAB5] mb-4">child_care</span>
+                <span class="material-icons text-7xl text-[var(--color-primary)] mb-4">child_care</span>
                 <h3 class="text-2xl font-black mb-2">Almost there!</h3>
                 <p class="text-gray-600 font-bold">You can link your children's accounts from your dashboard after registration.</p>
               </div>
@@ -167,7 +167,7 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
         }
 
         <div class="mt-12 pt-8 border-t-4 border-black/10 text-center">
-          <a routerLink="/auth/login" class="text-black font-black uppercase tracking-widest text-sm hover:text-[#0ABAB5] transition-colors">Already have an account? Log in</a>
+          <a routerLink="/auth/login" class="text-black font-black uppercase tracking-widest text-sm hover:text-[var(--color-primary)] transition-colors">Already have an account? Log in</a>
         </div>
       </div>
     </div>
@@ -288,8 +288,8 @@ export class RegisterComponent {
     if (index <= strength) {
       if (strength <= 1) return 'bg-red-500';
       if (strength <= 2) return 'bg-yellow-500';
-      if (strength <= 3) return 'bg-[#0ABAB5]/60';
-      return 'bg-[#0ABAB5]';
+      if (strength <= 3) return 'bg-[var(--color-primary)]/60';
+      return 'bg-[var(--color-primary)]';
     }
     return 'bg-gray-100';
   }
@@ -323,3 +323,10 @@ export class RegisterComponent {
     }
   }
 }
+
+
+
+
+
+
+

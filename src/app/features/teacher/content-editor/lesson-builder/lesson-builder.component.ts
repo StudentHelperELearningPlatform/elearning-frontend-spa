@@ -38,7 +38,7 @@ interface UploadedFile {
                 <input 
                   id="title" 
                   formControlName="title" 
-                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold" 
+                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold" 
                   placeholder="e.g. Introduction to Quantum Physics"
                 >
               </div>
@@ -47,7 +47,7 @@ interface UploadedFile {
                 <input 
                   id="subject" 
                   formControlName="subject" 
-                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold" 
+                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold" 
                   placeholder="e.g. Physics"
                 >
               </div>
@@ -56,7 +56,7 @@ interface UploadedFile {
                 <textarea 
                   id="content" 
                   formControlName="content" 
-                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold" 
+                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[var(--color-primary)]/5 font-bold" 
                   rows="8" 
                   placeholder="Write your lesson content here..."
                 ></textarea>
@@ -69,8 +69,8 @@ interface UploadedFile {
             <div class="space-y-6">
               <!-- Drag & Drop Zone -->
               <div 
-                class="border-4 border-dashed border-black rounded-2xl p-10 text-center transition-all cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/50"
-                [ngClass]="{'bg-[#0ABAB5]/5 border-[#0ABAB5]': isDragging()}"
+                class="border-4 border-dashed border-black rounded-2xl p-10 text-center transition-all cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/50"
+                [ngClass]="{'bg-[var(--color-primary)]/5 border-[var(--color-primary)]': isDragging()}"
                 (dragover)="onDragOver($event)"
                 (dragleave)="onDragLeave($event)"
                 (drop)="onDrop($event)"
@@ -93,10 +93,10 @@ interface UploadedFile {
                 <div class="bg-white border-4 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                   <div class="flex justify-between items-center mb-2">
                     <span class="font-black uppercase text-sm">Uploading Assets...</span>
-                    <span class="font-black text-[#0ABAB5]">{{ uploadProgress() }}%</span>
+                    <span class="font-black text-[var(--color-primary)]">{{ uploadProgress() }}%</span>
                   </div>
                   <div class="h-4 bg-gray-100 border-2 border-black rounded-full overflow-hidden">
-                    <div class="h-full bg-[#0ABAB5] transition-all duration-300" [style.width.%]="uploadProgress()"></div>
+                    <div class="h-full bg-[var(--color-primary)] transition-all duration-300" [style.width.%]="uploadProgress()"></div>
                   </div>
                 </div>
               }
@@ -151,15 +151,15 @@ interface UploadedFile {
           <app-card title="Tips">
             <ul class="space-y-4 text-sm font-bold text-gray-600 italic">
               <li class="flex gap-2">
-                <span class="material-icons text-[#0ABAB5] text-sm">lightbulb</span>
+                <span class="material-icons text-[var(--color-primary)] text-sm">lightbulb</span>
                 Use clear, descriptive titles for your lessons.
               </li>
               <li class="flex gap-2">
-                <span class="material-icons text-[#0ABAB5] text-sm">lightbulb</span>
+                <span class="material-icons text-[var(--color-primary)] text-sm">lightbulb</span>
                 Upload high-quality media to engage students.
               </li>
               <li class="flex gap-2">
-                <span class="material-icons text-[#0ABAB5] text-sm">lightbulb</span>
+                <span class="material-icons text-[var(--color-primary)] text-sm">lightbulb</span>
                 Keep modules concise and focused on one topic.
               </li>
             </ul>
@@ -288,3 +288,4 @@ export class LessonBuilderComponent implements OnInit {
     }
   }
 }
+

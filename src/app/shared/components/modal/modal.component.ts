@@ -24,7 +24,7 @@ import { ButtonComponent } from '../button/button.component';
           <!-- Header -->
           <div class="flex items-center justify-between p-6 border-b-4 border-black">
             <h3 class="text-2xl font-black uppercase tracking-tight">{{ title() }}</h3>
-            <button (click)="closeModal.emit()" class="text-black hover:text-[#0ABAB5] transition-colors">
+            <button (click)="closeModal.emit()" class="text-black hover:text-[var(--color-primary)] transition-colors">
               <span class="material-icons text-3xl font-bold">close</span>
             </button>
           </div>
@@ -52,3 +52,4 @@ export class ModalComponent {
   showFooter = input<boolean>(true);
   closeModal = output<void>();
 }
+

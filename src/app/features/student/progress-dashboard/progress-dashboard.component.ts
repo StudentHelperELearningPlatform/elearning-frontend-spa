@@ -31,7 +31,7 @@ import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.
               <app-skeleton height="1rem" className="w-2/3" />
             </div>
           } @else {
-            <div class="w-16 h-16 bg-[#0ABAB5] rounded-full flex items-center justify-center border-2 border-black">
+            <div class="w-16 h-16 bg-[var(--color-primary)] rounded-full flex items-center justify-center border-2 border-black">
               <span class="material-icons text-white text-3xl">local_fire_department</span>
             </div>
             <div>
@@ -50,7 +50,7 @@ import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.
               <app-skeleton height="1rem" className="w-2/3" />
             </div>
           } @else {
-            <div class="w-16 h-16 rounded-full border-4 border-[#0ABAB5] flex items-center justify-center">
+            <div class="w-16 h-16 rounded-full border-4 border-[var(--color-primary)] flex items-center justify-center">
               <span class="font-bold text-black">{{ progressStore.overallProgress() }}%</span>
             </div>
             <div>
@@ -69,7 +69,7 @@ import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.
           } @else {
             <h3 class="text-lg font-bold text-black mb-2">Continue Learning</h3>
             <p class="text-sm font-medium text-gray-800 mb-4">Introduction to Fractions</p>
-            <button class="w-full py-2 bg-[#0ABAB5] text-white font-bold rounded border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all">
+            <button class="w-full py-2 bg-[var(--color-primary)] text-white font-bold rounded border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all">
               Continue
             </button>
           }
@@ -93,8 +93,8 @@ import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.
           } @else {
             @for (activity of progressStore.recentActivity(); track activity.id) {
               <li class="flex items-center space-x-4 border-b-2 border-black pb-4 last:border-0 last:pb-0">
-                <div class="w-10 h-10 bg-[#0ABAB5]/20 rounded-full flex items-center justify-center border-2 border-black">
-                  <span class="material-icons text-[#0ABAB5]">check_circle</span>
+                <div class="w-10 h-10 bg-[var(--color-primary)]/20 rounded-full flex items-center justify-center border-2 border-black">
+                  <span class="material-icons text-[var(--color-primary)]">check_circle</span>
                 </div>
                 <div>
                   <p class="font-bold text-black">{{ activity.title }}</p>
@@ -116,3 +116,4 @@ export class ProgressDashboardComponent implements OnInit {
     this.progressStore.loadDashboard();
   }
 }
+

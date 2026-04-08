@@ -13,7 +13,7 @@ import { ButtonComponent } from '../button/button.component';
         <img [src]="imageUrl()" alt="Empty" class="w-48 h-48 mb-6 object-contain drop-shadow-[4px_4px_0px_rgba(0,0,0,0.2)] hover:scale-105 transition-transform duration-300" referrerpolicy="no-referrer" />
       }
       @if (!imageUrl() && icon()) {
-        <div class="w-24 h-24 bg-[#0ABAB5] rounded-full border-2 border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <div class="w-24 h-24 bg-[var(--color-primary)] rounded-full border-2 border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <span class="material-icons text-5xl text-white">{{ icon() }}</span>
         </div>
       }
@@ -33,3 +33,4 @@ export class EmptyStateComponent {
   actionLabel = input<string>('');
   action = output<void>();
 }
+

@@ -18,7 +18,7 @@ interface ChartDataPoint {
       <div class="flex items-center justify-between mb-6">
         <h3 class="text-xl font-black text-black uppercase tracking-tight">{{ title() }}</h3>
         @if (icon()) {
-          <span class="material-icons text-[#0ABAB5]">{{ icon() }}</span>
+          <span class="material-icons text-[var(--color-primary)]">{{ icon() }}</span>
         }
       </div>
       <div #chartContainer class="flex-1 w-full min-h-[200px] relative overflow-hidden">
@@ -108,7 +108,7 @@ export class ChartWrapperComponent implements OnInit, OnDestroy {
       .attr('width', x.bandwidth())
       .attr('y', d => y(d.value))
       .attr('height', d => height - margin.top - margin.bottom - y(d.value))
-      .attr('fill', '#0ABAB5')
+      .attr('fill', 'var(--color-primary)')
       .attr('stroke', 'black')
       .attr('stroke-width', 2)
       .attr('rx', 4);
@@ -124,3 +124,4 @@ export class ChartWrapperComponent implements OnInit, OnDestroy {
     this.resizeObserver.observe(container);
   }
 }
+

@@ -23,7 +23,7 @@ export class BadgeComponent {
   icon = input<string>('');
 
   variantClasses = {
-    primary: 'bg-[#0ABAB5] text-white',
+    primary: 'bg-[var(--color-primary)] text-white',
     secondary: 'bg-white text-black',
     success: 'bg-green-500 text-white border-green-700',
     warning: 'bg-yellow-400 text-black border-yellow-600',
@@ -31,3 +31,4 @@ export class BadgeComponent {
     neutral: 'bg-gray-100 text-gray-600 border-gray-300'
   };
 }
+

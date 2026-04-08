@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div [ngClass]="[
-      'rounded-full border-2 border-black overflow-hidden flex items-center justify-center bg-[#0ABAB5] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]',
+      'rounded-full border-2 border-black overflow-hidden flex items-center justify-center bg-[var(--color-primary)] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]',
       sizeClasses[size()]
     ]">
       @if (src()) {
@@ -48,3 +48,4 @@ export class AvatarComponent {
     xl: 'text-7xl'
   };
 }
+
