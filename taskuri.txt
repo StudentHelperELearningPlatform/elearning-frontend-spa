@@ -75,3 +75,7 @@ Generated: April 8, 2026
 [Fix - Register Card Selection] | 2026-04-08 | Files modified: register.component.ts | What was done: Fixed missing conditional class highlighting on role cards | Where implemented: src/app/features/auth/components/register/
 
 [Fix - Register Card Highlight display:contents] | 2026-04-08 | Files modified: card.component.ts, register.component.ts | What was done: Fixed invisible highlight caused by display:contents on CardComponent host — moved selected state to inner div via new selected input | Where implemented: src/app/shared/components/card/card.component.ts, src/app/features/auth/components/register/
+
+[Feature - Auth MSW Handlers] | 2026-04-08 | Files modified: src/mocks/handlers/auth.handlers.ts, src/mocks/handlers/index.ts | What was done: Implemented MSW v2 API mocks for check-email, register, forgot-password, and reset-password endpoints | Where implemented: src/mocks/handlers/
+
+[Fix - MSW Auth Handlers] | 2026-04-08 | Files modified: auth.handlers.ts, package.json | What was done: Installed MSW, fixed type errors in handlers | Where implemented: src/mocks/handlers/auth.handlers.ts
