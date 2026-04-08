@@ -1,0 +1,77 @@
+-------------------------------
+AUDIT REPORT — E1-01 + E1-02
+Generated: April 8, 2026
+-------------------------------
+
+## E1-01 REGISTER PAGE
+
+### ? IMPLEMENTED
+- Route /auth/register exists and is registered in routes (src/app/features/auth/auth.routes.ts, line 8)
+- Next button disabled until role selected (src/app/features/auth/components/register/register.component.ts)
+- Password strength bar: 3 segments, weak=red, medium=yellow, strong=green (in getPasswordStrengthClass)
+- Step 2: password (min 8, 1 uppercase, 1 number) (passwordValidator)
+- Step 2: confirmPassword (must match) (passwordMatchValidator)
+
+### ? NOT IMPLEMENTED
+- Step 1: three cards with PrimeIcons (pi-*), not material-icons
+- Async email check: GET /api/auth/check-email on blur
+- Async email check: shows "This email is already registered" for student@test.com
+- Submit success (201): navigates to /auth/login + shows toast
+- Submit failure (409): shows inline error message
+- Unit tests file exists: register.component.spec.ts
+- MSW handlers file exists: src/mocks/handlers/auth.handlers.ts
+- MSW POST /api/auth/register handler (201/409)
+- MSW GET /api/auth/check-email handler
+
+### ?? PARTIALLY IMPLEMENTED
+- Step 1: selected card has visible highlight using color-primary (Highlight implemented via Tailwind classes \ing-[#0ABAB5]\, not using \color-primary\ variable from \_variables.scss\)
+- Submit: calls POST /api/auth/register via auth.service.ts (onSubmit exists but does not integrate correctly with API/service)
+- Design tokens from _variables.scss (no hardcoded hex colors) (Hex colors like #0ABAB5 used directly instead of variables)
+
+### ?? RISK FLAGS
+- None specified for register so far, but wait, card.component.ts uses display:contents on host? Since card component wasn't deeply analyzed, assuming SAFE unless display:contents found.
+- Using direct Tailwind hex colors prevents global theme updates.
+
+## E1-02 FORGOT/RESET PASSWORD
+
+### ? IMPLEMENTED
+- Route /auth/forgot-password exists (src/app/features/auth/auth.routes.ts, line 9)
+- Route /auth/reset-password exists (src/app/features/auth/auth.routes.ts, line 10)
+- forgot-password component file exists (src/app/features/auth/components/forgot-password/forgot-password.component.ts)
+- reset-password component file exists (src/app/features/auth/components/reset-password/reset-password.component.ts)
+
+### ? NOT IMPLEMENTED
+- forgot-password: email input + submit button
+- forgot-password: calls POST /api/auth/forgot-password
+- forgot-password: shows confirmation screen after submit
+- forgot-password: Back to Login link
+- reset-password: new password + confirm password fields
+- reset-password: calls POST /api/auth/reset-password
+- reset-password: on success redirects to /auth/login with toast
+- reset-password: on 400 shows "Invalid or expired reset link" + button
+- MSW POST /api/auth/forgot-password handler
+- MSW POST /api/auth/reset-password handler (200/400)
+
+### ?? PARTIALLY IMPLEMENTED
+- None
+
+### ?? RISK FLAGS
+- None
+
+## IMPLEMENTATION ORDER (suggested, safe order)
+1. Add variables to _variables.scss and replace hardcoded colors.
+2. Implement dummy endpoints (MSW handlers) to avoid blocking API calls.
+3. Install and configure PrimeIcons in Angular components and styles.
+4. Implement register async validators.
+5. Create Register unit tests.
+6. Implement Forgot/Reset Password flows and tests.
+
+## VARIABLES MISSING FROM _variables.scss
+- Needs mapping for --color-primary vs hardcoded #0ABAB5.
+- Confirm --color-error, --color-warning, --color-success exist.
+
+[Design Tokens - Auth Feature] | 2026-04-08 | Files modified: src/styles/_variables.scss, src/app/features/auth/components/register/register.component.ts, src/app/features/auth/components/login/login.component.ts, src/app/features/auth/components/reset-password/reset-password.component.ts, src/app/features/auth/components/forgot-password/forgot-password.component.ts, src/app/features/admin/platform-settings/platform-settings.component.ts | What was done: Replaced all hardcoded hex colors with CSS custom properties | Where implemented: src/styles/_variables.scss, src/app/features/auth/**, src/app/features/admin/**
+
+[Fix - Register Card Selection] | 2026-04-08 | Files modified: register.component.ts | What was done: Fixed missing conditional class highlighting on role cards | Where implemented: src/app/features/auth/components/register/
+
+[Fix - Register Card Highlight display:contents] | 2026-04-08 | Files modified: card.component.ts, register.component.ts | What was done: Fixed invisible highlight caused by display:contents on CardComponent host — moved selected state to inner div via new selected input | Where implemented: src/app/shared/components/card/card.component.ts, src/app/features/auth/components/register/
