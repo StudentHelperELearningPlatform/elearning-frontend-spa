@@ -4,6 +4,7 @@ $color-primary-dark: #08938F;
 $color-secondary: #000000;
 $color-warning: #fbbc04;
 $color-error: #ea4335;
+$color-success: #22c55e;
 $color-surface: #ffffff;
 $color-background: #ffffff;
 $color-text-primary: #000000;
@@ -30,3 +31,10 @@ $breakpoint-sm: 640px;
 $breakpoint-md: 768px;
 $breakpoint-lg: 1024px;
 $breakpoint-xl: 1280px;
+
+:root {
+	--color-primary: #{$color-primary};
+	--color-error:   #{$color-error};
+	--color-warning: #{$color-warning};
+	--color-success: #{$color-success};
+}

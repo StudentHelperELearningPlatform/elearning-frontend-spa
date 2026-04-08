@@ -1,0 +1,104 @@
+
+
+[DONE] STEP-01 | files: src/styles/_variables.scss
+$color-success lipsea total. adaugat dupa $color-error
+bagat :root la final cu cele 4 variabile css
+fara asta orice var() in browser = undefined. primul pt ca restul depindea de el
+
+[DONE] STEP-02 | files: angular.json
+primeicons trebuia in styles array
+pus primul ca sa fie incarcat inaintea oricarui alt css
+si in test styles altfel testele ar fi cracat cu pi-* necunoscut
+
+[DONE] STEP-03 | files: package.json, src/mocks/browser.ts, src/mocks/handlers/auth.handlers.ts, src/main.ts
+npm install msw --save-dev
+msw v2 nu mai e "rest" e "http" si "HttpResponse" — important
+scris auth.handlers.ts: check-email returna false pt student@test.com, register returna 409 sau 201
+browser.ts cu setupWorker
+main.ts — async iife care porneste workerul inainte de bootstrap. tricky
+tsc --noEmit a scos erori de tsconfig preexistente in proiect, nu legate de ce am facut noi
+fixed referintele intre tsconfig.json / app / spec. gate trecut.
+
+[DONE] STEP-04 | files: register.component.ts
+PARENT → ADMIN peste tot. 5 locuri exacte
+tip UserRole, click handler, ring binding, h3, descriere card
+o referinta la PARENT in binding-ul de disabled a ramas — prins mai tarziu ca bug
+
+[DONE] STEP-05 | files: register.component.ts
+material-icons spans → <i class="pi pi-...">
+ring-[#0ABAB5] → ring-[var(--color-primary)]
+iconitele au mers. ring-ul nu. tailwind jit nu procesa css vars — prins mai tarziu
+
+[DONE] STEP-06 | files: register.component.ts
+bara era pe 4 segmente. schimbat la 3
+rescris getPasswordStrengthClass complet
+weak=rosu medium=galben strong=verde. index comparat cu strength
+un edge case la parola scurta fixat mai tarziu dupa ce au picat testele
+
+[DONE] STEP-07 | files: register.component.ts
+grades: K bagat primul. tip schimbat la (string | number)[]
+{{ grade }} simplu, nu "Grade {{ grade }}"
+subjects: 5 chestii, checkboxuri → chip-uri toggle
+[style.background-color] nu clase tailwind — stiam deja ca jit nu merge cu css vars
+
+[DONE] STEP-08 | files: src/app/core/services/auth.service.ts
+adaugat register() si checkEmailAvailability() in AuthService
+register() initial tipat strict → TS2345 imediat
+FormGroup returneaza string | null | undefined nu string pur
+fix: Record<string, unknown> la payload. merge
+
+[DONE] STEP-09 | files: register.component.ts
+registrationError: string | null = null adaugat
+AuthService injectat
+onSubmit() rescris: verifica form, spread payload, subscribe
+succes → toast + navigate /auth/login
+409 → "This email is already registered."
+rest → mesaj generic
+selectedRole() putea fi null → adaugat ! pt ca oricum avem guard mai sus
+
+[DONE] STEP-10 | files: register.component.ts
+async validator pt email
+of().pipe(debounceTime()) nu merge — of() se completeaza sincron, debounce e no-op
+timer(300).pipe(switchMap(...)) in schimb. asta chiar asteapta
+updateOn: blur. catchError returna null sa nu blocheze
+template: eroarea doar cand !pending, spinner cand pending
+diferenta dintre un validator care pare broken si unul care chiar functioneaza
+
+[DONE] STEP-11 | files: register.component.ts
+blocul admin era gol sau cu placeholder aiurea
+inlocuit cu pi-shield + "Admin Account" + "No additional setup required."
+scurt. admin n-are campuri extra
+
+[DONE] STEP-12 | files: src/app/features/auth/components/register/register.component.spec.ts
+vitest nu jasmine. RouterTestingModule nu exista in angular 17+ standalone
+provideRouter([]) in schimb
+9 teste: create, 3x password strength, 2x email
+primul run: picat la parola scurta. 1-3 chars trebuia rosu la index 1
+ajustat logica. 9/9 dupa
+
+# =================
+# fixuri post
+
+[FIX-01] ecran alb
+build ok dar browser alb
+f12 → service worker error
+mockServiceWorker.js lipsea din public/
+npx msw init public/ --save. rezolvat
+
+[FIX-02] card highlight disparut
+ring si box-shadow pe app-card nu apareau
+CardComponent are display:contents pe host. orice stil pe host = dispare
+adaugat input selected in CardComponent
+[style.border-color] pe div-ul interior. asta a mers
+
+[FIX-03] TS2367
+build cracat
+PARENT ramas in binding-ul disabled linia 186
+o linie. schimbat PARENT cu ADMIN
+
+# =================
+# final
+# tsc: 0 erori
+# vitest: 9/9
+# npm start: ok
+# pushed: feat/E1-01-registration-page
