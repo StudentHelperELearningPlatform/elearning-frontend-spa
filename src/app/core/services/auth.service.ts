@@ -1,4 +1,5 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 
 export interface User {
@@ -14,6 +15,7 @@ export interface AuthResult {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   // Internal signals for state management
+  private http = inject(HttpClient);
   private _currentUser = signal<User | null>(null);
   private _accessToken = signal<string | null>(null);
 
@@ -59,4 +61,14 @@ export class AuthService {
       const user = this._currentUser();
       return user ? user.roles.includes(role) : false;
     });
+//accept  any type 
+  register(payload: Record<string, unknown>): Observable<unknown> {
+    return this.http.post('/api/auth/register', payload);
+  }
+
+  checkEmailAvailability(email: string): Observable<{ available: boolean }> {
+    return this.http.get<{ available: boolean }>(
+      '/api/auth/check-email?email=' + encodeURIComponent(email)
+    );
+  }
 }

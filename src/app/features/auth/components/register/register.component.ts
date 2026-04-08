@@ -1,13 +1,16 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors, AsyncValidatorFn } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { CardComponent } from '../../../../shared/components/card/card.component';
+import { timer, of, Observable } from 'rxjs';
+import { switchMap, map, catchError, first } from 'rxjs/operators';
 
 type RegistrationStep = 'ROLE' | 'COMMON' | 'SPECIFIC';
-type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
+type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
 
 @Component({
   selector: 'app-register',
@@ -31,29 +34,35 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
         <!-- Step 1: Role Selection -->
         @if (currentStep() === 'ROLE') {
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <app-card [hoverable]="true" (click)="selectRole('STUDENT')" [class.ring-4]="selectedRole() === 'STUDENT'" class="cursor-pointer border-black ring-[#0ABAB5]">
-              <div class="text-center py-4">
-                <span class="material-icons text-5xl mb-4 text-[#0ABAB5]">school</span>
-                <h3 class="text-xl font-black mb-2">Student</h3>
-                <p class="text-sm font-bold text-gray-600">Learn at your own pace with AI help.</p>
-              </div>
-            </app-card>
-            
-            <app-card [hoverable]="true" (click)="selectRole('TEACHER')" [class.ring-4]="selectedRole() === 'TEACHER'" class="cursor-pointer border-black ring-[#0ABAB5]">
-              <div class="text-center py-4">
-                <span class="material-icons text-5xl mb-4 text-[#0ABAB5]">co_present</span>
-                <h3 class="text-xl font-black mb-2">Teacher</h3>
-                <p class="text-sm font-bold text-gray-600">Create content and track class progress.</p>
-              </div>
-            </app-card>
-            
-            <app-card [hoverable]="true" (click)="selectRole('PARENT')" [class.ring-4]="selectedRole() === 'PARENT'" class="cursor-pointer border-black ring-[#0ABAB5]">
-              <div class="text-center py-4">
-                <span class="material-icons text-5xl mb-4 text-[#0ABAB5]">family_restroom</span>
-                <h3 class="text-xl font-black mb-2">Parent</h3>
-                <p class="text-sm font-bold text-gray-600">Monitor your child's learning journey.</p>
-              </div>
-            </app-card>
+       <app-card [hoverable]="true" (click)="selectRole('STUDENT')"
+  [selected]="selectedRole() === 'STUDENT'"
+  class="cursor-pointer">
+  <div class="text-center py-4">
+    <i class="pi pi-user text-5xl mb-4" style="color: var(--color-primary)"></i>
+    <h3 class="text-xl font-black mb-2">Student</h3>
+    <p class="text-sm font-bold text-gray-600">Learn at your own pace with AI help.</p>
+  </div>
+</app-card>
+
+<app-card [hoverable]="true" (click)="selectRole('TEACHER')"
+  [selected]="selectedRole() === 'TEACHER'"
+  class="cursor-pointer">
+  <div class="text-center py-4">
+    <i class="pi pi-book text-5xl mb-4" style="color: var(--color-primary)"></i>
+    <h3 class="text-xl font-black mb-2">Teacher</h3>
+    <p class="text-sm font-bold text-gray-600">Create content and track class progress.</p>
+  </div>
+</app-card>
+
+<app-card [hoverable]="true" (click)="selectRole('ADMIN')"
+  [selected]="selectedRole() === 'ADMIN'"
+  class="cursor-pointer">
+  <div class="text-center py-4">
+    <i class="pi pi-cog text-5xl mb-4" style="color: var(--color-primary)"></i>
+    <h3 class="text-xl font-black mb-2">Admin</h3>
+    <p class="text-sm font-bold text-gray-600">Manage the platform and users</p>
+  </div>
+</app-card>
           </div>
           
           <div class="mt-10 flex justify-end">
@@ -74,6 +83,16 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
               <div>
                 <label for="email" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Email Address</label>
                 <input id="email" type="email" formControlName="email" placeholder="john@example.com" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                @if (commonForm.get('email')?.hasError('emailTaken')
+                     && !commonForm.get('email')?.pending) {
+                  <span class="text-sm font-bold" style="color: var(--color-error)">
+                    This email is already registered
+                  </span>
+                }
+                  @if (commonForm.get('email')?.pending) {
+  <span class="text-xs font-bold" style="color: var(--color-primary)">
+    ⏳ Checking availability...
+  </span>}
               </div>
             </div>
 
@@ -84,7 +103,7 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
                 
                 <!-- Password Strength -->
                 <div class="mt-2 flex gap-1 h-2">
-                  @for (i of [1,2,3,4]; track i) {
+                  @for (i of [1,2,3]; track i) {
                     <div class="flex-1 rounded-full border-2 border-black" [ngClass]="getPasswordStrengthClass(i)"></div>
                   }
                 </div>
@@ -120,7 +139,7 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
                 <select id="gradeLevel" formControlName="gradeLevel" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold bg-white">
                   <option value="">Select Grade</option>
                   @for (grade of grades; track grade) {
-                    <option [value]="grade">Grade {{ grade }}</option>
+                    <option [value]="grade">{{ grade }}</option>
                   }
                 </select>
               </div>
@@ -135,23 +154,33 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
                 <div>
                   <label for="subjects" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Subjects Taught</label>
                   <div id="subjects" class="grid grid-cols-2 gap-4">
-                    @for (subject of subjects; track subject) {
-                      <label class="flex items-center p-3 border-4 border-black rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" [class.bg-[#0ABAB5]/10]="isSubjectSelected(subject)">
-                        <input type="checkbox" [value]="subject" (change)="toggleSubject(subject)" class="hidden">
-                        <span class="material-icons mr-2 text-[#0ABAB5]">@if (isSubjectSelected(subject)) { check_box } @else { check_box_outline_blank }</span>
-                        <span class="font-bold">{{ subject }}</span>
-                      </label>
-                    }
+                    <div class="flex flex-wrap gap-2">
+                      @for (subject of subjects; track subject) {
+                        <button
+                          type="button"
+                          (click)="toggleSubject(subject)"
+                          [style.background-color]="isSubjectSelected(subject) ? 'var(--color-primary)' : 'white'"
+                          [style.color]="isSubjectSelected(subject) ? 'white' : 'black'"
+                          [style.border-color]="'black'"
+                          class="px-4 py-2 rounded-full border-2 font-bold text-sm">
+                          {{ subject }}
+                        </button>
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
             }
 
-            @if (selectedRole() === 'PARENT') {
+            @if (selectedRole() === 'ADMIN') {
               <div class="text-center py-8">
-                <span class="material-icons text-7xl text-[#0ABAB5] mb-4">child_care</span>
-                <h3 class="text-2xl font-black mb-2">Almost there!</h3>
-                <p class="text-gray-600 font-bold">You can link your children's accounts from your dashboard after registration.</p>
+                <i class="pi pi-shield text-7xl mb-4"
+                   style="color: var(--color-primary)"></i>
+                <h3 class="text-2xl font-black mb-2">Admin Account</h3>
+                <p class="font-bold"
+                   style="color: var(--color-text-secondary, #5f6368)">
+                  Your admin account is ready. No additional setup required.
+                </p>
               </div>
             }
 
@@ -159,7 +188,12 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
               <app-button (click)="goToPrevStep()" variant="secondary" size="lg">
                 <span class="material-icons mr-2">arrow_back</span> Back
               </app-button>
-              <app-button (click)="onSubmit()" [disabled]="specificForm.invalid && selectedRole() !== 'PARENT'" variant="primary" size="lg">
+              @if (registrationError) {
+                <p class="text-sm font-bold mt-2" style="color: var(--color-error)">
+                  {{ registrationError }}
+                </p>
+              }
+              <app-button (click)="onSubmit()" [disabled]="specificForm.invalid && selectedRole() !== 'ADMIN'" variant="primary" size="lg">
                 Complete Registration <span class="material-icons ml-2">check_circle</span>
               </app-button>
             </div>
@@ -176,18 +210,24 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT';
 export class RegisterComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
+  private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
 
   currentStep = signal<RegistrationStep>('ROLE');
   selectedRole = signal<UserRole | null>(null);
   
-  grades = Array.from({ length: 12 }, (_, i) => i + 1);
-  subjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Art', 'Music', 'Physical Education'];
+  grades: (string | number)[] = ['K', ...Array.from({ length: 12 }, (_, i) => i + 1)];
+  subjects = ['Math', 'Science', 'English', 'History', 'Geography'];
   selectedSubjects = signal<string[]>([]);
+  registrationError: string | null = null;
 
   commonForm = this.fb.group({
     name: ['', Validators.required],
-    email: ['', [Validators.required, Validators.email]],
+    email: this.fb.control('', {
+      validators: [Validators.required, Validators.email],
+      asyncValidators: [this.emailAvailabilityValidator()],
+      updateOn: 'blur',
+    }),
     password: ['', [Validators.required, Validators.minLength(8), this.passwordValidator]],
     confirmPassword: ['', Validators.required]
   }, { validators: this.passwordMatchValidator });
@@ -273,25 +313,37 @@ export class RegisterComponent {
     return null;
   }
 
+  private emailAvailabilityValidator(): AsyncValidatorFn {
+    return (ctrl: AbstractControl): Observable<{ emailTaken: true } | null> => {
+      if (!ctrl.value || typeof ctrl.value !== 'string') return of(null);
+      return timer(300).pipe(
+        switchMap(() =>
+          this.authService.checkEmailAvailability(ctrl.value as string)
+        ),
+        map(res => (res.available ? null : { emailTaken: true as const })),
+        catchError(() => of(null)),
+        first()
+      );
+    };
+  }
+
   getPasswordStrengthClass(index: number) {
     const password = this.commonForm.get('password')?.value || '';
-    const length = password.length;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    
+    const hasUpper = /[A-Z]/.test(password);
+    const hasNum   = /[0-9]/.test(password);
+    const isLong   = password.length >= 8;
+
     let strength = 0;
-    if (length >= 4) strength++;
-    if (length >= 8) strength++;
-    if (hasUpperCase) strength++;
-    if (hasNumber) strength++;
+    if (password.length > 0) strength = 1;
+    if (isLong && (hasUpper || hasNum)) strength = 2;
+    if (isLong && hasUpper && hasNum) strength = 3;
 
     if (index <= strength) {
-      if (strength <= 1) return 'bg-red-500';
-      if (strength <= 2) return 'bg-yellow-500';
-      if (strength <= 3) return 'bg-[#0ABAB5]/60';
-      return 'bg-[#0ABAB5]';
+      if (strength === 1) return 'bg-red-500';
+      if (strength === 2) return 'bg-yellow-500';
+      return 'bg-green-500';
     }
-    return 'bg-gray-100';
+    return 'bg-gray-200';
   }
 
   isSubjectSelected(subject: string) {
@@ -309,17 +361,30 @@ export class RegisterComponent {
   }
 
   onSubmit() {
-    if (this.commonForm.valid && (this.specificForm.valid || this.selectedRole() === 'PARENT')) {
-      const registrationData = {
-        role: this.selectedRole(),
-        ...this.commonForm.value,
-        ...this.specificForm.value
-      };
-      
-      console.log('Registration Data:', registrationData);
-      
-      this.notificationService.success('Welcome aboard! Registration successful.');
-      this.router.navigate(['/auth/login']);
-    }
+    const specificOk =
+      this.selectedRole() === 'ADMIN' || this.specificForm.valid;
+    if (!this.commonForm.valid || !specificOk) return;
+
+    this.registrationError = null;
+
+    const payload = {
+      role: this.selectedRole()!,
+      ...this.commonForm.value,
+      ...this.specificForm.value,
+    };
+
+    this.authService.register(payload).subscribe({
+      next: () => {
+        this.notificationService.success('Welcome aboard! Registration successful.');
+        this.router.navigate(['/auth/login']);
+      },
+      error: (err: { status: number }) => {
+        if (err.status === 409) {
+          this.registrationError = 'This email is already registered.';
+        } else {
+          this.registrationError = 'Registration failed. Please try again.';
+        }
+      },
+    });
   }
 }
