@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { inject, computed } from '@angular/core';
 import { AuthService } from '../../../core/services/auth.service';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
@@ -13,7 +13,7 @@ interface User {
   school?: string;
 }
 
-interface AuthState {
+export interface AuthState {
   user: User | null;
   token: string | null;
   role: string | null;
