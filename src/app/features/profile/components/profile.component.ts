@@ -155,15 +155,17 @@ export class ProfileComponent {
     bio: 'Student bio...'
   });
 
-  originalUser: any = null;
+  originalUser: {
+    name: string;
+    phone: string;
+    bio: string;
+  } | null = null;
 
-  // ENTER EDIT
   startEdit() {
     this.originalUser = structuredClone(this.user());
     this.isEditing.set(true);
   }
 
-  // SAVE
   saveProfile() {
     console.log('PUT /api/users/me', this.user());
     this.isEditing.set(false);
@@ -171,18 +173,25 @@ export class ProfileComponent {
     alert('Profile updated');
   }
 
-  // CANCEL
   cancelEdit() {
-    if (JSON.stringify(this.user()) !== JSON.stringify(this.originalUser)) {
-      const confirmDiscard = confirm('Discard changes?');
-      if (!confirmDiscard) return;
+    if (this.originalUser) {
+      const hasChanges =
+        this.user().name !== this.originalUser.name ||
+        this.user().phone !== this.originalUser.phone ||
+        this.user().bio !== this.originalUser.bio;
+
+      if (hasChanges) {
+        const confirmDiscard = confirm('Discard changes?');
+        if (!confirmDiscard) return;
+      }
+
+      this.user.set(this.originalUser);
     }
 
-    this.user.set(this.originalUser);
     this.isEditing.set(false);
+    this.originalUser = null;
   }
 
-  // FIXED: NO $any, NO any casting issues
   updateField(field: string, event: Event) {
     const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
 
@@ -194,7 +203,6 @@ export class ProfileComponent {
 
   uploadAvatar() {
     console.log('Upload avatar clicked');
-    alert('Avatar upload (UI only)');
   }
 
   getInitials(name?: string): string {
