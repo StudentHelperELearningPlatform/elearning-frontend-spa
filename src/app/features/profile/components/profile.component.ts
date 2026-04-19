@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { AuthStore, User } from '@features/auth/store/auth.store';
 
-// Import Shared Components
+// Shared Components (Your Design Tools)
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -28,14 +28,17 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
     >
       <div class="flex items-center justify-between mb-8 border-b-4 border-black pb-4">
         <h1 class="text-4xl md:text-5xl font-black uppercase tracking-tighter">My Profile</h1>
+
         @if (!isEditing()) {
-          <app-button variant="primary" icon="edit" (btnClick)="toggleEdit()"
-            >Edit Profile</app-button
-          >
+          <app-button variant="primary" icon="edit" (btnClick)="startEdit()">
+            Edit Profile
+          </app-button>
         } @else {
           <div class="flex gap-4">
-            <app-button variant="secondary" (btnClick)="toggleEdit()">Cancel</app-button>
-            <app-button variant="primary" icon="save">Save Changes</app-button>
+            <app-button variant="secondary" (btnClick)="cancelEdit()">Cancel</app-button>
+            <app-button variant="primary" icon="save" (btnClick)="saveProfile()"
+              >Save Changes</app-button
+            >
           </div>
         }
       </div>
@@ -50,7 +53,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 
                 @if (isEditing()) {
                   <button
-                    class="absolute bottom-0 right-0 w-10 h-10 bg-[#0ABAB5] border-2 border-black rounded-full flex items-center justify-center text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all"
+                    class="absolute bottom-0 right-0 w-10 h-10 bg-[#0ABAB5] border-2 border-black rounded-full flex items-center justify-center text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all"
                   >
                     <span class="material-icons text-xl">photo_camera</span>
                   </button>
@@ -58,7 +61,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
               </div>
 
               <h2 class="text-2xl font-black uppercase tracking-tight mb-2">
-                {{ authStore.user()?.name || 'Student Name' }}
+                {{ user().name }}
               </h2>
 
               <app-badge variant="primary" class="mb-6">
@@ -70,9 +73,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
                   <p class="text-xs font-black text-gray-500 uppercase tracking-widest">
                     Email Address
                   </p>
-                  <p class="font-bold text-lg truncate">
-                    {{ authStore.user()?.email || 'student@test.com' }}
-                  </p>
+                  <p class="font-bold text-lg truncate">{{ authStore.user()?.email }}</p>
                 </div>
                 <div>
                   <p class="text-xs font-black text-gray-500 uppercase tracking-widest">
@@ -93,52 +94,54 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
                   <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
                     Full Name
                   </p>
-                  <p class="text-xl font-bold">{{ authStore.user()?.name || 'John Doe' }}</p>
+                  <p class="text-xl font-bold">{{ user().name }}</p>
                 </div>
                 <div>
                   <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
                     Phone Number
                   </p>
-                  <p class="text-xl font-bold">+40 712 345 678</p>
+                  <p class="text-xl font-bold">{{ user().phone }}</p>
                 </div>
                 <div class="sm:col-span-2">
                   <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Bio</p>
-                  <p class="text-lg font-medium leading-relaxed">
-                    Passionate learner focusing on advanced mathematics and physics. Always looking
-                    to solve complex problems and improve my logical thinking.
-                  </p>
+                  <p class="text-lg font-medium leading-relaxed">{{ user().bio }}</p>
                 </div>
               </div>
             } @else {
               <form class="space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <app-form-field id="fullName" label="Full Name" icon="person">
+                  <app-form-field id="fullName" label="Full Name">
+                    <span class="material-icons prefix text-[#0ABAB5] mr-2">person</span>
                     <input
                       type="text"
                       id="fullName"
                       class="w-full border-4 border-black p-3 font-bold bg-white focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/30 transition-all"
-                      value="John Doe"
+                      [value]="user().name"
+                      (input)="updateField('name', $event)"
                     />
                   </app-form-field>
 
-                  <app-form-field id="phone" label="Phone Number" icon="phone">
+                  <app-form-field id="phone" label="Phone Number">
+                    <span class="material-icons prefix text-[#0ABAB5] mr-2">phone</span>
                     <input
                       type="tel"
                       id="phone"
                       class="w-full border-4 border-black p-3 font-bold bg-white focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/30 transition-all"
-                      value="+40 712 345 678"
+                      [value]="user().phone"
+                      (input)="updateField('phone', $event)"
                     />
                   </app-form-field>
                 </div>
 
-                <app-form-field id="bio" label="Bio" icon="edit_note">
+                <app-form-field id="bio" label="Bio">
+                  <span class="material-icons prefix text-[#0ABAB5] mr-2">edit_note</span>
                   <textarea
                     id="bio"
                     rows="4"
                     class="w-full border-4 border-black p-3 font-bold bg-white focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/30 transition-all resize-none"
-                  >
-Passionate learner focusing on advanced mathematics and physics. Always looking to solve complex problems and improve my logical thinking.</textarea
-                  >
+                    [value]="user().bio"
+                    (input)="updateField('bio', $event)"
+                  ></textarea>
                 </app-form-field>
               </form>
             }
@@ -146,7 +149,8 @@ Passionate learner focusing on advanced mathematics and physics. Always looking 
 
           <app-card header="Security Settings">
             <form class="space-y-6">
-              <app-form-field id="currentPassword" label="Current Password" icon="lock">
+              <app-form-field id="currentPassword" label="Current Password">
+                <span class="material-icons prefix text-[#0ABAB5] mr-2">lock</span>
                 <input
                   type="password"
                   id="currentPassword"
@@ -156,7 +160,8 @@ Passionate learner focusing on advanced mathematics and physics. Always looking 
               </app-form-field>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <app-form-field id="newPassword" label="New Password" icon="key">
+                <app-form-field id="newPassword" label="New Password">
+                  <span class="material-icons prefix text-[#0ABAB5] mr-2">key</span>
                   <input
                     type="password"
                     id="newPassword"
@@ -165,7 +170,8 @@ Passionate learner focusing on advanced mathematics and physics. Always looking 
                   />
                 </app-form-field>
 
-                <app-form-field id="confirmPassword" label="Confirm Password" icon="key">
+                <app-form-field id="confirmPassword" label="Confirm Password">
+                  <span class="material-icons prefix text-[#0ABAB5] mr-2">key</span>
                   <input
                     type="password"
                     id="confirmPassword"
@@ -188,20 +194,53 @@ Passionate learner focusing on advanced mathematics and physics. Always looking 
 export class ProfileComponent {
   protected authStore = inject(AuthStore);
 
-  // Simple boolean signal for view/edit toggle (Alexandra will expand this)
+  // Logic from Alexandra
   isEditing = signal(false);
 
-  toggleEdit() {
-    this.isEditing.set(!this.isEditing());
+  user = signal({
+    name: this.authStore.user()?.name || 'User Name',
+    phone: '+40 712 345 678',
+    bio: 'Passionate learner focusing on advanced mathematics and physics.',
+  });
+
+  private originalUser: any = null;
+
+  startEdit() {
+    this.originalUser = structuredClone(this.user());
+    this.isEditing.set(true);
   }
 
-  // Helper to extract initials for the avatar
+  saveProfile() {
+    // This simulates the API call Alexandra set up
+    console.log('PUT /api/users/me', this.user());
+    this.isEditing.set(false);
+    this.originalUser = null;
+    alert('Profile updated successfully!');
+  }
+
+  cancelEdit() {
+    if (this.originalUser) {
+      const hasChanges = JSON.stringify(this.user()) !== JSON.stringify(this.originalUser);
+      if (hasChanges && !confirm('Discard unsaved changes?')) {
+        return;
+      }
+      this.user.set(this.originalUser);
+    }
+    this.isEditing.set(false);
+    this.originalUser = null;
+  }
+
+  updateField(field: string, event: Event) {
+    const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
+    this.user.update((u) => ({ ...u, [field]: value }));
+  }
+
+  // Your Design Helper
   getInitials(name?: string): string {
     if (!name) return 'UN';
     const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
+    return parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : name.substring(0, 2).toUpperCase();
   }
 }

@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { AuthStore, User } from '@features/auth/store/auth.store'; // Ensure User is imported
+import { AuthStore } from '@features/auth/store/auth.store'; // Ensure User is imported
 import { AvatarComponent } from '../avatar/avatar.component';
 import { ButtonComponent } from '../button/button.component';
 
