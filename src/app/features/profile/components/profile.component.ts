@@ -1,14 +1,21 @@
 import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
-import { AuthStore, User } from '@features/auth/store/auth.store';
+import { AuthStore } from '@features/auth/store/auth.store';
 
-// Shared Components (Your Design Tools)
+// Shared Components
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { FormFieldComponent } from '../../../shared/components/form-field/form-field.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+
+// Define the structure of our profile form to satisfy the linter
+interface ProfileData {
+  name: string;
+  phone: string;
+  bio: string;
+}
 
 @Component({
   selector: 'app-profile',
@@ -194,16 +201,15 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 export class ProfileComponent {
   protected authStore = inject(AuthStore);
 
-  // Logic from Alexandra
   isEditing = signal(false);
 
-  user = signal({
+  user = signal<ProfileData>({
     name: this.authStore.user()?.name || 'User Name',
     phone: '+40 712 345 678',
     bio: 'Passionate learner focusing on advanced mathematics and physics.',
   });
 
-  private originalUser: any = null;
+  private originalUser: ProfileData | null = null;
 
   startEdit() {
     this.originalUser = structuredClone(this.user());
@@ -211,7 +217,6 @@ export class ProfileComponent {
   }
 
   saveProfile() {
-    // This simulates the API call Alexandra set up
     console.log('PUT /api/users/me', this.user());
     this.isEditing.set(false);
     this.originalUser = null;
@@ -230,12 +235,11 @@ export class ProfileComponent {
     this.originalUser = null;
   }
 
-  updateField(field: string, event: Event) {
-    const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
-    this.user.update((u) => ({ ...u, [field]: value }));
+  updateField(field: keyof ProfileData, event: Event) {
+    const inputElement = event.target as HTMLInputElement | HTMLTextAreaElement;
+    this.user.update((u) => ({ ...u, [field]: inputElement.value }));
   }
 
-  // Your Design Helper
   getInitials(name?: string): string {
     if (!name) return 'UN';
     const parts = name.trim().split(' ');
