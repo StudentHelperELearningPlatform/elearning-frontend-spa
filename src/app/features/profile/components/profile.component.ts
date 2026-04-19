@@ -30,13 +30,11 @@ interface ProfileData {
     BadgeComponent,
   ],
   template: `
-    <div class="max-w-6xl mx-auto p-4 md:p-8 font-sans bg-gray-50 text-black min-h-[calc(100vh-84px)]">
-
-      <!-- HEADER -->
+    <div
+      class="max-w-6xl mx-auto p-4 md:p-8 font-sans bg-gray-50 text-black min-h-[calc(100vh-84px)]"
+    >
       <div class="flex items-center justify-between mb-8 border-b-4 border-black pb-4">
-        <h1 class="text-4xl md:text-5xl font-black uppercase tracking-tighter">
-          My Profile
-        </h1>
+        <h1 class="text-4xl md:text-5xl font-black uppercase tracking-tighter">My Profile</h1>
 
         @if (!isEditing()) {
           <app-button variant="primary" icon="edit" (btnClick)="startEdit()">
@@ -44,33 +42,21 @@ interface ProfileData {
           </app-button>
         } @else {
           <div class="flex gap-4">
-            <app-button variant="secondary" (btnClick)="cancelEdit()">
-              Cancel
-            </app-button>
-
-            <app-button variant="primary" icon="save" (btnClick)="saveProfile()">
-              Save Changes
-            </app-button>
+            <app-button variant="secondary" (btnClick)="cancelEdit()">Cancel</app-button>
+            <app-button variant="primary" icon="save" (btnClick)="saveProfile()"
+              >Save Changes</app-button
+            >
           </div>
         }
       </div>
 
-      <!-- CONTENT -->
       <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
-
-        <!-- LEFT -->
         <div class="md:col-span-4 space-y-8">
-
           <app-card>
             <div class="flex flex-col items-center text-center">
-
-              <!-- AVATAR -->
               <div class="relative group mb-6">
-
-                <app-avatar
-                  size="xl"
-                  [initials]="getInitials(user().name)"
-                ></app-avatar>
+                <app-avatar size="xl" [initials]="getInitials(authStore.user()?.name)">
+                </app-avatar>
 
                 @if (isEditing()) {
                   <button
@@ -79,14 +65,13 @@ interface ProfileData {
                     <span class="material-icons text-xl">photo_camera</span>
                   </button>
                 }
-
               </div>
 
               <h2 class="text-2xl font-black uppercase tracking-tight mb-2">
                 {{ user().name }}
               </h2>
 
-              <app-badge variant="primary">
+              <app-badge variant="primary" class="mb-6">
                 {{ authStore.role() || 'STUDENT' }}
               </app-badge>
 
@@ -106,14 +91,10 @@ interface ProfileData {
               </div>
             </div>
           </app-card>
-
         </div>
 
-        <!-- RIGHT -->
         <div class="md:col-span-8 space-y-8">
-
           <app-card header="Personal Information">
-
             @if (!isEditing()) {
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
                 <div>
@@ -133,9 +114,7 @@ interface ProfileData {
                   <p class="text-lg font-medium leading-relaxed">{{ user().bio }}</p>
                 </div>
               </div>
-
             } @else {
-
               <form class="space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <app-form-field id="fullName" label="Full Name">
@@ -191,39 +170,30 @@ interface ProfileData {
                 <app-form-field id="newPassword" label="New Password">
                   <span class="material-icons prefix text-[#0ABAB5] mr-2">key</span>
                   <input
-                    type="text"
-                    [value]="user().name"
-                    (input)="updateField('name', $event)"
-                    class="w-full border-4 border-black p-3 font-bold"
+                    type="password"
+                    id="newPassword"
+                    placeholder="Enter new password"
+                    class="w-full border-4 border-black p-3 font-bold bg-white focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/30 transition-all"
                   />
                 </app-form-field>
 
                 <app-form-field id="confirmPassword" label="Confirm Password">
                   <span class="material-icons prefix text-[#0ABAB5] mr-2">key</span>
                   <input
-                    type="text"
-                    [value]="user().phone"
-                    (input)="updateField('phone', $event)"
-                    class="w-full border-4 border-black p-3 font-bold"
+                    type="password"
+                    id="confirmPassword"
+                    placeholder="Confirm new password"
+                    class="w-full border-4 border-black p-3 font-bold bg-white focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/30 transition-all"
                   />
                 </app-form-field>
+              </div>
 
-                <app-form-field id="bio" label="Bio" icon="edit">
-                  <textarea
-                    [value]="user().bio"
-                    (input)="updateField('bio', $event)"
-                    class="w-full border-4 border-black p-3 font-bold resize-none"
-                  ></textarea>
-                </app-form-field>
-
-              </form>
-
-            }
-
+              <div class="pt-4 flex justify-end">
+                <app-button variant="primary" icon="shield">Update Password</app-button>
+              </div>
+            </form>
           </app-card>
-
         </div>
-
       </div>
     </div>
   `,
