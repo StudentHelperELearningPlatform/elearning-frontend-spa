@@ -42,7 +42,7 @@ describe('QuestionCardComponent', () => {
     text: string;
     type: string;
     points: number;
-    options: Array<{ id: string; text: string }>;
+    options: { id: string; text: string }[];
   }) => {
     (component as unknown as { question: () => typeof question }).question = () => question;
     (component as unknown as { index: () => number }).index = () => 0;
