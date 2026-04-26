@@ -1,14 +1,11 @@
-import { Component, computed, DestroyRef, effect, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { interval, Subscription } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { QuizzesStore, Question } from '../store/quizzes.store';
 import { QuestionCardComponent } from './question-card/question-card.component';
 import { TimerComponent } from './timer/timer.component';
 import { ResultsSummaryComponent } from './results-summary/results-summary.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
-import { ModalComponent } from '../../../shared/components/modal/modal.component';
 
 @Component({
   selector: 'app-quiz-player',
@@ -18,22 +15,109 @@ import { ModalComponent } from '../../../shared/components/modal/modal.component
     QuestionCardComponent,
     TimerComponent,
     ResultsSummaryComponent,
-    ButtonComponent,
-    ModalComponent,
+    ButtonComponent
   ],
-  templateUrl: './quiz-player.component.html',
+  template: `
+    <div class="min-h-[calc(100vh-80px)] bg-gray-50 flex flex-col relative overflow-hidden">
+      <!-- Decorative Background Pattern -->
+      <div class="absolute inset-0 opacity-5 pointer-events-none" style="background-image: radial-gradient(#000 2px, transparent 2px); background-size: 30px 30px;"></div>
+      
+      @if (store.loading()) {
+        <div class="flex-1 flex items-center justify-center z-10">
+          <div class="w-16 h-16 border-8 border-gray-200 border-t-[#0ABAB5] rounded-full animate-spin"></div>
+        </div>
+      } @else if (store.showResults()) {
+        <div class="flex-1 flex items-center justify-center p-6 z-10">
+          <app-results-summary
+            [score]="store.score()"
+            [totalPoints]="store.totalPoints()"
+            [timeSpent]="store.timeSpent()"
+            (retry)="retryQuiz()"
+            (continue)="goBack()"
+          ></app-results-summary>
+        </div>
+      } @else if (currentQuestion()) {
+        <!-- Quiz Header -->
+        <div class="bg-white border-b-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] sticky top-0">
+          <div class="flex items-center space-x-4">
+            <button (click)="goBack()" class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center hover:bg-gray-100 transition-colors">
+              <span class="material-icons text-black">close</span>
+            </button>
+            <h1 class="text-xl md:text-2xl font-black text-black hidden sm:block">{{ store.currentQuiz()?.title }}</h1>
+          </div>
+          
+          <!-- Progress Bar -->
+          <div class="flex-1 max-w-md mx-4 hidden md:block">
+            <div class="h-4 bg-gray-200 rounded-full border-2 border-black overflow-hidden">
+              <div class="h-full bg-[#0ABAB5] transition-all duration-300" [style.width.%]="progressPercentage()"></div>
+            </div>
+          </div>
+          
+          <app-timer [duration]="store.currentQuiz()?.timeLimit || 0" (timeUp)="handleTimeUp()"></app-timer>
+        </div>
+
+        <!-- Mobile Progress Bar -->
+        <div class="md:hidden bg-white border-b-4 border-black p-4 z-20">
+          <div class="h-3 bg-gray-200 rounded-full border-2 border-black overflow-hidden">
+            <div class="h-full bg-[#0ABAB5] transition-all duration-300" [style.width.%]="progressPercentage()"></div>
+          </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto p-6 md:p-12 z-10 flex flex-col">
+          <div class="max-w-3xl mx-auto w-full flex-1 flex flex-col justify-center">
+            <app-question-card
+              [question]="currentQuestion()!"
+              [index]="store.currentQuestionIndex()"
+              [total]="store.currentQuiz()?.questions?.length || 0"
+              [selectedOptionId]="selectedOptionId()"
+              (optionSelected)="selectOption($event)"
+            ></app-question-card>
+          </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)] sticky bottom-0">
+          <app-button 
+            variant="secondary" 
+            [disabled]="store.currentQuestionIndex() === 0"
+            (btnClick)="previousQuestion()">
+            Previous
+          </app-button>
+          
+          @if (store.currentQuestionIndex() < (store.currentQuiz()?.questions?.length || 0) - 1) {
+            <app-button 
+              variant="primary" 
+              [disabled]="!selectedOptionId()"
+              (btnClick)="nextQuestion()">
+              Next Question
+            </app-button>
+          } @else {
+            <app-button 
+              variant="primary" 
+              icon="check_circle" 
+              iconPosition="right"
+              [disabled]="!selectedOptionId()"
+              (btnClick)="submitQuiz()">
+              Submit Quiz
+            </app-button>
+          }
+        </div>
+      } @else {
+        <div class="flex-1 flex items-center justify-center z-10">
+          <div class="text-center">
+            <h2 class="text-2xl font-black mb-4">Quiz not found or no questions available.</h2>
+            <app-button variant="primary" (btnClick)="goBack()">Go Back</app-button>
+          </div>
+        </div>
+      }
+    </div>
+  `
 })
 export class QuizPlayerComponent implements OnInit {
   store = inject(QuizzesStore);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private destroyRef = inject(DestroyRef);
-
-  private timerSubscription: Subscription | null = null;
-  started = signal(false);
-  paletteOpen = signal(false);
-  showSubmitModal = signal(false);
-  quizId = signal('1');
 
   selectedOptionId = signal<string | null>(null);
 
@@ -45,55 +129,18 @@ export class QuizPlayerComponent implements OnInit {
 
   progressPercentage = computed(() => {
     const total = this.store.currentQuiz()?.questions?.length || 1;
-    const current = this.store.currentQuestionIndex() + 1;
+    const current = this.store.currentQuestionIndex();
     return (current / total) * 100;
   });
 
-  totalQuestions = computed(() => this.store.currentQuiz()?.questions?.length || 0);
-
-  isLastQuestion = computed(() => this.store.currentQuestionIndex() >= this.totalQuestions() - 1);
-
-  constructor() {
-    effect(() => {
-      const shouldRunTimer =
-        this.started() && !this.store.submitted() && this.store.timeRemaining() !== null;
-
-      if (shouldRunTimer && !this.timerSubscription) {
-        this.timerSubscription = interval(1000)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this.store.tickTimer());
-      }
-
-      if (!shouldRunTimer && this.timerSubscription) {
-        this.timerSubscription.unsubscribe();
-        this.timerSubscription = null;
-      }
-    });
-
-    effect(() => {
-      const questionId = this.currentQuestion()?.id;
-      if (!questionId) {
-        this.selectedOptionId.set(null);
-        return;
-      }
-
-      const answer = this.store.answers()[questionId] ?? null;
-      this.selectedOptionId.set(answer);
-    });
-  }
-
   ngOnInit() {
-    const quizId = this.route.snapshot.paramMap.get('id') ?? '1';
-    this.quizId.set(quizId);
-    this.store.loadQuizById(quizId);
-  }
-
-  startQuiz() {
-    this.store.startQuiz(this.quizId());
-    this.started.set(true);
-    this.paletteOpen.set(false);
-    this.showSubmitModal.set(false);
-    this.selectedOptionId.set(null);
+    const quizId = this.route.snapshot.paramMap.get('id');
+    if (quizId) {
+      this.store.loadQuizById(quizId);
+    } else {
+      // Fallback for testing
+      this.store.loadQuizById('1');
+    }
   }
 
   selectOption(optionId: string) {
@@ -111,12 +158,7 @@ export class QuizPlayerComponent implements OnInit {
   }
 
   previousQuestion() {
-    this.store.prevQuestion();
-    this.restoreSelectedOption();
-  }
-
-  navigateTo(index: number) {
-    this.store.navigateTo(index);
+    this.store.previousQuestion();
     this.restoreSelectedOption();
   }
 
@@ -131,24 +173,7 @@ export class QuizPlayerComponent implements OnInit {
   }
 
   submitQuiz() {
-    this.showSubmitModal.set(true);
-  }
-
-  submitConfirmed() {
-    this.showSubmitModal.set(false);
     this.store.submitQuiz();
-  }
-
-  onNextOrSubmit() {
-    if (this.isLastQuestion()) {
-      this.submitQuiz();
-      return;
-    }
-    this.nextQuestion();
-  }
-
-  togglePalette() {
-    this.paletteOpen.set(!this.paletteOpen());
   }
 
   handleTimeUp() {
@@ -157,46 +182,7 @@ export class QuizPlayerComponent implements OnInit {
 
   retryQuiz() {
     this.store.resetQuiz();
-    this.store.loadQuizById(this.quizId());
-    this.started.set(false);
-    this.paletteOpen.set(false);
-    this.showSubmitModal.set(false);
     this.selectedOptionId.set(null);
-  }
-
-  getPaletteClass(index: number): string {
-    const classes = [
-      'w-10',
-      'h-10',
-      'rounded-lg',
-      'border-2',
-      'font-bold',
-      'text-sm',
-      'transition-colors',
-    ];
-
-    const question = this.store.currentQuiz()?.questions[index];
-    const isCurrent = this.store.currentQuestionIndex() === index;
-    const isAnswered = question ? this.store.isAnswered(question.id)() : false;
-    const isFlagged = question ? this.store.isFlagged(question.id)() : false;
-
-    if (isAnswered) {
-      classes.push('answered', 'bg-[#0ABAB5]/20');
-    } else {
-      classes.push('unanswered', 'bg-gray-200');
-    }
-
-    if (isFlagged) {
-      classes.push('flagged', 'ring-2', 'ring-amber-500');
-    }
-
-    if (isCurrent) {
-      classes.push('current', 'border-black');
-    } else {
-      classes.push('border-gray-400');
-    }
-
-    return classes.join(' ');
   }
 
   goBack() {

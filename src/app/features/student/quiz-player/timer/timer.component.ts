@@ -6,24 +6,15 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    @if (secondsRemaining() !== null) {
-      <div
-        class="timer-chip flex items-center space-x-2 bg-white px-4 py-2 rounded-full border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-        [class.warning]="isWarningTime()"
-        [class.danger]="isDangerTime()"
-        [class.bg-amber-100]="isWarningTime() && !isDangerTime()"
-        [class.text-amber-700]="isWarningTime() && !isDangerTime()"
-        [class.bg-red-100]="isDangerTime()"
-        [class.text-red-700]="isDangerTime()"
-      >
-        <span class="material-icons" [class.animate-pulse]="isDangerTime()">timer</span>
-        <span class="font-mono font-black text-xl tracking-wider">{{ formattedTime() }}</span>
-      </div>
-    }
-  `,
+    <div class="flex items-center space-x-2 bg-white px-4 py-2 rounded-full border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+         [ngClass]="{'bg-red-100 text-red-600': isLowTime()}">
+      <span class="material-icons" [ngClass]="{'animate-pulse': isLowTime()}">timer</span>
+      <span class="font-mono font-black text-xl tracking-wider">{{ formattedTime() }}</span>
+    </div>
+  `
 })
 export class TimerComponent implements OnDestroy {
-  secondsRemaining = input<number | null>(null); // in seconds
+  duration = input.required<number>(); // in seconds
   timeUp = output<void>();
   
   timeLeft = signal(0);
@@ -31,19 +22,27 @@ export class TimerComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
-      const incomingSeconds = this.secondsRemaining();
-      if (incomingSeconds === null) {
-        this.stopTimer();
-        this.timeLeft.set(0);
-        return;
+      const initialDuration = this.duration();
+      if (initialDuration > 0) {
+        this.startTimer(initialDuration);
       }
-      this.startTimer(incomingSeconds);
     });
   }
 
   startTimer(seconds: number) {
-    const normalized = Math.max(0, seconds);
-    this.timeLeft.set(normalized);
+    this.stopTimer();
+    this.timeLeft.set(seconds);
+    
+    this.intervalId = setInterval(() => {
+      this.timeLeft.update(t => {
+        if (t <= 1) {
+          this.stopTimer();
+          this.timeUp.emit();
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
   }
 
   stopTimer() {
@@ -68,13 +67,5 @@ export class TimerComponent implements OnDestroy {
 
   get isLowTime() {
     return () => this.timeLeft() > 0 && this.timeLeft() <= 60; // Less than 1 minute
-  }
-
-  get isWarningTime() {
-    return () => this.timeLeft() > 0 && this.timeLeft() <= 300;
-  }
-
-  get isDangerTime() {
-    return () => this.timeLeft() > 0 && this.timeLeft() <= 60;
   }
 }

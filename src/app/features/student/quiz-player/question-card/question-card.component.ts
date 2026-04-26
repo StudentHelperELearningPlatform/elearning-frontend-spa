@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Question } from '../../store/quizzes.store';
 
@@ -8,150 +8,57 @@ import { Question } from '../../store/quizzes.store';
   imports: [CommonModule],
   template: `
     <div class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12">
-      <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-        <span class="text-[#0ABAB5] font-black uppercase tracking-widest text-sm">
-          Question {{ index() + 1 }} of {{ total() }}
+      <!-- Question Header -->
+      <div class="flex justify-between items-center mb-8">
+        <span class="text-[#0ABAB5] font-black uppercase tracking-widest text-sm">Question {{ index() + 1 }} of {{ total() }}</span>
+        <span class="bg-gray-100 text-gray-600 font-bold px-3 py-1 rounded-full border-2 border-gray-300 text-sm">
+          {{ question().points || 10 }} pts
         </span>
-        <div class="flex items-center gap-3">
-          <span class="bg-gray-100 text-gray-600 font-bold px-3 py-1 rounded-full border-2 border-gray-300 text-sm">
-            {{ question().points || 10 }} pts
-          </span>
-          <button
-            type="button"
-            class="flag-toggle flex items-center gap-1 rounded-full border-2 border-black px-3 py-1 text-xs font-bold uppercase tracking-wide"
-            [class.flagged]="isFlagged()"
-            [class.bg-amber-100]="isFlagged()"
-            [class.text-amber-700]="isFlagged()"
-            (click)="toggleFlag()"
-          >
-            <span class="material-icons text-base">bookmark</span>
-            <span>Flag for review</span>
-          </button>
-        </div>
       </div>
 
+      <!-- Question Text -->
       <h2 class="text-2xl md:text-3xl font-black text-black mb-10 leading-tight">
         {{ question().text }}
       </h2>
 
-      @switch (question().type) {
-        @case ('MULTIPLE_CHOICE') {
-          <div class="space-y-4">
-            @for (option of question().options; track option.id; let i = $index) {
-              <button
-                type="button"
-                (click)="selectOption(option.id)"
-                class="mc-option w-full text-left p-6 rounded-2xl border-4 transition-all duration-200 flex items-center group relative overflow-hidden"
-                [class.selected]="selectedValue() === option.id"
-                [class.border-teal-500]="selectedValue() === option.id"
-                [class.bg-teal-50]="selectedValue() === option.id"
-                [class.shadow-[4px_4px_0px_0px_#0ABAB5]]="selectedValue() === option.id"
-                [class.translate-x-[-2px]]="selectedValue() === option.id"
-                [class.translate-y-[-2px]]="selectedValue() === option.id"
-                [class.border-gray-300]="selectedValue() !== option.id"
-                [class.bg-white]="selectedValue() !== option.id"
-                [class.hover:border-black]="selectedValue() !== option.id"
-                [class.hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]]="selectedValue() !== option.id"
-                [class.hover:translate-x-[-2px]]="selectedValue() !== option.id"
-                [class.hover:translate-y-[-2px]]="selectedValue() !== option.id"
-              >
-                <div
-                  class="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg mr-4 border-2"
-                  [class.bg-teal-500]="selectedValue() === option.id"
-                  [class.text-white]="selectedValue() === option.id"
-                  [class.border-teal-500]="selectedValue() === option.id"
-                  [class.bg-gray-100]="selectedValue() !== option.id"
-                  [class.text-gray-500]="selectedValue() !== option.id"
-                  [class.border-gray-300]="selectedValue() !== option.id"
-                  [class.group-hover:border-black]="selectedValue() !== option.id"
-                  [class.group-hover:text-black]="selectedValue() !== option.id"
-                >
-                  {{ getLetter(i) }}
-                </div>
-
-                <span
-                  class="font-bold text-lg"
-                  [class.text-teal-600]="selectedValue() === option.id"
-                  [class.text-black]="selectedValue() !== option.id"
-                >
-                  {{ option.text }}
-                </span>
-              </button>
-            }
-          </div>
-        }
-
-        @case ('TRUE_FALSE') {
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button
-              type="button"
-              class="tf-option rounded-2xl border-4 border-black p-6 text-2xl font-black transition-colors"
-              [class.selected]="selectedValue() === 'true'"
-              [class.bg-teal-100]="selectedValue() === 'true'"
-              (click)="selectOption('true')"
-            >
-              True
-            </button>
-            <button
-              type="button"
-              class="tf-option rounded-2xl border-4 border-black p-6 text-2xl font-black transition-colors"
-              [class.selected]="selectedValue() === 'false'"
-              [class.bg-teal-100]="selectedValue() === 'false'"
-              (click)="selectOption('false')"
-            >
-              False
-            </button>
-          </div>
-        }
-
-        @case ('SHORT_ANSWER') {
-          <div class="space-y-3">
-            <textarea
-              #shortAnswerInput
-              class="w-full rounded-2xl border-4 border-black p-4 min-h-40 text-base font-medium"
-              placeholder="Type your answer..."
-              maxlength="500"
-              [value]="selectedValue() ?? ''"
-              (input)="onShortAnswerInput(shortAnswerInput.value)"
-            ></textarea>
-            <div class="text-right text-sm font-bold text-gray-600">
-              {{ (selectedValue() ?? '').length }} / 500
+      <!-- Options -->
+      <div class="space-y-4">
+        @for (option of question().options; track option.id; let i = $index) {
+          <button 
+            (click)="selectOption(option.id)"
+            class="w-full text-left p-6 rounded-2xl border-4 transition-all duration-200 flex items-center group relative overflow-hidden"
+            [ngClass]="{
+              'border-[#0ABAB5] bg-[#0ABAB5]/10 shadow-[4px_4px_0px_0px_#0ABAB5] translate-x-[-2px] translate-y-[-2px]': selectedOptionId() === option.id,
+              'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]': selectedOptionId() !== option.id
+            }">
+            
+            <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg mr-4 border-2"
+                 [ngClass]="{
+                   'bg-[#0ABAB5] text-white border-[#0ABAB5]': selectedOptionId() === option.id,
+                   'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black': selectedOptionId() !== option.id
+                 }">
+              {{ getLetter(i) }}
             </div>
-          </div>
+            
+            <span class="font-bold text-lg" [ngClass]="{'text-[#0ABAB5]': selectedOptionId() === option.id, 'text-black': selectedOptionId() !== option.id}">
+              {{ option.text }}
+            </span>
+          </button>
         }
-
-        @default {
-        }
-      }
+      </div>
     </div>
-  `,
+  `
 })
 export class QuestionCardComponent {
   question = input.required<Question>();
   index = input.required<number>();
   total = input.required<number>();
   selectedOptionId = input<string | null>(null);
-  selectedAnswer = input<string | null>(null);
-  isFlagged = input<boolean>(false);
   
   optionSelected = output<string>();
-  answered = output<string>();
-  flagged = output<void>();
-
-  selectedValue = computed(() => this.selectedOptionId() ?? this.selectedAnswer());
 
   selectOption(id: string) {
     this.optionSelected.emit(id);
-    this.answered.emit(id);
-  }
-
-  onShortAnswerInput(answer: string) {
-    this.optionSelected.emit(answer);
-    this.answered.emit(answer);
-  }
-
-  toggleFlag() {
-    this.flagged.emit();
   }
 
   getLetter(index: number): string {
