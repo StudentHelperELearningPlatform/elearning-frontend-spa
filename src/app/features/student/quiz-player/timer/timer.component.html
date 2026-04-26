@@ -1,0 +1,14 @@
+@if (secondsRemaining() !== null) {
+  <div
+    class="timer-chip flex items-center space-x-2 bg-white px-4 py-2 rounded-full border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+    [class.warning]="isWarningTime()"
+    [class.danger]="isDangerTime()"
+    [class.bg-amber-100]="isWarningTime() && !isDangerTime()"
+    [class.text-amber-700]="isWarningTime() && !isDangerTime()"
+    [class.bg-red-100]="isDangerTime()"
+    [class.text-red-700]="isDangerTime()"
+  >
+    <span class="material-icons" [class.animate-pulse]="isDangerTime()">timer</span>
+    <span class="font-mono font-black text-xl tracking-wider">{{ formattedTime() }}</span>
+  </div>
+}
