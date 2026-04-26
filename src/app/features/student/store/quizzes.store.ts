@@ -164,13 +164,13 @@ export const QuizzesStore = signalStore(
             result: {
               score: submission.score,
               totalPoints: submission.totalPoints,
-              timeSpent: submission.timeSpent || timeSpent,
+              timeSpent: submission.timeSpent ?? timeSpent,
               percentage: submission.percentage,
               passed: submission.passed,
               attemptId: submission.attemptId,
             },
           });
-
+          router.navigate(['/student/quizzes', quizId, 'results', submission.attemptId]);
         },
       });
     };
