@@ -30,7 +30,7 @@ interface SubmitQuizResponse {
   totalPoints: number;
   percentage: number;
   passed: boolean;
-  timeSpent: number;
+  timeSpent?: number;
 }
 
 type QuizWithMeta = Quiz & {
@@ -151,31 +151,7 @@ export const QuizzesStore = signalStore(
         ? Math.floor((new Date().getTime() - state.startedAt()!.getTime()) / 1000)
         : 0;
 
-      // Mock grading
-      let score = 0;
-      let totalPoints = 0;
       const answers = state.answers();
-
-      state.currentQuiz()?.questions.forEach((q: Question) => {
-        totalPoints += q.points || 10;
-        // Mock correct answers
-        const correctAnswers: Record<string, string> = { 'q1': 'o1', 'q2': 'o2', 'q3': 'true' };
-        if (answers[q.id] === correctAnswers[q.id]) {
-          score += q.points || 10;
-        }
-      });
-
-      patchState(store, {
-        submitted: true,
-        result: {
-          score,
-          totalPoints,
-          timeSpent,
-          percentage: totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0,
-          passed: totalPoints > 0 ? (score / totalPoints) * 100 >= 50 : false,
-        },
-      });
-
       const quizId = state.currentQuiz()?.id;
       if (!quizId) {
         return;
@@ -188,14 +164,13 @@ export const QuizzesStore = signalStore(
             result: {
               score: submission.score,
               totalPoints: submission.totalPoints,
-              timeSpent: submission.timeSpent,
+              timeSpent: submission.timeSpent || timeSpent,
               percentage: submission.percentage,
               passed: submission.passed,
               attemptId: submission.attemptId,
             },
           });
 
-          void router.navigate(['/student/quizzes', quizId, 'results', submission.attemptId]);
         },
       });
     };
