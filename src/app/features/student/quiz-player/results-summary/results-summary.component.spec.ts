@@ -1,107 +1,78 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { ResultsSummaryComponent } from './results-summary.component';
 
-describe('ResultsSummaryComponent', () => {
-  let component: ResultsSummaryComponent;
-  let fixture: ComponentFixture<ResultsSummaryComponent>;
+// ResultsSummaryComponent uses templateUrl which cannot be resolved in Vitest
+// without resolveComponentResources(). We test the class methods directly
+// using plain `new` — no TestBed, no Angular compiler involved.
 
-  const mount = (score: number, totalPoints: number, timeSpent = 300, passed = false) => {
-    (component as unknown as { score: () => number }).score = () => score;
-    (component as unknown as { totalPoints: () => number }).totalPoints = () => totalPoints;
-    (component as unknown as { timeSpent: () => number }).timeSpent = () => timeSpent;
-    (component as unknown as { passed: () => boolean }).passed = () => passed;
-    fixture.detectChanges();
-  };
+const make = (score: number, totalPoints: number, timeSpent = 300) => {
+  const comp = new ResultsSummaryComponent();
+  // input() signals are getter functions on the prototype — override on instance
+  Object.defineProperty(comp, 'score', { value: () => score });
+  Object.defineProperty(comp, 'totalPoints', { value: () => totalPoints });
+  Object.defineProperty(comp, 'timeSpent', { value: () => timeSpent });
+  return comp;
+};
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [ResultsSummaryComponent],
-      providers: [provideRouter([])],
-    }).compileComponents();
+describe('ResultsSummaryComponent (logic)', () => {
 
-    fixture = TestBed.createComponent(ResultsSummaryComponent);
-    component = fixture.componentInstance;
+  // ─── getPercentage ──────────────────────────────────────────────────────
+
+  it('returns 0 when totalPoints is 0', () => {
+    expect(make(0, 0).getPercentage()).toBe(0);
   });
 
-  it('creates without errors', () => {
-    mount(80, 100);
-    expect(component).toBeTruthy();
+  it('returns 80 for score 80 / totalPoints 100', () => {
+    expect(make(80, 100).getPercentage()).toBe(80);
   });
 
-  // ─── getPercentage ────────────────────────────────────────────────────────
-
-  it('getPercentage returns 0 when totalPoints is 0', () => {
-    (component as unknown as { score: () => number }).score = () => 0;
-    (component as unknown as { totalPoints: () => number }).totalPoints = () => 0;
-    expect(component.getPercentage()).toBe(0);
+  it('returns 33 for score 33 / totalPoints 100', () => {
+    expect(make(33, 100).getPercentage()).toBe(33);
   });
 
-  it('getPercentage rounds correctly for 80/100', () => {
-    (component as unknown as { score: () => number }).score = () => 80;
-    (component as unknown as { totalPoints: () => number }).totalPoints = () => 100;
-    expect(component.getPercentage()).toBe(80);
+  it('rounds correctly for non-integer division (1/3)', () => {
+    expect(make(1, 3).getPercentage()).toBe(33);
   });
 
-  it('getPercentage rounds correctly for 33/100', () => {
-    (component as unknown as { score: () => number }).score = () => 33;
-    (component as unknown as { totalPoints: () => number }).totalPoints = () => 100;
-    expect(component.getPercentage()).toBe(33);
-  });
-
-  it('getPercentage handles non-round division', () => {
-    (component as unknown as { score: () => number }).score = () => 1;
-    (component as unknown as { totalPoints: () => number }).totalPoints = () => 3;
-    expect(component.getPercentage()).toBe(33);
-  });
-
-  // ─── getTitle ─────────────────────────────────────────────────────────────
+  // ─── getTitle ──────────────────────────────────────────────────────────
 
   it.each([
     [95, 100, 'Incredible!'],
     [70, 100, 'Great Job!'],
     [50, 100, 'Good Effort!'],
     [40, 100, 'Keep Practicing!'],
-  ])('getTitle for score %i/%i returns "%s"', (score, total, expected) => {
-    (component as unknown as { score: () => number }).score = () => score;
-    (component as unknown as { totalPoints: () => number }).totalPoints = () => total;
-    expect(component.getTitle()).toBe(expected);
+  ])('getTitle for %i/%i returns "%s"', (score, total, expected) => {
+    expect(make(score, total).getTitle()).toBe(expected);
   });
 
-  // ─── formatTime ───────────────────────────────────────────────────────────
+  // ─── formatTime ────────────────────────────────────────────────────────
 
-  it('formatTime formats 125 seconds as "2:05"', () => {
-    expect(component.formatTime(125)).toBe('2:05');
+  it('formats 0 seconds as "0:00"', () => {
+    expect(make(0, 100).formatTime(0)).toBe('0:00');
   });
 
-  it('formatTime formats 60 seconds as "1:00"', () => {
-    expect(component.formatTime(60)).toBe('1:00');
+  it('formats 45 seconds as "0:45"', () => {
+    expect(make(0, 100).formatTime(45)).toBe('0:45');
   });
 
-  it('formatTime formats 0 seconds as "0:00"', () => {
-    expect(component.formatTime(0)).toBe('0:00');
+  it('formats 60 seconds as "1:00"', () => {
+    expect(make(0, 100).formatTime(60)).toBe('1:00');
   });
 
-  it('formatTime formats 45 seconds as "0:45"', () => {
-    expect(component.formatTime(45)).toBe('0:45');
+  it('formats 125 seconds as "2:05"', () => {
+    expect(make(0, 100).formatTime(125)).toBe('2:05');
   });
 
-  // ─── Rendering ────────────────────────────────────────────────────────────
+  // ─── getMascotUrl ──────────────────────────────────────────────────────
 
-  it('renders without throwing with typical inputs', () => {
-    expect(() => mount(80, 100, 300, true)).not.toThrow();
+  it('uses "sad" seed for score below 50%', () => {
+    expect(make(30, 100).getMascotUrl()).toContain('sad');
   });
 
-  it('emits retry output when retry button is clicked', () => {
-    mount(30, 100, 200, false);
-    const spy = vi.spyOn(component.retry, 'emit');
-    const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('app-button');
-    // Click the retry button — it should exist when score is low
-    // We find it by searching for text content
-    const retryBtn = Array.from(buttons).find(btn => btn.textContent?.toLowerCase().includes('retry'));
-    if (retryBtn) {
-      (retryBtn as HTMLElement).click();
-      expect(spy).toHaveBeenCalled();
-    }
+  it('uses "star" seed for score >= 90%', () => {
+    expect(make(90, 100).getMascotUrl()).toContain('star');
+  });
+
+  it('uses "happy" seed for mid-range score', () => {
+    expect(make(70, 100).getMascotUrl()).toContain('happy');
   });
 });

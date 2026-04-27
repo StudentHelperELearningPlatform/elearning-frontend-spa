@@ -1,8 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter, Router } from '@angular/router';
-import { provideHttpClient, HttpClient } from '@angular/common/http';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { patchState } from '@ngrx/signals';
-import { of } from 'rxjs';
 import { QuizzesStore } from '../store/quizzes.store';
 
 // QuizPlayerComponent uses templateUrl so we cannot mount it in Vitest.
