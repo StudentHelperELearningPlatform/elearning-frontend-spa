@@ -85,6 +85,7 @@ interface QuizzesState {
   startedAt: Date | null;
   timeRemaining: number | null;
   submitted: boolean;
+  submitting: boolean;
   result: QuizResultWithMeta | null;
   loading: boolean;
 }
@@ -99,6 +100,7 @@ export const QuizzesStore = signalStore(
     startedAt: null,
     timeRemaining: null,
     submitted: false,
+    submitting: false,
     result: null,
     loading: false,
   }),
@@ -146,6 +148,14 @@ export const QuizzesStore = signalStore(
 
     const submitQuizInternal = () => {
       const state = store;
+      // Prevent duplicate submissions while an HTTP call is already in-flight
+      // or after the quiz has already been submitted.
+      if (state.submitted() || state.submitting()) {
+        return;
+      }
+
+      patchState(store, { submitting: true });
+
       const timeSpent = state.startedAt()
         ? Math.floor((new Date().getTime() - state.startedAt()!.getTime()) / 1000)
         : 0;
@@ -160,6 +170,7 @@ export const QuizzesStore = signalStore(
         next: (submission) => {
           patchState(store, {
             submitted: true,
+            submitting: false,
             result: {
               score: submission.score,
               totalPoints: submission.totalPoints,
@@ -178,6 +189,7 @@ export const QuizzesStore = signalStore(
 
           patchState(store, {
             submitted: true,
+            submitting: false,
             result: {
               score: 0,
               totalPoints,
@@ -225,6 +237,7 @@ export const QuizzesStore = signalStore(
               startedAt: new Date(),
               timeRemaining: mappedQuiz.timeLimitSeconds ?? null,
               submitted: false,
+              submitting: false,
               result: null,
             });
           },
@@ -276,13 +289,13 @@ export const QuizzesStore = signalStore(
         if (remaining > 0) {
           const nextValue = remaining - 1;
           patchState(store, { timeRemaining: nextValue });
-          if (nextValue === 0 && !store.submitted()) {
+          if (nextValue === 0 && !store.submitted() && !store.submitting()) {
             this.submitQuiz();
           }
           return;
         }
 
-        if (remaining === 0 && !store.submitted()) {
+        if (remaining === 0 && !store.submitted() && !store.submitting()) {
           this.submitQuiz();
         }
       },
@@ -310,6 +323,7 @@ export const QuizzesStore = signalStore(
           startedAt: new Date(),
           timeRemaining: store.currentQuiz()?.timeLimitSeconds ?? null,
           submitted: false,
+          submitting: false,
           result: null,
         });
       },

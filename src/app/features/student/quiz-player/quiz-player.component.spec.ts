@@ -33,7 +33,10 @@ const MOCK_QUIZ = {
       type: 'TRUE_FALSE' as const,
       text: 'The earth is flat.',
       points: 10,
-      options: [{ id: 'true', text: 'True' }, { id: 'false', text: 'False' }],
+      options: [
+        { id: 'true', text: 'True' },
+        { id: 'false', text: 'False' },
+      ],
     },
     {
       id: 'q3',
@@ -73,6 +76,7 @@ describe('QuizPlayerComponent (logic)', () => {
       startedAt: null,
       timeRemaining: 900,
       submitted: false,
+      submitting: false,
       result: null,
       loading: false,
     });
