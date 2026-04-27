@@ -3,11 +3,9 @@ import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { ResultsSummaryComponent } from './results-summary.component';
 
-// ResultsSummaryComponent uses templateUrl (cannot be mounted in Vitest without
-// resolveComponentResources). We test pure logic methods only.
-// input.required() calls must happen inside an injection context — we use
-// runInInjectionContext so Angular's DI is satisfied during construction,
-// then we replace the signal getters with plain functions returning test values.
+// ResultsSummaryComponent uses templateUrl — cannot be mounted in Vitest.
+// We construct the class inside runInInjectionContext (required for input signals),
+// then cast-assign signal getters to return test values.
 
 describe('ResultsSummaryComponent (logic)', () => {
   let injector: EnvironmentInjector;
@@ -17,13 +15,12 @@ describe('ResultsSummaryComponent (logic)', () => {
     injector = TestBed.inject(EnvironmentInjector);
   });
 
-  function make(score: number, totalPoints: number, timeSpent = 300) {
-    // Must construct inside injection context so input.required() initialises
+  function make(score: number, totalPoints: number, timeSpent = 300, passed = false) {
     const comp = runInInjectionContext(injector, () => new ResultsSummaryComponent());
-    // Override signal getters with plain functions returning test values
     comp.score = (() => score) as typeof comp.score;
     comp.totalPoints = (() => totalPoints) as typeof comp.totalPoints;
     comp.timeSpent = (() => timeSpent) as typeof comp.timeSpent;
+    comp.passed = (() => passed) as typeof comp.passed;
     return comp;
   }
 
@@ -47,13 +44,28 @@ describe('ResultsSummaryComponent (logic)', () => {
 
   // ─── getTitle ─────────────────────────────────────────────────────────────
 
-  it.each([
-    [95, 100, 'Incredible!'],
-    [70, 100, 'Great Job!'],
-    [50, 100, 'Good Effort!'],
-    [40, 100, 'Keep Practicing!'],
-  ])('getTitle for %i/%i returns "%s"', (score, total, expected) => {
-    expect(make(score, total).getTitle()).toBe(expected);
+  it('returns "PERFECT SCORE!" for 100%', () => {
+    expect(make(100, 100).getTitle()).toBe('PERFECT SCORE!');
+  });
+
+  it('returns "Incredible!" for >= 90%', () => {
+    expect(make(90, 100).getTitle()).toBe('Incredible!');
+  });
+
+  it('returns "Great Job!" for >= 70%', () => {
+    expect(make(70, 100).getTitle()).toBe('Great Job!');
+  });
+
+  it('returns "Good Effort!" for >= 50%', () => {
+    expect(make(50, 100).getTitle()).toBe('Good Effort!');
+  });
+
+  it('returns "Keep Practicing!" for >= 30%', () => {
+    expect(make(30, 100).getTitle()).toBe('Keep Practicing!');
+  });
+
+  it('returns "Don\'t Give Up!" for below 30%', () => {
+    expect(make(20, 100).getTitle()).toBe("Don't Give Up!");
   });
 
   // ─── formatTime ───────────────────────────────────────────────────────────
@@ -74,17 +86,53 @@ describe('ResultsSummaryComponent (logic)', () => {
     expect(make(0, 100).formatTime(125)).toBe('2:05');
   });
 
-  // ─── getMascotUrl ─────────────────────────────────────────────────────────
+  // ─── getMascotEmoji ───────────────────────────────────────────────────────
 
-  it('uses "sad" seed for score below 50%', () => {
-    expect(make(30, 100).getMascotUrl()).toContain('sad');
+  it('returns "🏆" for 100%', () => {
+    expect(make(100, 100).getMascotEmoji()).toBe('🏆');
   });
 
-  it('uses "star" seed for score >= 90%', () => {
+  it('returns "🌟" for >= 90%', () => {
+    expect(make(90, 100).getMascotEmoji()).toBe('🌟');
+  });
+
+  it('returns "😄" for >= 70%', () => {
+    expect(make(70, 100).getMascotEmoji()).toBe('😄');
+  });
+
+  it('returns "💪" for >= 50%', () => {
+    expect(make(50, 100).getMascotEmoji()).toBe('💪');
+  });
+
+  it('returns "😅" for >= 30%', () => {
+    expect(make(30, 100).getMascotEmoji()).toBe('😅');
+  });
+
+  it('returns "😢" for below 30%', () => {
+    expect(make(20, 100).getMascotEmoji()).toBe('😢');
+  });
+
+  // ─── getMascotUrl ─────────────────────────────────────────────────────────
+
+  it('getMascotUrl contains "star" seed for >= 90%', () => {
     expect(make(90, 100).getMascotUrl()).toContain('star');
   });
 
-  it('uses "happy" seed for mid-range score', () => {
+  it('getMascotUrl contains "happy" seed for >= 70%', () => {
     expect(make(70, 100).getMascotUrl()).toContain('happy');
+  });
+
+  it('getMascotUrl contains "sad" seed for >= 30%', () => {
+    expect(make(30, 100).getMascotUrl()).toContain('sad');
+  });
+
+  // ─── passed input ─────────────────────────────────────────────────────────
+
+  it('passed() returns false by default', () => {
+    expect(make(50, 100).passed()).toBe(false);
+  });
+
+  it('passed() returns true when set', () => {
+    expect(make(80, 100, 300, true).passed()).toBe(true);
   });
 });

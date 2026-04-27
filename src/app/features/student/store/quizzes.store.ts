@@ -32,12 +32,12 @@ interface SubmitQuizResponse {
   timeSpent?: number;
 }
 
-export type QuizWithMeta = Quiz & {
+type QuizWithMeta = Quiz & {
   subject?: string;
   timeLimitSeconds?: number | null;
 };
 
-export type QuizResultWithMeta = QuizResult & {
+type QuizResultWithMeta = QuizResult & {
   attemptId?: string;
   passed?: boolean;
 };
@@ -85,7 +85,6 @@ interface QuizzesState {
   startedAt: Date | null;
   timeRemaining: number | null;
   submitted: boolean;
-  submitting: boolean;
   result: QuizResultWithMeta | null;
   loading: boolean;
 }
@@ -100,7 +99,6 @@ export const QuizzesStore = signalStore(
     startedAt: null,
     timeRemaining: null,
     submitted: false,
-    submitting: false,
     result: null,
     loading: false,
   }),
@@ -141,40 +139,36 @@ export const QuizzesStore = signalStore(
         patchState(store, { currentQuestionIndex: 0 });
         return;
       }
-
       const boundedIndex = Math.max(0, Math.min(index, total - 1));
       patchState(store, { currentQuestionIndex: boundedIndex });
     };
 
     const submitQuizInternal = () => {
-      const state = store;
-      // Prevent duplicate submissions while an HTTP call is already in-flight
-      // or after the quiz has already been submitted.
-      if (state.submitted() || state.submitting()) {
+      // Guard: prevent double-submit (e.g. from tickTimer firing multiple times at 0)
+      if (store.submitted()) {
         return;
       }
 
-      patchState(store, { submitting: true });
-
-      const timeSpent = state.startedAt()
-        ? Math.floor((new Date().getTime() - state.startedAt()!.getTime()) / 1000)
+      const timeSpent = store.startedAt()
+        ? Math.floor((new Date().getTime() - store.startedAt()!.getTime()) / 1000)
         : 0;
 
-      const answers = state.answers();
-      const quizId = state.currentQuiz()?.id;
+      const answers = store.answers();
+      const quizId = store.currentQuiz()?.id;
       if (!quizId) {
         return;
       }
 
+      // Mark submitted immediately so the UI reacts and tickTimer cannot fire again
+      patchState(store, { submitted: true });
+
       http.post<SubmitQuizResponse>(`/api/quizzes/${quizId}/submit`, { answers }).subscribe({
         next: (submission) => {
           patchState(store, {
-            submitted: true,
-            submitting: false,
             result: {
               score: submission.score,
               totalPoints: submission.totalPoints,
-              timeSpent: submission.timeSpent || timeSpent,
+              timeSpent: submission.timeSpent ?? timeSpent,
               percentage: submission.percentage,
               passed: submission.passed,
               attemptId: submission.attemptId,
@@ -182,14 +176,10 @@ export const QuizzesStore = signalStore(
           });
         },
         error: () => {
-          // Server call failed (MSW stale, network issue, etc.)
-          // Fall back to local calculation so UI doesn't freeze
+          // Fallback so UI never stays blank on network failure
           const questions = store.currentQuiz()?.questions ?? [];
           const totalPoints = questions.reduce((sum, q) => sum + (q.points || 10), 0);
-
           patchState(store, {
-            submitted: true,
-            submitting: false,
             result: {
               score: 0,
               totalPoints,
@@ -237,7 +227,6 @@ export const QuizzesStore = signalStore(
               startedAt: new Date(),
               timeRemaining: mappedQuiz.timeLimitSeconds ?? null,
               submitted: false,
-              submitting: false,
               result: null,
             });
           },
@@ -259,10 +248,7 @@ export const QuizzesStore = signalStore(
           } else {
             nextFlags.add(questionId);
           }
-
-          return {
-            flaggedQuestions: nextFlags,
-          };
+          return { flaggedQuestions: nextFlags };
         });
       },
       navigateTo(index: number) {
@@ -282,36 +268,30 @@ export const QuizzesStore = signalStore(
       },
       tickTimer(this: { submitQuiz: () => void }) {
         const remaining = store.timeRemaining();
-        if (remaining === null) {
-          return;
-        }
+        if (remaining === null) return;
 
         if (remaining > 0) {
           const nextValue = remaining - 1;
           patchState(store, { timeRemaining: nextValue });
-          if (nextValue === 0 && !store.submitted() && !store.submitting()) {
+          if (nextValue === 0 && !store.submitted()) {
             this.submitQuiz();
           }
           return;
         }
 
-        if (remaining === 0 && !store.submitted() && !store.submitting()) {
+        if (remaining === 0 && !store.submitted()) {
           this.submitQuiz();
         }
       },
       isAnswered(questionId: string | null | undefined) {
         return computed(() => {
-          if (!questionId) {
-            return false;
-          }
+          if (!questionId) return false;
           return Object.prototype.hasOwnProperty.call(store.answers(), questionId);
         });
       },
       isFlagged(questionId: string | null | undefined) {
         return computed(() => {
-          if (!questionId) {
-            return false;
-          }
+          if (!questionId) return false;
           return store.flaggedQuestions().has(questionId);
         });
       },
@@ -323,7 +303,6 @@ export const QuizzesStore = signalStore(
           startedAt: new Date(),
           timeRemaining: store.currentQuiz()?.timeLimitSeconds ?? null,
           submitted: false,
-          submitting: false,
           result: null,
         });
       },

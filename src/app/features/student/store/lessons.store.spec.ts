@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { patchState } from '@ngrx/signals';
+import { patchStore } from '../../../../test-utils/patch-store';
 import { LessonsStore, Lesson } from './lessons.store';
 
 describe('LessonsStore', () => {
@@ -14,9 +14,7 @@ describe('LessonsStore', () => {
     difficulty: 'Easy',
     duration: '10 min',
     status: 'Not Started',
-    modules: [
-      { id: 'm1', title: 'Intro', type: 'text', content: 'Hello' },
-    ],
+    modules: [{ id: 'm1', title: 'Intro', type: 'text', content: 'Hello' }],
   };
 
   beforeEach(() => {
@@ -54,14 +52,14 @@ describe('LessonsStore', () => {
 
   it('lessonCount updates when lessons are patched', () => {
     const extra: Lesson = { ...mockLesson, id: '100', title: 'Extra' };
-    patchState(store, { lessons: [mockLesson, extra] });
+    patchStore(store, { lessons: [mockLesson, extra] });
     expect(store.lessonCount()).toBe(2);
   });
 
   // ─── patchState ───────────────────────────────────────────────────────────
 
   it('patchState with a custom lesson sets currentLesson correctly', () => {
-    patchState(store, { currentLesson: mockLesson });
+    patchStore(store, { currentLesson: mockLesson });
     expect(store.currentLesson()?.title).toBe('Test Lesson');
   });
 
