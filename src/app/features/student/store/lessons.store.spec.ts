@@ -1,33 +1,31 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { patchState } from '@ngrx/signals';
-import { LessonsStore, Lesson, Module } from './lessons.store';
+import { LessonsStore, Lesson } from './lessons.store';
 
 describe('LessonsStore', () => {
   const getStore = () => TestBed.inject(LessonsStore);
   let store: ReturnType<typeof getStore>;
 
-  const mockModule: Module = {
-    id: 'm1',
-    title: 'What are fractions?',
-    type: 'video',
-    content: 'Fractions represent parts of a whole.',
-    mediaUrl: 'https://example.com/video1.mp4',
-  };
-
   const mockLesson: Lesson = {
-    id: '1',
-    title: 'Intro to Fractions',
-    subject: 'Math',
-    grade: 5,
+    id: '99',
+    title: 'Test Lesson',
+    subject: 'Science',
+    grade: 4,
     difficulty: 'Easy',
-    duration: '15 min',
+    duration: '10 min',
     status: 'Not Started',
-    modules: [mockModule],
+    modules: [
+      { id: 'm1', title: 'Intro', type: 'text', content: 'Hello' },
+    ],
   };
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
     store = getStore();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   // ─── Initial State ────────────────────────────────────────────────────────
@@ -54,54 +52,64 @@ describe('LessonsStore', () => {
     expect(store.lessonCount()).toBe(store.lessons().length);
   });
 
-  // ─── loadLessons ─────────────────────────────────────────────────────────
+  it('lessonCount updates when lessons are patched', () => {
+    const extra: Lesson = { ...mockLesson, id: '100', title: 'Extra' };
+    patchState(store, { lessons: [mockLesson, extra] });
+    expect(store.lessonCount()).toBe(2);
+  });
 
-  it('loadLessons sets loading to true then false', fakeAsync(() => {
-    store.loadLessons();
-    expect(store.loading()).toBe(true);
-    tick(500);
-    expect(store.loading()).toBe(false);
-  }));
-
-  // ─── loadLesson ──────────────────────────────────────────────────────────
-
-  it('loadLesson sets loading to true while fetching', fakeAsync(() => {
-    store.loadLesson('1');
-    expect(store.loading()).toBe(true);
-    tick(500);
-  }));
-
-  it('loadLesson sets currentLesson when lesson is found', fakeAsync(() => {
-    store.loadLesson('1');
-    tick(500);
-    expect(store.currentLesson()?.id).toBe('1');
-    expect(store.loading()).toBe(false);
-  }));
-
-  it('loadLesson sets currentLesson to undefined when id not found', fakeAsync(() => {
-    store.loadLesson('non-existent-id');
-    tick(500);
-    expect(store.currentLesson()).toBeUndefined();
-    expect(store.loading()).toBe(false);
-  }));
-
-  it('loadLesson populates modules on the resolved lesson', fakeAsync(() => {
-    store.loadLesson('2');
-    tick(500);
-    const lesson = store.currentLesson();
-    expect(lesson?.modules.length).toBeGreaterThan(0);
-  }));
-
-  // ─── Direct state manipulation ────────────────────────────────────────────
+  // ─── patchState ───────────────────────────────────────────────────────────
 
   it('patchState with a custom lesson sets currentLesson correctly', () => {
     patchState(store, { currentLesson: mockLesson });
-    expect(store.currentLesson()?.title).toBe('Intro to Fractions');
+    expect(store.currentLesson()?.title).toBe('Test Lesson');
   });
 
-  it('lessonCount updates when lessons are patched', () => {
-    const extra: Lesson = { ...mockLesson, id: '99', title: 'Extra Lesson' };
-    patchState(store, { lessons: [mockLesson, extra] });
-    expect(store.lessonCount()).toBe(2);
+  // ─── loadLessons (uses setTimeout internally) ─────────────────────────────
+
+  it('loadLessons sets loading to true immediately', () => {
+    vi.useFakeTimers();
+    store.loadLessons();
+    expect(store.loading()).toBe(true);
+    vi.runAllTimers();
+  });
+
+  it('loadLessons clears loading after the timer fires', () => {
+    vi.useFakeTimers();
+    store.loadLessons();
+    vi.advanceTimersByTime(500);
+    expect(store.loading()).toBe(false);
+  });
+
+  // ─── loadLesson ──────────────────────────────────────────────────────────
+
+  it('loadLesson sets loading to true immediately', () => {
+    vi.useFakeTimers();
+    store.loadLesson('1');
+    expect(store.loading()).toBe(true);
+    vi.runAllTimers();
+  });
+
+  it('loadLesson sets currentLesson when id is found', () => {
+    vi.useFakeTimers();
+    store.loadLesson('1');
+    vi.advanceTimersByTime(500);
+    expect(store.currentLesson()?.id).toBe('1');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('loadLesson sets currentLesson to undefined when id is not found', () => {
+    vi.useFakeTimers();
+    store.loadLesson('non-existent');
+    vi.advanceTimersByTime(500);
+    expect(store.currentLesson()).toBeUndefined();
+    expect(store.loading()).toBe(false);
+  });
+
+  it('loadLesson populates modules on the resolved lesson', () => {
+    vi.useFakeTimers();
+    store.loadLesson('2');
+    vi.advanceTimersByTime(500);
+    expect(store.currentLesson()?.modules.length).toBeGreaterThan(0);
   });
 });

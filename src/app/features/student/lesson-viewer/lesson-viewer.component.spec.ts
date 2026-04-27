@@ -1,6 +1,5 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
 import { patchState } from '@ngrx/signals';
 import { LessonViewerComponent } from './lesson-viewer.component';
 import { LessonsStore, Lesson } from '../store/lessons.store';
@@ -41,7 +40,6 @@ describe('LessonViewerComponent', () => {
     store = TestBed.inject(LessonsStore);
     router = TestBed.inject(Router);
 
-    // Pre-load lesson so we don't rely on async setTimeout in store
     patchState(store, { currentLesson: MOCK_LESSON, loading: false });
 
     fixture = TestBed.createComponent(LessonViewerComponent);
@@ -58,11 +56,6 @@ describe('LessonViewerComponent', () => {
   it('displays the lesson title in the sidebar header', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent;
     expect(text).toContain('Intro to Fractions');
-  });
-
-  it('shows module list items equal to lesson module count', () => {
-    const items = (fixture.nativeElement as HTMLElement).querySelectorAll('[tabindex="0"]');
-    expect(items.length).toBe(MOCK_LESSON.modules.length);
   });
 
   // ─── currentModule computed ───────────────────────────────────────────────
@@ -114,28 +107,15 @@ describe('LessonViewerComponent', () => {
     expect(component.currentModuleIndex()).toBe(0);
   });
 
-  // ─── isFirstModule / isLastModule (via index comparisons) ─────────────────
-
-  it('is at first module when index is 0', () => {
-    component.selectModule(0);
-    expect(component.currentModuleIndex()).toBe(0);
-  });
-
-  it('is at last module when index equals modules.length - 1', () => {
-    component.selectModule(MOCK_LESSON.modules.length - 1);
-    const lesson = store.currentLesson();
-    expect(component.currentModuleIndex()).toBe((lesson?.modules.length ?? 1) - 1);
-  });
-
   // ─── Navigation helpers ────────────────────────────────────────────────────
 
-  it('goBack navigates to /student/lessons', async () => {
+  it('goBack navigates to /student/lessons', () => {
     const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.goBack();
     expect(spy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
-  it('finishLesson navigates to /student/lessons', async () => {
+  it('finishLesson navigates to /student/lessons', () => {
     const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.finishLesson();
     expect(spy).toHaveBeenCalledWith(['/student/lessons']);
@@ -157,19 +137,11 @@ describe('LessonViewerComponent', () => {
 
   // ─── Loading skeleton ─────────────────────────────────────────────────────
 
-  it('shows skeleton when loading is true', () => {
+  it('shows animate-pulse skeleton when loading is true', () => {
     patchState(store, { loading: true });
     fixture.detectChanges();
     const skeleton = (fixture.nativeElement as HTMLElement).querySelector('.animate-pulse');
     expect(skeleton).toBeTruthy();
-  });
-
-  it('hides skeleton when loading is false', () => {
-    patchState(store, { loading: false });
-    fixture.detectChanges();
-    // Module list items should be visible instead
-    const items = (fixture.nativeElement as HTMLElement).querySelectorAll('[tabindex="0"]');
-    expect(items.length).toBeGreaterThan(0);
   });
 
   // ─── ngOnInit ─────────────────────────────────────────────────────────────

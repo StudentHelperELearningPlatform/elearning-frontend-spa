@@ -5,12 +5,6 @@ describe('ModuleContentComponent', () => {
   let component: ModuleContentComponent;
   let fixture: ComponentFixture<ModuleContentComponent>;
 
-  const setContent = (content: string, loading = false) => {
-    (component as unknown as { content: () => string }).content = () => content;
-    (component as unknown as { loading: () => boolean }).loading = () => loading;
-    fixture.detectChanges();
-  };
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ModuleContentComponent],
@@ -20,36 +14,56 @@ describe('ModuleContentComponent', () => {
     component = fixture.componentInstance;
   });
 
+  const render = (content: string, loading = false) => {
+    fixture.componentRef.setInput('content', content);
+    fixture.componentRef.setInput('loading', loading);
+    fixture.detectChanges();
+  };
+
   it('creates without errors', () => {
-    setContent('Hello');
+    render('Hello');
     expect(component).toBeTruthy();
   });
 
-  it('renders HTML content via innerHTML binding', () => {
-    setContent('<p>Hello <strong>world</strong></p>');
-    const el = (fixture.nativeElement as HTMLElement).querySelector('[innerHTML]') as HTMLElement;
-    expect(el).toBeTruthy();
-    expect(el.querySelector('strong')?.textContent).toBe('world');
+  // ─── Content rendering ────────────────────────────────────────────────────
+
+  it('renders a div with .prose class when not loading', () => {
+    render('<p>Hello world</p>');
+    const prose = (fixture.nativeElement as HTMLElement).querySelector('.prose');
+    expect(prose).toBeTruthy();
   });
 
-  it('renders arbitrary HTML strings without throwing', () => {
-    const html = '<h2>Title</h2><ul><li>Item</li></ul>';
-    expect(() => setContent(html)).not.toThrow();
+  it('renders HTML content correctly inside the prose div', () => {
+    render('<p>Hello <strong>world</strong></p>');
+    const strong = (fixture.nativeElement as HTMLElement).querySelector('strong');
+    expect(strong?.textContent).toBe('world');
+  });
+
+  it('renders arbitrary HTML without throwing', () => {
+    expect(() => render('<h2>Title</h2><ul><li>Item</li></ul>')).not.toThrow();
   });
 
   it('renders empty string without throwing', () => {
-    expect(() => setContent('')).not.toThrow();
+    expect(() => render('')).not.toThrow();
   });
 
-  it('shows skeleton when loading is true', () => {
-    setContent('', true);
-    const skeleton = (fixture.nativeElement as HTMLElement).querySelector('app-skeleton');
-    expect(skeleton).toBeTruthy();
+  // ─── Loading state ────────────────────────────────────────────────────────
+
+  it('shows app-skeleton elements when loading is true', () => {
+    render('', true);
+    const skeletons = (fixture.nativeElement as HTMLElement).querySelectorAll('app-skeleton');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  it('hides skeleton when loading is false', () => {
-    setContent('<p>Content here</p>', false);
-    const skeleton = (fixture.nativeElement as HTMLElement).querySelector('app-skeleton');
-    expect(skeleton).toBeNull();
+  it('hides app-skeleton elements when loading is false', () => {
+    render('<p>Content</p>', false);
+    const skeletons = (fixture.nativeElement as HTMLElement).querySelectorAll('app-skeleton');
+    expect(skeletons.length).toBe(0);
+  });
+
+  it('does not render .prose when loading is true', () => {
+    render('', true);
+    const prose = (fixture.nativeElement as HTMLElement).querySelector('.prose');
+    expect(prose).toBeNull();
   });
 });
