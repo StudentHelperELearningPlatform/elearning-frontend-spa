@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
+import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
-import { patchState } from '@ngrx/signals';
-import { QuizzesStore, QuizWithMeta } from '../store/quizzes.store';
+import { QuizzesStore } from '../store/quizzes.store';
 
 // QuizPlayerComponent uses templateUrl so we cannot mount it in Vitest.
 // We test the component CLASS logic directly by instantiating it with injected deps.
@@ -10,7 +10,7 @@ import { QuizzesStore, QuizWithMeta } from '../store/quizzes.store';
 import { QuizPlayerComponent } from './quiz-player.component';
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
-const MOCK_QUIZ: QuizWithMeta = {
+const MOCK_QUIZ = {
   id: 'quiz-1',
   title: 'Sample Quiz',
   subject: 'Mathematics',
@@ -68,7 +68,7 @@ describe('QuizPlayerComponent (logic)', () => {
     store = TestBed.inject(QuizzesStore);
     injector = TestBed.inject(EnvironmentInjector);
 
-    patchState(store, {
+    patchStore(store, {
       currentQuiz: MOCK_QUIZ,
       currentQuestionIndex: 0,
       answers: {},
@@ -76,7 +76,6 @@ describe('QuizPlayerComponent (logic)', () => {
       startedAt: null,
       timeRemaining: 900,
       submitted: false,
-      submitting: false,
       result: null,
       loading: false,
     });
@@ -95,7 +94,7 @@ describe('QuizPlayerComponent (logic)', () => {
   });
 
   it('currentQuestion returns undefined when quiz is null', () => {
-    patchState(store, { currentQuiz: null });
+    patchStore(store, { currentQuiz: null });
     expect(component.currentQuestion()).toBeUndefined();
   });
 
@@ -106,12 +105,12 @@ describe('QuizPlayerComponent (logic)', () => {
   });
 
   it('isLastQuestion is false when not on last question', () => {
-    patchState(store, { currentQuestionIndex: 0 });
+    patchStore(store, { currentQuestionIndex: 0 });
     expect(component.isLastQuestion()).toBe(false);
   });
 
   it('isLastQuestion is true on the final question', () => {
-    patchState(store, { currentQuestionIndex: 2 });
+    patchStore(store, { currentQuestionIndex: 2 });
     expect(component.isLastQuestion()).toBe(true);
   });
 
@@ -191,14 +190,14 @@ describe('QuizPlayerComponent (logic)', () => {
   // ─── onNextOrSubmit ───────────────────────────────────────────────────────
 
   it('onNextOrSubmit calls nextQuestion when not on last question', () => {
-    patchState(store, { currentQuestionIndex: 0 });
+    patchStore(store, { currentQuestionIndex: 0 });
     const spy = vi.spyOn(component, 'nextQuestion');
     component.onNextOrSubmit();
     expect(spy).toHaveBeenCalled();
   });
 
   it('onNextOrSubmit calls submitQuiz when on last question', () => {
-    patchState(store, { currentQuestionIndex: 2 });
+    patchStore(store, { currentQuestionIndex: 2 });
     const spy = vi.spyOn(component, 'submitQuiz');
     component.onNextOrSubmit();
     expect(spy).toHaveBeenCalled();
@@ -217,29 +216,29 @@ describe('QuizPlayerComponent (logic)', () => {
   // ─── getPaletteClass ─────────────────────────────────────────────────────
 
   it('getPaletteClass includes "answered" when question is answered', () => {
-    patchState(store, { answers: { q1: 'q1-o1' } });
+    patchStore(store, { answers: { q1: 'q1-o1' } });
     expect(component.getPaletteClass(0)).toContain('answered');
   });
 
   it('getPaletteClass includes "unanswered" when question is not answered', () => {
-    patchState(store, { answers: {} });
+    patchStore(store, { answers: {} });
     expect(component.getPaletteClass(0)).toContain('unanswered');
   });
 
   it('getPaletteClass includes "flagged" when question is flagged', () => {
-    patchState(store, { flaggedQuestions: new Set(['q1']) });
+    patchStore(store, { flaggedQuestions: new Set(['q1']) });
     expect(component.getPaletteClass(0)).toContain('flagged');
   });
 
   it('getPaletteClass includes "current" for the active question index', () => {
-    patchState(store, { currentQuestionIndex: 0 });
+    patchStore(store, { currentQuestionIndex: 0 });
     expect(component.getPaletteClass(0)).toContain('current');
   });
 
   // ─── progressPercentage ───────────────────────────────────────────────────
 
   it('progressPercentage is > 0 when not on first question', () => {
-    patchState(store, { currentQuestionIndex: 1 });
+    patchStore(store, { currentQuestionIndex: 1 });
     expect(component.progressPercentage()).toBeGreaterThan(0);
   });
 

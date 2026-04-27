@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
-import { patchState } from '@ngrx/signals';
 import { LessonViewerComponent } from './lesson-viewer.component';
 import { LessonsStore, Lesson } from '../store/lessons.store';
 
@@ -14,7 +14,13 @@ const MOCK_LESSON: Lesson = {
   status: 'Not Started',
   modules: [
     { id: 'm1', title: 'Module 1', type: 'text', content: '<p>Hello world</p>' },
-    { id: 'm2', title: 'Module 2', type: 'video', content: 'Video content', mediaUrl: 'https://example.com/vid.mp4' },
+    {
+      id: 'm2',
+      title: 'Module 2',
+      type: 'video',
+      content: 'Video content',
+      mediaUrl: 'https://example.com/vid.mp4',
+    },
     { id: 'm3', title: 'Module 3', type: 'text', content: '<p>Last module</p>' },
   ],
 };
@@ -40,7 +46,7 @@ describe('LessonViewerComponent', () => {
     store = TestBed.inject(LessonsStore);
     router = TestBed.inject(Router);
 
-    patchState(store, { currentLesson: MOCK_LESSON, loading: false });
+    patchStore(store, { currentLesson: MOCK_LESSON, loading: false });
 
     fixture = TestBed.createComponent(LessonViewerComponent);
     component = fixture.componentInstance;
@@ -65,7 +71,7 @@ describe('LessonViewerComponent', () => {
   });
 
   it('currentModule returns null when lesson has no modules', () => {
-    patchState(store, { currentLesson: { ...MOCK_LESSON, modules: [] } });
+    patchStore(store, { currentLesson: { ...MOCK_LESSON, modules: [] } });
     expect(component.currentModule()).toBeNull();
   });
 
@@ -138,7 +144,7 @@ describe('LessonViewerComponent', () => {
   // ─── Loading skeleton ─────────────────────────────────────────────────────
 
   it('shows animate-pulse skeleton when loading is true', () => {
-    patchState(store, { loading: true });
+    patchStore(store, { loading: true });
     fixture.detectChanges();
     const skeleton = (fixture.nativeElement as HTMLElement).querySelector('.animate-pulse');
     expect(skeleton).toBeTruthy();
