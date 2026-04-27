@@ -1,6 +1,6 @@
 import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { patchState } from '@ngrx/signals';
 import { of } from 'rxjs';
 import { QuizzesStore } from './quizzes.store';
@@ -10,7 +10,6 @@ describe('QuizzesStore', () => {
 
   let store: ReturnType<typeof getStore>;
   let httpClient: HttpClient;
-  let router: Router;
 
   const mockQuiz = {
     id: 'quiz-1',
@@ -51,7 +50,6 @@ describe('QuizzesStore', () => {
 
     store = getStore();
     httpClient = TestBed.inject(HttpClient);
-    router = TestBed.inject(Router);
 
     patchState(store, {
       currentQuiz: mockQuiz,
@@ -61,6 +59,7 @@ describe('QuizzesStore', () => {
       startedAt: new Date(Date.now() - 10_000),
       timeRemaining: 900,
       submitted: false,
+      submitting: false,
       result: null,
       loading: false,
     });
@@ -90,7 +89,7 @@ describe('QuizzesStore', () => {
     expect(store.currentQuestionIndex()).toBe(1);
   });
 
-  it('submitQuiz calls HttpClient.post and router.navigate', () => {
+  it('submitQuiz calls HttpClient.post with quiz id and answers', async () => {
     patchState(store, {
       answers: { q1: 'q1-o1' },
     });
@@ -105,19 +104,41 @@ describe('QuizzesStore', () => {
         timeSpent: 450,
       }),
     );
-    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     store.submitQuiz();
+
+    await Promise.resolve();
 
     expect(postSpy).toHaveBeenCalledWith('/api/quizzes/quiz-1/submit', {
       answers: { q1: 'q1-o1' },
     });
-    expect(navigateSpy).toHaveBeenCalledWith([
-      '/student/quizzes',
-      'quiz-1',
-      'results',
-      'attempt-1',
-    ]);
+    expect(store.submitted()).toBe(true);
+    expect(store.result()?.score).toBe(80);
+    expect(store.result()?.passed).toBe(true);
+  });
+
+  it('submitQuiz does not fire a second HTTP call when already submitting', async () => {
+    patchState(store, {
+      answers: { q1: 'q1-o1' },
+      submitting: true,
+    });
+
+    const postSpy = vi.spyOn(httpClient, 'post').mockReturnValue(
+      of({
+        attemptId: 'attempt-2',
+        score: 50,
+        totalPoints: 100,
+        percentage: 50,
+        passed: false,
+        timeSpent: 300,
+      }),
+    );
+
+    store.submitQuiz();
+
+    await Promise.resolve();
+
+    expect(postSpy).not.toHaveBeenCalled();
   });
 
   it('tickTimer decrements timeRemaining by 1', () => {
