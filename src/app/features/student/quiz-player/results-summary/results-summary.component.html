@@ -1,6 +1,10 @@
-<div class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 max-w-2xl mx-auto text-center">
-  <div class="w-40 h-40 mx-auto bg-[#0ABAB5]/20 rounded-full border-4 border-black flex items-center justify-center mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-    <img [src]="getMascotUrl()" alt="Result Mascot" class="w-32 h-32 object-contain" referrerpolicy="no-referrer" />
+<div
+  class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 max-w-2xl mx-auto text-center"
+>
+  <div class="w-40 h-40 mx-auto flex items-center justify-center mb-8">
+    <div class="w-40 h-40 mx-auto flex items-center justify-center mb-8">
+      <span style="font-size: 7rem; line-height: 1">{{ getMascotEmoji() }}</span>
+    </div>
   </div>
 
   <h1 class="text-4xl md:text-5xl font-black text-black mb-4 tracking-tight uppercase">
@@ -9,35 +13,56 @@
 
   @if (passed()) {
     <div class="mb-4">
-      <span class="inline-flex items-center rounded-full border-2 border-green-700 bg-green-100 px-4 py-1 text-sm font-black uppercase tracking-wide text-green-700">
+      <span
+        class="inline-flex items-center rounded-full border-2 border-green-700 bg-green-100 px-4 py-1 text-sm font-black uppercase tracking-wide text-green-700"
+      >
         PASSED
       </span>
     </div>
   } @else {
     <div class="mb-4">
-      <span class="inline-flex items-center rounded-full border-2 border-red-700 bg-red-100 px-4 py-1 text-sm font-black uppercase tracking-wide text-red-700">
+      <span
+        class="inline-flex items-center rounded-full border-2 border-red-700 bg-red-100 px-4 py-1 text-sm font-black uppercase tracking-wide text-red-700"
+      >
         FAILED
       </span>
     </div>
   }
 
   <p class="text-xl text-gray-600 font-medium mb-10">
-    You scored <span class="font-black text-black">{{ score() }}</span> out of <span class="font-black text-black">{{ totalPoints() }}</span> points.
+    You scored <span class="font-black text-black">{{ score() }}</span> out of
+    <span class="font-black text-black">{{ totalPoints() }}</span> points.
   </p>
 
   <div class="grid grid-cols-2 gap-4 mb-10">
-    <div class="bg-gray-50 p-6 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-      <span class="block text-gray-500 font-bold uppercase tracking-wider text-sm mb-2">Accuracy</span>
+    <div
+      class="bg-gray-50 p-6 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+    >
+      <span class="block text-gray-500 font-bold uppercase tracking-wider text-sm mb-2"
+        >Accuracy</span
+      >
       <span class="text-3xl font-black text-[#0ABAB5]">{{ getPercentage() }}%</span>
     </div>
-    <div class="bg-gray-50 p-6 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-      <span class="block text-gray-500 font-bold uppercase tracking-wider text-sm mb-2">Time Taken</span>
+    <div
+      class="bg-gray-50 p-6 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+    >
+      <span class="block text-gray-500 font-bold uppercase tracking-wider text-sm mb-2"
+        >Time Taken</span
+      >
       <span class="text-3xl font-black text-black font-mono">{{ formatTime(timeSpent()) }}</span>
     </div>
   </div>
 
-  <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+  <div
+    class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4"
+  >
     <app-button variant="secondary" icon="refresh" (btnClick)="retry.emit()">Try Again</app-button>
-    <app-button variant="primary" icon="arrow_forward" iconPosition="right" (btnClick)="continue.emit()">Back to Lessons</app-button>
+    <app-button
+      variant="primary"
+      icon="arrow_forward"
+      iconPosition="right"
+      (btnClick)="continue.emit()"
+      >Back to Lessons</app-button
+    >
   </div>
 </div>
