@@ -3,15 +3,15 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { patchState } from '@ngrx/signals';
 import { of } from 'rxjs';
-import { QuizzesStore } from './quizzes.store';
+import { QuizzesStore, QuizWithMeta } from './quizzes.store';
 
 describe('QuizzesStore', () => {
   const getStore = () => TestBed.inject(QuizzesStore);
 
-  let store: ReturnType<typeof getStore>;
+  let store: InstanceType<typeof QuizzesStore>;
   let httpClient: HttpClient;
 
-  const mockQuiz = {
+  const mockQuiz: QuizWithMeta = {
     id: 'quiz-1',
     title: 'Sample Quiz',
     subject: 'Mathematics',

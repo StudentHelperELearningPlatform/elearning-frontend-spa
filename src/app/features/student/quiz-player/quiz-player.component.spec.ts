@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { patchState } from '@ngrx/signals';
-import { QuizzesStore } from '../store/quizzes.store';
+import { QuizzesStore, QuizWithMeta } from '../store/quizzes.store';
 
 // QuizPlayerComponent uses templateUrl so we cannot mount it in Vitest.
 // We test the component CLASS logic directly by instantiating it with injected deps.
@@ -10,7 +10,7 @@ import { QuizzesStore } from '../store/quizzes.store';
 import { QuizPlayerComponent } from './quiz-player.component';
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
-const MOCK_QUIZ = {
+const MOCK_QUIZ: QuizWithMeta = {
   id: 'quiz-1',
   title: 'Sample Quiz',
   subject: 'Mathematics',

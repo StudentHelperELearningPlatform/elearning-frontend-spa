@@ -32,12 +32,12 @@ interface SubmitQuizResponse {
   timeSpent?: number;
 }
 
-type QuizWithMeta = Quiz & {
+export type QuizWithMeta = Quiz & {
   subject?: string;
   timeLimitSeconds?: number | null;
 };
 
-type QuizResultWithMeta = QuizResult & {
+export type QuizResultWithMeta = QuizResult & {
   attemptId?: string;
   passed?: boolean;
 };
