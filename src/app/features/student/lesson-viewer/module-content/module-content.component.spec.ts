@@ -1,24 +1,30 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ModuleContentComponent } from './module-content.component';
 
+// input.required() signals cannot be set via setInput() before detectChanges()
+// if the component has already been created with createComponent().
+// The correct pattern: create without detectChanges, set input, then detect.
+
 describe('ModuleContentComponent', () => {
   let component: ModuleContentComponent;
   let fixture: ComponentFixture<ModuleContentComponent>;
+
+  // Helper: set inputs and trigger change detection
+  const render = (content: string, loading = false) => {
+    fixture.componentRef.setInput('content', content);
+    fixture.componentRef.setInput('loading', loading);
+    fixture.detectChanges();
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ModuleContentComponent],
     }).compileComponents();
 
+    // Do NOT call detectChanges yet — content is required, so we must set it first
     fixture = TestBed.createComponent(ModuleContentComponent);
     component = fixture.componentInstance;
   });
-
-  const render = (content: string, loading = false) => {
-    fixture.componentRef.setInput('content', content);
-    fixture.componentRef.setInput('loading', loading);
-    fixture.detectChanges();
-  };
 
   it('creates without errors', () => {
     render('Hello');
@@ -29,8 +35,7 @@ describe('ModuleContentComponent', () => {
 
   it('renders a div with .prose class when not loading', () => {
     render('<p>Hello world</p>');
-    const prose = (fixture.nativeElement as HTMLElement).querySelector('.prose');
-    expect(prose).toBeTruthy();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.prose')).toBeTruthy();
   });
 
   it('renders HTML content correctly inside the prose div', () => {
@@ -63,7 +68,6 @@ describe('ModuleContentComponent', () => {
 
   it('does not render .prose when loading is true', () => {
     render('', true);
-    const prose = (fixture.nativeElement as HTMLElement).querySelector('.prose');
-    expect(prose).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.prose')).toBeNull();
   });
 });

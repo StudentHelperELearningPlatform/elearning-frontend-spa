@@ -1,21 +1,33 @@
+import { TestBed } from '@angular/core/testing';
+import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { ResultsSummaryComponent } from './results-summary.component';
 
-// ResultsSummaryComponent uses templateUrl which cannot be resolved in Vitest
-// without resolveComponentResources(). We test the class methods directly
-// using plain `new` — no TestBed, no Angular compiler involved.
-
-const make = (score: number, totalPoints: number, timeSpent = 300) => {
-  const comp = new ResultsSummaryComponent();
-  // input() signals are getter functions on the prototype — override on instance
-  Object.defineProperty(comp, 'score', { value: () => score });
-  Object.defineProperty(comp, 'totalPoints', { value: () => totalPoints });
-  Object.defineProperty(comp, 'timeSpent', { value: () => timeSpent });
-  return comp;
-};
+// ResultsSummaryComponent uses templateUrl (cannot be mounted in Vitest without
+// resolveComponentResources). We test pure logic methods only.
+// input.required() calls must happen inside an injection context — we use
+// runInInjectionContext so Angular's DI is satisfied during construction,
+// then we replace the signal getters with plain functions returning test values.
 
 describe('ResultsSummaryComponent (logic)', () => {
+  let injector: EnvironmentInjector;
 
-  // ─── getPercentage ──────────────────────────────────────────────────────
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    injector = TestBed.inject(EnvironmentInjector);
+  });
+
+  function make(score: number, totalPoints: number, timeSpent = 300) {
+    // Must construct inside injection context so input.required() initialises
+    const comp = runInInjectionContext(injector, () => new ResultsSummaryComponent());
+    // Override signal getters with plain functions returning test values
+    comp.score = (() => score) as typeof comp.score;
+    comp.totalPoints = (() => totalPoints) as typeof comp.totalPoints;
+    comp.timeSpent = (() => timeSpent) as typeof comp.timeSpent;
+    return comp;
+  }
+
+  // ─── getPercentage ────────────────────────────────────────────────────────
 
   it('returns 0 when totalPoints is 0', () => {
     expect(make(0, 0).getPercentage()).toBe(0);
@@ -33,7 +45,7 @@ describe('ResultsSummaryComponent (logic)', () => {
     expect(make(1, 3).getPercentage()).toBe(33);
   });
 
-  // ─── getTitle ──────────────────────────────────────────────────────────
+  // ─── getTitle ─────────────────────────────────────────────────────────────
 
   it.each([
     [95, 100, 'Incredible!'],
@@ -44,7 +56,7 @@ describe('ResultsSummaryComponent (logic)', () => {
     expect(make(score, total).getTitle()).toBe(expected);
   });
 
-  // ─── formatTime ────────────────────────────────────────────────────────
+  // ─── formatTime ───────────────────────────────────────────────────────────
 
   it('formats 0 seconds as "0:00"', () => {
     expect(make(0, 100).formatTime(0)).toBe('0:00');
@@ -62,7 +74,7 @@ describe('ResultsSummaryComponent (logic)', () => {
     expect(make(0, 100).formatTime(125)).toBe('2:05');
   });
 
-  // ─── getMascotUrl ──────────────────────────────────────────────────────
+  // ─── getMascotUrl ─────────────────────────────────────────────────────────
 
   it('uses "sad" seed for score below 50%', () => {
     expect(make(30, 100).getMascotUrl()).toContain('sad');
