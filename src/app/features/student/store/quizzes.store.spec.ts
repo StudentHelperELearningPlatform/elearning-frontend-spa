@@ -90,7 +90,7 @@ describe('QuizzesStore', () => {
     expect(store.currentQuestionIndex()).toBe(1);
   });
 
-  it('submitQuiz calls HttpClient.post and router.navigate', () => {
+  it('submitQuiz calls HttpClient.post and router.navigate', async () => {
     patchState(store, {
       answers: { q1: 'q1-o1' },
     });
@@ -108,6 +108,10 @@ describe('QuizzesStore', () => {
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     store.submitQuiz();
+
+    // router.navigate is called with `void` inside the subscribe callback.
+    // Flush all pending microtasks so the Promise resolves before asserting.
+    await Promise.resolve();
 
     expect(postSpy).toHaveBeenCalledWith('/api/quizzes/quiz-1/submit', {
       answers: { q1: 'q1-o1' },
