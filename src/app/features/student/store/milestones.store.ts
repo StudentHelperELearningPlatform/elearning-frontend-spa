@@ -37,7 +37,7 @@ export class MilestonesStore {
   );
 
   // METHOD
-  loadMilestones(studentId: string) {
+  loadMilestones(_: string) {
     this.loading.set(true);
 
     // MOCK DATA (până faci MSW)
