@@ -28,5 +28,6 @@ export default [
   { path: 'quiz-player/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
   { path: 'quizzes/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
   { path: 'quizzes/:id/results/:attemptId', component: QuizPlayerComponent },
+  { path: 'milestones', component: MilestonesComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ] as Routes;
