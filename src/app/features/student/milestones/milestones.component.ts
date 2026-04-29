@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MilestonesStore, Milestone } from '../store/milestones.store';
 
+type Category = 'all' | 'learning' | 'streak' | 'mastery' | 'social';
+
 @Component({
   selector: 'app-milestones',
   standalone: true,
@@ -13,10 +15,14 @@ export class MilestonesComponent implements OnInit {
 
   store = inject(MilestonesStore);
 
-  selectedCategory = signal<'all' | 'learning' | 'streak' | 'mastery' | 'social'>('all');
+  selectedCategory = signal<Category>('all');
 
   ngOnInit() {
     this.store.loadMilestones('1');
+  }
+
+  setCategory(cat: Category) {
+    this.selectedCategory.set(cat);
   }
 
   filteredMilestones = computed(() => {
@@ -26,19 +32,19 @@ export class MilestonesComponent implements OnInit {
       return this.store.milestones();
     }
 
-    return this.store.milestones().filter(m => m.category === category);
+    return this.store.milestones().filter(
+      m => m.category === category
+    );
   });
-
-  setCategory(cat: any) {
-    this.selectedCategory.set(cat);
-  }
 
   progressPercent = computed(() => {
-    if (this.store.totalCount() === 0) return 0;
-    return (this.store.earnedCount() / this.store.totalCount()) * 100;
+    const total = this.store.totalCount();
+    if (total === 0) return 0;
+
+    return (this.store.earnedCount() / total) * 100;
   });
 
-  getMissing(badge: Milestone) {
+  getMissing(badge: Milestone): number {
     return (badge.goal ?? 0) - (badge.progress ?? 0);
   }
 }
