@@ -1,67 +1,64 @@
 <div class="milestones-page">
 
-  <!-- HEADER -->
   <div class="header">
     <h2>
       {{ store.earnedCount() }} of {{ store.totalCount() }} badges earned
     </h2>
 
-    <!-- PROGRESS BAR -->
     <div class="progress-bar">
       <div class="fill" [style.width.%]="progressPercent()"></div>
     </div>
   </div>
 
-  <!-- CATEGORIES -->
   <div class="categories">
-    <button (click)="setCategory('all')" [class.active]="selectedCategory() === 'all'">All</button>
-    <button (click)="setCategory('learning')" [class.active]="selectedCategory() === 'learning'">Learning</button>
-    <button (click)="setCategory('streak')" [class.active]="selectedCategory() === 'streak'">Streaks</button>
-    <button (click)="setCategory('mastery')" [class.active]="selectedCategory() === 'mastery'">Mastery</button>
-    <button (click)="setCategory('social')" [class.active]="selectedCategory() === 'social'">Social</button>
+    <button (click)="setCategory('all')">All</button>
+    <button (click)="setCategory('learning')">Learning</button>
+    <button (click)="setCategory('streak')">Streaks</button>
+    <button (click)="setCategory('mastery')">Mastery</button>
+    <button (click)="setCategory('social')">Social</button>
   </div>
 
-  <!-- LOADING -->
-  <div *ngIf="store.loading()">
-    Loading badges...
-  </div>
+  @if (store.loading()) {
+    <div>Loading badges...</div>
+  }
 
-  <!-- GRID -->
-  <div class="badge-grid" *ngIf="!store.loading()">
+  @if (!store.loading()) {
 
-    <div class="badge-card"
-         *ngFor="let badge of filteredMilestones()"
-         [class.locked]="!badge.earnedAt">
+    <div class="badge-grid">
 
-      <!-- ICON -->
-      <div class="icon">
-        <span [ngSwitch]="badge.category">
-          <span *ngSwitchCase="'learning'">📘</span>
-          <span *ngSwitchCase="'streak'">🔥</span>
-          <span *ngSwitchCase="'mastery'">🎯</span>
-          <span *ngSwitchCase="'social'">🌍</span>
-          <span *ngSwitchDefault>🏆</span>
-        </span>
-      </div>
+      @for (badge of filteredMilestones(); track badge.id) {
 
-      <!-- TITLE -->
-      <div class="title">{{ badge.title }}</div>
+        <div class="badge-card" [class.locked]="!badge.earnedAt">
 
-      <!-- DESCRIPTION -->
-      <div class="desc">{{ badge.description }}</div>
+          <div class="icon">
+            @switch (badge.category) {
+              @case ('learning') { 📘 }
+              @case ('streak') { 🔥 }
+              @case ('mastery') { 🎯 }
+              @case ('social') { 🌍 }
+              @default { 🏆 }
+            }
+          </div>
 
-      <!-- EARNED -->
-      <div class="earned" *ngIf="badge.earnedAt">
-        Earned {{ badge.earnedAt | date:'MMM d' }}
-      </div>
+          <div class="title">{{ badge.title }}</div>
+          <div class="desc">{{ badge.description }}</div>
 
-      <!-- LOCKED PROGRESS -->
-      <div class="progress-text" *ngIf="!badge.earnedAt">
-        {{ getRemaining(badge) }}
-      </div>
+          @if (badge.earnedAt) {
+            <div>Earned {{ badge.earnedAt | date:'MMM d' }}</div>
+          }
+
+          @if (!badge.earnedAt) {
+            <div>
+              Complete {{ getMissing(badge) }} more
+            </div>
+          }
+
+        </div>
+
+      }
 
     </div>
 
-  </div>
+  }
 
 </div>
