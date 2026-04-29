@@ -1,0 +1,67 @@
+<div class="milestones-page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h2>
+      {{ store.earnedCount() }} of {{ store.totalCount() }} badges earned
+    </h2>
+
+    <!-- PROGRESS BAR -->
+    <div class="progress-bar">
+      <div class="fill" [style.width.%]="progressPercent()"></div>
+    </div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="categories">
+    <button (click)="setCategory('all')" [class.active]="selectedCategory() === 'all'">All</button>
+    <button (click)="setCategory('learning')" [class.active]="selectedCategory() === 'learning'">Learning</button>
+    <button (click)="setCategory('streak')" [class.active]="selectedCategory() === 'streak'">Streaks</button>
+    <button (click)="setCategory('mastery')" [class.active]="selectedCategory() === 'mastery'">Mastery</button>
+    <button (click)="setCategory('social')" [class.active]="selectedCategory() === 'social'">Social</button>
+  </div>
+
+  <!-- LOADING -->
+  <div *ngIf="store.loading()">
+    Loading badges...
+  </div>
+
+  <!-- GRID -->
+  <div class="badge-grid" *ngIf="!store.loading()">
+
+    <div class="badge-card"
+         *ngFor="let badge of filteredMilestones()"
+         [class.locked]="!badge.earnedAt">
+
+      <!-- ICON -->
+      <div class="icon">
+        <span [ngSwitch]="badge.category">
+          <span *ngSwitchCase="'learning'">📘</span>
+          <span *ngSwitchCase="'streak'">🔥</span>
+          <span *ngSwitchCase="'mastery'">🎯</span>
+          <span *ngSwitchCase="'social'">🌍</span>
+          <span *ngSwitchDefault>🏆</span>
+        </span>
+      </div>
+
+      <!-- TITLE -->
+      <div class="title">{{ badge.title }}</div>
+
+      <!-- DESCRIPTION -->
+      <div class="desc">{{ badge.description }}</div>
+
+      <!-- EARNED -->
+      <div class="earned" *ngIf="badge.earnedAt">
+        Earned {{ badge.earnedAt | date:'MMM d' }}
+      </div>
+
+      <!-- LOCKED PROGRESS -->
+      <div class="progress-text" *ngIf="!badge.earnedAt">
+        {{ getRemaining(badge) }}
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
