@@ -15,28 +15,25 @@ export class MilestonesComponent implements OnInit {
 
   store = inject(MilestonesStore);
 
-<<<<<<< HEAD
-  selectedCategory = signal<Category>('all');
-=======
   studentId = '1';
->>>>>>> ba80346ec9d4e7860dd14291cca7d7565967bbd8
 
   selectedCategory = signal<Category>('all');
+
+  ngOnInit() {
+    this.store.loadMilestones(this.studentId);
+  }
 
   setCategory(cat: Category) {
     this.selectedCategory.set(cat);
   }
 
   filteredMilestones = computed(() => {
-<<<<<<< HEAD
-    const category = this.selectedCategory();
+    const cat = this.selectedCategory();
 
-    if (category === 'all') {
-      return this.store.milestones();
-    }
+    if (cat === 'all') return this.store.milestones();
 
     return this.store.milestones().filter(
-      m => m.category === category
+      m => m.category === cat
     );
   });
 
@@ -47,33 +44,11 @@ export class MilestonesComponent implements OnInit {
     return (this.store.earnedCount() / total) * 100;
   });
 
-  getMissing(badge: Milestone): number {
+  getRemaining(badge: Milestone): number {
     return (badge.goal ?? 0) - (badge.progress ?? 0);
-=======
-    const cat = this.selectedCategory();
-    if (cat === 'all') return this.store.milestones();
-    return this.store.milestones().filter(m => m.category === cat);
-  });
-
-  ngOnInit() {
-    this.store.loadMilestones(this.studentId);
   }
 
-  setCategory(cat: Category) {
-    this.selectedCategory.set(cat);
-  }
-
-  isEarned(m: Milestone) {
+  isEarned(m: Milestone): boolean {
     return !!m.earnedAt;
->>>>>>> ba80346ec9d4e7860dd14291cca7d7565967bbd8
   }
-
-  progressPercent(): number {
-    if (!this.store.totalCount()) return 0;
-    return (this.store.earnedCount() / this.store.totalCount()) * 100;
-  }
-
-  getRemaining(badge: any) {
-  return (badge.goal ?? 0) - (badge.progress ?? 0);
-}
 }

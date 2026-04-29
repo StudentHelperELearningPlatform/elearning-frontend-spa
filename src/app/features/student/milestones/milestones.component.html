@@ -22,46 +22,52 @@
   </div>
 
   <!-- LOADING -->
-  <div *ngIf="store.loading()">
-    Loading badges...
-  </div>
+  @if (store.loading()) {
+    <div>Loading badges...</div>
+  }
 
   <!-- GRID -->
-  <div class="badge-grid" *ngIf="!store.loading()">
+  @if (!store.loading()) {
+    <div class="badge-grid">
 
-    <div class="badge-card"
-         *ngFor="let badge of filteredMilestones()"
-         [class.locked]="!badge.earnedAt">
+      @for (badge of filteredMilestones(); track badge.id) {
+        <div class="badge-card" [class.locked]="!badge.earnedAt">
 
-      <!-- ICON -->
-      <div class="icon">
-        <span [ngSwitch]="badge.category">
-          <span *ngSwitchCase="'learning'">📘</span>
-          <span *ngSwitchCase="'streak'">🔥</span>
-          <span *ngSwitchCase="'mastery'">🎯</span>
-          <span *ngSwitchCase="'social'">🌍</span>
-          <span *ngSwitchDefault>🏆</span>
-        </span>
-      </div>
+          <!-- ICON -->
+          <div class="icon">
+            @switch (badge.category) {
+              @case ('learning') { 📘 }
+              @case ('streak') { 🔥 }
+              @case ('mastery') { 🎯 }
+              @case ('social') { 🌍 }
+              @default { 🏆 }
+            }
+          </div>
 
-      <!-- TITLE -->
-      <div class="title">{{ badge.title }}</div>
+          <!-- TITLE -->
+          <div class="title">{{ badge.title }}</div>
 
-      <!-- DESCRIPTION -->
-      <div class="desc">{{ badge.description }}</div>
+          <!-- DESCRIPTION -->
+          <div class="desc">{{ badge.description }}</div>
 
-      <!-- EARNED -->
-      <div class="earned" *ngIf="badge.earnedAt">
-        Earned {{ badge.earnedAt | date:'MMM d' }}
-      </div>
+          <!-- EARNED -->
+          @if (badge.earnedAt) {
+            <div class="earned">
+              Earned {{ badge.earnedAt | date:'MMM d' }}
+            </div>
+          }
 
-      <!-- LOCKED PROGRESS -->
-      <div class="progress-text" *ngIf="!badge.earnedAt">
-        {{ getRemaining(badge) }}
-      </div>
+          <!-- LOCKED PROGRESS -->
+          @if (!badge.earnedAt) {
+            <div class="progress-text">
+              Complete {{ getRemaining(badge) }} more
+            </div>
+          }
+
+        </div>
+      }
 
     </div>
-
-  </div>
+  }
 
 </div>
