@@ -28,3 +28,17 @@ export interface QuizResult {
   timeSpent: number;
   percentage: number;
 }
+
+export interface QuizAttempt {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  subject: string;
+  dateTaken: string;
+  score: number;
+  totalPoints: number;
+  percentage: number;
+  passed: boolean;
+  timeSpent: number;
+  attemptId: string;
+}

@@ -28,6 +28,10 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
             <span class="material-icons text-3xl">quiz</span>
             <span>Quiz Player</span>
           </a>
+          <a routerLink="/student/quizzes" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">history</span>
+            <span>My Quizzes</span>
+          </a>
           <a routerLink="/student/milestones" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">emoji_events</span>
             <span>Achievements</span>

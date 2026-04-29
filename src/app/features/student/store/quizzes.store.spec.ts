@@ -67,6 +67,8 @@ describe('QuizzesStore', () => {
       submitted: false,
       result: null,
       loading: false,
+      attempts: [],
+      attemptsLoading: false,
     });
   });
 
@@ -291,5 +293,46 @@ describe('QuizzesStore', () => {
   it('isLastQuestion is true on the last question', () => {
     patchStore(store, { currentQuestionIndex: 2 });
     expect(store.isLastQuestion()).toBe(true);
+  });
+
+  describe('loadAttempts', () => {
+    const MOCK_ATTEMPTS = [
+      { id: 'a1', quizId: 'quiz-1', quizTitle: 'Test', subject: 'Math',
+        dateTaken: '2026-04-01T10:00:00Z', score: 80, totalPoints: 100,
+        percentage: 80, passed: true, timeSpent: 300, attemptId: 'a1' },
+      { id: 'a2', quizId: 'quiz-2', quizTitle: 'Science', subject: 'Science',
+        dateTaken: '2026-04-02T10:00:00Z', score: 50, totalPoints: 100,
+        percentage: 50, passed: false, timeSpent: 450, attemptId: 'a2' },
+    ];
+
+    it('success populates state', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_ATTEMPTS));
+      store.loadAttempts();
+      expect(store.attemptsLoading()).toBe(false);
+      expect(store.attempts().length).toBe(2);
+      expect(store.attempts()[0].id).toBe('a1');
+    });
+
+    it('error resets loading', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(throwError(() => new Error('fail')));
+      store.loadAttempts();
+      expect(store.attemptsLoading()).toBe(false);
+      expect(store.attempts().length).toBe(0);
+    });
+
+    it('existing state cleared on new call', () => {
+      patchStore(store, { attempts: MOCK_ATTEMPTS, attemptsLoading: false });
+      vi.spyOn(httpClient, 'get').mockReturnValue(of([]));
+      store.loadAttempts();
+      expect(store.attempts().length).toBe(0);
+    });
+
+    it('loadAttempts does not affect other state', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_ATTEMPTS));
+      const quizBefore = store.currentQuiz();
+      store.loadAttempts();
+      expect(store.currentQuiz()).toEqual(quizBefore);
+      expect(store.submitted()).toBe(false);
+    });
   });
 });

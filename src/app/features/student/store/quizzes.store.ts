@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { Question, Quiz, QuizOption, QuizResult } from '@shared/models/quiz.types';
+import { Question, Quiz, QuizOption, QuizResult, QuizAttempt } from '@shared/models/quiz.types';
 
 export type { Question, Quiz, QuizResult };
 
@@ -87,6 +87,8 @@ interface QuizzesState {
   submitted: boolean;
   result: QuizResultWithMeta | null;
   loading: boolean;
+  attempts: QuizAttempt[];
+  attemptsLoading: boolean;
 }
 
 export const QuizzesStore = signalStore(
@@ -101,6 +103,8 @@ export const QuizzesStore = signalStore(
     submitted: false,
     result: null,
     loading: false,
+    attempts: [],
+    attemptsLoading: false,
   }),
   withComputed((state) => ({
     answeredCount: computed(() => Object.keys(state.answers()).length),
@@ -210,6 +214,17 @@ export const QuizzesStore = signalStore(
           },
           error: () => {
             patchState(store, { loading: false });
+          },
+        });
+      },
+      loadAttempts() {
+        patchState(store, { attemptsLoading: true });
+        http.get<QuizAttempt[]>('/api/quizzes/attempts').subscribe({
+          next: (data) => {
+            patchState(store, { attemptsLoading: false, attempts: data });
+          },
+          error: () => {
+            patchState(store, { attemptsLoading: false });
           },
         });
       },

@@ -1,0 +1,97 @@
+<div class="p-6 max-w-7xl mx-auto">
+  <h1 class="text-3xl font-black text-black mb-6">My Quizzes</h1>
+
+  @if (store.attemptsLoading()) {
+    <div class="space-y-4">
+      <div class="h-16 bg-gray-100 rounded-xl animate-pulse"></div>
+      <div class="h-16 bg-gray-100 rounded-xl animate-pulse"></div>
+      <div class="h-16 bg-gray-100 rounded-xl animate-pulse"></div>
+    </div>
+  } @else if (store.attempts().length === 0) {
+    <div class="text-center py-12">
+      <span class="material-icons text-6xl text-gray-300">quiz</span>
+      <p class="mt-4 text-gray-500 text-lg">You haven't taken any quizzes yet. Start your first lesson to get going!</p>
+      <a routerLink="/student/lessons" class="inline-block mt-4 px-6 py-3 bg-[#0ABAB5] text-white font-bold rounded-2xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] transition-transform">
+        Browse Lessons
+      </a>
+    </div>
+  } @else {
+    <div class="mb-4 flex items-center gap-2">
+      <label class="font-bold text-gray-700">Filter by Subject:</label>
+      <select [ngModel]="selectedSubject()" (ngModelChange)="selectedSubject.set($event)" class="border-2 border-black rounded-lg px-3 py-2 font-bold">
+        @for (option of subjectOptions; track option.label) {
+          <option [ngValue]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="border-4 border-black rounded-3xl overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white">
+      <p-table
+        [value]="filteredAttempts()"
+        [paginator]="true"
+        [rows]="10"
+        sortField="dateTaken"
+        [defaultSortOrder]="-1"
+        [styleClass]="'p-datatable-gridlines'"
+        class="custom-table"
+      >
+        <ng-template pTemplate="header">
+          <tr class="bg-gray-100 border-b-4 border-black">
+            <th pSortableColumn="quizTitle" class="p-4 font-black text-black uppercase tracking-wider text-sm border-r-2 border-black last:border-r-0">
+              Quiz Title
+            </th>
+            <th class="p-4 font-black text-black uppercase tracking-wider text-sm border-r-2 border-black last:border-r-0">
+              Subject
+            </th>
+            <th pSortableColumn="dateTaken" class="p-4 font-black text-black uppercase tracking-wider text-sm border-r-2 border-black last:border-r-0">
+              Date Taken
+            </th>
+            <th class="p-4 font-black text-black uppercase tracking-wider text-sm border-r-2 border-black last:border-r-0">
+              Score
+            </th>
+            <th class="p-4 font-black text-black uppercase tracking-wider text-sm border-r-2 border-black last:border-r-0">
+              Pass/Fail
+            </th>
+            <th pSortableColumn="timeSpent" class="p-4 font-black text-black uppercase tracking-wider text-sm border-r-2 border-black last:border-r-0">
+              Time Taken
+            </th>
+            <th class="p-4 font-black text-black uppercase tracking-wider text-sm border-r-2 border-black last:border-r-0">
+              Actions
+            </th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-attempt>
+          <tr class="border-b-2 border-black/10 hover:bg-[#0ABAB5]/5 transition-colors">
+            <td class="p-4 font-bold text-black border-r-2 border-black/10 last:border-r-0">
+              {{ attempt.quizTitle }}
+            </td>
+            <td class="p-4 font-bold text-black border-r-2 border-black/10 last:border-r-0">
+              {{ attempt.subject }}
+            </td>
+            <td class="p-4 font-bold text-black border-r-2 border-black/10 last:border-r-0">
+              {{ attempt.dateTaken | date:'dd MMM yyyy, HH:mm' }}
+            </td>
+            <td class="p-4 font-bold text-black border-r-2 border-black/10 last:border-r-0">
+              <app-badge [variant]="getBadgeVariant(attempt.percentage)">
+                {{attempt.score}}/{{attempt.totalPoints}} ({{attempt.percentage}}%)
+              </app-badge>
+            </td>
+            <td class="p-4 font-bold text-black border-r-2 border-black/10 last:border-r-0">
+              <app-badge [variant]="getPassFailVariant(attempt.passed)">
+                {{attempt.passed ? 'PASSED' : 'FAILED'}}
+              </app-badge>
+            </td>
+            <td class="p-4 font-bold text-black border-r-2 border-black/10 last:border-r-0">
+              {{ formatTime(attempt.timeSpent) }}
+            </td>
+            <td class="p-4 font-bold text-black border-r-2 border-black/10 last:border-r-0">
+              <a [routerLink]="['/student/quizzes', attempt.quizId, 'results', attempt.attemptId]" class="text-[#0ABAB5] font-bold hover:underline">
+                View Results
+              </a>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  }
+</div>
