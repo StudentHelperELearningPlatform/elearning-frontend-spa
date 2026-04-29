@@ -38,8 +38,11 @@ export class MilestonesStore {
 
   // METHOD
   loadMilestones(studentId: string) {
+<<<<<<< HEAD
     void studentId;
 
+=======
+>>>>>>> ba80346ec9d4e7860dd14291cca7d7565967bbd8
     this.loading.set(true);
 
     // MOCK DATA (până faci MSW)
