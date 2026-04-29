@@ -62,8 +62,8 @@ import { PathLesson } from '../../../../shared/models/learning-path.model';
       <!-- Empty state -->
       @else if (store.currentPath() && store.totalCount() === 0) {
         <app-empty-state
-          title="No lessons yet"
-          description="This learning path has no lessons. Check back soon!"
+          title="Ready to start your journey?"
+          [description]="emptyStateMessage()"
           icon="school"
         />
       }
@@ -260,7 +260,13 @@ export class LearningPathComponent implements OnInit {
   ngOnInit() {
     this.pathId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.pathId) {
-      this.store.loadPath(this.pathId);
+      const alreadyLoaded =
+        !this.store.loading() &&
+        !this.store.error() &&
+        this.store.currentPath()?.id === this.pathId;
+      if (!alreadyLoaded) {
+        this.store.loadPath(this.pathId);
+      }
     }
   }
 
@@ -268,6 +274,13 @@ export class LearningPathComponent implements OnInit {
     if (this.pathId) {
       this.store.loadPath(this.pathId);
     }
+  }
+
+  emptyStateMessage(): string {
+    const title = this.store.currentPath()?.title;
+    return title
+      ? `"${title}" has no lessons yet — explore the course catalogue to find where your journey begins!`
+      : 'No lessons here yet — explore the course catalogue to find your starting point!';
   }
 
   cardClass(lesson: PathLesson): string {
