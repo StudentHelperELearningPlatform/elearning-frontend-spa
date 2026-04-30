@@ -1,0 +1,556 @@
+═══ FILE 1: quizzes.store.ts ═══
+import { HttpClient } from '@angular/common/http';
+import { computed, inject } from '@angular/core';
+import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+import { Question, Quiz, QuizOption, QuizResult } from '@shared/models/quiz.types';
+interface QuizzesState {
+  currentQuiz: QuizWithMeta | null;
+  currentQuestionIndex: number;
+  answers: Record<string, string>;
+  flaggedQuestions: Set<string>;
+  startedAt: Date | null;
+  timeRemaining: number | null;
+  submitted: boolean;
+  result: QuizResultWithMeta | null;
+  loading: boolean;
+}
+  withState<QuizzesState>({
+    currentQuiz: null,
+    currentQuestionIndex: 0,
+    answers: {},
+    flaggedQuestions: new Set<string>(),
+    startedAt: null,
+    timeRemaining: null,
+    submitted: false,
+    result: null,
+    loading: false,
+  }),
+      loadQuizById(id: string) {
+        patchState(store, { loading: true });
+        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+          next: (quiz) => {
+            patchState(store, {
+              loading: false,
+              currentQuiz: mapQuizResponse(quiz),
+              currentQuestionIndex: 0,
+              answers: {},
+              flaggedQuestions: new Set<string>(),
+              submitted: false,
+              result: null,
+            });
+          },
+          error: () => {
+            patchState(store, { loading: false });
+          },
+        });
+      },
+      submitQuiz() {
+        submitQuizInternal();
+      },
+
+═══ FILE 2: quizzes.store.spec.ts ═══
+import { TestBed } from '@angular/core/testing';
+import { patchStore } from '../../../../test-utils/patch-store';
+import { provideHttpClient, HttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { of, throwError } from 'rxjs';
+import { QuizzesStore } from './quizzes.store';
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideRouter([])],
+    });
+    store = TestBed.inject(QuizzesStore);
+    httpClient = TestBed.inject(HttpClient);
+
+    patchStore(store, {
+      currentQuiz: {
+        id: 'quiz-1',
+        title: 'Sample Quiz',
+        subject: 'Mathematics',
+        timeLimit: 900,
+        timeLimitSeconds: 900,
+        questions: [
+          {
+            id: 'q1',
+            type: 'MULTIPLE_CHOICE',
+            text: 'Q1',
+            points: 10,
+            options: [
+              { id: 'q1-o1', text: 'A' },
+              { id: 'q1-o2', text: 'B' },
+            ],
+          },
+          {
+            id: 'q2',
+            type: 'TRUE_FALSE',
+            text: 'Q2',
+            points: 10,
+            options: [
+              { id: 'true', text: 'True' },
+              { id: 'false', text: 'False' },
+            ],
+          },
+          { id: 'q3', type: 'SHORT_ANSWER', text: 'Q3', points: 10, options: [] },
+        ],
+      },
+      currentQuestionIndex: 0,
+      answers: {},
+      flaggedQuestions: new Set<string>(),
+      startedAt: null,
+      timeRemaining: 900,
+      submitted: false,
+      result: null,
+      loading: false,
+    });
+  });
+  it('loadQuizById sets loading true then false on success', () => {
+    vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+    store.loadQuizById('quiz-1');
+    expect(store.loading()).toBe(false);
+    expect(store.currentQuiz()?.id).toBe('quiz-1');
+  });
+
+═══ FILE 3: student.routes.ts ═══
+// src/app/features/student/student.routes.ts
+import { Routes } from '@angular/router';
+import { ProgressDashboardComponent } from './progress-dashboard/progress-dashboard.component';
+import { QuizPlayerComponent } from './quiz-player/quiz-player.component';
+import { LessonListComponent } from './progress-dashboard/lesson-list/lesson-list.component';
+import { MilestonesComponent } from './progress-dashboard/milestones/milestones.component';
+import { LearningPathComponent } from './progress-dashboard/learning-path/learning-path.component';
+import { quizCanDeactivate } from './quiz-player/quiz.can-deactivate.guard';
+
+export default [
+  { path: 'dashboard', component: ProgressDashboardComponent },
+  { path: 'lessons', component: LessonListComponent },
+  { path: 'milestones', component: MilestonesComponent },
+  { path: 'learning-path', component: LearningPathComponent },
+  { path: 'lesson-viewer', loadComponent: () => import('./lesson-viewer/lesson-viewer.component').then(m => m.LessonViewerComponent) },
+  { path: 'lesson-viewer/:id', loadComponent: () => import('./lesson-viewer/lesson-viewer.component').then(m => m.LessonViewerComponent) },
+  { path: 'quiz-player', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
+  { path: 'quiz-player/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
+  { path: 'quizzes/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
+  { path: 'quizzes/:id/results/:attemptId', component: QuizPlayerComponent },
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+] as Routes;
+
+═══ FILE 4: sidebar.component.ts ═══
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { AuthStore } from '../../../features/auth/store/auth.store';
+
+@Component({
+  selector: 'app-sidebar',
+  standalone: true,
+  host: { style: 'display: block' },
+  imports: [CommonModule, RouterModule],
+  template: `
+    <aside class="w-72 bg-white border-r-4 border-black h-[calc(100vh-84px)] sticky top-[84px] hidden md:block overflow-y-auto p-6">
+      <nav class="space-y-4">
+        @if (authStore.isStudent()) {
+          <a routerLink="/student/dashboard" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">dashboard</span>
+            <span>Dashboard</span>
+          </a>
+          <a routerLink="/student/lessons" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">library_books</span>
+            <span>Lessons</span>
+          </a>
+          <a routerLink="/student/lesson-viewer" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">menu_book</span>
+            <span>Lesson Viewer</span>
+          </a>
+          <a routerLink="/student/quiz-player" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">quiz</span>
+            <span>Quiz Player</span>
+          </a>
+          <a routerLink="/student/milestones" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">emoji_events</span>
+            <span>Achievements</span>
+          </a>
+          <a routerLink="/student/learning-path" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">route</span>
+            <span>Learning Path</span>
+          </a>
+        }
+
+        @if (authStore.isTeacher()) {
+          <a routerLink="/teacher/dashboard" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">insights</span>
+            <span>Analytics</span>
+          </a>
+          <a routerLink="/teacher/classes" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">groups</span>
+            <span>Classes</span>
+          </a>
+          <a routerLink="/teacher/content" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">edit_document</span>
+            <span>Content Editor</span>
+          </a>
+          <a routerLink="/teacher/quiz-builder" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">psychology</span>
+            <span>Quiz Builder</span>
+          </a>
+        }
+
+        @if (authStore.isAdmin()) {
+          <a routerLink="/admin/user-management" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">manage_accounts</span>
+            <span>User Management</span>
+          </a>
+          <a routerLink="/admin/platform-settings" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">settings</span>
+            <span>Platform Settings</span>
+          </a>
+        }
+      </nav>
+    </aside>
+  `
+})
+export class SidebarComponent {
+  authStore = inject(AuthStore);
+}
+
+═══ FILE 5: quiz-player.component.ts ═══
+import { Component, computed, DestroyRef, effect, inject, OnInit, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
+import { interval, Subscription } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { QuizzesStore, Question } from '../store/quizzes.store';
+import { QuestionCardComponent } from './question-card/question-card.component';
+import { TimerComponent } from './timer/timer.component';
+import { ResultsSummaryComponent } from './results-summary/results-summary.component';
+import { ButtonComponent } from '../../../shared/components/button/button.component';
+import { ModalComponent } from '../../../shared/components/modal/modal.component';
+@Component({
+  selector: 'app-quiz-player',
+  standalone: true,
+  imports: [
+    CommonModule,
+    QuestionCardComponent,
+    TimerComponent,
+    ResultsSummaryComponent,
+    ButtonComponent,
+    ModalComponent,
+  ],
+  templateUrl: './quiz-player.component.html',
+})
+  store = inject(QuizzesStore);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
+  started = signal(false);
+  paletteOpen = signal(false);
+  showSubmitModal = signal(false);
+  quizId = signal('1');
+  selectedOptionId = signal<string | null>(null);
+  currentQuestion = computed<Question | undefined>(() => {
+    const quiz = this.store.currentQuiz();
+    if (!quiz || !quiz.questions) return undefined;
+    return quiz.questions[this.store.currentQuestionIndex()];
+  });
+  progressPercentage = computed(() => {
+    const total = this.store.currentQuiz()?.questions?.length || 1;
+    const current = this.store.currentQuestionIndex() + 1;
+    return (current / total) * 100;
+  });
+  totalQuestions = computed(() => this.store.currentQuiz()?.questions?.length || 0);
+  isLastQuestion = computed(() => this.store.currentQuestionIndex() >= this.totalQuestions() - 1);
+    effect(() => {
+      const shouldRunTimer =
+        this.started() && !this.store.submitted() && this.store.timeRemaining() !== null;
+
+      if (shouldRunTimer && !this.timerSubscription) {
+        this.timerSubscription = interval(1000)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => this.store.tickTimer());
+      }
+
+      if (!shouldRunTimer && this.timerSubscription) {
+        this.timerSubscription.unsubscribe();
+        this.timerSubscription = null;
+      }
+    });
+
+    effect(() => {
+      const questionId = this.currentQuestion()?.id;
+      if (!questionId) {
+        this.selectedOptionId.set(null);
+        return;
+      }
+
+      const answer = this.store.answers()[questionId] ?? null;
+      this.selectedOptionId.set(answer);
+    });
+
+═══ FILE 6: package.json (scripts + deps) ═══
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "vitest --run",
+    "lint": "ng lint",
+    "test:ci": "vitest --run --reporter=verbose"
+  },
+  "dependencies": {
+    "@angular/animations": "^21.0.0",
+    "@angular/cdk": "^21.0.0",
+    "@angular/common": "^21.0.0",
+    "@angular/compiler": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "@angular/forms": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "@angular/platform-browser-dynamic": "^21.0.0",
+    "@angular/router": "^21.0.0",
+    "@ngrx/operators": "^21.1.0",
+    "@ngrx/signals": "^21.1.0",
+    "@primeng/themes": "^21.0.4",
+    "@types/d3": "^7.4.3",
+    "d3": "^7.9.0",
+    "primeicons": "^7.0.0",
+    "primeng": "^21.1.5",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.0.0",
+    "@angular/cli": "^21.0.0",
+    "@angular/compiler-cli": "^21.0.0",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^22.0.0",
+    "angular-eslint": "21.1.0",
+    "jsdom": "^26.0.0",
+    "msw": "^2.13.6",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.2",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.0"
+  },
+
+═══ FILE 7: quizzes.handlers.ts ═══
+import { http, HttpResponse } from 'msw';
+
+const quizTemplate = {
+  title: 'Sample Quiz',
+  subject: 'Mathematics',
+  timeLimitSeconds: 900,
+  questions: [
+    {
+      id: 'q1',
+      type: 'MULTIPLE_CHOICE',
+      text: 'What is 12 + 8?',
+      options: ['18', '19', '20', '21'],
+      points: 10,
+      correctAnswer: 'q1-o3',
+    },
+    {
+      id: 'q2',
+      type: 'MULTIPLE_CHOICE',
+      text: 'Which fraction is equivalent to 1/2?',
+      options: ['2/3', '3/6', '4/5', '5/8'],
+      points: 10,
+      correctAnswer: 'q2-o2',
+    },
+    {
+      id: 'q3',
+      type: 'MULTIPLE_CHOICE',
+      text: 'What is 7 x 6?',
+      options: ['36', '40', '42', '48'],
+      points: 10,
+      correctAnswer: 'q3-o3',
+    },
+    {
+      id: 'q4',
+      type: 'MULTIPLE_CHOICE',
+      text: 'Which decimal equals 3/4?',
+      options: ['0.25', '0.5', '0.75', '0.9'],
+      points: 10,
+      correctAnswer: 'q4-o3',
+    },
+    {
+      id: 'q5',
+      type: 'MULTIPLE_CHOICE',
+      text: 'What is 9 squared?',
+      options: ['72', '79', '81', '90'],
+      points: 10,
+      correctAnswer: 'q5-o3',
+    },
+    {
+      id: 'q6',
+      type: 'TRUE_FALSE',
+      text: 'A triangle has three sides.',
+      options: ['True', 'False'],
+      points: 10,
+      correctAnswer: 'true',
+    },
+    {
+      id: 'q7',
+      type: 'TRUE_FALSE',
+      text: 'Zero is a negative number.',
+      options: ['True', 'False'],
+      points: 10,
+      correctAnswer: 'false',
+    },
+    {
+      id: 'q8',
+      type: 'TRUE_FALSE',
+      text: '100 is greater than 10.',
+      options: ['True', 'False'],
+      points: 10,
+      correctAnswer: 'true',
+    },
+    {
+      id: 'q9',
+      type: 'SHORT_ANSWER',
+      text: 'Briefly explain why practice helps learning.',
+      points: 10,
+      correctAnswer: null,
+    },
+    {
+      id: 'q10',
+      type: 'SHORT_ANSWER',
+      text: 'Write one real-world use of percentages.',
+      points: 10,
+      correctAnswer: null,
+    },
+  ],
+};
+
+export const quizzesHandlers = [
+  http.get('/api/quizzes/:id', ({ params }) => {
+    const { id } = params;
+    return HttpResponse.json({
+      id,
+      ...quizTemplate,
+    });
+  }),
+  http.post('/api/quizzes/:id/submit', async ({ request }) => {
+    const body = (await request.json()) as { answers: Record<string, string> };
+    const submittedAnswers = body.answers ?? {};
+
+    let score = 0;
+    const totalPoints = quizTemplate.questions.reduce((sum, q) => sum + q.points, 0);
+
+    for (const question of quizTemplate.questions) {
+      if (question.correctAnswer === null) {
+        const userAnswer = submittedAnswers[question.id] ?? '';
+        if (userAnswer.trim().length > 0) {
+          score += question.points;
+        }
+      } else {
+        if (submittedAnswers[question.id] === question.correctAnswer) {
+          score += question.points;
+        }
+      }
+    }
+
+    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+
+    return HttpResponse.json({
+      attemptId: `attempt-${Date.now()}`,
+      score,
+      totalPoints,
+      percentage,
+      passed: percentage >= 70,
+      timeSpent: 0,
+    });
+  }),
+];
+
+═══ FILE 8: ci.yml ═══
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm run test -- --watch=false
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (production config)
+        run: npm run build -- --configuration production
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 3

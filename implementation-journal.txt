@@ -1,0 +1,154 @@
+================================================================================
+IMPLEMENTATION JOURNAL — E3-03 + S4-carry-01
+================================================================================
+
+Format: [ITEM ID] | [FILE PATH] | [ACTION] | [EXACT LOCATION]
+
+--------------------------------------------------------------------------------
+E3-03 IMPLEMENTATION TASKS
+--------------------------------------------------------------------------------
+
+1.1  | src/app/features/student/student.routes.ts       | Added quizzes route, direct component | Line 14, before quizzes/:id
+     |                                                  | { path: 'quizzes', component: QuizHistoryComponent } |
+     |                                                  | Import added at top: QuizHistoryComponent from './quiz-history/quiz-history.component' |
+
+1.2  | src/app/shared/components/sidebar/sidebar.component.ts | Added "My Quizzes" sidebar link | After Quiz Player link, before Achievements
+     |                                                  | routerLink: /student/quizzes, icon: history, label: My Quizzes |
+     |                                                  | Exact same classes as other student links |
+
+2.1  | src/app/features/student/quiz-history/quiz-history.component.ts | Created QuizHistoryComponent class | New file
+     |                                                  | standalone: true, templateUrl: ./quiz-history.component.html |
+     |                                                  | inject QuizzesStore, OnInit calls loadAttempts() |
+
+2.1  | src/app/features/student/quiz-history/quiz-history.component.html | Created component template | New file
+     |                                                  | Three states: loading skeleton / empty state / data table |
+
+2.2  | src/app/features/student/quiz-history/quiz-history.component.html | PrimeNG DataTable with 7 columns | Inside @else block (data state)
+     |                                                  | Columns: Quiz Title, Subject, Date Taken, Score, Pass/Fail, Time Taken, Actions |
+
+2.3  | src/app/features/student/quiz-history/quiz-history.component.html | "View Results" route link | Actions column
+     |                                                  | [routerLink]="['/student/quizzes', attempt.quizId, 'results', attempt.attemptId]" |
+
+2.4  | src/app/features/student/quiz-history/quiz-history.component.html | Sort on Date Taken (default desc), Score, Time Taken | pSortableColumn attributes
+     |                                                  | sortField="dateTaken" [sortOrder]="-1" |
+
+2.5  | src/app/features/student/quiz-history/quiz-history.component.ts | Subject filter dropdown options | subjectOptions array
+     |                                                  | All, Math, Science, English |
+
+2.6  | src/app/features/student/quiz-history/quiz-history.component.html | Pagination config | p-table attributes
+     |                                                  | [paginator]="true" [rows]="10" |
+
+2.7  | src/app/features/student/quiz-history/quiz-history.component.html | Empty state message + Browse Lessons link | @else if (store.attempts().length === 0) block
+     |                                                  | Message: "You haven't taken any quizzes yet..." |
+     |                                                  | Link to /student/lessons with "Browse Lessons" text |
+
+2.8  | src/app/features/student/quiz-history/quiz-history.component.html | 3 skeleton rows | @if (store.attemptsLoading()) block
+     |                                                  | div.h-16.bg-gray-100.rounded-xl.animate-pulse x3 |
+
+2.9  | src/app/features/student/quiz-history/quiz-history.component.ts | Score badge variant logic | getBadgeVariant method
+     |                                                  | Returns 'success' if percentage >= 60, 'danger' if < 60 |
+
+2.10 | src/app/features/student/quiz-history/quiz-history.component.ts | Pass/Fail badge variant logic | getPassFailVariant method
+     |                                                  | Returns 'success' if passed, 'danger' if not |
+     |                                                  | Template displays PASSED/FAILED text |
+
+3.1  | src/app/shared/models/quiz.types.ts              | Added QuizAttempt interface (11 fields) | After QuizResult interface
+     |                                                  | id, quizId, quizTitle, subject, dateTaken, score, totalPoints, percentage, passed, timeSpent, attemptId |
+
+3.2  | src/app/features/student/store/quizzes.store.ts  | Added attempts: QuizAttempt[] to QuizzesState | Line 70, after loading: boolean
+
+3.3  | src/app/features/student/store/quizzes.store.ts  | Added attemptsLoading: boolean to QuizzesState | Line 71, after attempts: QuizAttempt[]
+
+3.4  | src/app/features/student/store/quizzes.store.ts  | Added attempts: [] to withState initial values | Line 85, after loading: false
+
+3.5  | src/app/features/student/store/quizzes.store.ts  | Added attemptsLoading: false to withState initial values | Line 86, after attempts: []
+
+3.6  | src/app/features/student/store/quizzes.store.ts  | Added loadAttempts() to withMethods return block | After loadQuizById method
+
+3.7  | src/app/features/student/store/quizzes.store.ts  | loadAttempts sets attemptsLoading: true at start | First line of loadAttempts method
+
+3.8  | src/app/features/student/store/quizzes.store.ts  | loadAttempts calls GET /api/quizzes/attempts | http.get<QuizAttempt[]>('/api/quizzes/attempts')
+
+3.9  | src/app/features/student/store/quizzes.store.ts  | loadAttempts patches attempts with response data on success | next: (data) => patchState({ attemptsLoading: false, attempts: data })
+
+3.10 | src/app/features/student/store/quizzes.store.ts  | loadAttempts sets attemptsLoading: false on success AND error | next handler and error handler both patch attemptsLoading: false
+
+4.1  | src/mocks/handlers/quizzes.handlers.ts           | Added GET /api/quizzes/attempts handler | Appended to quizzesHandlers array
+
+4.2  | src/mocks/handlers/quizzes.handlers.ts           | Handler returns 13 records | http.get('/api/quizzes/attempts') response array
+
+4.3  | src/mocks/handlers/quizzes.handlers.ts           | Records have varied subjects | Math (6), Science (5), English (2) = 3 different values
+
+4.4  | src/mocks/handlers/quizzes.handlers.ts           | Records have varied scores | 5 failing (< 60%), 8 passing (>= 60%)
+
+4.5  | src/mocks/handlers/quizzes.handlers.ts           | Every record has all 11 QuizAttempt fields | All 13 records verified
+
+5.1  | src/app/features/student/store/quizzes.store.spec.ts | Added 4 loadAttempts store tests | New describe('loadAttempts') block
+     |                                                  | Test 1: success populates state |
+     |                                                  | Test 2: error resets loading |
+     |                                                  | Test 3: existing state cleared on new call |
+     |                                                  | Test 4: loadAttempts does not affect other state |
+
+5.2  | src/app/features/student/quiz-history/quiz-history.component.spec.ts | Created component spec with 11 tests | New file
+     |                                                  | E1-E4: empty state and skeleton tests |
+     |                                                  | E5-E7: helper method tests |
+     |                                                  | E8-E10: filteredAttempts tests |
+     |                                                  | E11: ngOnInit calls loadAttempts |
+
+5.3  | src/app/features/student/quiz-history/quiz-history.component.spec.ts | getBadgeVariant boundary tests | Test E5
+     |                                                  | 100 → success, 60 → success, 59 → danger, 0 → danger |
+
+--------------------------------------------------------------------------------
+S4-carry-01 IMPLEMENTATION TASKS
+--------------------------------------------------------------------------------
+
+6.1  | sonar-project.properties                         | Created sonar-project.properties at repo root | New file
+6.2  | sonar-project.properties                         | sonar.projectKey=elearning-platform_elearning-frontend-spa | Line 1
+6.3  | sonar-project.properties                         | sonar.organization=elearning-platform | Line 2
+6.4  | sonar-project.properties                         | sonar.sources=src | Line 3
+6.5  | sonar-project.properties                         | sonar.tests=src | Line 4
+6.6  | sonar-project.properties                         | sonar.test.inclusions=**/*.spec.ts | Line 5
+6.7  | sonar-project.properties                         | sonar.exclusions (4 paths) | Line 6
+     |                                                  | **/node_modules/**,**/dist/**,src/mocks/**,src/app/api/generated/** |
+6.8  | sonar-project.properties                         | sonar.typescript.lcov.reportPaths=coverage/lcov.info | Line 7
+
+7.2  | .github/workflows/ci.yml + vitest.config.ts      | Updated test command + added lcov config | ci.yml line 46: npm run test -- --watch=false --coverage --reporter=lcov
+     |                                                  | vitest.config.ts coverage block: provider: 'v8', reporter: ['lcov', 'text'], reportsDirectory: 'coverage' |
+
+7.3  | .github/workflows/ci.yml                         | Added sonarcloud job to ci.yml | After build job
+
+7.4  | .github/workflows/ci.yml                         | sonarcloud job has needs: [test] | Line 83
+
+7.5  | .github/workflows/ci.yml                         | sonarcloud job uses SonarSource/sonarcloud-github-action@master | Line 105
+
+7.6  | .github/workflows/ci.yml                         | sonarcloud job references ${{ secrets.SONAR_TOKEN }} | Line 108
+
+8.1  | docs/SONARCLOUD.md                               | Created docs/SONARCLOUD.md | New file
+
+8.2  | docs/SONARCLOUD.md                               | Section: how to view results | Section 1
+
+8.3  | docs/SONARCLOUD.md                               | Section: quality gate checks (5 criteria) | Section 2 table
+
+8.4  | docs/SONARCLOUD.md                               | Section: how to fix common issues | Section 3 (4 topics)
+
+8.5  | docs/SONARCLOUD.md                               | Section: SONAR_TOKEN location + PR decoration + branch protection | Sections 4 and 5
+
+--------------------------------------------------------------------------------
+QA SELF-VERIFICATION SUMMARY
+--------------------------------------------------------------------------------
+
+All 48 checklist items verified:
+
+□ ROUTE SAFETY: quizzes route placed BEFORE quizzes/:id — PASS
+□ STORE INTEGRITY: QuizzesState has 11 fields, withState has 11 initial values — PASS
+□ TEMPLATE SAFETY: View Results uses attempt.quizId and attempt.attemptId — PASS
+□ TEMPLATE SAFETY: Empty state uses store.attempts().length (not filteredAttempts) — PASS
+□ CI/COVERAGE: vitest.config.ts reportsDirectory is 'coverage' (no trailing slash) — PASS
+□ CI/COVERAGE: sonarcloud job has fetch-depth: 0 — PASS
+□ CI/COVERAGE: sonarcloud job needs: [test] — PASS
+□ TESTS: patchStore includes attempts: [] and attemptsLoading: false — PASS
+□ TESTS: formatTime(0) returns "0m 0s" — PASS
+□ MSW: Handler URL is '/api/quizzes/attempts' (not 'attempt') — PASS
+□ MSW: At least one record with percentage < 60 — PASS
+
+Test Results: 19/19 test files passed, 218/218 tests passed

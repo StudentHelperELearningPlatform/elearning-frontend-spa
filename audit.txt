@@ -1,0 +1,155 @@
+====================================================
+AUDIT REPORT — E3-03 + S4-carry-01
+Model: Kimi K2.6
+Codebase: elearning-frontend-spa
+====================================================
+
+## STORY E3-03: Quiz History List
+
+### 1. ROUTING & NAVIGATION
+❌ 1.1 — Route `/student/quizzes` (without path parameter) not found in student.routes.ts. Existing quiz routes: `quizzes/:id` (line 20) and `quizzes/:id/results/:attemptId` (line 21). No list view route exists.
+❌ 1.2 — No "My Quizzes" link present in SidebarComponent template (sidebar.component.ts). Student links found: Dashboard, Lessons, Lesson Viewer, Quiz Player, Achievements, Learning Path. No quiz history navigation.
+
+### 2. QUIZ HISTORY COMPONENT
+❌ 2.1  — `src/app/features/student/quiz-history/` folder exists but contains zero files. No component file(s) found.
+❌ 2.2  — No quiz-history component exists, therefore no PrimeNG DataTable with columns (Quiz Title, Subject, Date Taken, Score, Pass/Fail, Time Taken, Actions).
+❌ 2.3  — No quiz-history component exists, therefore no "View Results" button navigating to `/student/quizzes/:id/results/:attemptId`.
+❌ 2.4  — No quiz-history component exists, therefore no sort enabled on Date Taken (desc), Score, or Time Taken columns.
+❌ 2.5  — No quiz-history component exists, therefore no Subject filter dropdown with options (All, Math, Science, English).
+❌ 2.6  — No quiz-history component exists, therefore no pagination set to 10 rows per page.
+❌ 2.7  — No quiz-history component exists, therefore no empty state message with text "You haven't taken any quizzes yet. Start your first lesson to get going!" and no "Browse Lessons" button linking to `/student/lessons`.
+❌ 2.8  — No quiz-history component exists, therefore no loading skeleton with 3 skeleton rows while attemptsLoading is true.
+❌ 2.9  — No quiz-history component exists, therefore no Score badge using BadgeComponent. BadgeComponent itself exists at badge.component.ts with variants: primary, secondary, success, warning, danger, neutral.
+❌ 2.10 — No quiz-history component exists, therefore no Pass/Fail badge using BadgeComponent with "PASSED"/"FAILED" text.
+
+### 3. STORE EXTENSION
+❌ 3.1  — `QuizAttempt` interface/type not found in `src/app/shared/models/quiz.types.ts`. File exports: QuizOption, Question, Quiz, QuizResult. No QuizAttempt export.
+❌ 3.2  — `attempts: QuizAttempt[]` field absent from `QuizzesState` interface (quizzes.store.ts line 64-74). Fields found: currentQuiz, currentQuestionIndex, answers, flaggedQuestions, startedAt, timeRemaining, submitted, result, loading.
+❌ 3.3  — `attemptsLoading: boolean` field absent from `QuizzesState` interface (quizzes.store.ts line 64-74).
+❌ 3.4  — `attempts: []` absent from `withState` initial value (quizzes.store.ts line 77-87). Initial state has: currentQuiz: null, currentQuestionIndex: 0, answers: {}, flaggedQuestions: new Set<string>(), startedAt: null, timeRemaining: null, submitted: false, result: null, loading: false.
+❌ 3.5  — `attemptsLoading: false` absent from `withState` initial value (quizzes.store.ts line 77-87).
+❌ 3.6  — `loadAttempts()` method not found inside `withMethods` (quizzes.store.ts line 118-268). Methods found: loadQuizById, startQuiz, answerQuestion, flagQuestion, navigateTo, nextQuestion, prevQuestion, previousQuestion, submitQuiz, tickTimer, isAnswered, isFlagged, resetQuiz.
+❌ 3.7  — `loadAttempts()` method does not exist, therefore no logic to set attemptsLoading to true at start of call.
+❌ 3.8  — `loadAttempts()` method does not exist, therefore no GET /api/quizzes/attempts call.
+❌ 3.9  — `loadAttempts()` method does not exist, therefore no patching of attempts state with response data.
+❌ 3.10 — `loadAttempts()` method does not exist, therefore no attemptsLoading set to false on success/error.
+
+### 4. MSW HANDLER
+❌ 4.1 — Handler for GET /api/quizzes/attempts not found in `src/mocks/handlers/quizzes.handlers.ts`. Existing handlers: GET /api/quizzes/:id (line 55-59), POST /api/quizzes/:id/submit (line 60-89).
+❌ 4.2 — No GET /api/quizzes/attempts handler exists, therefore no attempt records to count. Actual count: 0.
+❌ 4.3 — No GET /api/quizzes/attempts handler exists, therefore no records with varied subjects.
+❌ 4.4 — No GET /api/quizzes/attempts handler exists, therefore no records with varied scores.
+❌ 4.5 — No GET /api/quizzes/attempts handler exists, therefore no records containing fields: id, quizId, quizTitle, subject, dateTaken, score, totalPoints, percentage, passed, timeSpent, attemptId.
+
+### 5. UNIT TESTS
+❌ 5.1 — No test verifying `loadAttempts()` populates attempts state found in `src/app/features/student/store/quizzes.store.spec.ts`. Tests cover: loadQuizById, answerQuestion, flagQuestion, navigation, submitQuiz, tickTimer, resetQuiz, computed signals. No loadAttempts tests.
+❌ 5.2 — No test verifying empty state UI renders when attempts array is empty. No quiz-history component or related spec file exists.
+❌ 5.3 — No test verifying badge shows correct color based on percentage threshold (≥60 vs <60). No such test in quizzes.store.spec.ts or any quiz-history spec file.
+
+---
+
+## STORY S4-carry-01: SonarCloud CI Integration
+
+### 6. SONAR CONFIG
+❌ 6.1 — `sonar-project.properties` file not found at repo root. File does not exist.
+❌ 6.2 — `sonar-project.properties` file does not exist, therefore no `sonar.projectKey=elearning-platform_elearning-frontend-spa` line.
+❌ 6.3 — `sonar-project.properties` file does not exist, therefore no `sonar.organization=elearning-platform` line.
+❌ 6.4 — `sonar-project.properties` file does not exist, therefore no `sonar.sources=src` line.
+❌ 6.5 — `sonar-project.properties` file does not exist, therefore no `sonar.tests=src` line.
+❌ 6.6 — `sonar-project.properties` file does not exist, therefore no `sonar.test.inclusions=**/*.spec.ts` line.
+❌ 6.7 — `sonar-project.properties` file does not exist, therefore no `sonar.exclusions` covering `**/node_modules/**`, `**/dist/**`, `src/mocks/**`, `src/app/api/generated/**`.
+❌ 6.8 — `sonar-project.properties` file does not exist, therefore no `sonar.typescript.lcov.reportPaths=coverage/lcov.info` line.
+
+### 7. CI PIPELINE
+✅ 7.1 — `.github/workflows/ci.yml` file exists with `lint`, `test`, and `build` jobs defined.
+❌ 7.2 — `test` job runs `npm run test -- --watch=false` (ci.yml line 35), which resolves to `vitest --run --watch=false` per package.json line 8. Spec requires `ng test` with flags `--watch=false --browsers=ChromeHeadless --code-coverage`. Actual command does not use `ng test` and lacks `--browsers=ChromeHeadless --code-coverage` flags.
+❌ 7.3 — No `sonarcloud` job exists in `.github/workflows/ci.yml`. Jobs found: lint, test, build.
+❌ 7.4 — No `sonarcloud` job exists, therefore no `needs: [test]` or `needs: test` dependency.
+❌ 7.5 — No `sonarcloud` job exists, therefore no `SonarSource/sonarcloud-github-action@master` action usage.
+❌ 7.6 — No `sonarcloud` job exists, therefore no `SONAR_TOKEN` referenced as `${{ secrets.SONAR_TOKEN }}`.
+
+### 8. DOCUMENTATION
+❌ 8.1 — `docs/SONARCLOUD.md` file not found. File does not exist.
+❌ 8.2 — `docs/SONARCLOUD.md` file does not exist, therefore no section explaining how to view results in SonarCloud dashboard.
+❌ 8.3 — `docs/SONARCLOUD.md` file does not exist, therefore no section listing quality gate checks (bugs, vulnerabilities, coverage ≥70%, duplication <5%).
+❌ 8.4 — `docs/SONARCLOUD.md` file does not exist, therefore no section on how to fix common issues.
+❌ 8.5 — `docs/SONARCLOUD.md` file does not exist, therefore no information about where SONAR_TOKEN secret is stored.
+
+====================================================
+SUMMARY
+====================================================
+E3-03 items audited : 30
+E3-03 ✅ DONE       : 0
+E3-03 ⚠️ PARTIAL    : 0
+E3-03 ❌ NOT DONE   : 30
+E3-03 Completion    : 0%
+
+S4-carry-01 items audited : 19
+S4-carry-01 ✅ DONE       : 1
+S4-carry-01 ⚠️ PARTIAL    : 0
+S4-carry-01 ❌ NOT DONE   : 18
+S4-carry-01 Completion    : 5%
+
+====================================================
+PRIORITY ACTION LIST — ❌ and ⚠️ items only
+====================================================
+1.1    | src/app/features/student/student.routes.ts | Route `/student/quizzes` missing (only `quizzes/:id` and `quizzes/:id/results/:attemptId` exist)
+1.2    | src/app/shared/components/sidebar/sidebar.component.ts | "My Quizzes" link missing from student navigation
+2.1    | src/app/features/student/quiz-history/ | Folder empty — no quiz-history component files exist
+2.2    | src/app/features/student/quiz-history/ | No PrimeNG DataTable with columns (Quiz Title, Subject, Date Taken, Score, Pass/Fail, Time Taken, Actions)
+2.3    | src/app/features/student/quiz-history/ | No "View Results" button with navigation to /student/quizzes/:id/results/:attemptId
+2.4    | src/app/features/student/quiz-history/ | No sort on Date Taken (desc), Score, Time Taken columns
+2.5    | src/app/features/student/quiz-history/ | No Subject filter dropdown (All, Math, Science, English)
+2.6    | src/app/features/student/quiz-history/ | No pagination set to 10 rows per page
+2.7    | src/app/features/student/quiz-history/ | No empty state message "You haven't taken any quizzes yet. Start your first lesson to get going!" and no "Browse Lessons" button
+2.8    | src/app/features/student/quiz-history/ | No loading skeleton with 3 rows for attemptsLoading=true
+2.9    | src/app/features/student/quiz-history/ | No Score badge using BadgeComponent (component exists but unused in quiz-history)
+2.10   | src/app/features/student/quiz-history/ | No Pass/Fail badge using BadgeComponent with PASSED/FAILED text
+3.1    | src/app/shared/models/quiz.types.ts | `QuizAttempt` interface/type not exported
+3.2    | src/app/features/student/store/quizzes.store.ts | `attempts: QuizAttempt[]` absent from QuizzesState interface
+3.3    | src/app/features/student/store/quizzes.store.ts | `attemptsLoading: boolean` absent from QuizzesState interface
+3.4    | src/app/features/student/store/quizzes.store.ts | `attempts: []` absent from withState initial value
+3.5    | src/app/features/student/store/quizzes.store.ts | `attemptsLoading: false` absent from withState initial value
+3.6    | src/app/features/student/store/quizzes.store.ts | `loadAttempts()` method absent from withMethods
+3.7    | src/app/features/student/store/quizzes.store.ts | loadAttempts() missing — no attemptsLoading=true at start
+3.8    | src/app/features/student/store/quizzes.store.ts | loadAttempts() missing — no GET /api/quizzes/attempts call
+3.9    | src/app/features/student/store/quizzes.store.ts | loadAttempts() missing — no patching attempts with response data
+3.10   | src/app/features/student/store/quizzes.store.ts | loadAttempts() missing — no attemptsLoading=false on success/error
+4.1    | src/mocks/handlers/quizzes.handlers.ts | GET /api/quizzes/attempts handler missing
+4.2    | src/mocks/handlers/quizzes.handlers.ts | No handler — 0 attempt records (spec requires 12-15)
+4.3    | src/mocks/handlers/quizzes.handlers.ts | No handler — no varied subjects
+4.4    | src/mocks/handlers/quizzes.handlers.ts | No handler — no varied scores
+4.5    | src/mocks/handlers/quizzes.handlers.ts | No handler — no records with required fields
+5.1    | src/app/features/student/store/quizzes.store.spec.ts | No test for loadAttempts() populating attempts state
+5.2    | src/app/features/student/quiz-history/ | No test for empty state UI rendering
+5.3    | src/app/features/student/store/quizzes.store.spec.ts | No test for badge color based on percentage threshold
+6.1    | sonar-project.properties | File not found at repo root
+6.2    | sonar-project.properties | File missing — no sonar.projectKey line
+6.3    | sonar-project.properties | File missing — no sonar.organization line
+6.4    | sonar-project.properties | File missing — no sonar.sources=src line
+6.5    | sonar-project.properties | File missing — no sonar.tests=src line
+6.6    | sonar-project.properties | File missing — no sonar.test.inclusions line
+6.7    | sonar-project.properties | File missing — no sonar.exclusions line
+6.8    | sonar-project.properties | File missing — no sonar.typescript.lcov.reportPaths line
+7.2    | .github/workflows/ci.yml | test job uses `vitest --run --watch=false` instead of `ng test --watch=false --browsers=ChromeHeadless --code-coverage`
+7.3    | .github/workflows/ci.yml | `sonarcloud` job missing from workflow
+7.4    | .github/workflows/ci.yml | `sonarcloud` job missing — no `needs: [test]`
+7.5    | .github/workflows/ci.yml | `sonarcloud` job missing — no SonarSource/sonarcloud-github-action@master
+7.6    | .github/workflows/ci.yml | `sonarcloud` job missing — no SONAR_TOKEN secret reference
+8.1    | docs/SONARCLOUD.md | File not found
+8.2    | docs/SONARCLOUD.md | File missing — no SonarCloud dashboard section
+8.3    | docs/SONARCLOUD.md | File missing — no quality gate checks section
+8.4    | docs/SONARCLOUD.md | File missing — no common issues section
+8.5    | docs/SONARCLOUD.md | File missing — no SONAR_TOKEN storage information
+
+====================================================
+BLOCKERS
+====================================================
+1.1    blocks → 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10 (list route must exist for quiz history page to be accessible)
+2.1    blocks → 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10 (component must exist for UI features to be implemented)
+3.1    blocks → 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 5.1 (QuizAttempt type must be defined before it can be used in state or tests)
+3.6    blocks → 3.7, 3.8, 3.9, 3.10, 5.1 (loadAttempts method must exist for its behavior to be verified)
+4.1    blocks → 4.2, 4.3, 4.4, 4.5 (handler must exist for attempt records to be returned)
+6.1    blocks → 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8 (sonar-project.properties must exist for config lines to be present)
+7.3    blocks → 7.4, 7.5, 7.6 (sonarcloud job must exist for its configuration to be verified)
+8.1    blocks → 8.2, 8.3, 8.4, 8.5 (SONARCLOUD.md must exist for documentation sections to be present)

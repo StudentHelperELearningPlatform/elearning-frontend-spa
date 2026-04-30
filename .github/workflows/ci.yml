@@ -53,7 +53,7 @@ jobs:
         run: npm ci
 
       - name: Run unit tests with coverage
-        run: npm run test -- --watch=false --coverage --reporter=lcov
+        run: npm run test -- --watch=false --coverage
 
       - name: Upload coverage report
         if: always()
@@ -112,7 +112,7 @@ jobs:
         run: npm ci
 
       - name: Run coverage
-        run: npm run test -- --watch=false --coverage --reporter=lcov
+        run: npm run test -- --watch=false --coverage
 
       - name: SonarCloud scan
         uses: SonarSource/sonarcloud-github-action@master
