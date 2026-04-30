@@ -17,8 +17,8 @@
     </div>
   } @else {
     <div class="mb-4 flex items-center gap-2">
-      <label class="font-bold text-gray-700">Filter by Subject:</label>
-      <select [ngModel]="selectedSubject()" (ngModelChange)="selectedSubject.set($event)" class="border-2 border-black rounded-lg px-3 py-2 font-bold">
+      <label for="subjectFilter" class="font-bold text-gray-700">Filter by Subject:</label>
+      <select id="subjectFilter" [ngModel]="selectedSubject()" (ngModelChange)="selectedSubject.set($event)" class="border-2 border-black rounded-lg px-3 py-2 font-bold">
         @for (option of subjectOptions; track option.label) {
           <option [ngValue]="option.value">{{ option.label }}</option>
         }
