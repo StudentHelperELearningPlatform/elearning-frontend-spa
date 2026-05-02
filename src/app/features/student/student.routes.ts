@@ -11,7 +11,6 @@ export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
   { path: 'lessons', component: LessonListComponent },
   { path: 'milestones', component: MilestonesComponent },
-  // { path: 'learning-path', component: LearningPathComponent },
   { path: 'learning-path', redirectTo: 'learning-paths/path-1', pathMatch: 'full' },
   { path: 'learning-paths/:id', component: LearningPathComponent },
   {
@@ -24,10 +23,21 @@ export default [
     loadComponent: () =>
       import('./lesson-viewer/lesson-viewer.component').then((m) => m.LessonViewerComponent),
   },
+  {
+    // E2 sprint alias — keep consistent with lesson-viewer/:id
+    path: 'lessons/:id',
+    loadComponent: () =>
+      import('./lesson-viewer/lesson-viewer.component').then((m) => m.LessonViewerComponent),
+  },
   { path: 'quiz-player', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
   { path: 'quiz-player/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
+  // /student/quizzes — Quiz History List (E3-03, PARASCHIV)
+  // Route stub: Paraschiv adds the QuizHistoryComponent in their PR.
+  // { path: 'quizzes', loadComponent: () => import('./quiz-history/quiz-history.component').then(m => m.QuizHistoryComponent) },
   { path: 'quizzes/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
   { path: 'quizzes/:id/results/:attemptId', component: QuizPlayerComponent },
-  { path: 'milestones', component: MilestonesComponent },
+  // /student/skills/:subject — Skill Detail Page (E4-03, ALEXANDRA)
+  // Route stub: Alexandra adds the SkillDetailComponent in their PR.
+  // { path: 'skills/:subject', loadComponent: () => import('./skill-detail/skill-detail.component').then(m => m.SkillDetailComponent) },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ] as Routes;

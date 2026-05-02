@@ -1,0 +1,138 @@
+<div class="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+
+  <!-- Welcome Card — TEO -->
+  <!-- Greeting: time-based "Good morning/afternoon/evening, {firstName}!" -->
+  <!-- Initials avatar circle, motivational message rotating from a 5-item array -->
+  <!-- Skeleton while progressStore.loading() -->
+  <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+    @if (progressStore.loading()) {
+      <app-skeleton height="1.75rem" className="w-1/3 mb-2" />
+      <app-skeleton height="1rem" className="w-1/2 mt-2" />
+    } @else {
+      <!-- TODO (TEO): wire to authStore.user().firstName, greeting getter, motivationalMessage, initials -->
+      <h1 class="text-2xl font-black text-black">Good morning, Student!</h1>
+    }
+  </div>
+
+  <!-- Card Grid: 2 cols desktop, 1 col mobile -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- Streak Widget — TEO -->
+    <!-- Flame icon, "{n} day streak 🔥", "Best: {n} days" -->
+    <!-- Zero-streak empty state with "Browse Lessons" CTA -->
+    <!-- Gold glow CSS animation when streak >= 7 (class: streak-glow) -->
+    <!-- Skeleton while loading -->
+    <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4">
+      @if (progressStore.loading()) {
+        <app-skeleton width="4rem" height="4rem" className="rounded-full flex-shrink-0" />
+        <div class="space-y-2 flex-1">
+          <app-skeleton height="1.25rem" />
+          <app-skeleton height="1rem" className="w-2/3" />
+        </div>
+      } @else {
+        <!-- TODO (TEO): implement streak widget -->
+        <p class="font-bold">{{ progressStore.activeStreak() }} day streak</p>
+      }
+    </div>
+
+    <!-- Overall Progress Card — TEO -->
+    <!-- Circular SVG ring showing overallProgressPercent -->
+    <!-- "{completedLessons} of {totalLessons} lessons completed" -->
+    <!-- 3-row subject breakdown: subject name + thin progress bar + percentage -->
+    <!-- Skeleton while loading -->
+    <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      @if (progressStore.loading()) {
+        <app-skeleton width="5rem" height="5rem" className="rounded-full" />
+        <app-skeleton height="1rem" className="mt-2 w-2/3" />
+      } @else {
+        <!-- TODO (TEO): implement progress ring and subject breakdown -->
+        <p class="font-bold">{{ progressStore.overallProgressPercent() }}% complete</p>
+      }
+    </div>
+
+    <!-- Skill Radar Chart — STELICA -->
+    <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <h3 class="text-lg font-black text-black mb-4">Your Skill Levels</h3>
+      @if (progressStore.loading()) {
+        <div class="w-full h-64 bg-gray-100 rounded-xl animate-pulse flex items-center justify-center">
+          <span class="text-gray-400 font-medium text-sm">Loading chart…</span>
+        </div>
+      } @else {
+        <div #radarContainer class="w-full flex justify-center" aria-label="Skill radar chart"></div>
+      }
+    </div>
+
+    <!-- Continue Learning Card — TEO -->
+    <!-- Lesson thumbnail gradient, title, subject badge, module progress bar -->
+    <!-- "Continue" button routing to /student/lessons/:lessonId -->
+    <!-- Empty state: "Pick up where you left off" + "Browse Lessons" button -->
+    <!-- Skeleton while loading -->
+    <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <h3 class="text-lg font-black text-black mb-4">Continue Learning</h3>
+      @if (progressStore.loading()) {
+        <app-skeleton height="6rem" className="mb-3 rounded-xl" />
+        <app-skeleton height="1rem" className="mb-1 w-3/4" />
+        <app-skeleton height="2.5rem" className="mt-3" />
+      } @else {
+        <!-- TODO (TEO): implement continue lesson card using progressStore.continueLesson() -->
+        <p class="text-gray-500">No lesson in progress.</p>
+      }
+    </div>
+
+  </div><!-- /card grid -->
+
+  <!-- Recent Activity Feed — TEO -->
+  <!-- Last 5 items from recentActivity, icon per type (book/check/star) -->
+  <!-- TimeAgoPipe for timestamps, click navigation (lesson→viewer, quiz→results) -->
+  <!-- Empty state: "No recent activity yet." Skeleton while loading -->
+  <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+    <h3 class="text-xl font-black text-black mb-4">Recent Activity</h3>
+    @if (progressStore.loading()) {
+      @for (i of [1, 2, 3]; track i) {
+        <div class="flex items-center gap-4 border-b-2 border-gray-100 pb-4 mb-4">
+          <app-skeleton width="2.5rem" height="2.5rem" className="rounded-full flex-shrink-0" />
+          <div class="space-y-2 flex-1">
+            <app-skeleton height="1rem" className="w-1/2" />
+            <app-skeleton height="0.75rem" className="w-1/4" />
+          </div>
+        </div>
+      }
+    } @else {
+      <!-- TODO (TEO): implement activity feed using progressStore.recentActivity() -->
+      <p class="text-gray-500">No recent activity yet.</p>
+    }
+  </div>
+
+  <!-- Upcoming Quizzes Card — TEO -->
+  <!-- 2-3 rows from upcomingQuizzes: subject badge, optional due date, "Take Quiz" button -->
+  <!-- Empty state: "No upcoming quizzes." Skeleton while loading -->
+  <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+    <h3 class="text-xl font-black text-black mb-4">Upcoming Quizzes</h3>
+    @if (progressStore.loading()) {
+      @for (i of [1, 2]; track i) {
+        <div class="flex items-center justify-between border-b-2 border-gray-100 pb-4 mb-4">
+          <div class="space-y-2 flex-1">
+            <app-skeleton height="1rem" className="w-1/2" />
+            <app-skeleton height="0.75rem" className="w-1/3" />
+          </div>
+          <app-skeleton width="6rem" height="2rem" className="rounded ml-4" />
+        </div>
+      }
+    } @else {
+      <!-- TODO (TEO): implement upcoming quizzes using progressStore.upcomingQuizzes() -->
+      <p class="text-gray-500">No upcoming quizzes.</p>
+    }
+  </div>
+
+</div>
+
+<style>
+  /* Used by Teo's Streak Widget when streak >= 7 */
+  .streak-glow {
+    animation: streakGlow 2s ease-in-out infinite alternate;
+  }
+  @keyframes streakGlow {
+    from { box-shadow: 4px 4px 0px 0px rgba(0,0,0,1), 0 0 0 4px #facc15; }
+    to   { box-shadow: 4px 4px 0px 0px rgba(0,0,0,1), 0 0 16px 6px #fde047; }
+  }
+</style>
