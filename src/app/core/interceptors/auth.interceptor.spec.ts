@@ -28,8 +28,8 @@ describe('authInterceptor', () => {
   });
 
   it('should not attach Authorization header when not authenticated', () => {
-    httpClient.get('/api/v1/v1/test').subscribe();
-    const req = httpMock.expectOne('/api/v1/v1/test');
+    httpClient.get('/api/test').subscribe();
+    const req = httpMock.expectOne('/api/test');
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
@@ -41,9 +41,9 @@ describe('authInterceptor', () => {
     authService.setSession(result);
 
     // We don't need to subscribe here because expectOne will capture the attempt
-    httpClient.get('/api/v1/v1/test').subscribe();
+    httpClient.get('/api/test').subscribe();
 
-    const req = httpMock.expectOne('/api/v1/v1/test');
+    const req = httpMock.expectOne('/api/test');
 
     expect(req.request.headers.get('Authorization')).toBe(`Bearer ${result.accessToken}`);
 
@@ -57,12 +57,11 @@ describe('authInterceptor', () => {
 
     authService.logout();
 
-    httpClient.get('/api/v1/v1/test').subscribe();
+    httpClient.get('/api/test').subscribe();
 
-    const req = httpMock.expectOne('/api/v1/v1/test');
+    const req = httpMock.expectOne('/api/test');
     expect(req.request.headers.has('Authorization')).toBe(false);
 
     req.flush({});
   });
 });
-
