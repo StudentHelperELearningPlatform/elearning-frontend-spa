@@ -1,56 +1,125 @@
 <div class="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
 
-  <!-- Welcome Card — TEO -->
-  <!-- Greeting: time-based "Good morning/afternoon/evening, {firstName}!" -->
-  <!-- Initials avatar circle, motivational message rotating from a 5-item array -->
-  <!-- Skeleton while progressStore.loading() -->
+  <!-- Welcome Card -->
   <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
     @if (progressStore.loading()) {
       <app-skeleton height="1.75rem" className="w-1/3 mb-2" />
       <app-skeleton height="1rem" className="w-1/2 mt-2" />
     } @else {
-      <!-- TODO (TEO): wire to authStore.user().firstName, greeting getter, motivationalMessage, initials -->
-      <h1 class="text-2xl font-black text-black">Good morning, Student!</h1>
+      <div class="flex items-center gap-4">
+        <div
+          class="w-12 h-12 rounded-full bg-[#0ABAB5] border-2 border-black flex items-center justify-center text-white font-black text-lg flex-shrink-0"
+          aria-hidden="true"
+        >
+          {{ initials }}
+        </div>
+        <div>
+          <h1 class="text-2xl font-black text-black">
+            {{ greeting }}, {{ studentFirstName }}!
+          </h1>
+          <p class="text-gray-600 mt-1 font-medium">{{ motivationalMessage }}</p>
+        </div>
+      </div>
     }
   </div>
 
-  <!-- Card Grid: 2 cols desktop, 1 col mobile -->
+  <!-- Card Grid: 2 cols desktop -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-    <!-- Streak Widget — TEO -->
-    <!-- Flame icon, "{n} day streak 🔥", "Best: {n} days" -->
-    <!-- Zero-streak empty state with "Browse Lessons" CTA -->
-    <!-- Gold glow CSS animation when streak >= 7 (class: streak-glow) -->
-    <!-- Skeleton while loading -->
-    <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4">
+    <!-- Streak Widget -->
+    <div
+      class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4"
+      [class.ring-4]="streakHasGoldGlow"
+      [class.ring-yellow-400]="streakHasGoldGlow"
+      [class.streak-glow]="streakHasGoldGlow"
+    >
       @if (progressStore.loading()) {
         <app-skeleton width="4rem" height="4rem" className="rounded-full flex-shrink-0" />
         <div class="space-y-2 flex-1">
           <app-skeleton height="1.25rem" />
           <app-skeleton height="1rem" className="w-2/3" />
         </div>
+      } @else if (progressStore.activeStreak() === 0) {
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border-2 border-black flex-shrink-0">
+          <span class="material-icons text-gray-400 text-3xl">local_fire_department</span>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-black text-black">Start your streak today!</h3>
+          <button
+            class="mt-2 px-4 py-1 bg-[#0ABAB5] text-white font-bold rounded border-2 border-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all"
+            (click)="navigateToBrowseLessons()"
+          >
+            Browse Lessons
+          </button>
+        </div>
       } @else {
-        <!-- TODO (TEO): implement streak widget -->
-        <p class="font-bold">{{ progressStore.activeStreak() }} day streak</p>
+        <div class="w-16 h-16 bg-[#0ABAB5] rounded-full flex items-center justify-center border-2 border-black flex-shrink-0">
+          <span class="material-icons text-white text-3xl">local_fire_department</span>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-black">
+            {{ progressStore.activeStreak() }} day streak 🔥
+          </h3>
+          <p class="text-sm text-gray-600 font-medium">
+            Best: {{ progressStore.streak()?.longestStreak ?? 0 }} days
+          </p>
+        </div>
       }
     </div>
 
-    <!-- Overall Progress Card — TEO -->
-    <!-- Circular SVG ring showing overallProgressPercent -->
-    <!-- "{completedLessons} of {totalLessons} lessons completed" -->
-    <!-- 3-row subject breakdown: subject name + thin progress bar + percentage -->
-    <!-- Skeleton while loading -->
+    <!-- Overall Progress Card -->
     <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
       @if (progressStore.loading()) {
-        <app-skeleton width="5rem" height="5rem" className="rounded-full" />
-        <app-skeleton height="1rem" className="mt-2 w-2/3" />
+        <div class="flex items-center gap-4">
+          <app-skeleton width="5rem" height="5rem" className="rounded-full flex-shrink-0" />
+          <div class="space-y-2 flex-1">
+            <app-skeleton height="1.25rem" />
+            <app-skeleton height="1rem" className="w-2/3" />
+          </div>
+        </div>
       } @else {
-        <!-- TODO (TEO): implement progress ring and subject breakdown -->
-        <p class="font-bold">{{ progressStore.overallProgressPercent() }}% complete</p>
+        <div class="flex items-center gap-4 mb-4">
+          <div class="relative w-20 h-20 flex-shrink-0">
+            <svg class="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#e5e7eb" stroke-width="8" />
+              <circle
+                cx="40" cy="40" r="32" fill="none"
+                stroke="#0ABAB5" stroke-width="8"
+                stroke-linecap="round"
+                [attr.stroke-dasharray]="201"
+                [attr.stroke-dashoffset]="201 - (201 * progressStore.overallProgressPercent() / 100)"
+                style="transition: stroke-dashoffset 0.6s ease"
+              />
+            </svg>
+            <span class="absolute inset-0 flex items-center justify-center font-black text-sm text-black">
+              {{ progressStore.overallProgressPercent() }}%
+            </span>
+          </div>
+          <div>
+            <h3 class="text-lg font-black text-black">Overall Progress</h3>
+            <p class="text-sm text-gray-600 font-medium">
+              {{ completedLessons }} of {{ totalLessons }} lessons completed
+            </p>
+          </div>
+        </div>
+        <div class="space-y-2">
+          @for (skill of progressStore.skillLevels().slice(0, 3); track skill.subject) {
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-gray-700 w-20 flex-shrink-0">{{ skill.subject }}</span>
+              <div class="flex-1 h-2 bg-gray-100 rounded-full border border-black overflow-hidden">
+                <div
+                  class="h-full bg-[#0ABAB5] rounded-full transition-all duration-500"
+                  [style.width.%]="skill.level"
+                ></div>
+              </div>
+              <span class="text-xs font-bold text-gray-500 w-8 text-right">{{ skill.level }}%</span>
+            </div>
+          }
+        </div>
       }
     </div>
 
-    <!-- Skill Radar Chart — STELICA -->
+    <!-- Skill Radar Chart -->
     <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
       <h3 class="text-lg font-black text-black mb-4">Your Skill Levels</h3>
       @if (progressStore.loading()) {
@@ -62,34 +131,65 @@
       }
     </div>
 
-    <!-- Continue Learning Card — TEO -->
-    <!-- Lesson thumbnail gradient, title, subject badge, module progress bar -->
-    <!-- "Continue" button routing to /student/lessons/:lessonId -->
-    <!-- Empty state: "Pick up where you left off" + "Browse Lessons" button -->
-    <!-- Skeleton while loading -->
+    <!-- Continue Learning Card -->
     <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
       <h3 class="text-lg font-black text-black mb-4">Continue Learning</h3>
       @if (progressStore.loading()) {
         <app-skeleton height="6rem" className="mb-3 rounded-xl" />
         <app-skeleton height="1rem" className="mb-1 w-3/4" />
         <app-skeleton height="2.5rem" className="mt-3" />
+      } @else if (progressStore.continueLesson()) {
+        @let lesson = progressStore.continueLesson()!;
+        <div
+          class="h-24 rounded-xl mb-3 border-2 border-black flex items-center justify-center text-white font-black text-lg"
+          style="background: linear-gradient(135deg, #0ABAB5, #0891b2)"
+          aria-hidden="true"
+        >
+          {{ lesson.subject }}
+        </div>
+        <p class="font-black text-black">{{ lesson.lessonTitle }}</p>
+        <span class="inline-block mt-1 px-2 py-0.5 text-xs font-bold rounded border border-black bg-gray-100">
+          {{ lesson.subject }}
+        </span>
+        <div class="my-3">
+          <div class="flex justify-between text-xs font-bold text-gray-500 mb-1">
+            <span>Progress</span>
+            <span>{{ lesson.completedModules }}/{{ lesson.totalModules }} modules</span>
+          </div>
+          <div class="h-2 bg-gray-100 rounded-full border border-black overflow-hidden">
+            <div
+              class="h-full bg-[#0ABAB5] rounded-full transition-all duration-500"
+              [style.width.%]="getContinueLessonProgress(lesson)"
+            ></div>
+          </div>
+        </div>
+        <a
+          [routerLink]="['/student/lesson-viewer', lesson.lessonId]"
+          class="block w-full py-2 text-center bg-[#0ABAB5] text-white font-black rounded border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all"
+        >
+          Continue
+        </a>
       } @else {
-        <!-- TODO (TEO): implement continue lesson card using progressStore.continueLesson() -->
-        <p class="text-gray-500">No lesson in progress.</p>
+        <div class="text-center py-6">
+          <p class="text-gray-500 font-medium mb-3">Pick up where you left off</p>
+          <button
+            class="px-6 py-2 bg-[#0ABAB5] text-white font-black rounded border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all"
+            (click)="navigateToBrowseLessons()"
+          >
+            Browse Lessons
+          </button>
+        </div>
       }
     </div>
 
   </div><!-- /card grid -->
 
-  <!-- Recent Activity Feed — TEO -->
-  <!-- Last 5 items from recentActivity, icon per type (book/check/star) -->
-  <!-- TimeAgoPipe for timestamps, click navigation (lesson→viewer, quiz→results) -->
-  <!-- Empty state: "No recent activity yet." Skeleton while loading -->
+  <!-- Recent Activity Feed -->
   <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
     <h3 class="text-xl font-black text-black mb-4">Recent Activity</h3>
     @if (progressStore.loading()) {
       @for (i of [1, 2, 3]; track i) {
-        <div class="flex items-center gap-4 border-b-2 border-gray-100 pb-4 mb-4">
+        <div class="flex items-center gap-4 border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
           <app-skeleton width="2.5rem" height="2.5rem" className="rounded-full flex-shrink-0" />
           <div class="space-y-2 flex-1">
             <app-skeleton height="1rem" className="w-1/2" />
@@ -97,20 +197,35 @@
           </div>
         </div>
       }
+    } @else if (progressStore.recentActivity().length === 0) {
+      <p class="text-gray-500 font-medium">No recent activity yet.</p>
     } @else {
-      <!-- TODO (TEO): implement activity feed using progressStore.recentActivity() -->
-      <p class="text-gray-500">No recent activity yet.</p>
+      <ul class="space-y-0">
+        @for (activity of progressStore.recentActivity().slice(0, 5); track activity.id) {
+          <li class="flex items-center gap-4 border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
+            <a
+              [routerLink]="getActivityRoute(activity)"
+              class="w-10 h-10 bg-[#0ABAB5]/10 rounded-full flex items-center justify-center border-2 border-black flex-shrink-0 hover:bg-[#0ABAB5]/20 transition-colors"
+              [attr.aria-label]="activity.title"
+            >
+              <span class="material-icons text-[#0ABAB5] text-lg">{{ getActivityIcon(activity) }}</span>
+            </a>
+            <div>
+              <p class="font-bold text-black">{{ activity.title }}</p>
+              <p class="text-xs text-gray-500">{{ activity.timestamp | timeAgo }}</p>
+            </div>
+          </li>
+        }
+      </ul>
     }
   </div>
 
-  <!-- Upcoming Quizzes Card — TEO -->
-  <!-- 2-3 rows from upcomingQuizzes: subject badge, optional due date, "Take Quiz" button -->
-  <!-- Empty state: "No upcoming quizzes." Skeleton while loading -->
+  <!-- Upcoming Quizzes Card -->
   <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
     <h3 class="text-xl font-black text-black mb-4">Upcoming Quizzes</h3>
     @if (progressStore.loading()) {
       @for (i of [1, 2]; track i) {
-        <div class="flex items-center justify-between border-b-2 border-gray-100 pb-4 mb-4">
+        <div class="flex items-center justify-between border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
           <div class="space-y-2 flex-1">
             <app-skeleton height="1rem" className="w-1/2" />
             <app-skeleton height="0.75rem" className="w-1/3" />
@@ -118,16 +233,38 @@
           <app-skeleton width="6rem" height="2rem" className="rounded ml-4" />
         </div>
       }
+    } @else if (progressStore.upcomingQuizzes().length === 0) {
+      <p class="text-gray-500 font-medium">No upcoming quizzes.</p>
     } @else {
-      <!-- TODO (TEO): implement upcoming quizzes using progressStore.upcomingQuizzes() -->
-      <p class="text-gray-500">No upcoming quizzes.</p>
+      <ul class="space-y-0">
+        @for (quiz of progressStore.upcomingQuizzes(); track quiz.id) {
+          <li class="flex items-center justify-between border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
+            <div>
+              <p class="font-bold text-black">{{ quiz.title }}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs font-bold bg-gray-100 border border-black px-2 py-0.5 rounded">
+                  {{ quiz.subject }}
+                </span>
+                @if (quiz.dueDate) {
+                  <span class="text-xs text-gray-500">Due {{ quiz.dueDate | date:'mediumDate' }}</span>
+                }
+              </div>
+            </div>
+            <a
+              [routerLink]="['/student/quizzes', quiz.id]"
+              class="px-4 py-1.5 bg-[#0ABAB5] text-white font-black rounded border-2 border-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all flex-shrink-0"
+            >
+              Take Quiz
+            </a>
+          </li>
+        }
+      </ul>
     }
   </div>
 
 </div>
 
 <style>
-  /* Used by Teo's Streak Widget when streak >= 7 */
   .streak-glow {
     animation: streakGlow 2s ease-in-out infinite alternate;
   }
