@@ -7,7 +7,6 @@ import {
   ViewChild,
   ElementRef,
   effect,
-  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
