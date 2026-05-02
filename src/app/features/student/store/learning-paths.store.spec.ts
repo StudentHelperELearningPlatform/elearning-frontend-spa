@@ -108,10 +108,10 @@ describe('LearningPathsStore', () => {
     expect(store.error()).toBeNull();
   });
 
-  it('loadPath calls GET /api/v1/learning-paths/:id', () => {
+  it('loadPath calls GET /api/learning-paths/:id', () => {
     const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
     store.loadPath('path-42');
-    expect(spy).toHaveBeenCalledWith('/api/v1/v1/learning-paths/path-42');
+    expect(spy).toHaveBeenCalledWith('/api/learning-paths/path-42');
   });
 
   // ─── completedCount ────────────────────────────────────────────────────────
@@ -214,4 +214,3 @@ describe('LearningPathsStore', () => {
     expect(store.nextAvailableLesson()).toBeNull();
   });
 });
-

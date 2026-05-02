@@ -25,7 +25,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
   template: `
     <div class="h-[calc(100vh-80px)] flex flex-col md:flex-row bg-gray-50 overflow-hidden">
       
-      <!-- Sidebar / subcapitols List -->
+      <!-- Sidebar / Modules List -->
       <div class="w-full md:w-80 bg-white border-r-4 border-black flex flex-col h-full z-10 shadow-[4px_0px_0px_0px_rgba(0,0,0,1)]">
         <div class="p-6 border-b-4 border-black bg-[#0ABAB5]/10">
           <button (click)="goBack()" class="flex items-center text-black font-bold hover:text-[#0ABAB5] transition-colors mb-4">
@@ -40,39 +40,39 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
         </div>
         
         <div class="flex-1 overflow-y-auto p-4 space-y-3">
-          <h3 class="font-bold text-gray-500 uppercase tracking-wider text-sm mb-4">subcapitols</h3>
+          <h3 class="font-bold text-gray-500 uppercase tracking-wider text-sm mb-4">Modules</h3>
           
           @if (store.loading()) {
             @for (i of [1,2,3]; track i) {
               <div class="h-20 bg-gray-200 rounded-2xl border-2 border-gray-300 animate-pulse"></div>
             }
           } @else {
-            @for (subcapitol of store.currentLesson()?.subcapitols; track subcapitol.id; let idx = $index) {
+            @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
               <div 
-                (click)="selectSubcapitol(idx)"
-                (keydown.enter)="selectSubcapitol(idx)"
+                (click)="selectModule(idx)"
+                (keydown.enter)="selectModule(idx)"
                 tabindex="0"
                 class="p-4 rounded-2xl border-4 cursor-pointer transition-all duration-200 flex items-center group relative overflow-hidden"
                 [ngClass]="{
-                  'border-black bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]': currentSubcapitolIndex() === idx,
-                  'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]': currentSubcapitolIndex() !== idx
+                  'border-black bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]': currentModuleIndex() === idx,
+                  'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]': currentModuleIndex() !== idx
                 }">
                 
                 <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg mr-4 border-2"
                      [ngClass]="{
-                       'bg-white text-[#0ABAB5] border-black': currentSubcapitolIndex() === idx,
-                       'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black': currentSubcapitolIndex() !== idx
+                       'bg-white text-[#0ABAB5] border-black': currentModuleIndex() === idx,
+                       'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black': currentModuleIndex() !== idx
                      }">
                   {{ idx + 1 }}
                 </div>
                 
                 <div class="flex-1">
-                  <h4 class="font-bold text-lg leading-tight" [ngClass]="{'text-white': currentSubcapitolIndex() === idx, 'text-black': currentSubcapitolIndex() !== idx}">
-                    {{ subcapitol.title }}
+                  <h4 class="font-bold text-lg leading-tight" [ngClass]="{'text-white': currentModuleIndex() === idx, 'text-black': currentModuleIndex() !== idx}">
+                    {{ module.title }}
                   </h4>
-                  <div class="flex items-center mt-1 text-sm font-medium opacity-80" [ngClass]="{'text-white': currentSubcapitolIndex() === idx, 'text-gray-500': currentSubcapitolIndex() !== idx}">
-                    <span class="material-icons text-base mr-1">{{ getModuleIcon(subcapitol.blocks[0]?.blockType || '') }}</span>
-                    <span class="capitalize">{{ subcapitol.blocks[0]?.blockType || 'Content' }}</span>
+                  <div class="flex items-center mt-1 text-sm font-medium opacity-80" [ngClass]="{'text-white': currentModuleIndex() === idx, 'text-gray-500': currentModuleIndex() !== idx}">
+                    <span class="material-icons text-base mr-1">{{ getModuleIcon(module.type) }}</span>
+                    <span class="capitalize">{{ module.type }}</span>
                   </div>
                 </div>
               </div>
@@ -97,41 +97,28 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
                 <div class="h-4 bg-gray-200 rounded w-4/6 animate-pulse"></div>
               </div>
             </div>
-          } @else if (currentSubcapitol()) {
+          } @else if (currentModule()) {
             <div class="max-w-4xl mx-auto">
               <div class="mb-8">
-                <h1 class="text-4xl md:text-5xl font-black text-black mb-4 tracking-tight">{{ currentSubcapitol()?.title }}</h1>
+                <h1 class="text-4xl md:text-5xl font-black text-black mb-4 tracking-tight">{{ currentModule()?.title }}</h1>
                 <div class="h-2 w-24 bg-[#0ABAB5] rounded-full"></div>
               </div>
 
-              @for (block of currentSubcapitol()?.blocks; track block.id) {
-                @if (block.blockType === 'VIDEO' || block.blockType === 'IMAGE' || block.blockType === 'AUDIO') {
-                  <div class="mb-10">
-                    <app-media-player 
-                      [url]="block.mediaUrl || 'https://picsum.photos/seed/lesson/800/450'" 
-                      [type]="block.blockType === 'VIDEO' ? 'video' : block.blockType === 'AUDIO' ? 'audio' : 'image'"
-                      [title]="'Media'">
-                    </app-media-player>
-                  </div>
-                }
-
-                @if (block.blockType === 'TEXT') {
-                  <app-card class="mb-10 block">
-                    <div class="p-8">
-                      <app-module-content [content]="block.content || ''"></app-module-content>
-                    </div>
-                  </app-card>
-                }
-
-                @if (block.blockType === 'QUIZ') {
-                  <app-card class="mb-10 block">
-                    <div class="p-8">
-                      <h3 class="text-xl font-bold">Quiz Block</h3>
-                      <p>{{ block.content }}</p>
-                    </div>
-                  </app-card>
-                }
+              @if (currentModule()?.type === 'video' || currentModule()?.type === 'image' || currentModule()?.type === 'audio') {
+                <div class="mb-10">
+                  <app-media-player 
+                    [url]="currentModule()?.mediaUrl || 'https://picsum.photos/seed/lesson/800/450'" 
+                    [type]="currentModule()?.type === 'video' ? 'video' : currentModule()?.type === 'audio' ? 'audio' : 'image'"
+                    [title]="currentModule()?.title || 'Media'">
+                  </app-media-player>
+                </div>
               }
+
+              <app-card class="mb-10 block">
+                <div class="p-8">
+                  <app-module-content [content]="currentModule()?.content || ''"></app-module-content>
+                </div>
+              </app-card>
             </div>
           } @else {
             <div class="h-full flex items-center justify-center">
@@ -149,25 +136,25 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
           <app-button 
             variant="secondary" 
             icon="arrow_back" 
-            [disabled]="currentSubcapitolIndex() === 0"
-            (btnClick)="previousSubcapitol()">
+            [disabled]="currentModuleIndex() === 0"
+            (btnClick)="previousModule()">
             Previous
           </app-button>
           
           <div class="hidden md:flex items-center space-x-2">
-            @for (subcapitol of store.currentLesson()?.subcapitols; track subcapitol.id; let idx = $index) {
+            @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
               <div class="w-3 h-3 rounded-full border-2 border-black transition-colors"
-                   [ngClass]="{'bg-[#0ABAB5]': idx <= currentSubcapitolIndex(), 'bg-gray-200': idx > currentSubcapitolIndex()}">
+                   [ngClass]="{'bg-[#0ABAB5]': idx <= currentModuleIndex(), 'bg-gray-200': idx > currentModuleIndex()}">
               </div>
             }
           </div>
 
-          @if (currentSubcapitolIndex() < (store.currentLesson()?.subcapitols?.length || 0) - 1) {
+          @if (currentModuleIndex() < (store.currentLesson()?.modules?.length || 0) - 1) {
             <app-button 
               variant="primary" 
               icon="arrow_forward" 
               iconPosition="right"
-              (btnClick)="nextSubcapitol()">
+              (btnClick)="nextModule()">
               Next Module
             </app-button>
           } @else {
@@ -189,7 +176,7 @@ export class LessonViewerComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
-  currentSubcapitolIndex = signal(0);
+  currentModuleIndex = signal(0);
 
   ngOnInit() {
     const lessonId = this.route.snapshot.paramMap.get('id');
@@ -198,28 +185,28 @@ export class LessonViewerComponent implements OnInit {
     }
   }
 
-  get currentSubcapitol() {
+  get currentModule() {
     return () => {
       const lesson = this.store.currentLesson();
-      if (!lesson || !lesson.subcapitols || lesson.subcapitols.length === 0) return null;
-      return lesson.subcapitols[this.currentSubcapitolIndex()];
+      if (!lesson || !lesson.modules || lesson.modules.length === 0) return null;
+      return lesson.modules[this.currentModuleIndex()];
     };
   }
 
-  selectSubcapitol(index: number) {
-    this.currentSubcapitolIndex.set(index);
+  selectModule(index: number) {
+    this.currentModuleIndex.set(index);
   }
 
-  nextSubcapitol() {
+  nextModule() {
     const lesson = this.store.currentLesson();
-    if (lesson && lesson.subcapitols && this.currentSubcapitolIndex() < lesson.subcapitols.length - 1) {
-      this.currentSubcapitolIndex.update(i => i + 1);
+    if (lesson && lesson.modules && this.currentModuleIndex() < lesson.modules.length - 1) {
+      this.currentModuleIndex.update(i => i + 1);
     }
   }
 
-  previousSubcapitol() {
-    if (this.currentSubcapitolIndex() > 0) {
-      this.currentSubcapitolIndex.update(i => i - 1);
+  previousModule() {
+    if (this.currentModuleIndex() > 0) {
+      this.currentModuleIndex.update(i => i - 1);
     }
   }
 
@@ -233,7 +220,7 @@ export class LessonViewerComponent implements OnInit {
   }
 
   getModuleIcon(type: string): string {
-    switch (type?.toLowerCase()) {
+    switch (type) {
       case 'video': return 'play_circle';
       case 'text': return 'article';
       case 'quiz': return 'quiz';
@@ -243,4 +230,3 @@ export class LessonViewerComponent implements OnInit {
     }
   }
 }
-
