@@ -217,7 +217,7 @@ export class ProfileComponent {
   }
 
   saveProfile() {
-    console.log('PUT /api/users/me', this.user());
+    console.log('PUT /api/v1/users/me', this.user());
     this.isEditing.set(false);
     this.originalUser = null;
     alert('Profile updated successfully!');
@@ -248,3 +248,4 @@ export class ProfileComponent {
       : name.substring(0, 2).toUpperCase();
   }
 }
+

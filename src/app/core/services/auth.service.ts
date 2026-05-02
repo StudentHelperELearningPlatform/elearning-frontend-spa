@@ -63,12 +63,13 @@ export class AuthService {
     });
 //accept  any type 
   register(payload: Record<string, unknown>): Observable<unknown> {
-    return this.http.post('/api/auth/register', payload);
+    return this.http.post('/api/v1/v1/auth/register', payload);
   }
 
   checkEmailAvailability(email: string): Observable<{ available: boolean }> {
     return this.http.get<{ available: boolean }>(
-      '/api/auth/check-email?email=' + encodeURIComponent(email)
+      '/api/v1/v1/auth/check-email?email=' + encodeURIComponent(email)
     );
   }
 }
+
