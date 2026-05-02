@@ -162,7 +162,7 @@ export const QuizzesStore = signalStore(
       // Mark submitted immediately so the UI reacts and tickTimer cannot fire again
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`/api/quizzes/${quizId}/submit`, { answers }).subscribe({
+      http.post<SubmitQuizResponse>(`/api/v1/subcapitols/${quizId}/check-quiz/submit`, { answers }).subscribe({
         next: (submission) => {
           patchState(store, {
             result: {
@@ -196,7 +196,7 @@ export const QuizzesStore = signalStore(
     return {
       loadQuizById(id: string) {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+        http.get<QuizApiResponse>(`/api/v1/lessons/${id}/final-quiz/questions`).subscribe({
           next: (quiz) => {
             patchState(store, {
               loading: false,
@@ -215,7 +215,7 @@ export const QuizzesStore = signalStore(
       },
       startQuiz(id: string) {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+        http.get<QuizApiResponse>(`/api/v1/lessons/${id}/final-quiz/questions`).subscribe({
           next: (quiz) => {
             const mappedQuiz = mapQuizResponse(quiz);
             patchState(store, {

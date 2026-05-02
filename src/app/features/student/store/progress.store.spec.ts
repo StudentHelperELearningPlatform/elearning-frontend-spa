@@ -146,12 +146,12 @@ describe('ProgressStore', () => {
   it('sets loading true while request is pending', () => {
     store.loadDashboard('1');
     expect(store.loading()).toBe(true);
-    http.expectOne('/api/students/1/dashboard').flush(mockDashboard);
+    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
   });
 
   it('populates all state fields on success', () => {
     store.loadDashboard('1');
-    http.expectOne('/api/students/1/dashboard').flush(mockDashboard);
+    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
 
     expect(store.loading()).toBe(false);
     expect(store.error()).toBeNull();
@@ -166,7 +166,7 @@ describe('ProgressStore', () => {
 
   it('sets error state when API fails', () => {
     store.loadDashboard('1');
-    http.expectOne('/api/students/1/dashboard').error(new ProgressEvent('error'));
+    http.expectOne('/api/v1/students/1/dashboard').error(new ProgressEvent('error'));
 
     expect(store.loading()).toBe(false);
     expect(store.error()).toBeTruthy();
@@ -176,7 +176,7 @@ describe('ProgressStore', () => {
 
   it('overallProgressPercent = (completedLessons / totalLessons) * 100', () => {
     store.loadDashboard('1');
-    http.expectOne('/api/students/1/dashboard').flush(mockDashboard);
+    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
 
     // 10 / 20 * 100 = 50
     expect(store.overallProgressPercent()).toBe(50);
@@ -188,7 +188,7 @@ describe('ProgressStore', () => {
 
   it('activeStreak returns currentStreak from streak data', () => {
     store.loadDashboard('1');
-    http.expectOne('/api/students/1/dashboard').flush(mockDashboard);
+    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
 
     expect(store.activeStreak()).toBe(5);
   });
@@ -199,7 +199,7 @@ describe('ProgressStore', () => {
 
   it('recentMilestones returns only earned milestones sorted by date desc, max 3', () => {
     store.loadDashboard('1');
-    http.expectOne('/api/students/1/dashboard').flush(mockDashboard);
+    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
 
     const recent = store.recentMilestones();
     // 2 earned milestones
@@ -211,7 +211,7 @@ describe('ProgressStore', () => {
 
   it('continueLesson returns the most recently accessed IN_PROGRESS record', () => {
     store.loadDashboard('1');
-    http.expectOne('/api/students/1/dashboard').flush(mockDashboard);
+    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
 
     // pr2 is IN_PROGRESS and more recent than pr3
     const lesson = store.continueLesson();

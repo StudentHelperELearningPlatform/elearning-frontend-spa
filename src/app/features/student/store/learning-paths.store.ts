@@ -36,7 +36,7 @@ export const LearningPathsStore = signalStore(
   withMethods((store, http = inject(HttpClient)) => ({
     loadPath(id: string) {
       patchState(store, { loading: true, error: null });
-      http.get<LearningPath>(`/api/learning-paths/${id}`).subscribe({
+      http.get<LearningPath>(`/api/v1/learning-paths/${id}`).subscribe({
         next: (path) => patchState(store, { currentPath: path, loading: false }),
         error: (err: unknown) => {
           const message = err instanceof Error ? err.message : 'Failed to load learning path';

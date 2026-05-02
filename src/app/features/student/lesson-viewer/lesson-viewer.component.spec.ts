@@ -12,18 +12,33 @@ const MOCK_LESSON: Lesson = {
   difficulty: 'Easy',
   duration: '15 min',
   status: 'Not Started',
-  modules: [
-    { id: 'm1', title: 'Module 1', type: 'text', content: '<p>Hello world</p>' },
+  subcapitols: [
     {
-      id: 'm2',
-      title: 'Module 2',
-      type: 'video',
-      content: 'Video content',
-      mediaUrl: 'https://example.com/vid.mp4',
+      id: 'sc1',
+      title: 'Part 1',
+      blocks: [
+        { id: 'm1', title: 'Block 1', blockType: 'TEXT', content: '<p>Hello world</p>' },
+        {
+          id: 'm2',
+          title: 'Block 2',
+          blockType: 'VIDEO',
+          content: 'Video content',
+          mediaUrl: 'https://example.com/vid.mp4',
+        },
+      ],
     },
-    { id: 'm3', title: 'Module 3', type: 'text', content: '<p>Last module</p>' },
+    {
+      id: 'sc2',
+      title: 'Part 2',
+      blocks: [
+        { id: 'm3', title: 'Block 3', blockType: 'TEXT', content: '<p>Last block</p>' },
+      ],
+    },
   ],
 };
+
+// Flattened blocks for assertions (mirrors what allBlocks() returns)
+const ALL_BLOCKS = MOCK_LESSON.subcapitols.flatMap(sc => sc.blocks);
 
 describe('LessonViewerComponent', () => {
   let component: LessonViewerComponent;
@@ -64,14 +79,21 @@ describe('LessonViewerComponent', () => {
     expect(text).toContain('Intro to Fractions');
   });
 
-  // ─── currentModule computed ───────────────────────────────────────────────
+  // ─── allBlocks ────────────────────────────────────────────────────────────
 
-  it('currentModule returns the first module by default', () => {
-    expect(component.currentModule()).toEqual(MOCK_LESSON.modules[0]);
+  it('allBlocks flattens all subcapitol blocks in order', () => {
+    expect(component.allBlocks()).toEqual(ALL_BLOCKS);
+    expect(component.allBlocks().length).toBe(3);
   });
 
-  it('currentModule returns null when lesson has no modules', () => {
-    patchStore(store, { currentLesson: { ...MOCK_LESSON, modules: [] } });
+  // ─── currentModule computed ───────────────────────────────────────────────
+
+  it('currentModule returns the first block by default', () => {
+    expect(component.currentModule()).toEqual(ALL_BLOCKS[0]);
+  });
+
+  it('currentModule returns null when lesson has no subcapitols', () => {
+    patchStore(store, { currentLesson: { ...MOCK_LESSON, subcapitols: [] } });
     expect(component.currentModule()).toBeNull();
   });
 
@@ -95,10 +117,10 @@ describe('LessonViewerComponent', () => {
     expect(component.currentModuleIndex()).toBe(1);
   });
 
-  it('nextModule does not advance past the last module', () => {
-    component.selectModule(MOCK_LESSON.modules.length - 1);
+  it('nextModule does not advance past the last block', () => {
+    component.selectModule(ALL_BLOCKS.length - 1);
     component.nextModule();
-    expect(component.currentModuleIndex()).toBe(MOCK_LESSON.modules.length - 1);
+    expect(component.currentModuleIndex()).toBe(ALL_BLOCKS.length - 1);
   });
 
   it('previousModule decrements the index by 1', () => {
@@ -130,15 +152,15 @@ describe('LessonViewerComponent', () => {
   // ─── getModuleIcon ────────────────────────────────────────────────────────
 
   it.each([
-    ['video', 'play_circle'],
-    ['text', 'article'],
-    ['quiz', 'quiz'],
-    ['interactive', 'touch_app'],
-    ['audio', 'headphones'],
-    ['image', 'menu_book'],
+    ['VIDEO', 'play_circle'],
+    ['TEXT', 'article'],
+    ['QUIZ', 'quiz'],
+    ['INTERACTIVE', 'touch_app'],
+    ['AUDIO', 'headphones'],
+    ['IMAGE', 'menu_book'],
     ['unknown', 'menu_book'],
-  ])('getModuleIcon("%s") returns "%s"', (type, expected) => {
-    expect(component.getModuleIcon(type)).toBe(expected);
+  ])('getModuleIcon("%s") returns "%s"', (blockType, expected) => {
+    expect(component.getModuleIcon(blockType)).toBe(expected);
   });
 
   // ─── Loading skeleton ─────────────────────────────────────────────────────

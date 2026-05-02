@@ -90,60 +90,72 @@ const mockLesson = (id: string) => ({
   difficulty: 'Easy',
   duration: '20 min',
   status: 'Not Started',
-  modules: [
+  subcapitols: [
     {
-      id: `${id}-m1`,
-      title: 'What are fractions?',
-      type: 'text',
-      content:
-        '<h2>What are fractions?</h2><p>A <strong>fraction</strong> represents a part of a whole. It has a numerator and a denominator.</p>',
+      id: `${id}-sc1`,
+      title: 'Introduction to Fractions',
+      blocks: [
+        {
+          id: `${id}-m1`,
+          title: 'What are fractions?',
+          blockType: 'TEXT',
+          content:
+            '<h2>What are fractions?</h2><p>A <strong>fraction</strong> represents a part of a whole. It has a numerator and a denominator.</p>',
+        },
+        {
+          id: `${id}-m2`,
+          title: 'Types of fractions',
+          blockType: 'VIDEO',
+          content: '<p>Watch this short video to see fraction types explained visually.</p>',
+          mediaUrl:
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        },
+      ],
     },
     {
-      id: `${id}-m2`,
-      title: 'Types of fractions',
-      type: 'video',
-      content: '<p>Watch this short video to see fraction types explained visually.</p>',
-      mediaUrl:
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    },
-    {
-      id: `${id}-m3`,
-      title: 'Equivalent fractions',
-      type: 'text',
-      content:
-        '<p>Two fractions are <em>equivalent</em> when they represent the same value. For example, 1/2 = 2/4 = 3/6.</p>',
-    },
-    {
-      id: `${id}-m4`,
-      title: 'Comparing fractions',
-      type: 'image',
-      content: '<p>Use the number line below to compare fractions visually.</p>',
-      mediaUrl: 'https://picsum.photos/seed/fractions/800/450',
-    },
-    {
-      id: `${id}-m5`,
-      title: 'Practice problems',
-      type: 'text',
-      content:
-        '<p>Try solving these on your own before moving on to the quiz.</p><ol><li>Simplify 4/8</li><li>Which is larger: 2/3 or 3/4?</li></ol>',
+      id: `${id}-sc2`,
+      title: 'Equivalent & Comparing Fractions',
+      blocks: [
+        {
+          id: `${id}-m3`,
+          title: 'Equivalent fractions',
+          blockType: 'TEXT',
+          content:
+            '<p>Two fractions are <em>equivalent</em> when they represent the same value. For example, 1/2 = 2/4 = 3/6.</p>',
+        },
+        {
+          id: `${id}-m4`,
+          title: 'Comparing fractions',
+          blockType: 'IMAGE',
+          content: '<p>Use the number line below to compare fractions visually.</p>',
+          mediaUrl: 'https://picsum.photos/seed/fractions/800/450',
+        },
+        {
+          id: `${id}-m5`,
+          title: 'Practice problems',
+          blockType: 'TEXT',
+          content:
+            '<p>Try solving these on your own before moving on to the quiz.</p><ol><li>Simplify 4/8</li><li>Which is larger: 2/3 or 3/4?</li></ol>',
+        },
+      ],
     },
   ],
 });
 
 export const learningPathHandlers = [
-  http.get('/api/learning-paths/:id', ({ params }) => {
+  http.get('/api/v1/learning-paths/:id', ({ params }) => {
     return HttpResponse.json({ ...mockLearningPath, id: params['id'] as string });
   }),
 
-  http.get('/api/lessons/:id', ({ params }) => {
+  http.get('/api/v1/lessons/:id', ({ params }) => {
     return HttpResponse.json(mockLesson(params['id'] as string));
   }),
 
-  http.put('/api/lessons/:lessonId/progress', async ({ request }) => {
-    const body = (await request.json()) as { moduleId: string; completedAt: string };
+  http.put('/api/v1/lessons/:lessonId/progress', async ({ request }) => {
+    const body = (await request.json()) as { blockId: string; completedAt: string };
     return HttpResponse.json({
       progressPercent: 40,
-      completedModuleIds: [body.moduleId],
+      completedBlockIds: [body.blockId],
     });
   }),
 ];

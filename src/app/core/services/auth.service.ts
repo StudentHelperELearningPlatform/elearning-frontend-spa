@@ -1,7 +1,8 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, from } from 'rxjs';
-import { KeycloakService } from 'keycloak-angular';
+import { Observable } from 'rxjs';
+import Keycloak from 'keycloak-js';
+import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType } from 'keycloak-angular';
 
 export interface User {
   email: string;
@@ -16,46 +17,62 @@ export interface AuthResult {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
-  private keycloak = inject(KeycloakService);
-  
+  private keycloak = inject(Keycloak);
+  private keycloakEvents = inject(KEYCLOAK_EVENT_SIGNAL);
+
   private _currentUser = signal<User | null>(null);
   private _accessToken = signal<string | null>(null);
 
-  isAuthenticated = () => computed(() => !!this._accessToken());
+  isAuthenticated = computed(() => !!this._accessToken());
   currentUser = () => this._currentUser;
+
+  constructor() {
+    // React to Keycloak auth state changes via the signal
+    effect(() => {
+      const event = this.keycloakEvents();
+
+      if (event.type === KeycloakEventType.Ready) {
+        this._syncSession();
+      }
+
+      if (event.type === KeycloakEventType.AuthSuccess) {
+        this._syncSession();
+      }
+
+      if (event.type === KeycloakEventType.AuthLogout || event.type === KeycloakEventType.AuthError) {
+        this._currentUser.set(null);
+        this._accessToken.set(null);
+      }
+    });
+  }
+
+  private async _syncSession(): Promise<void> {
+    if (this.keycloak.authenticated) {
+      try {
+        await this.keycloak.updateToken(30);
+        const profile = await this.keycloak.loadUserProfile();
+        const roles = this.keycloak.realmAccess?.roles ?? [];
+        this._currentUser.set({
+          email: profile.email ?? profile.username ?? '',
+          roles,
+        });
+        this._accessToken.set(this.keycloak.token ?? null);
+      } catch {
+        this._currentUser.set(null);
+        this._accessToken.set(null);
+      }
+    }
+  }
 
   getAccessToken(): string | null {
     return this._accessToken();
   }
 
-  // Wraps keycloak login. The promise will trigger a redirect so it never resolves here
-  login(credentials: { email: string; password?: string }): Observable<AuthResult> {
-    return from(
-      this.keycloak.login({ loginHint: credentials.email }).then(() => {
-        // This won't execute because of redirection
-        return { user: { email: credentials.email, roles: [] }, accessToken: '' };
-      })
-    );
+  login(credentials?: { email?: string }): void {
+    this.keycloak.login({ loginHint: credentials?.email });
   }
 
-  // Restore session if keycloak is already logged in (used by app initialization)
-  async restoreSession(): Promise<boolean> {
-    const isLoggedIn = this.keycloak.isLoggedIn();
-    if (isLoggedIn) {
-      const profile = await this.keycloak.loadUserProfile();
-      const roles = this.keycloak.getUserRoles();
-      const token = await this.keycloak.getToken();
-      
-      this._currentUser.set({
-        email: profile.email || profile.username || '',
-        roles
-      });
-      this._accessToken.set(token);
-    }
-    return isLoggedIn;
-  }
-
-  logout() {
+  logout(): void {
     this._currentUser.set(null);
     this._accessToken.set(null);
     this.keycloak.logout();
@@ -66,14 +83,15 @@ export class AuthService {
       const user = this._currentUser();
       return user ? user.roles.includes(role) : false;
     });
-//accept  any type 
+
+  // accept any type
   register(payload: Record<string, unknown>): Observable<unknown> {
-    return this.http.post('/api/auth/register', payload);
+    return this.http.post('/api/v1/auth/register', payload);
   }
 
   checkEmailAvailability(email: string): Observable<{ available: boolean }> {
     return this.http.get<{ available: boolean }>(
-      '/api/auth/check-email?email=' + encodeURIComponent(email)
+      '/api/v1/auth/check-email?email=' + encodeURIComponent(email)
     );
   }
 }

@@ -1,12 +1,18 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed } from '@angular/core';
 
-export interface Module {
+export interface Block {
   id: string;
   title: string;
-  type: 'video' | 'text' | 'quiz' | 'interactive' | 'audio' | 'image';
+  blockType: 'VIDEO' | 'TEXT' | 'QUIZ' | 'INTERACTIVE' | 'AUDIO' | 'IMAGE';
   content: string;
   mediaUrl?: string;
+}
+
+export interface Subcapitol {
+  id: string;
+  title: string;
+  blocks: Block[];
 }
 
 export interface Lesson {
@@ -17,7 +23,7 @@ export interface Lesson {
   difficulty: string;
   duration: string;
   status: string;
-  modules: Module[];
+  subcapitols: Subcapitol[];
 }
 
 interface LessonsState {
@@ -39,8 +45,14 @@ export const LessonsStore = signalStore(
         difficulty: 'Easy', 
         duration: '15 min', 
         status: 'Not Started',
-        modules: [
-          { id: 'm1', title: 'What are fractions?', type: 'video', content: 'Fractions represent parts of a whole.', mediaUrl: 'https://example.com/video1.mp4' }
+        subcapitols: [
+          {
+            id: 'sc1',
+            title: 'Introduction',
+            blocks: [
+              { id: 'm1', title: 'What are fractions?', blockType: 'VIDEO', content: 'Fractions represent parts of a whole.', mediaUrl: 'https://example.com/video1.mp4' }
+            ]
+          }
         ]
       },
       { 
@@ -51,9 +63,15 @@ export const LessonsStore = signalStore(
         difficulty: 'Medium', 
         duration: '20 min', 
         status: 'In Progress',
-        modules: [
-          { id: 'm2', title: 'Adding like fractions', type: 'text', content: 'To add fractions with the same denominator, add the numerators.' },
-          { id: 'm3', title: 'Practice Quiz', type: 'quiz', content: 'Solve these problems.' }
+        subcapitols: [
+          {
+            id: 'sc2',
+            title: 'Adding like fractions',
+            blocks: [
+              { id: 'm2', title: 'Adding like fractions', blockType: 'TEXT', content: 'To add fractions with the same denominator, add the numerators.' },
+              { id: 'm3', title: 'Practice Quiz', blockType: 'QUIZ', content: 'Solve these problems.' }
+            ]
+          }
         ]
       }
     ],

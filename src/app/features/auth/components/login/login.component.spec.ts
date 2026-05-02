@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { LoginComponent } from './login.component';
+import { AuthStore } from '../../store/auth.store';
+import { createAuthStoreStub } from '../../../../../test-utils/auth-testing';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -10,7 +12,10 @@ describe('LoginComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [LoginComponent, ReactiveFormsModule],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        { provide: AuthStore, useValue: createAuthStoreStub() },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginComponent);

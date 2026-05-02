@@ -14,7 +14,13 @@ describe('LessonsStore', () => {
     difficulty: 'Easy',
     duration: '10 min',
     status: 'Not Started',
-    modules: [{ id: 'm1', title: 'Intro', type: 'text', content: 'Hello' }],
+    subcapitols: [
+      {
+        id: 'sc1',
+        title: 'Intro',
+        blocks: [{ id: 'm1', title: 'Intro', blockType: 'TEXT', content: 'Hello' }],
+      },
+    ],
   };
 
   beforeEach(() => {
@@ -108,6 +114,6 @@ describe('LessonsStore', () => {
     vi.useFakeTimers();
     store.loadLesson('2');
     vi.advanceTimersByTime(500);
-    expect(store.currentLesson()?.modules.length).toBeGreaterThan(0);
+    expect(store.currentLesson()?.subcapitols.length).toBeGreaterThan(0);
   });
 });

@@ -87,14 +87,27 @@ const quizTemplate = {
 };
 
 export const quizzesHandlers = [
-  http.get('/api/quizzes/:id', ({ params }) => {
+  // GET /api/v1/lessons/:lessonId/final-quiz/questions — fetch the final quiz for a lesson
+  http.get('/api/v1/lessons/:lessonId/final-quiz/questions', ({ params }) => {
+    const { lessonId } = params;
+    return HttpResponse.json({
+      id: lessonId,
+      ...quizTemplate,
+    });
+  }),
+
+  // GET /api/v1/subcapitols/:id/check-quiz — fetch the check-quiz for a subcapitol
+  http.get('/api/v1/subcapitols/:id/check-quiz', ({ params }) => {
     const { id } = params;
     return HttpResponse.json({
       id,
       ...quizTemplate,
+      timeLimitSeconds: null, // subcapitol quizzes are not timed
     });
   }),
-  http.post('/api/quizzes/:id/submit', async ({ request }) => {
+
+  // POST /api/v1/subcapitols/:id/check-quiz/submit — submit a subcapitol check-quiz
+  http.post('/api/v1/subcapitols/:id/check-quiz/submit', async ({ request }) => {
     const body = (await request.json()) as { answers: Record<string, string> };
     const submittedAnswers = body.answers ?? {};
 

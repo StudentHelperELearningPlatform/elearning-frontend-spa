@@ -65,7 +65,7 @@ export const ProgressStore = signalStore(
   withMethods((store, http = inject(HttpClient)) => ({
     loadDashboard(studentId: string) {
       patchState(store, { loading: true, error: null });
-      http.get<DashboardData>(`/api/students/${studentId}/dashboard`).subscribe({
+      http.get<DashboardData>(`/api/v1/students/${studentId}/dashboard`).subscribe({
         next: (data) => {
           patchState(store, {
             student: data.student,

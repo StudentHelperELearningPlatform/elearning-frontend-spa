@@ -26,10 +26,10 @@
     "@primeng/themes": "^21.0.4",
     "@types/d3": "^7.4.3",
     "d3": "^7.9.0",
+    "keycloak-angular": "^21.0.0",
+    "keycloak-js": "^26.2.4",
     "primeicons": "^7.0.0",
     "primeng": "^21.1.5",
-    "keycloak-angular": "^16.1.0",
-    "keycloak-js": "^26.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

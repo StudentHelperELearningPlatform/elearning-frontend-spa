@@ -42,47 +42,38 @@ export const AuthStore = signalStore(
     const authService = inject(AuthService);
     return {
       async init() {
-        // Restore session from Keycloak
-        const loggedIn = await authService.restoreSession();
-        if (loggedIn) {
-          const user = authService.currentUser()();
-          const token = authService.getAccessToken();
-          
-          if (user && token) {
-            const primaryRole = user.roles[0] || 'STUDENT';
-            
-            const mockUser: User = {
-              id: '1',
-              name: user.email,
-              email: user.email,
-              role: primaryRole,
-              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
-              memberSince: new Date().toISOString(),
-              grade: primaryRole === 'STUDENT' ? 10 : undefined,
-              school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
-            };
+        // Session is managed reactively by AuthService via KEYCLOAK_EVENT_SIGNAL.
+        // Here we just read the current state (if Keycloak already has a session on load).
+        const user = authService.currentUser()();
+        const token = authService.getAccessToken();
 
-            patchState(store, {
-              token,
-              role: primaryRole,
-              user: mockUser,
-            });
-          }
+        if (user && token) {
+          const primaryRole = user.roles[0] || 'STUDENT';
+
+          const mockUser: User = {
+            id: '1',
+            name: user.email,
+            email: user.email,
+            role: primaryRole,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
+            memberSince: new Date().toISOString(),
+            grade: primaryRole === 'STUDENT' ? 10 : undefined,
+            school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
+          };
+
+          patchState(store, {
+            token,
+            role: primaryRole,
+            user: mockUser,
+          });
         }
         patchState(store, { isAuthReady: true });
       },
 
       login(credentials: { email: string; password?: string }) {
         patchState(store, { loading: true, error: null });
-
-        // AuthService will trigger Keycloak redirect
-        authService.login(credentials).subscribe({
-          next: () => {
-            // Nothing to do here, the app will redirect to Keycloak
-          },
-          error: (err) =>
-            patchState(store, { error: err.message || 'Login failed', loading: false }),
-        });
+        // Triggers Keycloak redirect — session will be restored via AuthService effect on return
+        authService.login(credentials);
       },
 
       updateProfile(updatedUser: Partial<User>) {
