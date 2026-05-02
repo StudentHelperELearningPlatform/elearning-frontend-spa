@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { ProgressStore } from '../store/progress.store';
+import { ProgressStore, Activity } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
@@ -169,7 +169,7 @@ import { FormsModule } from '@angular/forms';
           } @else if (progressStore.recentActivity().length > 0) {
             <ul class="space-y-4 flex-1">
               @for (activity of progressStore.recentActivity().slice(0, 5); track activity.id) {
-                <li class="flex items-center space-x-4 border-b-2 border-gray-100 pb-4 last:border-0 last:pb-0 cursor-pointer group" (click)="navigateActivity(activity)">
+                <li class="flex items-center space-x-4 border-b-2 border-gray-100 pb-4 last:border-0 last:pb-0 cursor-pointer group" tabindex="0" (click)="navigateActivity(activity)" (keyup.enter)="navigateActivity(activity)">
                   <div class="w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors"
                        [ngClass]="{
                          'bg-blue-100 border-blue-500 text-blue-600 group-hover:bg-blue-200': activity.type === 'lesson',
@@ -283,11 +283,11 @@ export class ProgressDashboardComponent implements OnInit {
     const randomIndex = Math.floor(Math.random() * this.messages.length);
     this.motivationalMessage.set(this.messages[randomIndex]);
     
-    // Using mocked progress overall from the store since the prompt allows static or signal based.
-    this.overallProgressPercent = this.progressStore.overallProgress();
+    // Using mocked progress overall from the store since  // Sync overall progress if it comes from the store
+    // this.overallProgressPercent = this.progressStore.overallProgress();
   }
 
-  navigateActivity(activity: any) {
+  navigateActivity(activity: Activity) {
     if (!activity.targetId) return;
     if (activity.type === 'lesson') {
       this.router.navigate(['/student/lessons', activity.targetId]);
