@@ -87,14 +87,14 @@ const quizTemplate = {
 };
 
 export const quizzesHandlers = [
-  http.get('/api/quizzes/:id', ({ params }) => {
+  http.get('/api/v1/v1/quizzes/:id', ({ params }) => {
     const { id } = params;
     return HttpResponse.json({
       id,
       ...quizTemplate,
     });
   }),
-  http.post('/api/quizzes/:id/submit', async ({ request }) => {
+  http.post('/api/v1/v1/quizzes/:id/submit', async ({ request }) => {
     const body = (await request.json()) as { answers: Record<string, string> };
     const submittedAnswers = body.answers ?? {};
 
@@ -126,3 +126,4 @@ export const quizzesHandlers = [
     });
   }),
 ];
+

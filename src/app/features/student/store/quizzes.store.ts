@@ -79,6 +79,8 @@ const mapQuizResponse = (response: QuizApiResponse): QuizWithMeta => ({
 
 interface QuizzesState {
   currentQuiz: QuizWithMeta | null;
+  quizType: 'check' | 'final' | null;
+  referenceId: string | null;
   currentQuestionIndex: number;
   answers: Record<string, string>;
   flaggedQuestions: Set<string>;
@@ -93,6 +95,8 @@ export const QuizzesStore = signalStore(
   { providedIn: 'root' },
   withState<QuizzesState>({
     currentQuiz: null,
+    quizType: null,
+    referenceId: null,
     currentQuestionIndex: 0,
     answers: {},
     flaggedQuestions: new Set<string>(),
@@ -153,16 +157,22 @@ export const QuizzesStore = signalStore(
         ? Math.floor((new Date().getTime() - store.startedAt()!.getTime()) / 1000)
         : 0;
 
-      const answers = store.answers();
-      const quizId = store.currentQuiz()?.id;
-      if (!quizId) {
+      const quizType = store.quizType();
+      const refId = store.referenceId();
+      if (!refId || !quizType) {
         return;
       }
 
       // Mark submitted immediately so the UI reacts and tickTimer cannot fire again
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`/api/quizzes/${quizId}/submit`, { answers }).subscribe({
+      const endpoint = quizType === 'check' 
+        ? `/api/v1/subcapitols/${refId}/check-quiz/submit`
+        : `/api/v1/lessons/${refId}/final-quiz/submit`; // Assuming final-quiz submit
+
+      const answers = store.answers();
+
+      http.post<SubmitQuizResponse>(endpoint, { answers }).subscribe({
         next: (submission) => {
           patchState(store, {
             result: {
@@ -194,9 +204,13 @@ export const QuizzesStore = signalStore(
     };
 
     return {
-      loadQuizById(id: string) {
-        patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+      loadQuizById(id: string, type: 'check' | 'final' = 'final') {
+        patchState(store, { loading: true, quizType: type, referenceId: id });
+        const endpoint = type === 'check' 
+          ? `/api/v1/subcapitols/${id}/check-quiz` // Assuming this for loading check quiz
+          : `/api/v1/lessons/${id}/final-quiz/questions`;
+
+        http.get<QuizApiResponse>(endpoint).subscribe({
           next: (quiz) => {
             patchState(store, {
               loading: false,
@@ -213,9 +227,13 @@ export const QuizzesStore = signalStore(
           },
         });
       },
-      startQuiz(id: string) {
-        patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+      startQuiz(id: string, type: 'check' | 'final' = 'final') {
+        patchState(store, { loading: true, quizType: type, referenceId: id });
+        const endpoint = type === 'check' 
+          ? `/api/v1/subcapitols/${id}/check-quiz` // Assuming this for check quiz
+          : `/api/v1/lessons/${id}/final-quiz/questions`;
+
+        http.get<QuizApiResponse>(endpoint).subscribe({
           next: (quiz) => {
             const mappedQuiz = mapQuizResponse(quiz);
             patchState(store, {
@@ -309,3 +327,4 @@ export const QuizzesStore = signalStore(
     };
   }),
 );
+

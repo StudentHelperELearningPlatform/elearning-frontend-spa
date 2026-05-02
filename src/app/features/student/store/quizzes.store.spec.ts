@@ -190,7 +190,7 @@ describe('QuizzesStore', () => {
       }),
     );
     store.submitQuiz();
-    expect(postSpy).toHaveBeenCalledWith('/api/quizzes/quiz-1/submit', {
+    expect(postSpy).toHaveBeenCalledWith('/api/v1/v1/quizzes/quiz-1/submit', {
       answers: { q1: 'q1-o1' },
     });
   });
@@ -293,3 +293,4 @@ describe('QuizzesStore', () => {
     expect(store.isLastQuestion()).toBe(true);
   });
 });
+
