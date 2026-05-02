@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, from } from 'rxjs';
+import { KeycloakService } from 'keycloak-angular';
 
 export interface User {
   email: string;
@@ -14,12 +15,12 @@ export interface AuthResult {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  // Internal signals for state management
   private http = inject(HttpClient);
+  private keycloak = inject(KeycloakService);
+  
   private _currentUser = signal<User | null>(null);
   private _accessToken = signal<string | null>(null);
 
-  // We return these as functions yielding signals to match the service.method()() syntax in your tests
   isAuthenticated = () => computed(() => !!this._accessToken());
   currentUser = () => this._currentUser;
 
@@ -27,33 +28,37 @@ export class AuthService {
     return this._accessToken();
   }
 
+  // Wraps keycloak login. The promise will trigger a redirect so it never resolves here
   login(credentials: { email: string; password?: string }): Observable<AuthResult> {
-    const emailLower = credentials.email.toLowerCase();
-
-    // Handle the specific error cases from your tests
-    if (credentials.password === 'wrongpass' || emailLower === 'nobody@test.com') {
-      return throwError(() => new Error('Invalid email or password'));
-    }
-
-    // Role assignment based on email keywords
-    let roles = ['STUDENT'];
-    if (emailLower.includes('teacher')) roles = ['TEACHER'];
-    if (emailLower.includes('admin')) roles = ['ADMIN'];
-
-    return of({
-      user: { email: credentials.email, roles },
-      accessToken: 'mock-jwt-token',
-    });
+    return from(
+      this.keycloak.login({ loginHint: credentials.email }).then(() => {
+        // This won't execute because of redirection
+        return { user: { email: credentials.email, roles: [] }, accessToken: '' };
+      })
+    );
   }
 
-  setSession(result: AuthResult) {
-    this._currentUser.set(result.user);
-    this._accessToken.set(result.accessToken);
+  // Restore session if keycloak is already logged in (used by app initialization)
+  async restoreSession(): Promise<boolean> {
+    const isLoggedIn = this.keycloak.isLoggedIn();
+    if (isLoggedIn) {
+      const profile = await this.keycloak.loadUserProfile();
+      const roles = this.keycloak.getUserRoles();
+      const token = await this.keycloak.getToken();
+      
+      this._currentUser.set({
+        email: profile.email || profile.username || '',
+        roles
+      });
+      this._accessToken.set(token);
+    }
+    return isLoggedIn;
   }
 
   logout() {
     this._currentUser.set(null);
     this._accessToken.set(null);
+    this.keycloak.logout();
   }
 
   hasRole = (role: string) =>

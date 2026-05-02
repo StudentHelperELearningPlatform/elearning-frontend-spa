@@ -41,43 +41,44 @@ export const AuthStore = signalStore(
   withMethods((store) => {
     const authService = inject(AuthService);
     return {
-      init() {
-        // Simulate checking for existing session
-        setTimeout(() => {
-          patchState(store, { isAuthReady: true });
-        }, 500);
-      },
-
-      // 1. Updated signature to accept the credentials object
-      login(credentials: { email: string; password?: string }) {
-        patchState(store, { loading: true, error: null });
-
-        // 2. Pass the object directly to the updated AuthService
-        authService.login(credentials).subscribe({
-          next: (res) => {
-            // 3. AuthService now returns an array of roles, so we grab the first one
-            const primaryRole = res.user.roles[0] || 'STUDENT';
-
+      async init() {
+        // Restore session from Keycloak
+        const loggedIn = await authService.restoreSession();
+        if (loggedIn) {
+          const user = authService.currentUser()();
+          const token = authService.getAccessToken();
+          
+          if (user && token) {
+            const primaryRole = user.roles[0] || 'STUDENT';
+            
             const mockUser: User = {
               id: '1',
-              name: 'Andrei Paraschiv',
-              email: credentials.email,
+              name: user.email,
+              email: user.email,
               role: primaryRole,
-              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${credentials.email}`,
-              memberSince: '2024-01-15',
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
+              memberSince: new Date().toISOString(),
               grade: primaryRole === 'STUDENT' ? 10 : undefined,
               school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
             };
 
             patchState(store, {
-              token: res.accessToken, // 4. Map to the new accessToken property
+              token,
               role: primaryRole,
               user: mockUser,
-              loading: false,
             });
+          }
+        }
+        patchState(store, { isAuthReady: true });
+      },
 
-            // 5. Sync the store state with the service state
-            authService.setSession(res);
+      login(credentials: { email: string; password?: string }) {
+        patchState(store, { loading: true, error: null });
+
+        // AuthService will trigger Keycloak redirect
+        authService.login(credentials).subscribe({
+          next: () => {
+            // Nothing to do here, the app will redirect to Keycloak
           },
           error: (err) =>
             patchState(store, { error: err.message || 'Login failed', loading: false }),

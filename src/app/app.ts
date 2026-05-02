@@ -1,5 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { AuthStore } from './features/auth/store/auth.store';
 
 @Component({
   selector: 'app-root',
@@ -18,6 +19,11 @@ import { RouterOutlet } from '@angular/router';
     `,
   ],
 })
-export class App {
+export class App implements OnInit {
   title = signal('E-Learning Platform');
+  private authStore = inject(AuthStore);
+
+  ngOnInit() {
+    this.authStore.init();
+  }
 }
