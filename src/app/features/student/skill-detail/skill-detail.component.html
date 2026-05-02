@@ -1,0 +1,96 @@
+<div class="page">
+
+  <!-- BACK -->
+  <a class="back" routerLink="/student/dashboard">← Back to Dashboard</a>
+
+  <!-- HEADER -->
+  <h2>{{ skill()?.subject }}</h2>
+
+  <!-- KNOB + CONFIDENCE -->
+  @if (skill()) {
+    <div class="top">
+
+      <p-knob
+        [value]="skill()?.level ?? 0"
+        [readonly]="true"
+        [size]="140">
+      </p-knob>
+
+      <div class="confidence" [style.color]="store.confidenceColor()">
+        {{ store.confidenceLabel() }}
+      </div>
+
+    </div>
+  }
+
+  <!-- LOADING -->
+  @if (store.loading()) {
+    <div>Loading skill data...</div>
+  }
+
+  <!-- PROGRESS CHART (SAFE FALLBACK, NO LIBS) -->
+  @if (!store.loading() && showChart()) {
+    <div class="chart-fallback">
+
+      <h3>Progress Trend</h3>
+
+      <div class="bars">
+        @for (d of skill()?.trendData ?? []; track d.date) {
+          <div class="bar-wrapper">
+
+            <div
+              class="bar"
+              [style.height.%]="d.level">
+            </div>
+
+            <small>{{ d.date }}</small>
+          </div>
+        }
+      </div>
+
+    </div>
+  }
+
+  @if (!store.loading() && !showChart()) {
+    <div class="empty">
+      Not enough data yet — keep taking quizzes!
+    </div>
+  }
+
+  <!-- RECENT QUIZZES -->
+  <div class="section">
+    <h3>Recent Quizzes</h3>
+
+    @for (q of skill()?.recentQuizzes ?? []; track q.id) {
+      <div class="quiz">
+
+        <div>
+          <b>{{ q.title }}</b>
+          <small>{{ q.date }}</small>
+        </div>
+
+        <span [class.good]="q.score >= 50" [class.bad]="q.score < 50">
+          {{ q.score }}%
+        </span>
+
+        <a [routerLink]="['/student/quizzes', q.id]">Review</a>
+      </div>
+    }
+
+    @if ((skill()?.recentQuizzes?.length ?? 0) === 0) {
+      <div>No quizzes in this subject yet.</div>
+    }
+  </div>
+
+  <!-- AI RECOMMENDATIONS -->
+  <div class="ai">
+    <h3>✨ AI Suggestions</h3>
+
+    <ul>
+      @for (r of skill()?.recommendations ?? []; track r) {
+        <li>{{ r }}</li>
+      }
+    </ul>
+  </div>
+
+</div>
