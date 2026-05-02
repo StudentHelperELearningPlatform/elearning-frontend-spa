@@ -279,10 +279,10 @@ export class ProgressDashboardComponent implements OnInit {
 
   ngOnInit() {
     this.progressStore.loadDashboard();
-    
+
     const randomIndex = Math.floor(Math.random() * this.messages.length);
     this.motivationalMessage.set(this.messages[randomIndex]);
-    
+
     // Sync overall progress if it comes from the store
     // this.overallProgressPercent = this.progressStore.overallProgress();
   }
