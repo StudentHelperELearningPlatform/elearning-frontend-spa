@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 
 export const authHandlers = [
-  http.get('/api/auth/check-email', ({ request }) => {
+  http.get('/api/v1/v1/auth/check-email', ({ request }) => {
     const url = new URL(request.url);
     const email = url.searchParams.get('email') ?? '';
     if (email === 'student@test.com') {
@@ -10,7 +10,7 @@ export const authHandlers = [
     return HttpResponse.json({ available: true });
   }),
 
-  http.post('/api/auth/register', async ({ request }) => {
+  http.post('/api/v1/v1/auth/register', async ({ request }) => {
     const body = await request.json() as { email?: string };
     if (body?.email === 'student@test.com') {
       return HttpResponse.json(
@@ -24,3 +24,4 @@ export const authHandlers = [
     );
   }),
 ];
+
