@@ -4,8 +4,6 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import Lara from '@primeng/themes/lara';
-import { importProvidersFrom } from '@angular/core';
-import { KnobModule } from 'primeng/knob';
 
 import { routes } from './app.routes';
 import { authInterceptor } from '@core/interceptors/auth.interceptor';
