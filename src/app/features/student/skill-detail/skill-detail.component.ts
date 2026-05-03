@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { KnobModule } from 'primeng/knob';
+
 import { SkillDetailStore } from '../store/skill-detail.store';
 
 @Component({
@@ -9,8 +9,7 @@ import { SkillDetailStore } from '../store/skill-detail.store';
   standalone: true,
   imports: [
     CommonModule,
-    RouterModule,
-    KnobModule
+    RouterModule
   ],
   templateUrl: './skill-detail.component.html',
   styleUrls: ['./skill-detail.component.scss']
