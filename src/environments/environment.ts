@@ -1,11 +1,10 @@
 // src/environments/environment.ts
 export const environment = {
-  production: false,
-  apiUrl: 'https://api.example.com',
-  // REPLACE the values below with your actual Keycloak configuration
+  production: true,
+  apiUrl: 'https://api.example.com', // TODO: replace with real production API URL
   keycloak: {
-    url: 'https://auth.example.com', // REPLACE
-    realm: 'elearning', // REPLACE
-    clientId: 'elearning-spa' // REPLACE
+    url: 'https://keycloak-26-0-7-vb34.onrender.com/',
+    realm: 'elearning',
+    clientId: 'elearning-angular'
   }
 };
