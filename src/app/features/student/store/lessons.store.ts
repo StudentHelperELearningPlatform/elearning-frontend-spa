@@ -1,5 +1,6 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { computed } from '@angular/core';
+import { computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
 export interface Block {
   id: string;
@@ -83,17 +84,26 @@ export const LessonsStore = signalStore(
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
   })),
-  withMethods((store) => ({
+  withMethods((store, http = inject(HttpClient)) => ({
     loadLessons() {
-      patchState(store, { loading: true });
-      setTimeout(() => patchState(store, { loading: false }), 500);
+      patchState(store, { loading: true, error: null });
+      http.get<Lesson[]>('/api/v1/lessons').subscribe({
+        next: (data) => patchState(store, { lessons: data, loading: false }),
+        error: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to load lessons';
+          patchState(store, { loading: false, error: message });
+        }
+      });
     },
     loadLesson(id: string) {
-      patchState(store, { loading: true });
-      setTimeout(() => {
-        const lesson = store.lessons().find(l => l.id === id);
-        patchState(store, { currentLesson: lesson, loading: false });
-      }, 500);
+      patchState(store, { loading: true, error: null });
+      http.get<Lesson>(`/api/v1/lessons/${id}`).subscribe({
+        next: (data) => patchState(store, { currentLesson: data, loading: false }),
+        error: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to load lesson';
+          patchState(store, { loading: false, error: message });
+        }
+      });
     }
   }))
 );

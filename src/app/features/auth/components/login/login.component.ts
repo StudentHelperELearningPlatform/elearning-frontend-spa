@@ -1,7 +1,7 @@
 import { Component, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { AuthStore } from '../../store/auth.store';
 
 @Component({
@@ -41,7 +41,11 @@ import { AuthStore } from '../../store/auth.store';
               placeholder="john@example.com"
               class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold transition-all"
             />
+            @if (emailControl?.invalid && emailControl?.touched) {
+              <p class="mt-1 text-red-600 text-sm font-bold">Please enter a valid email.</p>
+            }
           </div>
+
           <div>
             <label
               for="password"
@@ -64,30 +68,9 @@ import { AuthStore } from '../../store/auth.store';
                 {{ showPassword ? 'Hide' : 'Show' }}
               </button>
             </div>
-          </div>
-
-          <div class="flex gap-2 justify-between pt-2">
-            <button
-              type="button"
-              class="btn-dev text-xs font-bold uppercase text-gray-500 hover:text-black"
-              (click)="fillMockUser('student@test.com')"
-            >
-              Fill Student
-            </button>
-            <button
-              type="button"
-              class="btn-dev text-xs font-bold uppercase text-gray-500 hover:text-black"
-              (click)="fillMockUser('teacher@test.com')"
-            >
-              Fill Teacher
-            </button>
-            <button
-              type="button"
-              class="btn-dev text-xs font-bold uppercase text-gray-500 hover:text-black"
-              (click)="fillMockUser('admin@test.com')"
-            >
-              Fill Admin
-            </button>
+            @if (passwordControl?.invalid && passwordControl?.touched) {
+              <p class="mt-1 text-red-600 text-sm font-bold">Password is required.</p>
+            }
           </div>
 
           <div class="flex items-center justify-between pt-2">
@@ -103,7 +86,7 @@ import { AuthStore } from '../../store/auth.store';
             [disabled]="loginForm.invalid || authStore.loading()"
             class="w-full py-4 px-6 bg-[#0ABAB5] text-white font-black rounded-xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest text-lg"
           >
-            {{ authStore.loading() ? 'Authenticating...' : 'Log In' }}
+            {{ authStore.loading() ? 'Logging in...' : 'Log In' }}
           </button>
         </form>
 
@@ -121,18 +104,16 @@ import { AuthStore } from '../../store/auth.store';
 export class LoginComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   authStore = inject(AuthStore);
 
-  // Added missing state
   showPassword = false;
 
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
-    role: ['STUDENT'], // Removed Validators.required to allow mock user testing without breaking validity
   });
 
-  // Added getters that the test relies on
   get emailControl() {
     return this.loginForm.get('email');
   }
@@ -141,11 +122,17 @@ export class LoginComponent {
   }
 
   constructor() {
+    // Navigate to dashboard after successful login
     effect(() => {
       const role = this.authStore.role();
       const isAuthenticated = this.authStore.isAuthenticated();
 
       if (isAuthenticated && role) {
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        if (returnUrl) {
+          this.router.navigateByUrl(returnUrl);
+          return;
+        }
         switch (role) {
           case 'STUDENT':
             this.router.navigate(['/student/dashboard']);
@@ -156,30 +143,18 @@ export class LoginComponent {
           case 'ADMIN':
             this.router.navigate(['/admin/user-management']);
             break;
+          default:
+            this.router.navigate(['/']);
         }
       }
     });
   }
 
-  // Added missing methods from the test block
   togglePassword() {
     this.showPassword = !this.showPassword;
   }
 
-  fillMockUser(email: string) {
-    this.loginForm.patchValue({
-      email,
-      password: 'password',
-    });
-  }
-
   onSubmit() {
-    if (this.loginForm.valid) {
-      const { email, password } = this.loginForm.value;
-      // Just pass the object directly!
-      this.authStore.login({ email: email!, password: password! });
-    } else {
-      this.loginForm.markAllAsTouched();
-    }
+    this.authStore.login();
   }
 }

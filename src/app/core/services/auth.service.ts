@@ -1,8 +1,8 @@
-import { Injectable, signal, computed, inject, effect } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import Keycloak from 'keycloak-js';
-import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType } from 'keycloak-angular';
 
 export interface User {
   email: string;
@@ -14,68 +14,55 @@ export interface AuthResult {
   accessToken: string;
 }
 
+/** Minimal JWT payload we care about */
+interface JwtPayload {
+  email?: string;
+  preferred_username?: string;
+  realm_access?: { roles: string[] };
+  resource_access?: Record<string, { roles: string[] }>;
+}
+
+function parseJwt(token: string): JwtPayload {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return {};
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
   private keycloak = inject(Keycloak);
-  private keycloakEvents = inject(KEYCLOAK_EVENT_SIGNAL);
 
   private _currentUser = signal<User | null>(null);
-  private _accessToken = signal<string | null>(null);
 
-  isAuthenticated = computed(() => !!this._accessToken());
+  isAuthenticated = computed(() => !!this.keycloak.authenticated);
   currentUser = () => this._currentUser;
 
   constructor() {
-    // React to Keycloak auth state changes via the signal
-    effect(() => {
-      const event = this.keycloakEvents();
-
-      if (event.type === KeycloakEventType.Ready) {
-        this._syncSession();
-      }
-
-      if (event.type === KeycloakEventType.AuthSuccess) {
-        this._syncSession();
-      }
-
-      if (event.type === KeycloakEventType.AuthLogout || event.type === KeycloakEventType.AuthError) {
-        this._currentUser.set(null);
-        this._accessToken.set(null);
-      }
-    });
+    this._syncState();
+    
+    this.keycloak.onAuthSuccess = () => this._syncState();
+    this.keycloak.onAuthRefreshSuccess = () => this._syncState();
+    this.keycloak.onAuthLogout = () => this._syncState();
   }
 
-  private async _syncSession(): Promise<void> {
-    if (this.keycloak.authenticated) {
-      try {
-        await this.keycloak.updateToken(30);
-        const profile = await this.keycloak.loadUserProfile();
-        const roles = this.keycloak.realmAccess?.roles ?? [];
-        this._currentUser.set({
-          email: profile.email ?? profile.username ?? '',
-          roles,
-        });
-        this._accessToken.set(this.keycloak.token ?? null);
-      } catch {
-        this._currentUser.set(null);
-        this._accessToken.set(null);
-      }
-    }
+  /**
+   * Login via Keycloak standard redirect flow.
+   */
+  async login(): Promise<void> {
+    await this.keycloak.login();
+  }
+
+  async logout(): Promise<void> {
+    await this.keycloak.logout({ redirectUri: window.location.origin });
   }
 
   getAccessToken(): string | null {
-    return this._accessToken();
-  }
-
-  login(credentials?: { email?: string }): void {
-    this.keycloak.login({ loginHint: credentials?.email });
-  }
-
-  logout(): void {
-    this._currentUser.set(null);
-    this._accessToken.set(null);
-    this.keycloak.logout();
+    return this.keycloak.token ?? null;
   }
 
   hasRole = (role: string) =>
@@ -84,14 +71,26 @@ export class AuthService {
       return user ? user.roles.includes(role) : false;
     });
 
-  // accept any type
   register(payload: Record<string, unknown>): Observable<unknown> {
-    return this.http.post('/api/v1/auth/register', payload);
+    const baseUrl = environment.keycloak.url.replace(/\/$/, '');
+    return this.http.post(`${baseUrl}/api/v1/auth/register`, payload);
   }
 
   checkEmailAvailability(email: string): Observable<{ available: boolean }> {
+    const baseUrl = environment.keycloak.url.replace(/\/$/, '');
     return this.http.get<{ available: boolean }>(
-      '/api/v1/auth/check-email?email=' + encodeURIComponent(email)
+      `${baseUrl}/api/v1/auth/check-email?email=` + encodeURIComponent(email),
     );
+  }
+
+  private _syncState(): void {
+    if (this.keycloak.authenticated && this.keycloak.token) {
+      const payload = parseJwt(this.keycloak.token);
+      const roles = payload.realm_access?.roles ?? [];
+      const email = payload.email ?? payload.preferred_username ?? '';
+      this._currentUser.set({ email, roles });
+    } else {
+      this._currentUser.set(null);
+    }
   }
 }

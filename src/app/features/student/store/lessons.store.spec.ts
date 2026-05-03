@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { LessonsStore, Lesson } from './lessons.store';
+import { HttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
 
 describe('LessonsStore', () => {
   const getStore = () => TestBed.inject(LessonsStore);
@@ -24,7 +26,16 @@ describe('LessonsStore', () => {
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: HttpClient,
+          useValue: {
+            get: vi.fn(() => of([]))
+          }
+        }
+      ]
+    });
     store = getStore();
   });
 
@@ -110,7 +121,7 @@ describe('LessonsStore', () => {
     expect(store.loading()).toBe(false);
   });
 
-  it('loadLesson populates modules on the resolved lesson', () => {
+  it('loadLesson populates subcapitols on the resolved lesson', () => {
     vi.useFakeTimers();
     store.loadLesson('2');
     vi.advanceTimersByTime(500);

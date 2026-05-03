@@ -5,7 +5,6 @@ import { learningPathHandlers } from './handlers/learning-path.handlers';
 import { studentsHandlers } from './handlers/students.handlers';
 
 export const worker = setupWorker(
-  ...authHandlers,
   ...quizzesHandlers,
   ...learningPathHandlers,
   ...studentsHandlers,

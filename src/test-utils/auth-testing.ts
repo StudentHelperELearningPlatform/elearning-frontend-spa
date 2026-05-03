@@ -33,11 +33,11 @@ export const createAuthServiceStub = (options: AuthServiceStubOptions = {}) => {
     isAuthenticated: computed(() => !!_token()),
     currentUser: () => _user,
     getAccessToken: () => _token(),
-    login: vi.fn(),
-    logout: vi.fn(() => { _user.set(null); _token.set(null); }),
+    login: () => {},
+    logout: () => { _user.set(null); _token.set(null); },
     hasRole: (role: string) => computed(() => _user()?.roles.includes(role) ?? false),
-    register: vi.fn(),
-    checkEmailAvailability: vi.fn(),
+    register: () => {},
+    checkEmailAvailability: () => {},
     // Allow tests to manually set the session state
     _setSession: (opts: { email: string; roles: string[]; token: string }) => {
       _user.set({ email: opts.email, roles: opts.roles });
@@ -63,9 +63,9 @@ export const createAuthStoreStub = (options: AuthServiceStubOptions = {}) => {
     isAuthReady: () => true,
     error: () => null,
     loading: () => false,
-    login: vi.fn(),
-    logout: vi.fn(),
-    init: vi.fn(),
-    updateProfile: vi.fn(),
+    login: () => {},
+    logout: () => {},
+    init: () => {},
+    updateProfile: () => {},
   };
 };

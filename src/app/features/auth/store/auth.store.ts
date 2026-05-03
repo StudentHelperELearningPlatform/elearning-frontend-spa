@@ -1,5 +1,5 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { inject, computed } from '@angular/core';
+import { inject, computed, effect } from '@angular/core';
 import { AuthService } from '../../../core/services/auth.service';
 
 export interface User {
@@ -29,7 +29,7 @@ export const AuthStore = signalStore(
     token: null,
     role: null,
     loading: false,
-    isAuthReady: false,
+    isAuthReady: true, // no async Keycloak init needed anymore
     error: null,
   }),
   withComputed((state) => ({
@@ -40,40 +40,60 @@ export const AuthStore = signalStore(
   })),
   withMethods((store) => {
     const authService = inject(AuthService);
-    return {
-      async init() {
-        // Session is managed reactively by AuthService via KEYCLOAK_EVENT_SIGNAL.
-        // Here we just read the current state (if Keycloak already has a session on load).
-        const user = authService.currentUser()();
-        const token = authService.getAccessToken();
 
-        if (user && token) {
-          const primaryRole = user.roles[0] || 'STUDENT';
+    // Reactively mirror AuthService signal changes (e.g. after login/logout sync)
+    effect(() => {
+      const isAuth = authService.isAuthenticated();
+      const currentUser = authService.currentUser()();
+      const accessToken = authService.getAccessToken();
 
-          const mockUser: User = {
-            id: '1',
-            name: user.email,
-            email: user.email,
-            role: primaryRole,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
-            memberSince: new Date().toISOString(),
-            grade: primaryRole === 'STUDENT' ? 10 : undefined,
-            school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
-          };
+      if (!isAuth || !currentUser) {
+        patchState(store, { user: null, token: null, role: null });
+      } else {
+        const roles = (currentUser.roles || []).map(r => r.toUpperCase());
+        let primaryRole = 'STUDENT';
 
-          patchState(store, {
-            token,
-            role: primaryRole,
-            user: mockUser,
-          });
+        if (roles.includes('ADMIN')) {
+          primaryRole = 'ADMIN';
+        } else if (roles.includes('TEACHER') || roles.includes('PROFESSOR')) {
+          primaryRole = 'TEACHER';
+        } else if (roles.includes('STUDENT')) {
+          primaryRole = 'STUDENT';
+        } else if (roles.length > 0) {
+          primaryRole = roles[0]; // Fallback
         }
-        patchState(store, { isAuthReady: true });
-      },
 
-      login(credentials: { email: string; password?: string }) {
+        const mappedUser: User = {
+          id: '1',
+          name: currentUser.email,
+          email: currentUser.email,
+          role: primaryRole,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.email}`,
+          memberSince: new Date().toISOString(),
+          grade: primaryRole === 'STUDENT' ? 10 : undefined,
+          school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
+        };
+
+        patchState(store, {
+          user: mappedUser,
+          token: accessToken,
+          role: primaryRole,
+          loading: false,
+          error: null,
+        });
+      }
+    });
+
+    return {
+      init() {},
+
+      async login(): Promise<void> {
         patchState(store, { loading: true, error: null });
-        // Triggers Keycloak redirect — session will be restored via AuthService effect on return
-        authService.login(credentials);
+        try {
+          await authService.login();
+        } catch (err: any) {
+          patchState(store, { loading: false, error: err.message });
+        }
       },
 
       updateProfile(updatedUser: Partial<User>) {
@@ -82,9 +102,9 @@ export const AuthStore = signalStore(
         }
       },
 
-      logout() {
-        authService.logout();
-        patchState(store, { user: null, token: null, role: null });
+      async logout() {
+        await authService.logout();
+        patchState(store, { user: null, token: null, role: null, error: null });
       },
     };
   }),

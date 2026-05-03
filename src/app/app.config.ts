@@ -4,13 +4,15 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import Lara from '@primeng/themes/lara';
+import { provideKeycloak, createInterceptorCondition, IncludeBearerTokenCondition, includeBearerTokenInterceptor, INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG } from 'keycloak-angular';
 
 import { routes } from './app.routes';
 import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { loadingInterceptor } from '@core/interceptors/loading.interceptor';
+import { authInterceptor } from '@core/interceptors/auth.interceptor';
 import { GlobalErrorHandler } from '@core/services/error-handler.service';
-import { provideKeycloak, includeBearerTokenInterceptor, INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG } from 'keycloak-angular';
 import { environment } from '../environments/environment';
+
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -21,22 +23,30 @@ export const appConfig: ApplicationConfig = {
       theme: { preset: Lara, options: { darkModeSelector: 'none' } },
     }),
     provideKeycloak({
-      config: environment.keycloak,
+      config: {
+        url: environment.keycloak.url,
+        realm: environment.keycloak.realm,
+        clientId: environment.keycloak.clientId
+      },
       initOptions: {
         onLoad: 'check-sso',
-        checkLoginIframe: false // usually needed for localhost dev
+        silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html'
       }
     }),
     provideHttpClient(withInterceptors([includeBearerTokenInterceptor, errorInterceptor, loadingInterceptor])),
+    { provide: ErrorHandler, useClass: GlobalErrorHandler },
     {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
       useValue: [
-        {
-          urlPattern: /^(http:\/\/localhost:8080|https:\/\/api\.example\.com|\/api)\/.*/,
-          httpMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
-        }
+        createInterceptorCondition<IncludeBearerTokenCondition>({
+          urlPattern: /^(http:\/\/localhost:8080)(\/.*)?$/i,
+          bearerPrefix: 'Bearer'
+        }),
+        createInterceptorCondition<IncludeBearerTokenCondition>({
+          urlPattern: /^\/api\/.*/i,
+          bearerPrefix: 'Bearer'
+        })
       ]
-    },
-    { provide: ErrorHandler, useClass: GlobalErrorHandler },
+    }
   ],
 };
