@@ -265,15 +265,15 @@ const dashboardData = {
 const milestonesData = dashboardData.milestones;
 
 export const studentsHandlers = [
-  http.get('/api/students/:id/dashboard', () => {
+  http.get('/api/v1/students/:id/dashboard', () => {
     return HttpResponse.json(dashboardData);
   }),
 
-  http.get('/api/students/:id/milestones', () => {
+  http.get('/api/v1/students/:id/milestones', () => {
     return HttpResponse.json(milestonesData);
   }),
 
-  http.get('/api/students/:id/skills/:subject', ({ params }) => {
+  http.get('/api/v1/students/:id/skills/:subject', ({ params }) => {
     const subject = params['subject'] as string;
     const trendData = Array.from({ length: 10 }, (_, i) => ({
       date: new Date(Date.now() - (9 - i) * 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],

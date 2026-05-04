@@ -3,65 +3,52 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { authInterceptor } from './auth.interceptor';
 import { AuthService } from '../services/auth.service';
-import { firstValueFrom } from 'rxjs';
+
+// Stub AuthService — avoids needing a real Keycloak instance in unit tests
+const createAuthServiceStub = (token: string | null) => ({
+  getAccessToken: () => token,
+  isAuthenticated: () => !!token,
+});
 
 describe('authInterceptor', () => {
   let httpClient: HttpClient;
   let httpMock: HttpTestingController;
-  let authService: AuthService;
 
-  beforeEach(() => {
+  const setup = (token: string | null) => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
+        { provide: AuthService, useValue: createAuthServiceStub(token) },
       ],
     });
-
     httpClient = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
-    authService = TestBed.inject(AuthService);
-  });
+  };
 
-  afterEach(() => {
-    httpMock.verify();
-  });
+  afterEach(() => httpMock.verify());
 
   it('should not attach Authorization header when not authenticated', () => {
-    httpClient.get('/api/test').subscribe();
-    const req = httpMock.expectOne('/api/test');
+    setup(null);
+    httpClient.get('/api/v1/test').subscribe();
+    const req = httpMock.expectOne('/api/v1/test');
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
 
-  it('should attach Bearer token when authenticated', async () => {
-    const credentials = { email: 'student@test.com', password: 'password' };
-    const result = await firstValueFrom(authService.login(credentials));
-
-    authService.setSession(result);
-
-    // We don't need to subscribe here because expectOne will capture the attempt
-    httpClient.get('/api/test').subscribe();
-
-    const req = httpMock.expectOne('/api/test');
-
-    expect(req.request.headers.get('Authorization')).toBe(`Bearer ${result.accessToken}`);
-
+  it('should attach Bearer token when token is present', () => {
+    setup('my-test-token');
+    httpClient.get('/api/v1/test').subscribe();
+    const req = httpMock.expectOne('/api/v1/test');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer my-test-token');
     req.flush({});
   });
 
-  it('should not attach header after logout', async () => {
-    const credentials = { email: 'student@test.com', password: 'password' };
-    const result = await firstValueFrom(authService.login(credentials));
-    authService.setSession(result);
-
-    authService.logout();
-
-    httpClient.get('/api/test').subscribe();
-
-    const req = httpMock.expectOne('/api/test');
+  it('should not attach header when token is null', () => {
+    setup(null);
+    httpClient.get('/api/v1/test').subscribe();
+    const req = httpMock.expectOne('/api/v1/test');
     expect(req.request.headers.has('Authorization')).toBe(false);
-
     req.flush({});
   });
 });

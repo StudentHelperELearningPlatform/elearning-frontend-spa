@@ -1,5 +1,5 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { inject, computed } from '@angular/core';
+import { inject, computed, effect } from '@angular/core';
 import { AuthService } from '../../../core/services/auth.service';
 
 export interface User {
@@ -29,7 +29,7 @@ export const AuthStore = signalStore(
     token: null,
     role: null,
     loading: false,
-    isAuthReady: false,
+    isAuthReady: true,
     error: null,
   }),
   withComputed((state) => ({
@@ -40,47 +40,63 @@ export const AuthStore = signalStore(
   })),
   withMethods((store) => {
     const authService = inject(AuthService);
+
+    // Reactively mirror AuthService signal changes (Keycloak events)
+    effect(() => {
+      const isAuth = authService.isAuthenticated();
+      const currentUser = authService.currentUser()();
+      const accessToken = authService.getAccessToken();
+
+      if (!isAuth || !currentUser) {
+        patchState(store, { user: null, token: null, role: null });
+      } else {
+        const roles = (currentUser.roles || []).map(r => r.toUpperCase());
+        let primaryRole = 'STUDENT';
+
+        if (roles.includes('ADMIN')) {
+          primaryRole = 'ADMIN';
+        } else if (roles.includes('TEACHER') || roles.includes('PROFESSOR')) {
+          primaryRole = 'TEACHER';
+        } else if (roles.includes('STUDENT')) {
+          primaryRole = 'STUDENT';
+        } else if (roles.length > 0) {
+          primaryRole = roles[0];
+        }
+
+        const mappedUser: User = {
+          id: '1',
+          name: currentUser.email,
+          email: currentUser.email,
+          role: primaryRole,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.email}`,
+          memberSince: new Date().toISOString(),
+          grade: primaryRole === 'STUDENT' ? 10 : undefined,
+          school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
+        };
+
+        patchState(store, {
+          user: mappedUser,
+          token: accessToken,
+          role: primaryRole,
+          loading: false,
+          error: null,
+        });
+      }
+    });
+
     return {
-      init() {
-        // Simulate checking for existing session
-        setTimeout(() => {
-          patchState(store, { isAuthReady: true });
-        }, 500);
-      },
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      init() {},
 
-      // 1. Updated signature to accept the credentials object
-      login(credentials: { email: string; password?: string }) {
+      /**
+       * Initiates login via Keycloak redirect.
+       * Accepts an optional credentials object (used by tests / dev fills)
+       * but the real flow always redirects through Keycloak.
+       */
+      login(credentials?: { email?: string; password?: string }): void {
         patchState(store, { loading: true, error: null });
-
-        // 2. Pass the object directly to the updated AuthService
-        authService.login(credentials).subscribe({
-          next: (res) => {
-            // 3. AuthService now returns an array of roles, so we grab the first one
-            const primaryRole = res.user.roles[0] || 'STUDENT';
-
-            const mockUser: User = {
-              id: '1',
-              name: 'Andrei Paraschiv',
-              email: credentials.email,
-              role: primaryRole,
-              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${credentials.email}`,
-              memberSince: '2024-01-15',
-              grade: primaryRole === 'STUDENT' ? 10 : undefined,
-              school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
-            };
-
-            patchState(store, {
-              token: res.accessToken, // 4. Map to the new accessToken property
-              role: primaryRole,
-              user: mockUser,
-              loading: false,
-            });
-
-            // 5. Sync the store state with the service state
-            authService.setSession(res);
-          },
-          error: (err) =>
-            patchState(store, { error: err.message || 'Login failed', loading: false }),
+        authService.login({ email: credentials?.email }).catch((err: Error) => {
+          patchState(store, { loading: false, error: err?.message ?? 'Login failed' });
         });
       },
 
@@ -90,9 +106,9 @@ export const AuthStore = signalStore(
         }
       },
 
-      logout() {
-        authService.logout();
-        patchState(store, { user: null, token: null, role: null });
+      async logout() {
+        await authService.logout();
+        patchState(store, { user: null, token: null, role: null, error: null });
       },
     };
   }),

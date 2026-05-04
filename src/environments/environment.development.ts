@@ -3,8 +3,8 @@ export const environment = {
   production: false,
   apiUrl: 'http://localhost:8080',
   keycloak: {
-    url: 'http://localhost:8180',
+    url: 'https://keycloak-26-0-7-vb34.onrender.com/',
     realm: 'elearning',
-    clientId: 'elearning-spa'
+    clientId: 'elearning-angular'
   }
 };
