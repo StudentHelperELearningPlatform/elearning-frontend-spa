@@ -29,7 +29,7 @@ export default [
   { path: 'quiz-player', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
   { path: 'quiz-player/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
   { path: 'quizzes/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
-  { path: 'quizzes/:id/results/:attemptId', component: QuizPlayerComponent },
+    { path: 'quizzes/:id/results/:attemptId', component: ResultsSummaryComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
    {
     path: 'skills/:subject',
