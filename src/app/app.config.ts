@@ -19,7 +19,11 @@ export const appConfig: ApplicationConfig = {
     providePrimeNG({
       theme: { preset: Lara, options: { darkModeSelector: 'none' } },
     }),
-    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor, loadingInterceptor])),
+    provideHttpClient(withInterceptors([
+      authInterceptor,
+      errorInterceptor,
+      loadingInterceptor
+    ])),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
   ],
 };

@@ -7,6 +7,8 @@ import { LessonListComponent } from './progress-dashboard/lesson-list/lesson-lis
 import { MilestonesComponent } from './progress-dashboard/milestones/milestones.component';
 import { LearningPathComponent } from './progress-dashboard/learning-path/learning-path.component';
 import { quizCanDeactivate } from './quiz-player/quiz.can-deactivate.guard';
+import { SkillDetailComponent } from './skill-detail/skill-detail.component';
+
 
 export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
@@ -27,6 +29,16 @@ export default [
   { path: 'quiz-player', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
   { path: 'quiz-player/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
   { path: 'quizzes/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
-  { path: 'quizzes/:id/results/:attemptId', component: ResultsSummaryComponent },
+    { path: 'quizzes/:id/results/:attemptId', component: ResultsSummaryComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+   {
+    path: 'skills/:subject',
+    component: SkillDetailComponent
+  }
+ /* {
+  path: 'skills/:subject',
+  loadComponent: () =>
+    ('./skill-detail/skill-detail.component')
+     .then(m => m.SkillDetailComponent)
+   }*/
 ] as Routes;
