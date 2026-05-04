@@ -1,9 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { Question, Quiz, QuizOption, QuizResult } from '@shared/models/quiz.types';
+import {
+  Question,
+  Quiz,
+  QuizOption,
+  QuizResult,
+  QuizResultDetail,
+} from '@shared/models/quiz.types';
 
-export type { Question, Quiz, QuizResult };
+export type { Question, Quiz, QuizResult, QuizResultDetail };
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
@@ -87,6 +93,9 @@ interface QuizzesState {
   submitted: boolean;
   result: QuizResultWithMeta | null;
   loading: boolean;
+  resultDetail: QuizResultDetail | null;
+  resultDetailLoading: boolean;
+  resultDetailError: string | null;
 }
 
 export const QuizzesStore = signalStore(
@@ -101,6 +110,9 @@ export const QuizzesStore = signalStore(
     submitted: false,
     result: null,
     loading: false,
+    resultDetail: null,
+    resultDetailLoading: false,
+    resultDetailError: null,
   }),
   withComputed((state) => ({
     answeredCount: computed(() => Object.keys(state.answers()).length),
@@ -304,6 +316,34 @@ export const QuizzesStore = signalStore(
           timeRemaining: store.currentQuiz()?.timeLimitSeconds ?? null,
           submitted: false,
           result: null,
+        });
+      },
+      loadResultDetail(quizId: string, attemptId: string) {
+        patchState(store, { resultDetailLoading: true, resultDetailError: null });
+        http
+          .get<QuizResultDetail>(`/api/quizzes/${quizId}/results/${attemptId}`)
+          .subscribe({
+            next: (detail) => {
+              patchState(store, {
+                resultDetail: detail,
+                resultDetailLoading: false,
+                resultDetailError: null,
+              });
+            },
+            error: () => {
+              patchState(store, {
+                resultDetail: null,
+                resultDetailLoading: false,
+                resultDetailError: 'Unable to load quiz results.',
+              });
+            },
+          });
+      },
+      clearResultDetail() {
+        patchState(store, {
+          resultDetail: null,
+          resultDetailLoading: false,
+          resultDetailError: null,
         });
       },
     };

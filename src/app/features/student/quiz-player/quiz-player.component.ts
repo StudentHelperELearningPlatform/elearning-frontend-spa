@@ -6,7 +6,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { QuizzesStore, Question } from '../store/quizzes.store';
 import { QuestionCardComponent } from './question-card/question-card.component';
 import { TimerComponent } from './timer/timer.component';
-import { ResultsSummaryComponent } from './results-summary/results-summary.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 
@@ -17,7 +16,6 @@ import { ModalComponent } from '../../../shared/components/modal/modal.component
     CommonModule,
     QuestionCardComponent,
     TimerComponent,
-    ResultsSummaryComponent,
     ButtonComponent,
     ModalComponent,
   ],
@@ -34,6 +32,7 @@ export class QuizPlayerComponent implements OnInit {
   paletteOpen = signal(false);
   showSubmitModal = signal(false);
   quizId = signal('1');
+  private resultsNavigated = signal(false);
 
   selectedOptionId = signal<string | null>(null);
 
@@ -79,6 +78,18 @@ export class QuizPlayerComponent implements OnInit {
 
       const answer = this.store.answers()[questionId] ?? null;
       this.selectedOptionId.set(answer);
+    });
+
+    effect(() => {
+      const attemptId = this.store.result()?.attemptId;
+      if (!attemptId || this.resultsNavigated()) return;
+      this.resultsNavigated.set(true);
+      this.router.navigate([
+        '/student/quizzes',
+        this.quizId(),
+        'results',
+        attemptId,
+      ]);
     });
   }
 
@@ -162,6 +173,7 @@ export class QuizPlayerComponent implements OnInit {
     this.paletteOpen.set(false);
     this.showSubmitModal.set(false);
     this.selectedOptionId.set(null);
+    this.resultsNavigated.set(false);
   }
 
   getPaletteClass(index: number): string {
