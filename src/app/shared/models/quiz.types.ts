@@ -28,3 +28,32 @@ export interface QuizResult {
   timeSpent: number;
   percentage: number;
 }
+
+export type QuestionDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
+
+export interface QuestionResultBreakdown {
+  questionId: string;
+  questionText: string;
+  type: string;
+  difficulty: QuestionDifficulty;
+  studentAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+  timeSpentSeconds: number;
+  aiExplanation: string;
+}
+
+export interface QuizResultDetail {
+  attemptId: string;
+  quizId: string;
+  quizTitle: string;
+  subject: string;
+  lessonId: string | null;
+  nextLessonId: string | null;
+  score: number;
+  totalPoints: number;
+  percentage: number;
+  passed: boolean;
+  timeSpent: number;
+  questionBreakdown: QuestionResultBreakdown[];
+}

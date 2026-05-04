@@ -2,6 +2,7 @@
 import { Routes } from '@angular/router';
 import { ProgressDashboardComponent } from './progress-dashboard/progress-dashboard.component';
 import { QuizPlayerComponent } from './quiz-player/quiz-player.component';
+import { ResultsSummaryComponent } from './quiz-player/results-summary/results-summary.component';
 import { LessonListComponent } from './progress-dashboard/lesson-list/lesson-list.component';
 import { MilestonesComponent } from './progress-dashboard/milestones/milestones.component';
 import { LearningPathComponent } from './progress-dashboard/learning-path/learning-path.component';
@@ -13,7 +14,6 @@ export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
   { path: 'lessons', component: LessonListComponent },
   { path: 'milestones', component: MilestonesComponent },
-  // { path: 'learning-path', component: LearningPathComponent },
   { path: 'learning-path', redirectTo: 'learning-paths/path-1', pathMatch: 'full' },
   { path: 'learning-paths/:id', component: LearningPathComponent },
   {
