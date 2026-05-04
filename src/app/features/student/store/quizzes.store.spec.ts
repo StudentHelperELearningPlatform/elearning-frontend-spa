@@ -292,4 +292,63 @@ describe('QuizzesStore', () => {
     patchStore(store, { currentQuestionIndex: 2 });
     expect(store.isLastQuestion()).toBe(true);
   });
+
+  // ─── loadResultDetail ────────────────────────────────────────────────────
+
+  it('loadResultDetail populates resultDetail on success', async () => {
+    vi.spyOn(httpClient, 'get').mockReturnValue(
+      of({
+        attemptId: 'attempt-1',
+        quizId: 'quiz-1',
+        quizTitle: 'Sample Quiz',
+        subject: 'Mathematics',
+        lessonId: 'lesson-1',
+        nextLessonId: 'lesson-2',
+        score: 70,
+        totalPoints: 100,
+        percentage: 70,
+        passed: true,
+        timeSpent: 200,
+        questionBreakdown: [],
+      }),
+    );
+    store.loadResultDetail('quiz-1', 'attempt-1');
+    await Promise.resolve();
+    expect(store.resultDetail()?.attemptId).toBe('attempt-1');
+    expect(store.resultDetail()?.passed).toBe(true);
+    expect(store.resultDetailLoading()).toBe(false);
+    expect(store.resultDetailError()).toBeNull();
+  });
+
+  it('loadResultDetail sets error message on failure', async () => {
+    vi.spyOn(httpClient, 'get').mockReturnValue(throwError(() => new Error('fail')));
+    store.loadResultDetail('quiz-1', 'attempt-1');
+    await Promise.resolve();
+    expect(store.resultDetail()).toBeNull();
+    expect(store.resultDetailLoading()).toBe(false);
+    expect(store.resultDetailError()).toBe('Unable to load quiz results.');
+  });
+
+  it('clearResultDetail empties resultDetail state', () => {
+    patchStore(store, {
+      resultDetail: {
+        attemptId: 'a',
+        quizId: 'q',
+        quizTitle: 't',
+        subject: 's',
+        lessonId: null,
+        nextLessonId: null,
+        score: 0,
+        totalPoints: 0,
+        percentage: 0,
+        passed: false,
+        timeSpent: 0,
+        questionBreakdown: [],
+      },
+      resultDetailError: 'something',
+    });
+    store.clearResultDetail();
+    expect(store.resultDetail()).toBeNull();
+    expect(store.resultDetailError()).toBeNull();
+  });
 });
