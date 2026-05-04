@@ -1,12 +1,12 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { AuthStore } from './features/auth/store/auth.store';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [RouterOutlet],
   template: `
+    <h1>Hello, {{ title() }}</h1>
     <router-outlet></router-outlet>
   `,
   styles: [
@@ -18,10 +18,6 @@ import { AuthStore } from './features/auth/store/auth.store';
     `,
   ],
 })
-export class App implements OnInit {
-  private authStore = inject(AuthStore);
-
-  ngOnInit() {
-    this.authStore.init();
-  }
+export class App {
+  title = signal('E-Learning Platform');
 }

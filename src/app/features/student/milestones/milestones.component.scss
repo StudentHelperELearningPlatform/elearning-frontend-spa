@@ -57,27 +57,42 @@
   }
 }
 
+/* PrimeNG card override */
 .badge-card {
-  background: white;
-  border-radius: 12px;
-  padding: 15px;
   text-align: center;
-  border: 1px solid #eee;
+  border-radius: 12px;
   transition: 0.2s;
 }
 
+/* Earned styling (required story) */
+.badge-card.earned {
+  background: rgba(10, 186, 181, 0.12);
+  border: 1px solid #0ABAB5;
+}
+
+/* Locked styling */
 .badge-card.locked {
-  filter: grayscale(1);
-  opacity: 0.5;
+  filter: grayscale(1) opacity(0.5);
+}
+
+/* NEW badge animation */
+.badge-card.new {
+  animation: glow 0.6s ease;
+}
+
+@keyframes glow {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); box-shadow: 0 0 10px #0ABAB5; }
+  100% { transform: scale(1); }
 }
 
 .icon {
-  font-size: 30px;
+  font-size: 28px;
+  margin-bottom: 8px;
 }
 
 .title {
   font-weight: bold;
-  margin-top: 10px;
 }
 
 .desc {
@@ -95,4 +110,15 @@
   margin-top: 8px;
   font-size: 12px;
   color: #666;
+}
+
+.skeleton {
+  height: 120px;
+  background: #eee;
+}
+
+.empty {
+  text-align: center;
+  margin-top: 40px;
+  color: gray;
 }

@@ -1,19 +1,12 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { computed, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { computed } from '@angular/core';
 
-export interface Block {
+export interface Module {
   id: string;
   title: string;
-  blockType: 'VIDEO' | 'TEXT' | 'QUIZ' | 'INTERACTIVE' | 'AUDIO' | 'IMAGE';
+  type: 'video' | 'text' | 'quiz' | 'interactive' | 'audio' | 'image';
   content: string;
   mediaUrl?: string;
-}
-
-export interface Subcapitol {
-  id: string;
-  title: string;
-  blocks: Block[];
 }
 
 export interface Lesson {
@@ -24,7 +17,7 @@ export interface Lesson {
   difficulty: string;
   duration: string;
   status: string;
-  subcapitols: Subcapitol[];
+  modules: Module[];
 }
 
 interface LessonsState {
@@ -46,14 +39,8 @@ export const LessonsStore = signalStore(
         difficulty: 'Easy', 
         duration: '15 min', 
         status: 'Not Started',
-        subcapitols: [
-          {
-            id: 'sc1',
-            title: 'Introduction',
-            blocks: [
-              { id: 'm1', title: 'What are fractions?', blockType: 'VIDEO', content: 'Fractions represent parts of a whole.', mediaUrl: 'https://example.com/video1.mp4' }
-            ]
-          }
+        modules: [
+          { id: 'm1', title: 'What are fractions?', type: 'video', content: 'Fractions represent parts of a whole.', mediaUrl: 'https://example.com/video1.mp4' }
         ]
       },
       { 
@@ -64,15 +51,9 @@ export const LessonsStore = signalStore(
         difficulty: 'Medium', 
         duration: '20 min', 
         status: 'In Progress',
-        subcapitols: [
-          {
-            id: 'sc2',
-            title: 'Adding like fractions',
-            blocks: [
-              { id: 'm2', title: 'Adding like fractions', blockType: 'TEXT', content: 'To add fractions with the same denominator, add the numerators.' },
-              { id: 'm3', title: 'Practice Quiz', blockType: 'QUIZ', content: 'Solve these problems.' }
-            ]
-          }
+        modules: [
+          { id: 'm2', title: 'Adding like fractions', type: 'text', content: 'To add fractions with the same denominator, add the numerators.' },
+          { id: 'm3', title: 'Practice Quiz', type: 'quiz', content: 'Solve these problems.' }
         ]
       }
     ],
@@ -84,26 +65,17 @@ export const LessonsStore = signalStore(
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
   })),
-  withMethods((store, http = inject(HttpClient)) => ({
+  withMethods((store) => ({
     loadLessons() {
-      patchState(store, { loading: true, error: null });
-      http.get<Lesson[]>('/api/v1/lessons').subscribe({
-        next: (data) => patchState(store, { lessons: data, loading: false }),
-        error: (err: unknown) => {
-          const message = err instanceof Error ? err.message : 'Failed to load lessons';
-          patchState(store, { loading: false, error: message });
-        }
-      });
+      patchState(store, { loading: true });
+      setTimeout(() => patchState(store, { loading: false }), 500);
     },
     loadLesson(id: string) {
-      patchState(store, { loading: true, error: null });
-      http.get<Lesson>(`/api/v1/lessons/${id}`).subscribe({
-        next: (data) => patchState(store, { currentLesson: data, loading: false }),
-        error: (err: unknown) => {
-          const message = err instanceof Error ? err.message : 'Failed to load lesson';
-          patchState(store, { loading: false, error: message });
-        }
-      });
+      patchState(store, { loading: true });
+      setTimeout(() => {
+        const lesson = store.lessons().find(l => l.id === id);
+        patchState(store, { currentLesson: lesson, loading: false });
+      }, 500);
     }
   }))
 );

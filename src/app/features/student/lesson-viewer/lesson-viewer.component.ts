@@ -47,7 +47,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
               <div class="h-20 bg-gray-200 rounded-2xl border-2 border-gray-300 animate-pulse"></div>
             }
           } @else {
-            @for (block of allBlocks(); track block.id; let idx = $index) {
+            @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
               <div 
                 (click)="selectModule(idx)"
                 (keydown.enter)="selectModule(idx)"
@@ -68,11 +68,11 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
                 
                 <div class="flex-1">
                   <h4 class="font-bold text-lg leading-tight" [ngClass]="{'text-white': currentModuleIndex() === idx, 'text-black': currentModuleIndex() !== idx}">
-                    {{ block.title }}
+                    {{ module.title }}
                   </h4>
                   <div class="flex items-center mt-1 text-sm font-medium opacity-80" [ngClass]="{'text-white': currentModuleIndex() === idx, 'text-gray-500': currentModuleIndex() !== idx}">
-                    <span class="material-icons text-base mr-1">{{ getModuleIcon(block.blockType) }}</span>
-                    <span class="capitalize">{{ block.blockType | lowercase }}</span>
+                    <span class="material-icons text-base mr-1">{{ getModuleIcon(module.type) }}</span>
+                    <span class="capitalize">{{ module.type }}</span>
                   </div>
                 </div>
               </div>
@@ -104,11 +104,11 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
                 <div class="h-2 w-24 bg-[#0ABAB5] rounded-full"></div>
               </div>
 
-              @if (currentModule()?.blockType === 'VIDEO' || currentModule()?.blockType === 'IMAGE' || currentModule()?.blockType === 'AUDIO') {
+              @if (currentModule()?.type === 'video' || currentModule()?.type === 'image' || currentModule()?.type === 'audio') {
                 <div class="mb-10">
                   <app-media-player 
                     [url]="currentModule()?.mediaUrl || 'https://picsum.photos/seed/lesson/800/450'" 
-                    [type]="currentModule()?.blockType === 'VIDEO' ? 'video' : currentModule()?.blockType === 'AUDIO' ? 'audio' : 'image'"
+                    [type]="currentModule()?.type === 'video' ? 'video' : currentModule()?.type === 'audio' ? 'audio' : 'image'"
                     [title]="currentModule()?.title || 'Media'">
                   </app-media-player>
                 </div>
@@ -142,14 +142,14 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
           </app-button>
           
           <div class="hidden md:flex items-center space-x-2">
-            @for (block of allBlocks(); track block.id; let idx = $index) {
+            @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
               <div class="w-3 h-3 rounded-full border-2 border-black transition-colors"
                    [ngClass]="{'bg-[#0ABAB5]': idx <= currentModuleIndex(), 'bg-gray-200': idx > currentModuleIndex()}">
               </div>
             }
           </div>
 
-          @if (currentModuleIndex() < (allBlocks().length || 0) - 1) {
+          @if (currentModuleIndex() < (store.currentLesson()?.modules?.length || 0) - 1) {
             <app-button 
               variant="primary" 
               icon="arrow_forward" 
@@ -185,18 +185,11 @@ export class LessonViewerComponent implements OnInit {
     }
   }
 
-  /** Flattens all blocks from all subcapitols into a single ordered list for linear navigation. */
-  allBlocks = () => {
-    const lesson = this.store.currentLesson();
-    if (!lesson?.subcapitols) return [];
-    return lesson.subcapitols.flatMap(sc => sc.blocks);
-  };
-
   get currentModule() {
     return () => {
-      const blocks = this.allBlocks();
-      if (!blocks.length) return null;
-      return blocks[this.currentModuleIndex()] ?? null;
+      const lesson = this.store.currentLesson();
+      if (!lesson || !lesson.modules || lesson.modules.length === 0) return null;
+      return lesson.modules[this.currentModuleIndex()];
     };
   }
 
@@ -205,7 +198,8 @@ export class LessonViewerComponent implements OnInit {
   }
 
   nextModule() {
-    if (this.currentModuleIndex() < this.allBlocks().length - 1) {
+    const lesson = this.store.currentLesson();
+    if (lesson && lesson.modules && this.currentModuleIndex() < lesson.modules.length - 1) {
       this.currentModuleIndex.update(i => i + 1);
     }
   }
@@ -225,13 +219,13 @@ export class LessonViewerComponent implements OnInit {
     this.router.navigate(['/student/lessons']);
   }
 
-  getModuleIcon(blockType: string): string {
-    switch (blockType) {
-      case 'VIDEO': return 'play_circle';
-      case 'TEXT': return 'article';
-      case 'QUIZ': return 'quiz';
-      case 'INTERACTIVE': return 'touch_app';
-      case 'AUDIO': return 'headphones';
+  getModuleIcon(type: string): string {
+    switch (type) {
+      case 'video': return 'play_circle';
+      case 'text': return 'article';
+      case 'quiz': return 'quiz';
+      case 'interactive': return 'touch_app';
+      case 'audio': return 'headphones';
       default: return 'menu_book';
     }
   }

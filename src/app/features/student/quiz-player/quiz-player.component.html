@@ -119,15 +119,8 @@
       </div>
     </app-modal>
   } @else if (store.showResults()) {
-    <div class="flex-1 flex items-center justify-center p-6 z-10">
-      <app-results-summary
-        [score]="store.score()"
-        [totalPoints]="store.totalPoints()"
-        [timeSpent]="store.timeSpent()"
-        [passed]="store.result()?.passed ?? false"
-        (retry)="retryQuiz()"
-        (continue)="goBack()"
-      ></app-results-summary>
+    <div class="flex-1 flex items-center justify-center z-10">
+      <div class="w-16 h-16 border-8 border-gray-200 border-t-[#0ABAB5] rounded-full animate-spin" aria-label="Loading results"></div>
     </div>
   } @else {
     <div class="flex-1 flex items-center justify-center z-10">

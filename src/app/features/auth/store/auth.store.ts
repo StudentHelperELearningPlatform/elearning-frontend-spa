@@ -29,7 +29,7 @@ export const AuthStore = signalStore(
     token: null,
     role: null,
     loading: false,
-    isAuthReady: true, // no async Keycloak init needed anymore
+    isAuthReady: true,
     error: null,
   }),
   withComputed((state) => ({
@@ -41,7 +41,7 @@ export const AuthStore = signalStore(
   withMethods((store) => {
     const authService = inject(AuthService);
 
-    // Reactively mirror AuthService signal changes (e.g. after login/logout sync)
+    // Reactively mirror AuthService signal changes (Keycloak events)
     effect(() => {
       const isAuth = authService.isAuthenticated();
       const currentUser = authService.currentUser()();
@@ -60,7 +60,7 @@ export const AuthStore = signalStore(
         } else if (roles.includes('STUDENT')) {
           primaryRole = 'STUDENT';
         } else if (roles.length > 0) {
-          primaryRole = roles[0]; // Fallback
+          primaryRole = roles[0];
         }
 
         const mappedUser: User = {
@@ -85,15 +85,19 @@ export const AuthStore = signalStore(
     });
 
     return {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       init() {},
 
-      async login(): Promise<void> {
+      /**
+       * Initiates login via Keycloak redirect.
+       * Accepts an optional credentials object (used by tests / dev fills)
+       * but the real flow always redirects through Keycloak.
+       */
+      login(credentials?: { email?: string; password?: string }): void {
         patchState(store, { loading: true, error: null });
-        try {
-          await authService.login();
-        } catch (err: any) {
-          patchState(store, { loading: false, error: err.message });
-        }
+        authService.login({ email: credentials?.email }).catch((err: Error) => {
+          patchState(store, { loading: false, error: err?.message ?? 'Login failed' });
+        });
       },
 
       updateProfile(updatedUser: Partial<User>) {

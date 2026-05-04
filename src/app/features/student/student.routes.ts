@@ -2,10 +2,13 @@
 import { Routes } from '@angular/router';
 import { ProgressDashboardComponent } from './progress-dashboard/progress-dashboard.component';
 import { QuizPlayerComponent } from './quiz-player/quiz-player.component';
+import { ResultsSummaryComponent } from './quiz-player/results-summary/results-summary.component';
 import { LessonListComponent } from './progress-dashboard/lesson-list/lesson-list.component';
 import { MilestonesComponent } from './progress-dashboard/milestones/milestones.component';
 import { LearningPathComponent } from './progress-dashboard/learning-path/learning-path.component';
 import { quizCanDeactivate } from './quiz-player/quiz.can-deactivate.guard';
+import { SkillDetailComponent } from './skill-detail/skill-detail.component';
+
 
 export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
@@ -35,9 +38,16 @@ export default [
   // Route stub: Paraschiv adds the QuizHistoryComponent in their PR.
   // { path: 'quizzes', loadComponent: () => import('./quiz-history/quiz-history.component').then(m => m.QuizHistoryComponent) },
   { path: 'quizzes/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
-  { path: 'quizzes/:id/results/:attemptId', component: QuizPlayerComponent },
-  // /student/skills/:subject — Skill Detail Page (E4-03, ALEXANDRA)
-  // Route stub: Alexandra adds the SkillDetailComponent in their PR.
-  // { path: 'skills/:subject', loadComponent: () => import('./skill-detail/skill-detail.component').then(m => m.SkillDetailComponent) },
+    { path: 'quizzes/:id/results/:attemptId', component: ResultsSummaryComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+   {
+    path: 'skills/:subject',
+    component: SkillDetailComponent
+  }
+ /* {
+  path: 'skills/:subject',
+  loadComponent: () =>
+    ('./skill-detail/skill-detail.component')
+     .then(m => m.SkillDetailComponent)
+   }*/
 ] as Routes;

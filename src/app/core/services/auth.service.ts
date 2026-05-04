@@ -44,17 +44,18 @@ export class AuthService {
 
   constructor() {
     this._syncState();
-    
+
     this.keycloak.onAuthSuccess = () => this._syncState();
     this.keycloak.onAuthRefreshSuccess = () => this._syncState();
     this.keycloak.onAuthLogout = () => this._syncState();
   }
 
   /**
-   * Login via Keycloak standard redirect flow.
+   * Initiate login via Keycloak redirect.
+   * @param options Optional object with an `email` hint (pre-fills Keycloak login form).
    */
-  async login(): Promise<void> {
-    await this.keycloak.login();
+  async login(options?: { email?: string }): Promise<void> {
+    await this.keycloak.login({ loginHint: options?.email });
   }
 
   async logout(): Promise<void> {

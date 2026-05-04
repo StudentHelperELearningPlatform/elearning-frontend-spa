@@ -1,8 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { LessonsStore, Lesson } from './lessons.store';
-import { HttpClient } from '@angular/common/http';
-import { of } from 'rxjs';
 
 describe('LessonsStore', () => {
   const getStore = () => TestBed.inject(LessonsStore);
@@ -16,26 +14,11 @@ describe('LessonsStore', () => {
     difficulty: 'Easy',
     duration: '10 min',
     status: 'Not Started',
-    subcapitols: [
-      {
-        id: 'sc1',
-        title: 'Intro',
-        blocks: [{ id: 'm1', title: 'Intro', blockType: 'TEXT', content: 'Hello' }],
-      },
-    ],
+    modules: [{ id: 'm1', title: 'Intro', type: 'text', content: 'Hello' }],
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [
-        {
-          provide: HttpClient,
-          useValue: {
-            get: vi.fn(() => of([]))
-          }
-        }
-      ]
-    });
+    TestBed.configureTestingModule({});
     store = getStore();
   });
 
@@ -121,10 +104,10 @@ describe('LessonsStore', () => {
     expect(store.loading()).toBe(false);
   });
 
-  it('loadLesson populates subcapitols on the resolved lesson', () => {
+  it('loadLesson populates modules on the resolved lesson', () => {
     vi.useFakeTimers();
     store.loadLesson('2');
     vi.advanceTimersByTime(500);
-    expect(store.currentLesson()?.subcapitols.length).toBeGreaterThan(0);
+    expect(store.currentLesson()?.modules.length).toBeGreaterThan(0);
   });
 });

@@ -1,9 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { Question, Quiz, QuizOption, QuizResult } from '@shared/models/quiz.types';
+import {
+  Question,
+  Quiz,
+  QuizOption,
+  QuizResult,
+  QuizResultDetail,
+} from '@shared/models/quiz.types';
 
-export type { Question, Quiz, QuizResult };
+export type { Question, Quiz, QuizResult, QuizResultDetail };
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
@@ -87,6 +93,9 @@ interface QuizzesState {
   submitted: boolean;
   result: QuizResultWithMeta | null;
   loading: boolean;
+  resultDetail: QuizResultDetail | null;
+  resultDetailLoading: boolean;
+  resultDetailError: string | null;
 }
 
 export const QuizzesStore = signalStore(
@@ -101,6 +110,9 @@ export const QuizzesStore = signalStore(
     submitted: false,
     result: null,
     loading: false,
+    resultDetail: null,
+    resultDetailLoading: false,
+    resultDetailError: null,
   }),
   withComputed((state) => ({
     answeredCount: computed(() => Object.keys(state.answers()).length),
@@ -162,7 +174,7 @@ export const QuizzesStore = signalStore(
       // Mark submitted immediately so the UI reacts and tickTimer cannot fire again
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`/api/v1/subcapitols/${quizId}/check-quiz/submit`, { answers }).subscribe({
+      http.post<SubmitQuizResponse>(`/api/quizzes/${quizId}/submit`, { answers }).subscribe({
         next: (submission) => {
           patchState(store, {
             result: {
@@ -196,7 +208,7 @@ export const QuizzesStore = signalStore(
     return {
       loadQuizById(id: string) {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/v1/lessons/${id}/final-quiz/questions`).subscribe({
+        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
           next: (quiz) => {
             patchState(store, {
               loading: false,
@@ -215,7 +227,7 @@ export const QuizzesStore = signalStore(
       },
       startQuiz(id: string) {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/v1/lessons/${id}/final-quiz/questions`).subscribe({
+        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
           next: (quiz) => {
             const mappedQuiz = mapQuizResponse(quiz);
             patchState(store, {
@@ -304,6 +316,34 @@ export const QuizzesStore = signalStore(
           timeRemaining: store.currentQuiz()?.timeLimitSeconds ?? null,
           submitted: false,
           result: null,
+        });
+      },
+      loadResultDetail(quizId: string, attemptId: string) {
+        patchState(store, { resultDetailLoading: true, resultDetailError: null });
+        http
+          .get<QuizResultDetail>(`/api/quizzes/${quizId}/results/${attemptId}`)
+          .subscribe({
+            next: (detail) => {
+              patchState(store, {
+                resultDetail: detail,
+                resultDetailLoading: false,
+                resultDetailError: null,
+              });
+            },
+            error: () => {
+              patchState(store, {
+                resultDetail: null,
+                resultDetailLoading: false,
+                resultDetailError: 'Unable to load quiz results.',
+              });
+            },
+          });
+      },
+      clearResultDetail() {
+        patchState(store, {
+          resultDetail: null,
+          resultDetailLoading: false,
+          resultDetailError: null,
         });
       },
     };

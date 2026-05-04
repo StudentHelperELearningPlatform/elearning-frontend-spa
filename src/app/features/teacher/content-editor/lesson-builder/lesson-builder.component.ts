@@ -160,7 +160,7 @@ interface UploadedFile {
               </li>
               <li class="flex gap-2">
                 <span class="material-icons text-[#0ABAB5] text-sm">lightbulb</span>
-                Keep subcapitols concise and focused on one topic.
+                Keep modules concise and focused on one topic.
               </li>
             </ul>
           </app-card>

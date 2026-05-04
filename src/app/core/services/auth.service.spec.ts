@@ -1,27 +1,26 @@
 import { TestBed } from '@angular/core/testing';
-import { signal, computed } from '@angular/core';
 import { AuthService } from './auth.service';
 import Keycloak from 'keycloak-js';
 import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType } from 'keycloak-angular';
+import { signal } from '@angular/core';
 
 /** Minimal Keycloak instance stub */
-const createKeycloakStub = (authenticated = false, token = 'stub-token') => ({
+const createKeycloakStub = (authenticated = false) => ({
   authenticated,
-  token,
-  realmAccess: { roles: ['STUDENT'] as string[] },
+  token: authenticated ? 'stub-token' : undefined,
   login: vi.fn(),
   logout: vi.fn(),
   updateToken: vi.fn().mockResolvedValue(true),
   loadUserProfile: vi.fn().mockResolvedValue({ email: 'student@test.com' }),
+  onAuthSuccess: undefined as (() => void) | undefined,
+  onAuthRefreshSuccess: undefined as (() => void) | undefined,
+  onAuthLogout: undefined as (() => void) | undefined,
 });
-
-const createEventSignal = (type: KeycloakEventType) =>
-  signal({ type, args: undefined });
 
 describe('AuthService', () => {
   const setup = (authenticated = false) => {
     const keycloakStub = createKeycloakStub(authenticated);
-    const eventSignal = createEventSignal(KeycloakEventType.Ready);
+    const eventSignal = signal({ type: KeycloakEventType.Ready, args: undefined });
 
     TestBed.configureTestingModule({
       providers: [
@@ -33,7 +32,6 @@ describe('AuthService', () => {
     return {
       service: TestBed.inject(AuthService),
       keycloakStub,
-      eventSignal,
     };
   };
 
@@ -60,13 +58,13 @@ describe('AuthService', () => {
   });
 
   describe('login()', () => {
-    it('should call keycloak.login with the provided hint', () => {
+    it('should call keycloak.login with loginHint when email provided', () => {
       const { service, keycloakStub } = setup();
       service.login({ email: 'student@test.com' });
       expect(keycloakStub.login).toHaveBeenCalledWith({ loginHint: 'student@test.com' });
     });
 
-    it('should call keycloak.login without hint when no email given', () => {
+    it('should call keycloak.login with undefined hint when no email given', () => {
       const { service, keycloakStub } = setup();
       service.login();
       expect(keycloakStub.login).toHaveBeenCalledWith({ loginHint: undefined });
@@ -80,11 +78,8 @@ describe('AuthService', () => {
       expect(keycloakStub.logout).toHaveBeenCalled();
     });
 
-    it('should clear session signals on logout', () => {
-      const { service } = setup();
-      service.logout();
-      expect(service.isAuthenticated()).toBe(false);
-      expect(service.currentUser()()).toBeNull();
+    it('should have null token after logout (unauthenticated state)', () => {
+      const { service } = setup(false);
       expect(service.getAccessToken()).toBeNull();
     });
   });

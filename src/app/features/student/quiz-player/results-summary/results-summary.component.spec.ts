@@ -1,138 +1,271 @@
 import { TestBed } from '@angular/core/testing';
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { patchStore } from '../../../../../test-utils/patch-store';
+import { QuizzesStore } from '../../store/quizzes.store';
+import { QuizResultDetail } from '@shared/models/quiz.types';
 import { ResultsSummaryComponent } from './results-summary.component';
 
-// ResultsSummaryComponent uses templateUrl — cannot be mounted in Vitest.
-// We construct the class inside runInInjectionContext (required for input signals),
-// then cast-assign signal getters to return test values.
+const MOCK_DETAIL: QuizResultDetail = {
+  attemptId: 'attempt-1',
+  quizId: 'quiz-1',
+  quizTitle: 'Sample Quiz',
+  subject: 'Mathematics',
+  lessonId: 'lesson-1',
+  nextLessonId: 'lesson-2',
+  score: 70,
+  totalPoints: 100,
+  percentage: 70,
+  passed: true,
+  timeSpent: 245,
+  questionBreakdown: [
+    {
+      questionId: 'q1',
+      questionText: 'What is 12 + 8?',
+      type: 'MULTIPLE_CHOICE',
+      difficulty: 'EASY',
+      studentAnswer: '20',
+      correctAnswer: '20',
+      isCorrect: true,
+      timeSpentSeconds: 15,
+      aiExplanation: 'Twelve plus eight equals twenty.',
+    },
+    {
+      questionId: 'q2',
+      questionText: 'What is 9 squared?',
+      type: 'MULTIPLE_CHOICE',
+      difficulty: 'MEDIUM',
+      studentAnswer: '72',
+      correctAnswer: '81',
+      isCorrect: false,
+      timeSpentSeconds: 65,
+      aiExplanation: '9 x 9 = 81.',
+    },
+    {
+      questionId: 'q3',
+      questionText: 'Explain why practice helps learning.',
+      type: 'SHORT_ANSWER',
+      difficulty: 'HARD',
+      studentAnswer: 'Repetition strengthens recall.',
+      correctAnswer: '(graded by your teacher)',
+      isCorrect: true,
+      timeSpentSeconds: 95,
+      aiExplanation: 'Repeated practice strengthens neural pathways.',
+    },
+  ],
+};
 
-describe('ResultsSummaryComponent (logic)', () => {
+const buildRoute = (id: string | null = 'quiz-1', attemptId: string | null = 'attempt-1') => ({
+  snapshot: { paramMap: { get: (key: string) => (key === 'id' ? id : attemptId) } },
+});
+
+describe('ResultsSummaryComponent', () => {
   let injector: EnvironmentInjector;
+  let store: InstanceType<typeof QuizzesStore>;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+  const create = (
+    route: ReturnType<typeof buildRoute> = buildRoute(),
+  ): ResultsSummaryComponent => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: route },
+      ],
+    });
     injector = TestBed.inject(EnvironmentInjector);
+    store = TestBed.inject(QuizzesStore);
+    return runInInjectionContext(injector, () => new ResultsSummaryComponent());
+  };
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('reads route params on init and triggers loadResultDetail', () => {
+    const comp = create();
+    const spy = vi.spyOn(store, 'loadResultDetail').mockImplementation(() => undefined);
+    comp.ngOnInit();
+    expect(spy).toHaveBeenCalledWith('quiz-1', 'attempt-1');
+    expect(comp.quizId()).toBe('quiz-1');
+    expect(comp.attemptId()).toBe('attempt-1');
   });
 
-  function make(score: number, totalPoints: number, timeSpent = 300, passed = false) {
-    const comp = runInInjectionContext(injector, () => new ResultsSummaryComponent());
-    comp.score = (() => score) as typeof comp.score;
-    comp.totalPoints = (() => totalPoints) as typeof comp.totalPoints;
-    comp.timeSpent = (() => timeSpent) as typeof comp.timeSpent;
-    comp.passed = (() => passed) as typeof comp.passed;
-    return comp;
-  }
-
-  // ─── getPercentage ────────────────────────────────────────────────────────
-
-  it('returns 0 when totalPoints is 0', () => {
-    expect(make(0, 0).getPercentage()).toBe(0);
+  it('does not call loadResultDetail when route params are missing', () => {
+    const comp = create(buildRoute(null, null));
+    const spy = vi.spyOn(store, 'loadResultDetail').mockImplementation(() => undefined);
+    comp.ngOnInit();
+    expect(spy).not.toHaveBeenCalled();
   });
 
-  it('returns 80 for score 80 / totalPoints 100', () => {
-    expect(make(80, 100).getPercentage()).toBe(80);
+  it('passed() returns true when percentage >= 60', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: { ...MOCK_DETAIL, percentage: 60, passed: true } });
+    expect(comp.passed()).toBe(true);
   });
 
-  it('returns 33 for score 33 / totalPoints 100', () => {
-    expect(make(33, 100).getPercentage()).toBe(33);
+  it('passed() returns false when percentage < 60', () => {
+    const comp = create();
+    patchStore(store, {
+      resultDetail: { ...MOCK_DETAIL, percentage: 55, passed: false, score: 55 },
+    });
+    expect(comp.passed()).toBe(false);
   });
 
-  it('rounds correctly for non-integer division (1/3)', () => {
-    expect(make(1, 3).getPercentage()).toBe(33);
+  it('isPassing returns true at exactly 60', () => {
+    expect(create().isPassing(60)).toBe(true);
   });
 
-  // ─── getTitle ─────────────────────────────────────────────────────────────
-
-  it('returns "PERFECT SCORE!" for 100%', () => {
-    expect(make(100, 100).getTitle()).toBe('PERFECT SCORE!');
+  it('isPassing returns false at 59', () => {
+    expect(create().isPassing(59)).toBe(false);
   });
 
-  it('returns "Incredible!" for >= 90%', () => {
-    expect(make(90, 100).getTitle()).toBe('Incredible!');
+  it('confetti pieces are produced only when passed is true', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: { ...MOCK_DETAIL, passed: false } });
+    expect(comp.confettiPieces().length).toBe(0);
+    patchStore(store, { resultDetail: { ...MOCK_DETAIL, passed: true } });
+    expect(comp.confettiPieces().length).toBeGreaterThan(0);
   });
 
-  it('returns "Great Job!" for >= 70%', () => {
-    expect(make(70, 100).getTitle()).toBe('Great Job!');
+  it('expandAll sets every question id as expanded', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: MOCK_DETAIL });
+    comp.expandAll();
+    const expanded = Array.from(comp.expandedQuestions());
+    expect(expanded).toEqual(['q1', 'q2', 'q3']);
+    expect(comp.isExpanded('q1')).toBe(true);
+    expect(comp.isExpanded('q2')).toBe(true);
+    expect(comp.isExpanded('q3')).toBe(true);
   });
 
-  it('returns "Good Effort!" for >= 50%', () => {
-    expect(make(50, 100).getTitle()).toBe('Good Effort!');
+  it('collapseAll empties expanded sets', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: MOCK_DETAIL });
+    comp.expandAll();
+    comp.collapseAll();
+    expect(comp.expandedQuestions().size).toBe(0);
+    expect(comp.expandedExplanations().size).toBe(0);
   });
 
-  it('returns "Keep Practicing!" for >= 30%', () => {
-    expect(make(30, 100).getTitle()).toBe('Keep Practicing!');
+  it('toggleQuestion toggles a single question', () => {
+    const comp = create();
+    expect(comp.isExpanded('q1')).toBe(false);
+    comp.toggleQuestion('q1');
+    expect(comp.isExpanded('q1')).toBe(true);
+    comp.toggleQuestion('q1');
+    expect(comp.isExpanded('q1')).toBe(false);
   });
 
-  it('returns "Don\'t Give Up!" for below 30%', () => {
-    expect(make(20, 100).getTitle()).toBe("Don't Give Up!");
+  it('formatTime formats seconds as mm:ss', () => {
+    const comp = create();
+    expect(comp.formatTime(0)).toBe('00:00');
+    expect(comp.formatTime(45)).toBe('00:45');
+    expect(comp.formatTime(60)).toBe('01:00');
+    expect(comp.formatTime(125)).toBe('02:05');
   });
 
-  // ─── formatTime ───────────────────────────────────────────────────────────
-
-  it('formats 0 seconds as "0:00"', () => {
-    expect(make(0, 100).formatTime(0)).toBe('0:00');
+  it('scoreLabel reflects detail score / totalPoints', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: MOCK_DETAIL });
+    expect(comp.scoreLabel()).toBe('70/100');
   });
 
-  it('formats 45 seconds as "0:45"', () => {
-    expect(make(0, 100).formatTime(45)).toBe('0:45');
+  it('barRows produces one row per breakdown question with widthPercent', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: MOCK_DETAIL });
+    const rows = comp.barRows();
+    expect(rows.length).toBe(3);
+    expect(rows[0].label).toBe('Q1');
+    expect(rows[2].seconds).toBe(95);
+    expect(rows.every((r) => r.widthPercent >= 4 && r.widthPercent <= 100)).toBe(true);
   });
 
-  it('formats 60 seconds as "1:00"', () => {
-    expect(make(0, 100).formatTime(60)).toBe('1:00');
+  it('donutSlices builds one slice per present difficulty', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: MOCK_DETAIL });
+    const slices = comp.donutSlices();
+    expect(slices.map((s) => s.difficulty)).toEqual(['EASY', 'MEDIUM', 'HARD']);
+    const easy = slices.find((s) => s.difficulty === 'EASY');
+    expect(easy?.correct).toBe(1);
+    expect(easy?.total).toBe(1);
+    expect(easy?.accuracy).toBe(100);
   });
 
-  it('formats 125 seconds as "2:05"', () => {
-    expect(make(0, 100).formatTime(125)).toBe('2:05');
+  it('hasNextLesson is true when nextLessonId is set', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: MOCK_DETAIL });
+    expect(comp.hasNextLesson()).toBe(true);
   });
 
-  // ─── getMascotEmoji ───────────────────────────────────────────────────────
-
-  it('returns "🏆" for 100%', () => {
-    expect(make(100, 100).getMascotEmoji()).toBe('🏆');
+  it('hasNextLesson is false when nextLessonId is null', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: { ...MOCK_DETAIL, nextLessonId: null } });
+    expect(comp.hasNextLesson()).toBe(false);
   });
 
-  it('returns "🌟" for >= 90%', () => {
-    expect(make(90, 100).getMascotEmoji()).toBe('🌟');
+  it('retryQuiz resets store and navigates back to the quiz route', () => {
+    const comp = create();
+    comp.ngOnInit();
+    const router = TestBed.inject(Router);
+    const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const resetSpy = vi.spyOn(store, 'resetQuiz').mockImplementation(() => undefined);
+    const clearSpy = vi.spyOn(store, 'clearResultDetail').mockImplementation(() => undefined);
+    comp.retryQuiz();
+    expect(resetSpy).toHaveBeenCalled();
+    expect(clearSpy).toHaveBeenCalled();
+    expect(navSpy).toHaveBeenCalledWith(['/student/quizzes', 'quiz-1']);
   });
 
-  it('returns "😄" for >= 70%', () => {
-    expect(make(70, 100).getMascotEmoji()).toBe('😄');
+  it('backToLesson navigates to the mapped lesson when present', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: MOCK_DETAIL });
+    const router = TestBed.inject(Router);
+    const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    comp.backToLesson();
+    expect(navSpy).toHaveBeenCalledWith(['/student/lesson-viewer', 'lesson-1']);
   });
 
-  it('returns "💪" for >= 50%', () => {
-    expect(make(50, 100).getMascotEmoji()).toBe('💪');
+  it('backToLesson falls back to lessons list when lessonId missing', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: { ...MOCK_DETAIL, lessonId: null } });
+    const router = TestBed.inject(Router);
+    const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    comp.backToLesson();
+    expect(navSpy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
-  it('returns "😅" for >= 30%', () => {
-    expect(make(30, 100).getMascotEmoji()).toBe('😅');
+  it('nextLesson does nothing when nextLessonId missing', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: { ...MOCK_DETAIL, nextLessonId: null } });
+    const router = TestBed.inject(Router);
+    const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    comp.nextLesson();
+    expect(navSpy).not.toHaveBeenCalled();
   });
 
-  it('returns "😢" for below 30%', () => {
-    expect(make(20, 100).getMascotEmoji()).toBe('😢');
+  it('nextLesson navigates to the next lesson when present', () => {
+    const comp = create();
+    patchStore(store, { resultDetail: MOCK_DETAIL });
+    const router = TestBed.inject(Router);
+    const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    comp.nextLesson();
+    expect(navSpy).toHaveBeenCalledWith(['/student/lesson-viewer', 'lesson-2']);
   });
 
-  // ─── getMascotUrl ─────────────────────────────────────────────────────────
-
-  it('getMascotUrl contains "star" seed for >= 90%', () => {
-    expect(make(90, 100).getMascotUrl()).toContain('star');
+  it('questionPreview truncates over 60 chars', () => {
+    const comp = create();
+    const long = 'a'.repeat(80);
+    expect(comp.questionPreview({
+      questionId: 'q', questionText: long, type: 'MULTIPLE_CHOICE', difficulty: 'EASY',
+      studentAnswer: '', correctAnswer: '', isCorrect: false, timeSpentSeconds: 0, aiExplanation: '',
+    })).toHaveLength(61); // 60 chars + ellipsis
   });
 
-  it('getMascotUrl contains "happy" seed for >= 70%', () => {
-    expect(make(70, 100).getMascotUrl()).toContain('happy');
-  });
-
-  it('getMascotUrl contains "sad" seed for >= 30%', () => {
-    expect(make(30, 100).getMascotUrl()).toContain('sad');
-  });
-
-  // ─── passed input ─────────────────────────────────────────────────────────
-
-  it('passed() returns false by default', () => {
-    expect(make(50, 100).passed()).toBe(false);
-  });
-
-  it('passed() returns true when set', () => {
-    expect(make(80, 100, 300, true).passed()).toBe(true);
+  it('difficultyBadgeClasses returns difficulty-specific colors', () => {
+    const comp = create();
+    expect(comp.difficultyBadgeClasses('EASY')).toContain('green');
+    expect(comp.difficultyBadgeClasses('MEDIUM')).toContain('amber');
+    expect(comp.difficultyBadgeClasses('HARD')).toContain('red');
   });
 });
