@@ -61,6 +61,28 @@ describe('AuthStore', () => {
     });
   });
 
+  describe('reactive effect', () => {
+    it('should update state when AuthService emits authenticated user', () => {
+      const store = TestBed.inject(AuthStore);
+      
+      // Simulate login in service
+      authServiceMock.isAuthenticated.set(true);
+      authServiceMock.currentUser.set(() => ({ 
+        email: 'student@test.com', 
+        roles: ['STUDENT'] 
+      }));
+      authServiceMock.getAccessToken.mockReturnValue('new-token');
+      
+      // Effects run asynchronously, so we wait a tick
+      TestBed.flushEffects();
+      
+      expect(store.isAuthenticated()).toBe(true);
+      expect(store.user()?.email).toBe('student@test.com');
+      expect(store.role()).toBe('STUDENT');
+      expect(store.token()).toBe('new-token');
+    });
+  });
+
   describe('logout', () => {
     it('should call authService.logout and clear state', async () => {
       const store = TestBed.inject(AuthStore);
