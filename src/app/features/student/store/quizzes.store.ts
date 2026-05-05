@@ -1,6 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+export {
+  type Question,
+  type Quiz,
+  type QuizResult,
+  type QuizResultDetail,
+} from '@shared/models/quiz.types';
 import {
   Question,
   Quiz,
@@ -8,8 +14,6 @@ import {
   QuizResult,
   QuizResultDetail,
 } from '@shared/models/quiz.types';
-
-export type { Question, Quiz, QuizResult, QuizResultDetail };
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 

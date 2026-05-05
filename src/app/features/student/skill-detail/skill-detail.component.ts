@@ -16,7 +16,7 @@ import { SkillDetailStore } from '../store/skill-detail.store';
 })
 export class SkillDetailComponent implements OnInit {
 
-  private route = inject(ActivatedRoute);
+  private readonly route = inject(ActivatedRoute);
   store = inject(SkillDetailStore);
 
   studentId = '1';

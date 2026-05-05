@@ -34,7 +34,7 @@ export const appConfig: ApplicationConfig = {
       },
       initOptions: {
         onLoad: 'check-sso',
-        silentCheckSsoRedirectUri: globalThis.window.location.origin + '/silent-check-sso.html',
+        silentCheckSsoRedirectUri: globalThis.location.origin + '/silent-check-sso.html',
       },
     }),
     provideHttpClient(withInterceptors([includeBearerTokenInterceptor, errorInterceptor, loadingInterceptor])),

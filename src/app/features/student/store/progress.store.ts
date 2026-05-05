@@ -1,6 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+export {
+  type ProgressRecord,
+  type SkillLevel,
+  type StreakData,
+  type Milestone,
+  type ActivityItem,
+  type UpcomingQuiz,
+} from '@shared/models/progress.model';
 import {
   ProgressRecord,
   SkillLevel,
@@ -10,8 +18,6 @@ import {
   UpcomingQuiz,
   DashboardData,
 } from '@shared/models/progress.model';
-
-export type { ProgressRecord, SkillLevel, StreakData, Milestone, ActivityItem, UpcomingQuiz };
 
 interface ProgressState {
   student: DashboardData['student'] | null;
@@ -49,7 +55,7 @@ export const ProgressStore = signalStore(
       state
         .milestones()
         .filter((m) => m.earnedAt !== null)
-        .sort((a, b) => new Date(b.earnedAt!).getTime() - new Date(a.earnedAt!).getTime())
+        .sort((a, b) => new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime())
         .slice(0, 3)
     ),
     continueLesson: computed(() => {
