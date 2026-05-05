@@ -8,7 +8,6 @@ export {
   type QuizResultDetail,
 } from '@shared/models/quiz.types';
 import {
-  Question,
   Quiz,
   QuizOption,
   QuizResult,

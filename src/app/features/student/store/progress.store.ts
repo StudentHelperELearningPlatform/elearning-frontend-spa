@@ -54,7 +54,7 @@ export const ProgressStore = signalStore(
     recentMilestones: computed(() =>
       state
         .milestones()
-        .filter((m) => m.earnedAt !== null)
+        .filter((m): m is Milestone & { earnedAt: string } => m.earnedAt !== null)
         .sort((a, b) => new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime())
         .slice(0, 3)
     ),
