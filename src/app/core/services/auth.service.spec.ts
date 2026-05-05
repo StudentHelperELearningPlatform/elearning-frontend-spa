@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import Keycloak from 'keycloak-js';
 import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType } from 'keycloak-angular';
 import { signal } from '@angular/core';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 
 /** Minimal Keycloak instance stub */
 const createKeycloakStub = (authenticated = false) => ({
@@ -23,6 +24,7 @@ describe('AuthService', () => {
     const eventSignal = signal({ type: KeycloakEventType.Ready, args: undefined });
 
     TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
       providers: [
         { provide: Keycloak, useValue: keycloakStub },
         { provide: KEYCLOAK_EVENT_SIGNAL, useValue: eventSignal },
@@ -88,6 +90,36 @@ describe('AuthService', () => {
     it('should return false when no user is set', () => {
       const { service } = setup(false);
       expect(service.hasRole('STUDENT')()).toBe(false);
+    });
+  });
+
+  describe('register()', () => {
+    it('should post to register endpoint', () => {
+      const { service } = setup();
+      const httpMock = TestBed.inject(HttpTestingController);
+      const payload = { email: 'new@test.com', password: 'password123' };
+
+      service.register(payload).subscribe();
+
+      const req = httpMock.expectOne(req => req.url.includes('/api/v1/auth/register'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(payload);
+      req.flush({});
+    });
+  });
+
+  describe('checkEmailAvailability()', () => {
+    it('should get from check-email endpoint', () => {
+      const { service } = setup();
+      const httpMock = TestBed.inject(HttpTestingController);
+      const email = 'check@test.com';
+
+      service.checkEmailAvailability(email).subscribe();
+
+      const req = httpMock.expectOne(req => req.url.includes('/api/v1/auth/check-email'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.url).toContain('email=' + encodeURIComponent(email));
+      req.flush({ available: true });
     });
   });
 });

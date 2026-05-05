@@ -32,7 +32,7 @@ export class QuizPlayerComponent implements OnInit {
   paletteOpen = signal(false);
   showSubmitModal = signal(false);
   quizId = signal('1');
-  private resultsNavigated = signal(false);
+  private readonly resultsNavigated = signal(false);
 
   selectedOptionId = signal<string | null>(null);
 

@@ -24,7 +24,7 @@ export interface SkillDetail {
 
 @Injectable({ providedIn: 'root' })
 export class SkillDetailStore {
-  private http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
 
   skill = signal<SkillDetail | null>(null);
   loading = signal(false);

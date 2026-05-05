@@ -1,12 +1,13 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { NotificationService } from 'src/app/core/services/notification.service';
+import { NotificationService } from '@core/services/notification.service';
 
 export interface Milestone {
   id: string;
   title: string;
   description: string;
   category: 'learning' | 'streak' | 'mastery' | 'social';
+  icon?: string;
   earnedAt?: string;
   progress?: number;
   goal?: number;
@@ -17,14 +18,14 @@ export interface Milestone {
 })
 export class MilestonesStore {
 
-  private http = inject(HttpClient);
-  private notification = inject(NotificationService);
+  private readonly http = inject(HttpClient);
+  private readonly notification = inject(NotificationService);
 
   // STATE
   milestones = signal<Milestone[]>([]);
   loading = signal<boolean>(false);
 
-  private lastEarnedIds = new Set<string>();
+  private readonly lastEarnedIds = new Set<string>();
 
   // COMPUTED
   earnedMilestones = computed(() =>

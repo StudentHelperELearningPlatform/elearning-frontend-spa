@@ -68,9 +68,9 @@ const DIFFICULTY_COLORS: Record<QuestionDifficulty, string> = {
   styleUrl: './results-summary.component.css',
 })
 export class ResultsSummaryComponent implements OnInit {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   store = inject(QuizzesStore);
 
   expandedQuestions = signal<Set<string>>(new Set());
@@ -79,7 +79,7 @@ export class ResultsSummaryComponent implements OnInit {
   attemptId = signal<string | null>(null);
   quizId = signal<string | null>(null);
 
-  private counterStarted = signal(false);
+  private readonly counterStarted = signal(false);
 
   detail = computed(() => this.store.resultDetail());
   loading = computed(() => this.store.resultDetailLoading());
