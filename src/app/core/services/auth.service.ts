@@ -25,7 +25,7 @@ interface JwtPayload {
 function parseJwt(token: string): JwtPayload {
   try {
     const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const base64 = base64Url.replaceAll('-', '+').replaceAll('_', '/');
     return JSON.parse(atob(base64));
   } catch {
     return {};
@@ -34,8 +34,8 @@ function parseJwt(token: string): JwtPayload {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private http = inject(HttpClient);
-  private keycloak = inject(Keycloak);
+  private readonly http = inject(HttpClient);
+  private readonly keycloak = inject(Keycloak);
 
   private _currentUser = signal<User | null>(null);
 
@@ -59,7 +59,7 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
-    await this.keycloak.logout({ redirectUri: window.location.origin });
+    await this.keycloak.logout({ redirectUri: globalThis.location.origin });
   }
 
   getAccessToken(): string | null {
