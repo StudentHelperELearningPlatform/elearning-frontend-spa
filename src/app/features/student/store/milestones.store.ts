@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { NotificationService } from 'src/app/core/services/notification.service';
+import { NotificationService } from '@core/services/notification.service';
 
 export interface Milestone {
   id: string;
