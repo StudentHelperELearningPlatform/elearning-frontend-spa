@@ -77,9 +77,33 @@ describe('ProgressDashboardComponent (Logic)', () => {
     expect(progressStoreMock.loadDashboard).toHaveBeenCalledWith('123');
   });
 
-  it('should return correct greeting based on time', () => {
-    const greeting = component.greeting;
-    expect(['Good morning', 'Good afternoon', 'Good evening']).toContain(greeting);
+  it('should use fallback studentId "1" if user is not set', () => {
+    authStoreMock.user.set(null);
+    TestBed.runInInjectionContext(() => {
+      component.ngOnInit();
+    });
+    expect(progressStoreMock.loadDashboard).toHaveBeenCalledWith('1');
+  });
+
+  describe('greeting', () => {
+    it('should return Good morning before 12', () => {
+      vi.setSystemTime(new Date('2024-01-01T10:00:00'));
+      expect(component.greeting).toBe('Good morning');
+    });
+
+    it('should return Good afternoon between 12 and 18', () => {
+      vi.setSystemTime(new Date('2024-01-01T14:00:00'));
+      expect(component.greeting).toBe('Good afternoon');
+    });
+
+    it('should return Good evening after 18', () => {
+      vi.setSystemTime(new Date('2024-01-01T20:00:00'));
+      expect(component.greeting).toBe('Good evening');
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
   });
 
   it('should return student first name from store', () => {
@@ -88,5 +112,18 @@ describe('ProgressDashboardComponent (Logic)', () => {
 
   it('should return initials correctly', () => {
     expect(component.initials).toBe('T');
+  });
+
+  it('should return a motivational message based on the date', () => {
+    vi.setSystemTime(new Date('2024-01-01')); // Day 1
+    const msg1 = component.motivationalMessage;
+    
+    vi.setSystemTime(new Date('2024-01-02')); // Day 2
+    const msg2 = component.motivationalMessage;
+    
+    expect(msg1).toBeDefined();
+    expect(msg2).toBeDefined();
+    expect(msg1).not.toBe(msg2);
+    vi.useRealTimers();
   });
 });

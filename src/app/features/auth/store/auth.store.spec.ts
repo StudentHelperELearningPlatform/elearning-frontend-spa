@@ -81,6 +81,28 @@ describe('AuthStore', () => {
       expect(store.role()).toBe('STUDENT');
       expect(store.token()).toBe('new-token');
     });
+
+    it('should map ADMIN role correctly', () => {
+      const store = TestBed.inject(AuthStore);
+      authServiceMock.isAuthenticated.set(true);
+      authServiceMock.currentUser.set(() => ({ 
+        email: 'admin@test.com', 
+        roles: ['ADMIN'] 
+      }));
+      TestBed.flushEffects();
+      expect(store.role()).toBe('ADMIN');
+    });
+
+    it('should map TEACHER/PROFESSOR role correctly', () => {
+      const store = TestBed.inject(AuthStore);
+      authServiceMock.isAuthenticated.set(true);
+      authServiceMock.currentUser.set(() => ({ 
+        email: 'teacher@test.com', 
+        roles: ['PROFESSOR'] 
+      }));
+      TestBed.flushEffects();
+      expect(store.role()).toBe('TEACHER');
+    });
   });
 
   describe('logout', () => {
