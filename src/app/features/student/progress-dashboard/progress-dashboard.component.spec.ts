@@ -2,14 +2,31 @@ import { TestBed } from '@angular/core/testing';
 import { ProgressDashboardComponent } from './progress-dashboard.component';
 import { ProgressStore } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
 
 describe('ProgressDashboardComponent (Logic)', () => {
   let component: ProgressDashboardComponent;
-  let progressStoreMock: any;
-  let authStoreMock: any;
-  let routerMock: any;
+  let progressStoreMock: {
+    student: WritableSignal<unknown>;
+    activeStreak: WritableSignal<number>;
+    skillLevels: WritableSignal<unknown[]>;
+    loadDashboard: ReturnType<typeof vi.fn>;
+    loading: WritableSignal<boolean>;
+    error: WritableSignal<string | null>;
+    recentMilestones: WritableSignal<unknown[]>;
+    recentActivity: WritableSignal<unknown[]>;
+    upcomingQuizzes: WritableSignal<unknown[]>;
+    progressRecords: WritableSignal<unknown[]>;
+    overallProgressPercent: WritableSignal<number>;
+    continueLesson: WritableSignal<unknown>;
+  };
+  let authStoreMock: {
+    user: WritableSignal<{ id: string, name: string } | null>;
+  };
+  let routerMock: {
+    navigate: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     progressStoreMock = {
