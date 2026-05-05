@@ -34,7 +34,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       observe = vi.fn();
       unobserve = vi.fn();
       disconnect = vi.fn();
-    } as any;
+    } as unknown as typeof ResizeObserver;
 
     progressStoreMock = {
       student: signal({ firstName: 'Test', totalLessons: 10, completedLessons: 5 }),
@@ -145,21 +145,21 @@ describe('ProgressDashboardComponent (Logic)', () => {
 
   describe('Utility methods', () => {
     it('getActivityIcon should return correct icons', () => {
-      expect(component.getActivityIcon({ type: 'lesson' } as any)).toBe('menu_book');
-      expect(component.getActivityIcon({ type: 'quiz' } as any)).toBe('check_circle');
-      expect(component.getActivityIcon({ type: 'milestone' } as any)).toBe('star');
-      expect(component.getActivityIcon({ type: 'other' } as any)).toBe('radio_button_checked');
+      expect(component.getActivityIcon({ type: 'lesson' } as ActivityItem)).toBe('menu_book');
+      expect(component.getActivityIcon({ type: 'quiz' } as ActivityItem)).toBe('check_circle');
+      expect(component.getActivityIcon({ type: 'milestone' } as ActivityItem)).toBe('star');
+      expect(component.getActivityIcon({ type: 'other' } as unknown as ActivityItem)).toBe('radio_button_checked');
     });
 
     it('getActivityRoute should return correct routes', () => {
-      expect(component.getActivityRoute({ type: 'lesson', lessonId: 'L1' } as any)).toEqual(['/student/lesson-viewer', 'L1']);
-      expect(component.getActivityRoute({ type: 'quiz', quizId: 'Q1', attemptId: 'A1' } as any)).toEqual(['/student/quizzes', 'Q1', 'results', 'A1']);
-      expect(component.getActivityRoute({ type: 'other' } as any)).toEqual(['/student/dashboard']);
+      expect(component.getActivityRoute({ type: 'lesson', lessonId: 'L1' } as ActivityItem)).toEqual(['/student/lesson-viewer', 'L1']);
+      expect(component.getActivityRoute({ type: 'quiz', quizId: 'Q1', attemptId: 'A1' } as ActivityItem)).toEqual(['/student/quizzes', 'Q1', 'results', 'A1']);
+      expect(component.getActivityRoute({ type: 'other' } as unknown as ActivityItem)).toEqual(['/student/dashboard']);
     });
 
     it('getContinueLessonProgress should return percentage', () => {
-      expect(component.getContinueLessonProgress({ completedModules: 2, totalModules: 4 } as any)).toBe(50);
-      expect(component.getContinueLessonProgress({ completedModules: 0, totalModules: 0 } as any)).toBe(0);
+      expect(component.getContinueLessonProgress({ completedModules: 2, totalModules: 4 } as unknown as ProgressRecord)).toBe(50);
+      expect(component.getContinueLessonProgress({ completedModules: 0, totalModules: 0 } as unknown as ProgressRecord)).toBe(0);
     });
 
     it('navigateToBrowseLessons should call router', () => {
@@ -172,7 +172,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     it('should call renderRadarChart in ngAfterViewInit if skills present', () => {
       const el = document.createElement('div');
       Object.defineProperty(el, 'clientWidth', { value: 300 });
-      component.radarContainer = { nativeElement: el } as any;
+      component.radarContainer = { nativeElement: el } as ElementRef;
       progressStoreMock.skillLevels.set([{ subject: 'Math', level: 80 }, { subject: 'Bio', level: 60 }, { subject: 'Physics', level: 70 }]);
       
       const spy = vi.spyOn(component, 'renderRadarChart');
@@ -184,7 +184,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     it('should clean up resizeObserver on destroy', () => {
       // Mock ResizeObserver
       const disconnectSpy = vi.fn();
-      (component as any).resizeObserver = { disconnect: disconnectSpy };
+      (component as unknown as { resizeObserver: { disconnect: () => void } }).resizeObserver = { disconnect: disconnectSpy };
       
       component.ngOnDestroy();
       expect(disconnectSpy).toHaveBeenCalled();
@@ -193,7 +193,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     it('should render SVG elements in renderRadarChart', () => {
       const el = document.createElement('div');
       Object.defineProperty(el, 'clientWidth', { value: 300 });
-      component.radarContainer = { nativeElement: el } as any;
+      component.radarContainer = { nativeElement: el } as ElementRef;
       const skills = [
         { subject: 'Math', level: 80 },
         { subject: 'Bio', level: 60 },
