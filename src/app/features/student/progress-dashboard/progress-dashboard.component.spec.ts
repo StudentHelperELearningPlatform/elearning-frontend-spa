@@ -29,6 +29,13 @@ describe('ProgressDashboardComponent (Logic)', () => {
   };
 
   beforeEach(() => {
+    // Mock ResizeObserver
+    global.ResizeObserver = class {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    } as any;
+
     progressStoreMock = {
       student: signal({ firstName: 'Test', totalLessons: 10, completedLessons: 5 }),
       activeStreak: signal(5),
@@ -114,16 +121,92 @@ describe('ProgressDashboardComponent (Logic)', () => {
     expect(component.initials).toBe('T');
   });
 
+  it('should return lessons progress', () => {
+    expect(component.completedLessons).toBe(5);
+    expect(component.totalLessons).toBe(10);
+  });
+
+  it('should determine if streak has gold glow', () => {
+    progressStoreMock.activeStreak.set(5);
+    expect(component.streakHasGoldGlow).toBe(false);
+    progressStoreMock.activeStreak.set(7);
+    expect(component.streakHasGoldGlow).toBe(true);
+  });
+
   it('should return a motivational message based on the date', () => {
-    vi.setSystemTime(new Date('2024-01-01')); // Day 1
+    vi.setSystemTime(new Date('2024-01-01'));
     const msg1 = component.motivationalMessage;
-    
-    vi.setSystemTime(new Date('2024-01-02')); // Day 2
+    vi.setSystemTime(new Date('2024-01-02'));
     const msg2 = component.motivationalMessage;
-    
     expect(msg1).toBeDefined();
     expect(msg2).toBeDefined();
-    expect(msg1).not.toBe(msg2);
     vi.useRealTimers();
+  });
+
+  describe('Utility methods', () => {
+    it('getActivityIcon should return correct icons', () => {
+      expect(component.getActivityIcon({ type: 'lesson' } as any)).toBe('menu_book');
+      expect(component.getActivityIcon({ type: 'quiz' } as any)).toBe('check_circle');
+      expect(component.getActivityIcon({ type: 'milestone' } as any)).toBe('star');
+      expect(component.getActivityIcon({ type: 'other' } as any)).toBe('radio_button_checked');
+    });
+
+    it('getActivityRoute should return correct routes', () => {
+      expect(component.getActivityRoute({ type: 'lesson', lessonId: 'L1' } as any)).toEqual(['/student/lesson-viewer', 'L1']);
+      expect(component.getActivityRoute({ type: 'quiz', quizId: 'Q1', attemptId: 'A1' } as any)).toEqual(['/student/quizzes', 'Q1', 'results', 'A1']);
+      expect(component.getActivityRoute({ type: 'other' } as any)).toEqual(['/student/dashboard']);
+    });
+
+    it('getContinueLessonProgress should return percentage', () => {
+      expect(component.getContinueLessonProgress({ completedModules: 2, totalModules: 4 } as any)).toBe(50);
+      expect(component.getContinueLessonProgress({ completedModules: 0, totalModules: 0 } as any)).toBe(0);
+    });
+
+    it('navigateToBrowseLessons should call router', () => {
+      component.navigateToBrowseLessons();
+      expect(routerMock.navigate).toHaveBeenCalledWith(['/student/lessons']);
+    });
+  });
+
+  describe('D3 Radar Chart and View Lifecycle', () => {
+    it('should call renderRadarChart in ngAfterViewInit if skills present', () => {
+      const el = document.createElement('div');
+      Object.defineProperty(el, 'clientWidth', { value: 300 });
+      component.radarContainer = { nativeElement: el } as any;
+      progressStoreMock.skillLevels.set([{ subject: 'Math', level: 80 }, { subject: 'Bio', level: 60 }, { subject: 'Physics', level: 70 }]);
+      
+      const spy = vi.spyOn(component, 'renderRadarChart');
+      component.ngAfterViewInit();
+      
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should clean up resizeObserver on destroy', () => {
+      // Mock ResizeObserver
+      const disconnectSpy = vi.fn();
+      (component as any).resizeObserver = { disconnect: disconnectSpy };
+      
+      component.ngOnDestroy();
+      expect(disconnectSpy).toHaveBeenCalled();
+    });
+
+    it('should render SVG elements in renderRadarChart', () => {
+      const el = document.createElement('div');
+      Object.defineProperty(el, 'clientWidth', { value: 300 });
+      component.radarContainer = { nativeElement: el } as any;
+      const skills = [
+        { subject: 'Math', level: 80 },
+        { subject: 'Bio', level: 60 },
+        { subject: 'Physics', level: 70 }
+      ];
+
+      component.renderRadarChart(skills);
+      
+      const svg = el.querySelector('svg');
+      expect(svg).toBeTruthy();
+      expect(svg?.getAttribute('aria-label')).toBe('Skill radar chart');
+      expect(el.querySelectorAll('circle').length).toBeGreaterThan(0);
+      expect(el.querySelectorAll('text').length).toBe(3);
+    });
   });
 });

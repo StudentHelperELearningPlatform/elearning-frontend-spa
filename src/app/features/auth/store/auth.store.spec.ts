@@ -78,8 +78,10 @@ describe('AuthStore', () => {
       
       expect(store.isAuthenticated()).toBe(true);
       expect(store.user()?.email).toBe('student@test.com');
-      expect(store.role()).toBe('STUDENT');
       expect(store.token()).toBe('new-token');
+      expect(store.isStudent()).toBe(true);
+      expect(store.isAdmin()).toBe(false);
+      expect(store.isTeacher()).toBe(false);
     });
 
     it('should map ADMIN role correctly', () => {
@@ -91,6 +93,7 @@ describe('AuthStore', () => {
       }));
       TestBed.flushEffects();
       expect(store.role()).toBe('ADMIN');
+      expect(store.isAdmin()).toBe(true);
     });
 
     it('should map TEACHER/PROFESSOR role correctly', () => {
@@ -102,6 +105,62 @@ describe('AuthStore', () => {
       }));
       TestBed.flushEffects();
       expect(store.role()).toBe('TEACHER');
+      expect(store.isTeacher()).toBe(true);
+    });
+
+    it('should map empty roles to STUDENT', () => {
+      const store = TestBed.inject(AuthStore);
+      authServiceMock.isAuthenticated.set(true);
+      authServiceMock.currentUser.set(() => ({ 
+        email: 'student@test.com', 
+        roles: [] 
+      }));
+      TestBed.flushEffects();
+      expect(store.role()).toBe('STUDENT');
+    });
+
+    it('should map custom roles correctly', () => {
+      const store = TestBed.inject(AuthStore);
+      authServiceMock.isAuthenticated.set(true);
+      authServiceMock.currentUser.set(() => ({ 
+        email: 'user@test.com', 
+        roles: ['GUEST'] 
+      }));
+      TestBed.flushEffects();
+      expect(store.role()).toBe('GUEST');
+    });
+  });
+
+  describe('login', () => {
+    it('should set loading and then error on failure with fallback message', async () => {
+      const store = TestBed.inject(AuthStore);
+      authServiceMock.login.mockRejectedValue({}); // No message
+      
+      store.login({ email: 'test' });
+      expect(store.loading()).toBe(true);
+      
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(store.loading()).toBe(false);
+      expect(store.error()).toBe('Login failed');
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('should update user if present', () => {
+      const store = TestBed.inject(AuthStore);
+      // First log in
+      authServiceMock.isAuthenticated.set(true);
+      authServiceMock.currentUser.set(() => ({ email: 'test@test.com', roles: [] }));
+      TestBed.flushEffects();
+
+      store.updateProfile({ name: 'New Name' });
+      expect(store.user()?.name).toBe('New Name');
+    });
+
+    it('should do nothing if user is not present', () => {
+      const store = TestBed.inject(AuthStore);
+      store.updateProfile({ name: 'New Name' });
+      expect(store.user()).toBeNull();
     });
   });
 
