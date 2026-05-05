@@ -6,7 +6,10 @@ import { NotificationService } from '@core/services/notification.service';
 describe('MilestonesStore', () => {
   let store: MilestonesStore;
   let httpMock: HttpTestingController;
-  let notificationMock: any;
+  let notificationMock: {
+    success: ReturnType<typeof vi.fn>;
+    error: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     notificationMock = {

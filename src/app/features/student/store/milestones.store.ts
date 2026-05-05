@@ -7,6 +7,7 @@ export interface Milestone {
   title: string;
   description: string;
   category: 'learning' | 'streak' | 'mastery' | 'social';
+  icon?: string;
   earnedAt?: string;
   progress?: number;
   goal?: number;

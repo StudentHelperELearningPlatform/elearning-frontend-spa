@@ -1,10 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { AuthStore } from './auth.store';
 import { AuthService } from '../../../core/services/auth.service';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 
 describe('AuthStore', () => {
-  let authServiceMock: any;
+  let authServiceMock: {
+    isAuthenticated: WritableSignal<boolean>;
+    currentUser: WritableSignal<() => unknown>;
+    getAccessToken: ReturnType<typeof vi.fn>;
+    login: ReturnType<typeof vi.fn>;
+    logout: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     authServiceMock = {
