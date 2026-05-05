@@ -6,7 +6,6 @@
       {{ store.earnedCount() }} of {{ store.totalCount() }} badges earned
     </h2>
 
-    <!-- PROGRESS BAR -->
     <div class="progress-bar">
       <div class="fill" [style.width.%]="progressPercent()"></div>
     </div>
@@ -21,26 +20,42 @@
     <button (click)="setCategory('social')" [class.active]="selectedCategory() === 'social'">Social</button>
   </div>
 
-  <!-- LOADING -->
+  <!-- LOADING SKELETON -->
   @if (store.loading()) {
-    <div>Loading badges...</div>
+    <div class="badge-grid">
+      @for (i of [1,2,3,4,5,6,7,8]; track i) {
+        <p-card class="badge-card skeleton"></p-card>
+      }
+    </div>
+  }
+
+  <!-- EMPTY STATE -->
+  @if (!store.loading() && store.totalCount() === 0) {
+    <div class="empty">
+      Complete your first lesson to start earning badges!
+    </div>
   }
 
   <!-- GRID -->
-  @if (!store.loading()) {
+  @if (!store.loading() && store.totalCount() > 0) {
     <div class="badge-grid">
 
       @for (badge of filteredMilestones(); track badge.id) {
-        <div class="badge-card" [class.locked]="!badge.earnedAt">
+        <p-card
+          class="badge-card"
+          [class.locked]="!badge.earnedAt"
+          [class.earned]="badge.earnedAt"
+          [class.new]="isNew(badge)"
+        >
 
-          <!-- ICON -->
+          <!-- ICON (PrimeIcons) -->
           <div class="icon">
             @switch (badge.category) {
-              @case ('learning') { 📘 }
-              @case ('streak') { 🔥 }
-              @case ('mastery') { 🎯 }
-              @case ('social') { 🌍 }
-              @default { 🏆 }
+              @case ('learning') { <i class="pi pi-book"></i> }
+              @case ('streak') { <i class="pi pi-bolt"></i> }
+              @case ('mastery') { <i class="pi pi-star"></i> }
+              @case ('social') { <i class="pi pi-globe"></i> }
+              @default { <i class="pi pi-trophy"></i> }
             }
           </div>
 
@@ -64,7 +79,7 @@
             </div>
           }
 
-        </div>
+        </p-card>
       }
 
     </div>

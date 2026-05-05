@@ -1,0 +1,112 @@
+<div class="page">
+
+  <!-- BACK -->
+  <a class="back" routerLink="/student/dashboard">← Back to Dashboard</a>
+
+  <!-- HEADER -->
+  <h2>{{ skill()?.subject }}</h2>
+
+  <!-- KNOB + CONFIDENCE -->
+  @if (skill()) {
+    <div class="top">
+
+      <!-- SVG circular gauge (replaces p-knob removed in PrimeNG v21) -->
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <!-- Track ring -->
+        <circle cx="70" cy="70" r="56"
+          fill="none" stroke="var(--surface-border, #e5e7eb)" stroke-width="12"/>
+        <!-- Value arc — circumference ≈ 351.86; offset drives fill from 0→100 -->
+        <circle cx="70" cy="70" r="56"
+          fill="none"
+          stroke="var(--primary-color, #6366f1)"
+          stroke-width="12"
+          stroke-linecap="round"
+          stroke-dasharray="351.86"
+          [attr.stroke-dashoffset]="351.86 - (351.86 * ((skill()?.level ?? 0) / 100))"
+          transform="rotate(-90 70 70)"/>
+        <!-- Centre label -->
+        <text x="70" y="75" text-anchor="middle"
+          font-size="22" font-weight="700"
+          fill="var(--text-color, #111827)">
+          {{ skill()?.level ?? 0 }}
+        </text>
+      </svg>
+
+      <div class="confidence" [style.color]="store.confidenceColor()">
+        {{ store.confidenceLabel() }}
+      </div>
+
+    </div>
+  }
+
+  <!-- LOADING -->
+  @if (store.loading()) {
+    <div>Loading skill data...</div>
+  }
+
+  <!-- PROGRESS CHART (SAFE FALLBACK, NO LIBS) -->
+  @if (!store.loading() && showChart()) {
+    <div class="chart-fallback">
+
+      <h3>Progress Trend</h3>
+
+      <div class="bars">
+        @for (d of skill()?.trendData ?? []; track d.date) {
+          <div class="bar-wrapper">
+
+            <div
+              class="bar"
+              [style.height.%]="d.level">
+            </div>
+
+            <small>{{ d.date }}</small>
+          </div>
+        }
+      </div>
+
+    </div>
+  }
+
+  @if (!store.loading() && !showChart()) {
+    <div class="empty">
+      Not enough data yet — keep taking quizzes!
+    </div>
+  }
+
+  <!-- RECENT QUIZZES -->
+  <div class="section">
+    <h3>Recent Quizzes</h3>
+
+    @for (q of skill()?.recentQuizzes ?? []; track q.id) {
+      <div class="quiz">
+
+        <div>
+          <b>{{ q.title }}</b>
+          <small>{{ q.date }}</small>
+        </div>
+
+        <span [class.good]="q.score >= 50" [class.bad]="q.score < 50">
+          {{ q.score }}%
+        </span>
+
+        <a [routerLink]="['/student/quizzes', q.id]">Review</a>
+      </div>
+    }
+
+    @if ((skill()?.recentQuizzes?.length ?? 0) === 0) {
+      <div>No quizzes in this subject yet.</div>
+    }
+  </div>
+
+  <!-- AI RECOMMENDATIONS -->
+  <div class="ai">
+    <h3>✨ AI Suggestions</h3>
+
+    <ul>
+      @for (r of skill()?.recommendations ?? []; track r) {
+        <li>{{ r }}</li>
+      }
+    </ul>
+  </div>
+
+</div>

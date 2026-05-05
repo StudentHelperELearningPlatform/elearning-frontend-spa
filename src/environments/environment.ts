@@ -1,10 +1,10 @@
 // src/environments/environment.ts
 export const environment = {
-  production: false,
-  apiUrl: 'https://api.example.com',
+  production: true,
+  apiUrl: 'https://api.example.com', // TODO: replace with real production API URL
   keycloak: {
-    url: 'https://auth.example.com',
+    url: 'https://keycloak-26-0-7-vb34.onrender.com/',
     realm: 'elearning',
-    clientId: 'elearning-spa'
+    clientId: 'elearning-angular'
   }
 };

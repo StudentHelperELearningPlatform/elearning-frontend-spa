@@ -1,0 +1,82 @@
+.page {
+  padding: 20px;
+}
+
+.back {
+  display: block;
+  margin-bottom: 10px;
+  color: #0ABAB5;
+  text-decoration: none;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.confidence {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.chart {
+  height: 300px;
+  margin-top: 20px;
+}
+
+.section {
+  margin-top: 30px;
+}
+
+.quiz {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.good {
+  color: green;
+}
+
+.bad {
+  color: red;
+}
+
+.ai {
+  margin-top: 30px;
+  padding: 15px;
+  background: #f7f7f7;
+  border-radius: 10px;
+}
+
+.empty {
+  margin-top: 20px;
+  color: gray;
+}
+
+.chart-fallback {
+  margin-top: 20px;
+}
+
+.bars {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  height: 200px;
+}
+
+.bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 30px;
+}
+
+.bar {
+  width: 20px;
+  background: #0ABAB5;
+  border-radius: 6px;
+  transition: 0.3s;
+}

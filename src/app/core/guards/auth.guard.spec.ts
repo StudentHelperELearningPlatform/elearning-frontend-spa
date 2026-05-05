@@ -3,6 +3,7 @@ import { ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/ro
 import { authGuard } from './auth.guard';
 import { AuthStore } from '../../features/auth/store/auth.store';
 import { provideRouter } from '@angular/router';
+import { createAuthStoreStub } from '../../../test-utils/auth-testing';
 
 describe('authGuard', () => {
   let router: Router;
@@ -14,27 +15,26 @@ describe('authGuard', () => {
     return TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
   };
 
-  beforeEach(() => {
+  const setup = (isAuthenticated: boolean) => {
     TestBed.configureTestingModule({
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        { provide: AuthStore, useValue: createAuthStoreStub({ isAuthenticated }) },
+      ],
     });
     router = TestBed.inject(Router);
-  });
+  };
 
   it('should allow access when authenticated', () => {
-    const authStore = TestBed.inject(AuthStore) as unknown as { isAuthenticated: () => boolean };
-
-    // Now TypeScript knows exactly what you're trying to override
-    authStore.isAuthenticated = () => true;
-
+    setup(true);
     const result = runGuard('/student');
     expect(result).toBe(true);
   });
 
   it('should redirect to /auth/login when not authenticated', () => {
+    setup(false);
     const result = runGuard('/student');
     expect(result).not.toBe(true);
-    // Result should be a UrlTree pointing to login
     const urlTree = router.createUrlTree(['/auth/login'], {
       queryParams: { returnUrl: '/student' },
     });
@@ -42,6 +42,7 @@ describe('authGuard', () => {
   });
 
   it('should include returnUrl in redirect', () => {
+    setup(false);
     const result = runGuard('/teacher/lessons');
     const urlTree = router.createUrlTree(['/auth/login'], {
       queryParams: { returnUrl: '/teacher/lessons' },

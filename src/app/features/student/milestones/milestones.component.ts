@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { CardModule } from 'primeng/card';
 import { MilestonesStore, Milestone } from '../store/milestones.store';
 
 type Category = 'all' | 'learning' | 'streak' | 'mastery' | 'social';
@@ -7,14 +8,13 @@ type Category = 'all' | 'learning' | 'streak' | 'mastery' | 'social';
 @Component({
   selector: 'app-milestones',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CardModule],
   templateUrl: './milestones.component.html',
   styleUrls: ['./milestones.component.scss']
 })
 export class MilestonesComponent implements OnInit {
 
   store = inject(MilestonesStore);
-
   studentId = '1';
 
   selectedCategory = signal<Category>('all');
@@ -29,26 +29,24 @@ export class MilestonesComponent implements OnInit {
 
   filteredMilestones = computed(() => {
     const cat = this.selectedCategory();
-
     if (cat === 'all') return this.store.milestones();
 
-    return this.store.milestones().filter(
-      m => m.category === cat
-    );
+    return this.store.milestones().filter(m => m.category === cat);
   });
 
   progressPercent = computed(() => {
     const total = this.store.totalCount();
-    if (total === 0) return 0;
-
-    return (this.store.earnedCount() / total) * 100;
+    return total ? (this.store.earnedCount() / total) * 100 : 0;
   });
 
   getRemaining(badge: Milestone): number {
     return (badge.goal ?? 0) - (badge.progress ?? 0);
   }
 
-  isEarned(m: Milestone): boolean {
-    return !!m.earnedAt;
+  isNew(badge: Milestone): boolean {
+    if (!badge.earnedAt) return false;
+
+    const earnedTime = new Date(badge.earnedAt).getTime();
+    return Date.now() - earnedTime < 30000;
   }
 }

@@ -1,11 +1,14 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { NotificationService } from '@core/services/notification.service';
 
 export interface Milestone {
   id: string;
   title: string;
   description: string;
   category: 'learning' | 'streak' | 'mastery' | 'social';
-  earnedAt?: string; // dacă există => earned
+  icon?: string;
+  earnedAt?: string;
   progress?: number;
   goal?: number;
 }
@@ -15,9 +18,14 @@ export interface Milestone {
 })
 export class MilestonesStore {
 
+  private readonly http = inject(HttpClient);
+  private readonly notification = inject(NotificationService);
+
   // STATE
   milestones = signal<Milestone[]>([]);
   loading = signal<boolean>(false);
+
+  private readonly lastEarnedIds = new Set<string>();
 
   // COMPUTED
   earnedMilestones = computed(() =>
@@ -38,61 +46,30 @@ export class MilestonesStore {
 
   // METHOD
   loadMilestones(studentId: string) {
-    void studentId;
-
     this.loading.set(true);
 
-    // MOCK DATA (până faci MSW)
-    setTimeout(() => {
-      this.milestones.set([
-        {
-          id: '1',
-          title: 'First Lesson',
-          description: 'Complete your first lesson',
-          category: 'learning',
-          earnedAt: '2026-04-20'
-        },
-        {
-          id: '2',
-          title: '7-Day Streak',
-          description: 'Study 7 days in a row',
-          category: 'streak',
-          earnedAt: '2026-04-22'
-        },
-        {
-          id: '3',
-          title: 'Perfect Score',
-          description: 'Get 100% on a quiz',
-          category: 'mastery',
-          earnedAt: '2026-04-25'
-        },
-        {
-          id: '4',
-          title: 'Explorer',
-          description: 'Complete 5 lessons',
-          category: 'learning',
-          progress: 3,
-          goal: 5
-        },
-        {
-          id: '5',
-          title: 'Consistency King',
-          description: 'Maintain a 14-day streak',
-          category: 'streak',
-          progress: 7,
-          goal: 14
-        },
-        {
-          id: '6',
-          title: 'Master Student',
-          description: 'Complete all quizzes',
-          category: 'mastery',
-          progress: 2,
-          goal: 10
-        }
-      ]);
+    this.http
+      .get<Milestone[]>(`/api/students/${studentId}/milestones`)
+      .subscribe({
+        next: (data) => {
+          this.milestones.set(data);
 
-      this.loading.set(false);
-    }, 800);
+          // detect NEW earned badges
+          data.forEach(m => {
+            if (m.earnedAt && !this.lastEarnedIds.has(m.id)) {
+              this.lastEarnedIds.add(m.id);
+
+              this.notification.success(
+                `🏆 You earned a new badge: ${m.title}!`
+              );
+            }
+          });
+
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loading.set(false);
+        }
+      });
   }
 }
