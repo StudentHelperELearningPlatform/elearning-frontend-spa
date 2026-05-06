@@ -1,7 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+<<<<<<< feature/INT-02-learning-path-progress
 import { environment } from '../../../../environments/environment';
+=======
+export {
+  type Question,
+  type Quiz,
+  type QuizResult,
+  type QuizResultDetail,
+} from '@shared/models/quiz.types';
+>>>>>>> main
 import {
   Quiz,
   QuizOption,
@@ -319,7 +328,11 @@ export const QuizzesStore = signalStore(
       loadResultDetail(quizId: string, attemptId: string) {
         patchState(store, { resultDetailLoading: true, resultDetailError: null });
         http
+<<<<<<< feature/INT-02-learning-path-progress
           .get<QuizResultDetail>(`${environment.apiBase}/quizzes/${quizId}/results/${attemptId}`)
+=======
+          .get<QuizResultDetail>(`/api/quizzes/${quizId}/results/${attemptId}`)
+>>>>>>> main
           .subscribe({
             next: (detail) => {
               patchState(store, {

@@ -1,5 +1,8 @@
 import { http, HttpResponse } from 'msw';
+<<<<<<< feature/INT-02-learning-path-progress
 import { environment } from '../../environments/environment';
+=======
+>>>>>>> main
 
 const dashboardData = {
   student: {
@@ -266,6 +269,7 @@ const dashboardData = {
 const milestonesData = dashboardData.milestones;
 
 export const studentsHandlers = [
+<<<<<<< feature/INT-02-learning-path-progress
 
   // Mocks retained until endpoints are confirmed live on staging
   // Task: INT-02 (Learning Path & Progress)
@@ -298,6 +302,8 @@ export const studentsHandlers = [
     }, { status: 200 });
   }),
 
+=======
+>>>>>>> main
   http.get('/api/v1/students/:id/dashboard', () => {
     return HttpResponse.json(dashboardData);
   }),
@@ -329,4 +335,8 @@ export const studentsHandlers = [
       ],
     });
   }),
+<<<<<<< feature/INT-02-learning-path-progress
 ];
+=======
+];
+>>>>>>> main

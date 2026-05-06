@@ -1,6 +1,9 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+<<<<<<< feature/INT-02-learning-path-progress
 import { environment } from '../../../../environments/environment';
+=======
+>>>>>>> main
 
 export interface SkillTrendPoint {
   date: string;
@@ -33,7 +36,11 @@ export class SkillDetailStore {
   loadSkill(studentId: string, subject: string) {
     this.loading.set(true);
 
+<<<<<<< feature/INT-02-learning-path-progress
     this.http.get<SkillDetail>(`${environment.apiBase}/students/${studentId}/skills/${subject}`)
+=======
+    this.http.get<SkillDetail>(`/api/students/${studentId}/skills/${subject}`)
+>>>>>>> main
       .subscribe({
         next: (data) => {
           this.skill.set(data);
