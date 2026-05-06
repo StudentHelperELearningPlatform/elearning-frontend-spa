@@ -6,9 +6,11 @@ import { ContentEditorComponent } from './content-editor/content-editor.componen
 import { QuizBuilderComponent } from './quiz-builder/quiz-builder.component';
 import { LessonBuilderComponent } from './content-editor/lesson-builder/lesson-builder.component';
 import { PathBuilderComponent } from './content-editor/path-builder/path-builder.component';
+import { TeacherDashboardComponent } from './dashboard/teacher-dashboard.component';
 
 export default [
-  { path: 'dashboard', component: AnalyticsDashboardComponent },
+  { path: 'dashboard', component: TeacherDashboardComponent },
+  { path: 'analytics', component: AnalyticsDashboardComponent },
   { path: 'classes', component: ClassManagementComponent },
   { path: 'content', component: ContentEditorComponent },
   { path: 'lesson-builder', component: LessonBuilderComponent },
