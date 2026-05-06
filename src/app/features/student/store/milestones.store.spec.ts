@@ -49,11 +49,7 @@ describe('MilestonesStore', () => {
       store.loadMilestones('student-123');
       expect(store.loading()).toBe(true);
 
-<<<<<<< feature/INT-02-learning-path-progress
       const req = httpMock.expectOne('/api/v1/students/student-123/milestones');
-=======
-      const req = httpMock.expectOne('/api/students/student-123/milestones');
->>>>>>> main
       expect(req.request.method).toBe('GET');
       req.flush(mockMilestones);
 
@@ -69,11 +65,7 @@ describe('MilestonesStore', () => {
       ];
 
       store.loadMilestones('student-123');
-<<<<<<< feature/INT-02-learning-path-progress
       const req = httpMock.expectOne('/api/v1/students/student-123/milestones');
-=======
-      const req = httpMock.expectOne('/api/students/student-123/milestones');
->>>>>>> main
       req.flush(mockMilestones);
 
       expect(notificationMock.success).toHaveBeenCalledWith(
@@ -83,11 +75,7 @@ describe('MilestonesStore', () => {
 
     it('should handle errors', () => {
       store.loadMilestones('student-123');
-<<<<<<< feature/INT-02-learning-path-progress
       const req = httpMock.expectOne('/api/v1/students/student-123/milestones');
-=======
-      const req = httpMock.expectOne('/api/students/student-123/milestones');
->>>>>>> main
       req.error(new ErrorEvent('Network error'));
 
       expect(store.loading()).toBe(false);
