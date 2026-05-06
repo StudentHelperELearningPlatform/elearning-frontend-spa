@@ -8,9 +8,11 @@ import { LessonBuilderComponent } from './content-editor/lesson-builder/lesson-b
 import { PathBuilderComponent } from './content-editor/path-builder/path-builder.component';
 import { LessonEditorComponent } from './lesson-editor/lesson-editor.component';
 import { unsavedChangesGuard } from './lesson-editor/unsaved-changes.guard';
+import { TeacherDashboardComponent } from './dashboard/teacher-dashboard.component';
 
 export default [
-  { path: 'dashboard', component: AnalyticsDashboardComponent },
+  { path: 'dashboard', component: TeacherDashboardComponent },
+  { path: 'analytics', component: AnalyticsDashboardComponent },
   { path: 'classes', component: ClassManagementComponent },
   { path: 'content', component: ContentEditorComponent },
   {
