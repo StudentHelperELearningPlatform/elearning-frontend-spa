@@ -131,15 +131,15 @@ const mockLesson = (id: string) => ({
 });
 
 export const learningPathHandlers = [
-  http.get('/api/learning-paths/:id', ({ params }) => {
+  http.get('/api/v1/learning-paths/:id', ({ params }) => {
     return HttpResponse.json({ ...mockLearningPath, id: params['id'] as string });
   }),
 
-  http.get('/api/lessons/:id', ({ params }) => {
+  http.get('/api/v1/lessons/:id', ({ params }) => {
     return HttpResponse.json(mockLesson(params['id'] as string));
   }),
 
-  http.put('/api/lessons/:lessonId/progress', async ({ request }) => {
+  http.put('/api/v1/lessons/:lessonId/progress', async ({ request }) => {
     const body = (await request.json()) as { moduleId: string; completedAt: string };
     return HttpResponse.json({
       progressPercent: 40,
