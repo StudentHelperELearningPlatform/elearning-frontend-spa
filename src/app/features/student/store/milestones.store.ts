@@ -1,11 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-<<<<<<< feature/INT-02-learning-path-progress
 import { NotificationService } from '../../../core/services/notification.service';
 import { environment } from '../../../../environments/environment';
-=======
-import { NotificationService } from '@core/services/notification.service';
->>>>>>> main
 
 export interface Milestone {
   id: string;
@@ -54,11 +50,7 @@ export class MilestonesStore {
     this.loading.set(true);
 
     this.http
-<<<<<<< feature/INT-02-learning-path-progress
       .get<Milestone[]>(`${environment.apiBase}/students/${studentId}/milestones`)
-=======
-      .get<Milestone[]>(`/api/students/${studentId}/milestones`)
->>>>>>> main
       .subscribe({
         next: (data) => {
           this.milestones.set(data);
