@@ -1,10 +1,14 @@
+import { HttpClient, HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { of, throwError } from 'rxjs';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { LessonsStore, Lesson } from './lessons.store';
+import { BackendLesson } from '../../../api/adapters/lesson.adapter';
 
 describe('LessonsStore', () => {
   const getStore = () => TestBed.inject(LessonsStore);
   let store: ReturnType<typeof getStore>;
+  let http: HttpClient;
 
   const mockLesson: Lesson = {
     id: '99',
@@ -17,17 +21,35 @@ describe('LessonsStore', () => {
     modules: [{ id: 'm1', title: 'Intro', type: 'text', content: 'Hello' }],
   };
 
+  const backendFixture: BackendLesson = {
+    id: 1,
+    title: 'Intro to Fractions',
+    subject: 'Math',
+    grade: 5,
+    difficulty: 'Easy',
+    duration: '15 min',
+    status: 'Not Started',
+    subcapitols: [
+      {
+        id: 'sub-1',
+        title: 'What are fractions?',
+        blocks: [{ id: 'b-1', blockType: 'TEXT', content: '<p>Hello</p>' }],
+      },
+    ],
+  };
+
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({ providers: [provideHttpClient()] });
     store = getStore();
+    http = TestBed.inject(HttpClient);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   // ─── Initial State ────────────────────────────────────────────────────────
-
   it('initialises with pre-seeded lessons', () => {
     expect(store.lessons().length).toBeGreaterThan(0);
   });
@@ -39,8 +61,6 @@ describe('LessonsStore', () => {
   it('initialises with loading as false', () => {
     expect(store.loading()).toBe(false);
   });
-
-  // ─── Computed Signals ────────────────────────────────────────────────────
 
   it('publishedLessons returns all lessons', () => {
     expect(store.publishedLessons()).toEqual(store.lessons());
@@ -56,15 +76,12 @@ describe('LessonsStore', () => {
     expect(store.lessonCount()).toBe(2);
   });
 
-  // ─── patchState ───────────────────────────────────────────────────────────
-
   it('patchState with a custom lesson sets currentLesson correctly', () => {
     patchStore(store, { currentLesson: mockLesson });
     expect(store.currentLesson()?.title).toBe('Test Lesson');
   });
 
-  // ─── loadLessons (uses setTimeout internally) ─────────────────────────────
-
+  // ─── loadLessons (legacy timer flow) ─────────────────────────────────────
   it('loadLessons sets loading to true immediately', () => {
     vi.useFakeTimers();
     store.loadLessons();
@@ -79,35 +96,49 @@ describe('LessonsStore', () => {
     expect(store.loading()).toBe(false);
   });
 
-  // ─── loadLesson ──────────────────────────────────────────────────────────
-
-  it('loadLesson sets loading to true immediately', () => {
-    vi.useFakeTimers();
+  // ─── loadLesson (real HTTP) ──────────────────────────────────────────────
+  it('loadLesson calls GET /api/v1/lessons/:id', () => {
+    const spy = vi.spyOn(http, 'get').mockReturnValue(of(backendFixture));
     store.loadLesson('1');
-    expect(store.loading()).toBe(true);
-    vi.runAllTimers();
+    expect(spy).toHaveBeenCalledWith('/api/v1/lessons/1');
   });
 
-  it('loadLesson sets currentLesson when id is found', () => {
-    vi.useFakeTimers();
+  it('loadLesson maps the backend response through the adapter', () => {
+    vi.spyOn(http, 'get').mockReturnValue(of(backendFixture));
     store.loadLesson('1');
-    vi.advanceTimersByTime(500);
-    expect(store.currentLesson()?.id).toBe('1');
+    const lesson = store.currentLesson();
+    expect(lesson?.id).toBe('1');
+    expect(lesson?.modules[0].type).toBe('text');
+    expect(lesson?.modules[0].content).toBe('<p>Hello</p>');
+  });
+
+  it('loadLesson clears loading on success', () => {
+    vi.spyOn(http, 'get').mockReturnValue(of(backendFixture));
+    store.loadLesson('1');
     expect(store.loading()).toBe(false);
   });
 
-  it('loadLesson sets currentLesson to undefined when id is not found', () => {
-    vi.useFakeTimers();
-    store.loadLesson('non-existent');
-    vi.advanceTimersByTime(500);
-    expect(store.currentLesson()).toBeUndefined();
+  it('loadLesson sets a "not-found" error on 404', () => {
+    vi.spyOn(http, 'get').mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404, statusText: 'Not Found' })),
+    );
+    store.loadLesson('missing');
+    expect(store.error()).toEqual({ kind: 'not-found', message: 'Lesson not found' });
     expect(store.loading()).toBe(false);
   });
 
-  it('loadLesson populates modules on the resolved lesson', () => {
-    vi.useFakeTimers();
-    store.loadLesson('2');
-    vi.advanceTimersByTime(500);
-    expect(store.currentLesson()?.modules.length).toBeGreaterThan(0);
+  it('loadLesson sets a "server" error on 500', () => {
+    vi.spyOn(http, 'get').mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' })),
+    );
+    store.loadLesson('1');
+    expect(store.error()?.kind).toBe('server');
+  });
+
+  it('loadLesson clears previous lesson and error before fetching', () => {
+    patchStore(store, { error: { kind: 'unknown', message: 'old' }, currentLesson: mockLesson });
+    vi.spyOn(http, 'get').mockReturnValue(of(backendFixture));
+    store.loadLesson('1');
+    expect(store.error()?.kind).not.toBe('unknown');
   });
 });
