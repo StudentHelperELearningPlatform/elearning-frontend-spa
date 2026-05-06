@@ -1,12 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-export {
-  type Question,
-  type Quiz,
-  type QuizResult,
-  type QuizResultDetail,
-} from '@shared/models/quiz.types';
+import { environment } from '../../../../environments/environment';
 import {
   Quiz,
   QuizOption,
@@ -177,7 +172,7 @@ export const QuizzesStore = signalStore(
       // Mark submitted immediately so the UI reacts and tickTimer cannot fire again
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`/api/quizzes/${quizId}/submit`, { answers }).subscribe({
+      http.post<SubmitQuizResponse>(`${environment.apiBase}/quizzes/${quizId}/submit`, { answers }).subscribe({
         next: (submission) => {
           patchState(store, {
             result: {
@@ -211,7 +206,7 @@ export const QuizzesStore = signalStore(
     return {
       loadQuizById(id: string) {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+        http.get<QuizApiResponse>(`${environment.apiBase}/quizzes/${id}`).subscribe({
           next: (quiz) => {
             patchState(store, {
               loading: false,
@@ -230,7 +225,7 @@ export const QuizzesStore = signalStore(
       },
       startQuiz(id: string) {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+        http.get<QuizApiResponse>(`${environment.apiBase}/quizzes/${id}`).subscribe({
           next: (quiz) => {
             const mappedQuiz = mapQuizResponse(quiz);
             patchState(store, {
@@ -324,7 +319,7 @@ export const QuizzesStore = signalStore(
       loadResultDetail(quizId: string, attemptId: string) {
         patchState(store, { resultDetailLoading: true, resultDetailError: null });
         http
-          .get<QuizResultDetail>(`/api/quizzes/${quizId}/results/${attemptId}`)
+          .get<QuizResultDetail>(`${environment.apiBase}/quizzes/${quizId}/results/${attemptId}`)
           .subscribe({
             next: (detail) => {
               patchState(store, {
