@@ -167,7 +167,7 @@ describe('QuizzesStore', () => {
   it('submitQuiz sets submitted to true immediately', () => {
     vi.spyOn(httpClient, 'post').mockReturnValue(
       of({
-        attemptId: 'attempt-1',
+        id: 'attempt-1',
         score: 20,
         totalPoints: 30,
         percentage: 67,
@@ -183,7 +183,7 @@ describe('QuizzesStore', () => {
     patchStore(store, { answers: { q1: 'q1-o1' } });
     const postSpy = vi.spyOn(httpClient, 'post').mockReturnValue(
       of({
-        attemptId: 'attempt-1',
+        id: 'attempt-1',
         score: 10,
         totalPoints: 30,
         percentage: 33,
@@ -192,16 +192,18 @@ describe('QuizzesStore', () => {
       }),
     );
     store.submitQuiz();
-    expect(postSpy).toHaveBeenCalledWith(`${environment.services.content}/api/v1/quizzes/quiz-1/submit`, {
-
-      answers: { q1: 'q1-o1' },
-    });
+    expect(postSpy).toHaveBeenCalledWith(
+      `${environment.services.content}/api/v1/subcapitols/quiz-1/check-quiz/submit`,
+      {
+        answers: [{ questionId: 'q1', answer: 'q1-o1' }],
+      },
+    );
   });
 
   it('submitQuiz updates result from HTTP response', async () => {
     vi.spyOn(httpClient, 'post').mockReturnValue(
       of({
-        attemptId: 'attempt-1',
+        id: 'attempt-1',
         score: 20,
         totalPoints: 30,
         percentage: 67,

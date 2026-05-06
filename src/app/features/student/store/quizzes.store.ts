@@ -49,6 +49,7 @@ interface SubmitQuizResponse {
 type QuizWithMeta = Quiz & {
   subject?: string;
   timeLimitSeconds?: number | null;
+  type?: 'check' | 'final';
 };
 
 type QuizResultWithMeta = QuizResult & {
@@ -178,7 +179,7 @@ export const QuizzesStore = signalStore(
 
       const answersMap = store.answers();
       const quizId = store.currentQuiz()?.id;
-      const quizType = (store.currentQuiz() as any)?.type || 'check'; // Need to store type in state
+      const quizType = store.currentQuiz()?.type || 'check'; // Need to store type in state
       if (!quizId) {
         return;
       }
@@ -189,7 +190,7 @@ export const QuizzesStore = signalStore(
         const option = question?.options.find(o => o.id === optionId);
         return {
           questionId: qId,
-          answer: (option as any)?.label || optionId // fallback to optionId if label missing
+          answer: option?.label || optionId // fallback to optionId if label missing
         };
       });
 
@@ -245,7 +246,7 @@ export const QuizzesStore = signalStore(
 
         http.get<QuizApiResponse>(endpoint).subscribe({
           next: (quiz) => {
-            const mappedQuiz = { ...mapQuizResponse(quiz), type } as any;
+            const mappedQuiz: QuizWithMeta = { ...mapQuizResponse(quiz), type };
             patchState(store, {
               loading: false,
               currentQuiz: mappedQuiz,
@@ -270,7 +271,7 @@ export const QuizzesStore = signalStore(
 
         http.get<QuizApiResponse>(endpoint).subscribe({
           next: (quiz) => {
-            const mappedQuiz = { ...mapQuizResponse(quiz), type } as any;
+            const mappedQuiz: QuizWithMeta = { ...mapQuizResponse(quiz), type };
             patchState(store, {
               loading: false,
               currentQuiz: mappedQuiz,

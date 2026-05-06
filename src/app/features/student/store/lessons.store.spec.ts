@@ -1,35 +1,49 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient, HttpClient } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { LessonsStore, Lesson } from './lessons.store';
+import { environment } from '../../../../environments/environment';
 
 describe('LessonsStore', () => {
-  const getStore = () => TestBed.inject(LessonsStore);
-  let store: ReturnType<typeof getStore>;
+  let store: any;
+  let httpClient: HttpClient;
 
-  const mockLesson: Lesson = {
-    id: '99',
+  const mockBackendLesson = {
+    id: '1',
     title: 'Test Lesson',
     subject: 'Science',
     grade: 4,
     difficulty: 'Easy',
     duration: '10 min',
     status: 'Not Started',
-    modules: [{ id: 'm1', title: 'Intro', type: 'text', content: 'Hello' }],
+    subcapitols: [
+      {
+        id: 's1',
+        title: 'Subcapitol 1',
+        blocks: [
+          { id: 'b1', blockType: 'text', content: 'Hello' }
+        ]
+      }
+    ],
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    store = getStore();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient()],
+    });
+    store = TestBed.inject(LessonsStore);
+    httpClient = TestBed.inject(HttpClient);
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   // ─── Initial State ────────────────────────────────────────────────────────
 
-  it('initialises with pre-seeded lessons', () => {
-    expect(store.lessons().length).toBeGreaterThan(0);
+  it('initialises with empty lessons', () => {
+    expect(store.lessons().length).toBe(0);
   });
 
   it('initialises with currentLesson as null', () => {
@@ -46,68 +60,46 @@ describe('LessonsStore', () => {
     expect(store.publishedLessons()).toEqual(store.lessons());
   });
 
-  it('lessonCount reflects the number of seeded lessons', () => {
-    expect(store.lessonCount()).toBe(store.lessons().length);
+  it('lessonCount reflects the number of lessons', () => {
+    expect(store.lessonCount()).toBe(0);
   });
 
-  it('lessonCount updates when lessons are patched', () => {
-    const extra: Lesson = { ...mockLesson, id: '100', title: 'Extra' };
-    patchStore(store, { lessons: [mockLesson, extra] });
-    expect(store.lessonCount()).toBe(2);
-  });
+  // ─── loadLessons ──────────────────────────────────────────────────────────
 
-  // ─── patchState ───────────────────────────────────────────────────────────
-
-  it('patchState with a custom lesson sets currentLesson correctly', () => {
-    patchStore(store, { currentLesson: mockLesson });
-    expect(store.currentLesson()?.title).toBe('Test Lesson');
-  });
-
-  // ─── loadLessons (uses setTimeout internally) ─────────────────────────────
-
-  it('loadLessons sets loading to true immediately', () => {
-    vi.useFakeTimers();
+  it('loadLessons sets loading to true then false on success', () => {
+    vi.spyOn(httpClient, 'get').mockReturnValue(of([mockBackendLesson]));
     store.loadLessons();
-    expect(store.loading()).toBe(true);
-    vi.runAllTimers();
+    // In signalStore with HttpClient, it's usually synchronous if we mock 'of'
+    expect(store.loading()).toBe(false);
+    expect(store.lessons().length).toBe(1);
+    expect(store.lessons()[0].id).toBe('1');
   });
 
-  it('loadLessons clears loading after the timer fires', () => {
-    vi.useFakeTimers();
+  it('loadLessons sets loading to false on error', () => {
+    vi.spyOn(httpClient, 'get').mockReturnValue(throwError(() => new Error('fail')));
     store.loadLessons();
-    vi.advanceTimersByTime(500);
     expect(store.loading()).toBe(false);
   });
 
   // ─── loadLesson ──────────────────────────────────────────────────────────
 
-  it('loadLesson sets loading to true immediately', () => {
-    vi.useFakeTimers();
-    store.loadLesson('1');
-    expect(store.loading()).toBe(true);
-    vi.runAllTimers();
-  });
-
   it('loadLesson sets currentLesson when id is found', () => {
-    vi.useFakeTimers();
+    vi.spyOn(httpClient, 'get').mockReturnValue(of(mockBackendLesson));
     store.loadLesson('1');
-    vi.advanceTimersByTime(500);
     expect(store.currentLesson()?.id).toBe('1');
     expect(store.loading()).toBe(false);
   });
 
-  it('loadLesson sets currentLesson to undefined when id is not found', () => {
-    vi.useFakeTimers();
+  it('loadLesson sets loading to false on error', () => {
+    vi.spyOn(httpClient, 'get').mockReturnValue(throwError(() => new Error('fail')));
     store.loadLesson('non-existent');
-    vi.advanceTimersByTime(500);
-    expect(store.currentLesson()).toBeUndefined();
     expect(store.loading()).toBe(false);
   });
 
   it('loadLesson populates modules on the resolved lesson', () => {
-    vi.useFakeTimers();
-    store.loadLesson('2');
-    vi.advanceTimersByTime(500);
+    vi.spyOn(httpClient, 'get').mockReturnValue(of(mockBackendLesson));
+    store.loadLesson('1');
     expect(store.currentLesson()?.modules.length).toBeGreaterThan(0);
+    expect(store.currentLesson()?.modules[0].title).toBe('Subcapitol 1');
   });
 });

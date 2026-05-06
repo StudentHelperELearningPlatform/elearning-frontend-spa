@@ -59,7 +59,7 @@ const mapBackendLessonToFrontend = (backend: BackendLesson): Lesson => {
         // If it's the first block of a subcapitol, use the subcapitol title
         // Otherwise, maybe append an index or just use the same title
         title: index === 0 ? sub.title : `${sub.title} (cont.)`,
-        type: block.blockType.toLowerCase() as any,
+        type: block.blockType.toLowerCase() as Module['type'],
         content: block.content,
         mediaUrl: block.mediaUrl,
       });
