@@ -1,5 +1,8 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { computed } from '@angular/core';
+import { computed, inject } from '@angular/core'; // Adăugat inject
+import { HttpClient } from '@angular/common/http'; // Adăugat HttpClient
+import { catchError, EMPTY } from 'rxjs'; // Adăugate importurile RxJS
+import { environment } from '../../../../environments/environment'; 
 
 export interface Module {
   id: string;
@@ -65,17 +68,55 @@ export const LessonsStore = signalStore(
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
   })),
-  withMethods((store) => ({
-    loadLessons() {
-      patchState(store, { loading: true });
-      setTimeout(() => patchState(store, { loading: false }), 500);
+ withMethods((store, http = inject(HttpClient)) => ({
+    
+    loadLessons(): void {
+      patchState(store, { loading: true, error: null });
+      http.get<Lesson[]>(`${environment.apiUrl}/lessons`)
+        .pipe(
+          catchError((err: unknown) => {
+            patchState(store, { loading: false, error: 'Failed to load lessons' });
+            return EMPTY;
+          })
+        )
+        .subscribe((lessons) => {
+          patchState(store, { lessons, loading: false });
+        });
     },
-    loadLesson(id: string) {
-      patchState(store, { loading: true });
-      setTimeout(() => {
-        const lesson = store.lessons().find(l => l.id === id);
-        patchState(store, { currentLesson: lesson, loading: false });
-      }, 500);
+
+    // Metoda restaurată pentru a încărca o singură lecție
+    loadLesson(id: string): void {
+      patchState(store, { loading: true, error: null });
+      http.get<Lesson>(`${environment.apiUrl}/lessons/${id}`)
+        .pipe(
+          catchError((err: unknown) => {
+            patchState(store, { loading: false, error: 'Failed to load lesson' });
+            return EMPTY;
+          })
+        )
+        .subscribe((lesson) => {
+          patchState(store, { currentLesson: lesson, loading: false });
+        });
+    },
+
+    // Metoda nouă pentru progres (INT-02)
+    markModuleComplete(lessonId: string, moduleId: string | number): void {
+      const payload = {
+        moduleId,
+        completedAt: new Date().toISOString(),
+      };
+
+      http.put(`${environment.apiUrl}/lessons/${lessonId}/progress`, payload)
+        .pipe(
+          catchError((err: unknown) => {
+            console.error('Failed to save module progress', err);
+            return EMPTY; 
+          })
+        )
+        .subscribe((response) => { 
+          console.log('Progress saved', response);
+        });
     }
+    
   }))
 );
