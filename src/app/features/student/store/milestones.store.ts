@@ -8,6 +8,7 @@ export interface Milestone {
   title: string;
   description: string;
   category: 'learning' | 'streak' | 'mastery' | 'social';
+  icon?: string;
   earnedAt?: string;
   progress?: number;
   goal?: number;
@@ -18,14 +19,14 @@ export interface Milestone {
 })
 export class MilestonesStore {
 
-  private http = inject(HttpClient);
-  private notification = inject(NotificationService);
+  private readonly http = inject(HttpClient);
+  private readonly notification = inject(NotificationService);
 
   // STATE
   milestones = signal<Milestone[]>([]);
   loading = signal<boolean>(false);
 
-  private lastEarnedIds = new Set<string>();
+  private readonly lastEarnedIds = new Set<string>();
 
   // COMPUTED
   earnedMilestones = computed(() =>

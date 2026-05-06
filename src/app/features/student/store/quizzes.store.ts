@@ -3,14 +3,11 @@ import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { environment } from '../../../../environments/environment';
 import {
-  Question,
   Quiz,
   QuizOption,
   QuizResult,
   QuizResultDetail,
 } from '@shared/models/quiz.types';
-
-export type { Question, Quiz, QuizResult, QuizResultDetail };
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 

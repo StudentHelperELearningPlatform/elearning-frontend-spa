@@ -12,8 +12,6 @@ import {
   DashboardData,
 } from '@shared/models/progress.model';
 
-export type { ProgressRecord, SkillLevel, StreakData, Milestone, ActivityItem, UpcomingQuiz };
-
 interface ProgressState {
   student: DashboardData['student'] | null;
   progressRecords: ProgressRecord[];
@@ -49,8 +47,8 @@ export const ProgressStore = signalStore(
     recentMilestones: computed(() =>
       state
         .milestones()
-        .filter((m) => m.earnedAt !== null)
-        .sort((a, b) => new Date(b.earnedAt!).getTime() - new Date(a.earnedAt!).getTime())
+        .filter((m): m is Milestone & { earnedAt: string } => m.earnedAt !== null)
+        .sort((a, b) => new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime())
         .slice(0, 3)
     ),
     continueLesson: computed(() => {

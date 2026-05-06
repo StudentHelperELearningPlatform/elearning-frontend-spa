@@ -190,11 +190,19 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
       const angle = angleSlice * i - Math.PI / 2;
       const x = labelRadius * Math.cos(angle);
       const y = labelRadius * Math.sin(angle);
+      
+      let textAnchor = 'end';
+      if (Math.abs(x) < 5) {
+        textAnchor = 'middle';
+      } else if (x > 0) {
+        textAnchor = 'start';
+      }
+
       svg
         .append('text')
         .attr('x', x).attr('y', y)
         .attr('dy', '0.35em')
-        .attr('text-anchor', Math.abs(x) < 5 ? 'middle' : x > 0 ? 'start' : 'end')
+        .attr('text-anchor', textAnchor)
         .attr('font-size', '11px')
         .attr('font-weight', '700')
         .attr('fill', '#111')

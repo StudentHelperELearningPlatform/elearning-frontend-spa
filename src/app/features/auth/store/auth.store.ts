@@ -51,15 +51,15 @@ export const AuthStore = signalStore(
         patchState(store, { user: null, token: null, role: null });
       } else {
         const roles = (currentUser.roles || []).map(r => r.toUpperCase());
-        let primaryRole = 'STUDENT';
+        let primaryRole: string;
 
         if (roles.includes('ADMIN')) {
           primaryRole = 'ADMIN';
         } else if (roles.includes('TEACHER') || roles.includes('PROFESSOR')) {
           primaryRole = 'TEACHER';
-        } else if (roles.includes('STUDENT')) {
+        } else if (roles.includes('STUDENT') || roles.length === 0) {
           primaryRole = 'STUDENT';
-        } else if (roles.length > 0) {
+        } else {
           primaryRole = roles[0];
         }
 
