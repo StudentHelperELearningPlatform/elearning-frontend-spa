@@ -1,0 +1,81 @@
+<div class="container">
+
+  <h2>Learning Path Builder</h2>
+
+  <!-- FORM -->
+  <form [formGroup]="form" class="form-section">
+
+    <label>Name *</label>
+    <input type="text" formControlName="name" />
+
+    <label>Description</label>
+    <textarea formControlName="description"></textarea>
+
+  </form>
+
+  <hr />
+
+  <!-- ADD LESSON -->
+  <div class="add-lesson">
+    <h3>Add Lesson</h3>
+
+    <select #lessonSelect>
+      <option *ngFor="let lesson of allLessons" [value]="lesson.id">
+        {{ lesson.title }}
+      </option>
+    </select>
+
+    <button (click)="addLesson(allLessons.find(l => l.id === lessonSelect.value)!)">
+      Add
+    </button>
+  </div>
+
+  <!-- SELECTED LESSONS -->
+  <h3>Path</h3>
+
+  <div
+    cdkDropList
+    class="lesson-list"
+    (cdkDropListDropped)="drop($event)"
+  >
+
+    <div
+      class="lesson-item"
+      *ngFor="let lesson of selectedLessons; let i = index"
+      cdkDrag
+    >
+
+      <div class="lesson-header">
+        <span>{{ lesson.title }}</span>
+        <button (click)="removeLesson(i)">X</button>
+      </div>
+
+      <!-- prerequisites -->
+      <div class="prereq">
+        <label>Prerequisites</label>
+
+        <select multiple
+          (change)="onPrereqChange(i, $event)"
+        >
+          <option
+            *ngFor="let l of selectedLessons; let idx = index"
+            [value]="l.id"
+            [disabled]="idx >= i"
+          >
+            {{ l.title }}
+          </option>
+        </select>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="actions">
+    <button (click)="saveDraft()">Save Draft</button>
+    <button (click)="publish()">Publish</button>
+  </div>
+
+</div>
