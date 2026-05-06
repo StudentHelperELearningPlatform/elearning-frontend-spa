@@ -148,7 +148,7 @@ export class PathBuilderComponent {
 
   addLessonToPath(lesson: ContentItem) {
     const newNode: PathNode = {
-      id: Math.random().toString(),
+      id: crypto.randomUUID(),
       lessonId: lesson.id,
       title: lesson.title,
       order: this.pathNodes().length,

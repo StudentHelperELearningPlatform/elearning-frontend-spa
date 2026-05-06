@@ -23,13 +23,7 @@ export const routes: Routes = [
         (m) => m.TeacherLandingComponent,
       ),
   },
-  {
-    path: 'for-parents',
-    loadComponent: () =>
-      import('./features/landing/parent-landing/parent-landing.component').then(
-        (m) => m.ParentLandingComponent,
-      ),
-  },
+
 
   // Auth feature (public) — uses default export
   {

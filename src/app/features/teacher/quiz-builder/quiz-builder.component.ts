@@ -281,7 +281,7 @@ export class QuizBuilderComponent implements OnInit {
     setTimeout(() => {
       const mockQuestions = Array.from({ length: this.aiCount }).map((_, i) => ({
         text: `Generated Question ${i + 1} about ${this.aiPrompt.substring(0, 20)}...`,
-        type: Math.random() > 0.5 ? 'multiple-choice' : 'true-false',
+        type: crypto.getRandomValues(new Uint8Array(1))[0] > 127 ? 'multiple-choice' : 'true-false',
         difficulty: this.aiDifficulty,
         selected: true
       }));

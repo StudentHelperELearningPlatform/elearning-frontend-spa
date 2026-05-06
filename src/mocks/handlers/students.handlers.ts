@@ -277,7 +277,7 @@ export const studentsHandlers = [
     const subject = params['subject'] as string;
     const trendData = Array.from({ length: 10 }, (_, i) => ({
       date: new Date(Date.now() - (9 - i) * 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      level: Math.max(10, Math.round(50 + i * 3 + Math.random() * 8)),
+      level: Math.max(10, Math.round(50 + i * 3 + (crypto.getRandomValues(new Uint32Array(1))[0] % 8))),
     }));
 
     return HttpResponse.json({

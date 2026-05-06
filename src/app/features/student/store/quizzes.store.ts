@@ -1,6 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+import { environment } from '../../../../environments/environment';
+
+
 export {
   type Question,
   type Quiz,
@@ -33,13 +36,15 @@ interface QuizApiResponse {
 }
 
 interface SubmitQuizResponse {
-  attemptId: string;
+  id: string; // attemptId from backend
   score: number;
+  totalQuestions: number;
   totalPoints: number;
   percentage: number;
   passed: boolean;
   timeSpent?: number;
 }
+
 
 type QuizWithMeta = Quiz & {
   subject?: string;
@@ -58,9 +63,10 @@ const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
 
   if (question.type === 'TRUE_FALSE') {
     const trueFalseOptions = question.options ?? ['True', 'False'];
-    return trueFalseOptions.map((text) => ({
+    return trueFalseOptions.map((text, index) => ({
       id: text.toLowerCase(),
       text,
+      label: String.fromCharCode(65 + index),
     }));
   }
 
@@ -68,8 +74,10 @@ const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
   return options.map((text, index) => ({
     id: `${question.id}-o${index + 1}`,
     text,
+    label: String.fromCharCode(65 + index),
   }));
 };
+
 
 const mapQuizResponse = (response: QuizApiResponse): QuizWithMeta => ({
   id: response.id,
@@ -168,16 +176,34 @@ export const QuizzesStore = signalStore(
         ? Math.floor((new Date().getTime() - store.startedAt()!.getTime()) / 1000)
         : 0;
 
-      const answers = store.answers();
+      const answersMap = store.answers();
       const quizId = store.currentQuiz()?.id;
+      const quizType = (store.currentQuiz() as any)?.type || 'check'; // Need to store type in state
       if (!quizId) {
         return;
       }
 
+      // Map answers to backend format: [ { questionId: string, answer: string (label) } ]
+      const mappedAnswers = Object.entries(answersMap).map(([qId, optionId]) => {
+        const question = store.currentQuiz()?.questions.find(q => q.id === qId);
+        const option = question?.options.find(o => o.id === optionId);
+        return {
+          questionId: qId,
+          answer: (option as any)?.label || optionId // fallback to optionId if label missing
+        };
+      });
+
       // Mark submitted immediately so the UI reacts and tickTimer cannot fire again
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`/api/quizzes/${quizId}/submit`, { answers }).subscribe({
+      const contentUrl = environment.services.content.replace(/\/$/, '');
+      const endpoint = quizType === 'final' 
+        ? `${contentUrl}/api/v1/lessons/${quizId}/final-quiz/questions/submit` 
+        : `${contentUrl}/api/v1/subcapitols/${quizId}/check-quiz/submit`;
+
+      http.post<SubmitQuizResponse>(endpoint, { answers: mappedAnswers }).subscribe({
+
+
         next: (submission) => {
           patchState(store, {
             result: {
@@ -186,10 +212,11 @@ export const QuizzesStore = signalStore(
               timeSpent: submission.timeSpent ?? timeSpent,
               percentage: submission.percentage,
               passed: submission.passed,
-              attemptId: submission.attemptId,
+              attemptId: submission.id, // backend uses 'id' for attemptId
             },
           });
         },
+
         error: () => {
           // Fallback so UI never stays blank on network failure
           const questions = store.currentQuiz()?.questions ?? [];
@@ -209,13 +236,19 @@ export const QuizzesStore = signalStore(
     };
 
     return {
-      loadQuizById(id: string) {
+      loadQuizById(id: string, type: 'check' | 'final' = 'check') {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+        const contentUrl = environment.services.content.replace(/\/$/, '');
+        const endpoint = type === 'final'
+          ? `${contentUrl}/api/v1/lessons/${id}/final-quiz/questions`
+          : `${contentUrl}/api/v1/subcapitols/${id}/check-quiz`;
+
+        http.get<QuizApiResponse>(endpoint).subscribe({
           next: (quiz) => {
+            const mappedQuiz = { ...mapQuizResponse(quiz), type } as any;
             patchState(store, {
               loading: false,
-              currentQuiz: mapQuizResponse(quiz),
+              currentQuiz: mappedQuiz,
               currentQuestionIndex: 0,
               answers: {},
               flaggedQuestions: new Set<string>(),
@@ -228,11 +261,16 @@ export const QuizzesStore = signalStore(
           },
         });
       },
-      startQuiz(id: string) {
+      startQuiz(id: string, type: 'check' | 'final' = 'check') {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+        const contentUrl = environment.services.content.replace(/\/$/, '');
+        const endpoint = type === 'final'
+          ? `${contentUrl}/api/v1/lessons/${id}/final-quiz/questions`
+          : `${contentUrl}/api/v1/subcapitols/${id}/check-quiz`;
+
+        http.get<QuizApiResponse>(endpoint).subscribe({
           next: (quiz) => {
-            const mappedQuiz = mapQuizResponse(quiz);
+            const mappedQuiz = { ...mapQuizResponse(quiz), type } as any;
             patchState(store, {
               loading: false,
               currentQuiz: mappedQuiz,
@@ -250,6 +288,7 @@ export const QuizzesStore = signalStore(
           },
         });
       },
+
       answerQuestion(questionId: string, answer: string) {
         patchState(store, (state) => ({
           answers: { ...state.answers, [questionId]: answer },
@@ -323,8 +362,10 @@ export const QuizzesStore = signalStore(
       },
       loadResultDetail(quizId: string, attemptId: string) {
         patchState(store, { resultDetailLoading: true, resultDetailError: null });
+        const contentUrl = environment.services.content.replace(/\/$/, '');
         http
-          .get<QuizResultDetail>(`/api/quizzes/${quizId}/results/${attemptId}`)
+          .get<QuizResultDetail>(`${contentUrl}/api/v1/quizzes/${quizId}/results/${attemptId}`)
+
           .subscribe({
             next: (detail) => {
               patchState(store, {

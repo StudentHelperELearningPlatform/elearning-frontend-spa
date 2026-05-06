@@ -1,6 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+import { environment } from '../../../../environments/environment';
+
+
 import { LearningPath } from '@shared/models/learning-path.model';
 
 export type { LearningPath };
@@ -36,7 +39,9 @@ export const LearningPathsStore = signalStore(
   withMethods((store, http = inject(HttpClient)) => ({
     loadPath(id: string) {
       patchState(store, { loading: true, error: null });
-      http.get<LearningPath>(`/api/learning-paths/${id}`).subscribe({
+      const authUrl = environment.services.auth.replace(/\/$/, '');
+      http.get<LearningPath>(`${authUrl}/api/v1/learning-paths/${id}`).subscribe({
+
         next: (path) => patchState(store, { currentPath: path, loading: false }),
         error: (err: unknown) => {
           const message = err instanceof Error ? err.message : 'Failed to load learning path';

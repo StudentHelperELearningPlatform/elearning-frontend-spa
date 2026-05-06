@@ -37,7 +37,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly keycloak = inject(Keycloak);
 
-  private _currentUser = signal<User | null>(null);
+  private readonly _currentUser = signal<User | null>(null);
 
   isAuthenticated = computed(() => !!this.keycloak.authenticated);
   currentUser = () => this._currentUser;
@@ -73,16 +73,18 @@ export class AuthService {
     });
 
   register(payload: Record<string, unknown>): Observable<unknown> {
-    const baseUrl = environment.keycloak.url.replace(/\/$/, '');
+    const baseUrl = environment.services.auth.replace(/\/$/, '');
     return this.http.post(`${baseUrl}/api/v1/auth/register`, payload);
   }
 
+
   checkEmailAvailability(email: string): Observable<{ available: boolean }> {
-    const baseUrl = environment.keycloak.url.replace(/\/$/, '');
+    const baseUrl = environment.services.auth.replace(/\/$/, '');
     return this.http.get<{ available: boolean }>(
       `${baseUrl}/api/v1/auth/check-email?email=` + encodeURIComponent(email),
     );
   }
+
 
   private _syncState(): void {
     if (this.keycloak.authenticated && this.keycloak.token) {

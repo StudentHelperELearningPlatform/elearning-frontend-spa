@@ -1,8 +1,6 @@
-import { InjectionToken } from '@angular/core';
+import { InjectionToken, Signal } from '@angular/core';
 import { Observable } from 'rxjs';
-import { AuthResult, LoginCredentials } from '../types/user.types';
-import { Signal } from '@angular/core';
-import { User } from '../types/user.types';
+import { AuthResult, LoginCredentials, User } from '../types/user.types';
 
 export interface IAuthService {
   login(credentials: LoginCredentials): Observable<AuthResult>;

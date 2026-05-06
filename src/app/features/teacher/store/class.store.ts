@@ -61,7 +61,7 @@ export const ClassStore = signalStore(
     },
     addStudent(student: Omit<Student, 'id' | 'lastActive'>) {
       patchState(store, (state) => ({
-        students: [...state.students, { ...student, id: Math.random().toString(), lastActive: new Date() }]
+        students: [...state.students, { ...student, id: crypto.randomUUID(), lastActive: new Date() }]
       }));
     },
     removeStudent(id: string) {

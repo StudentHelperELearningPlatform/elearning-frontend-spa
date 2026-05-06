@@ -47,7 +47,7 @@ export const ContentStore = signalStore(
     },
     createLesson(lesson: Omit<ContentItem, 'id' | 'lastModified'>) {
       patchState(store, (state) => ({
-        lessons: [...state.lessons, { ...lesson, id: Math.random().toString(), lastModified: new Date() }]
+        lessons: [...state.lessons, { ...lesson, id: crypto.randomUUID(), lastModified: new Date() }]
       }));
     },
     updateLesson(id: string, updates: Partial<Omit<ContentItem, 'id' | 'lastModified'>>) {
@@ -62,7 +62,7 @@ export const ContentStore = signalStore(
     },
     createQuiz(quiz: Omit<ContentItem, 'id' | 'lastModified'>) {
       patchState(store, (state) => ({
-        quizzes: [...state.quizzes, { ...quiz, id: Math.random().toString(), lastModified: new Date() }]
+        quizzes: [...state.quizzes, { ...quiz, id: crypto.randomUUID(), lastModified: new Date() }]
       }));
     },
     updateQuiz(id: string, updates: Partial<Omit<ContentItem, 'id' | 'lastModified'>>) {

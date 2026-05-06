@@ -5,6 +5,8 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { LearningPathsStore } from './learning-paths.store';
 import { LearningPath } from '@shared/models/learning-path.model';
+import { environment } from '../../../../environments/environment';
+
 
 const MOCK_PATH: LearningPath = {
   id: 'path-1',
@@ -111,7 +113,8 @@ describe('LearningPathsStore', () => {
   it('loadPath calls GET /api/learning-paths/:id', () => {
     const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
     store.loadPath('path-42');
-    expect(spy).toHaveBeenCalledWith('/api/learning-paths/path-42');
+    expect(spy).toHaveBeenCalledWith(`${environment.services.auth}/api/v1/learning-paths/path-42`);
+
   });
 
   // ─── completedCount ────────────────────────────────────────────────────────

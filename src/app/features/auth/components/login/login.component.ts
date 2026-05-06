@@ -1,7 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
+import { effect } from '@angular/core';
 import { AuthStore } from '../../store/auth.store';
+
 
 @Component({
   selector: 'app-login',
@@ -53,8 +55,25 @@ import { AuthStore } from '../../store/auth.store';
 })
 export class LoginComponent {
   authStore = inject(AuthStore);
+  private router = inject(Router);
+
+  constructor() {
+    effect(() => {
+      if (this.authStore.isAuthenticated() && !this.authStore.loading()) {
+        const role = this.authStore.role();
+        if (role === 'TEACHER') {
+          this.router.navigate(['/teacher/dashboard']);
+        } else if (role === 'STUDENT') {
+          this.router.navigate(['/student/dashboard']);
+        } else if (role === 'ADMIN') {
+          this.router.navigate(['/admin/dashboard']);
+        }
+      }
+    });
+  }
 
   login() {
     this.authStore.login();
   }
+
 }

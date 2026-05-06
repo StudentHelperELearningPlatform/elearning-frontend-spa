@@ -122,6 +122,6 @@ import { CardComponent } from '../../../shared/components/card/card.component';
   `]
 })
 export class StudentLandingComponent {
-  private router = inject(Router);
+  private readonly router = inject(Router);
   navigateToAuth() { this.router.navigate(['/auth/login']); }
 }

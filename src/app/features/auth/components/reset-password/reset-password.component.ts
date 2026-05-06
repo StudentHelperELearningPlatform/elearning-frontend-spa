@@ -72,10 +72,10 @@ import { NotificationService } from '../../../../core/services/notification.serv
   `
 })
 export class ResetPasswordComponent implements OnInit {
-  private fb = inject(FormBuilder);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private notificationService = inject(NotificationService);
+  private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
 
   resetForm = this.fb.group({
     password: ['', [Validators.required, Validators.minLength(8), this.passwordValidator]],
@@ -96,7 +96,7 @@ export class ResetPasswordComponent implements OnInit {
   passwordValidator(control: AbstractControl): ValidationErrors | null {
     const value = control.value || '';
     const hasUpperCase = /[A-Z]/.test(value);
-    const hasNumber = /[0-9]/.test(value);
+    const hasNumber = /\d/.test(value);
     
     if (!hasUpperCase || !hasNumber) {
       return { passwordStrength: true };
@@ -118,7 +118,7 @@ export class ResetPasswordComponent implements OnInit {
     const password = this.resetForm.get('password')?.value || '';
     const length = password.length;
     const hasUpperCase = /[A-Z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
+    const hasNumber = /\d/.test(password);
     
     let strength = 0;
     if (length >= 4) strength++;

@@ -43,9 +43,10 @@ export const appConfig: ApplicationConfig = {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
       useValue: [
         createInterceptorCondition<IncludeBearerTokenCondition>({
-          urlPattern: /^(http:\/\/localhost:8080)(\/.*)?$/i,
+          urlPattern: /^(http:\/\/localhost:808[0-2])(\/.*)?$/i,
           bearerPrefix: 'Bearer',
         }),
+
         createInterceptorCondition<IncludeBearerTokenCondition>({
           urlPattern: /^\/api\/.*/i,
           bearerPrefix: 'Bearer',

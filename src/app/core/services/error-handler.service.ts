@@ -3,7 +3,7 @@ import { NotificationService } from './notification.service';
 
 @Injectable({ providedIn: 'root' })
 export class GlobalErrorHandler implements ErrorHandler {
-  private notificationService = inject(NotificationService);
+  private readonly notificationService = inject(NotificationService);
 
   handleError(error: Error): void {
     const message = error.message || 'An unexpected error occurred';

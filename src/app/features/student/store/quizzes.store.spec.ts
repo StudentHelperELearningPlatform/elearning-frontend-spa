@@ -4,6 +4,8 @@ import { provideHttpClient, HttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { QuizzesStore } from './quizzes.store';
+import { environment } from '../../../../environments/environment';
+
 
 const MOCK_QUIZ_API = {
   id: 'quiz-1',
@@ -190,7 +192,8 @@ describe('QuizzesStore', () => {
       }),
     );
     store.submitQuiz();
-    expect(postSpy).toHaveBeenCalledWith('/api/quizzes/quiz-1/submit', {
+    expect(postSpy).toHaveBeenCalledWith(`${environment.services.content}/api/v1/quizzes/quiz-1/submit`, {
+
       answers: { q1: 'q1-o1' },
     });
   });

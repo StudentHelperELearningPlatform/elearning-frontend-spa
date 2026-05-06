@@ -1,5 +1,8 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+
+
 
 export interface SkillTrendPoint {
   date: string;
@@ -31,8 +34,9 @@ export class SkillDetailStore {
 
   loadSkill(studentId: string, subject: string) {
     this.loading.set(true);
+    const authUrl = environment.services.auth.replace(/\/$/, '');
+    this.http.get<SkillDetail>(`${authUrl}/api/v1/students/${studentId}/skills/${subject}`)
 
-    this.http.get<SkillDetail>(`/api/students/${studentId}/skills/${subject}`)
       .subscribe({
         next: (data) => {
           this.skill.set(data);

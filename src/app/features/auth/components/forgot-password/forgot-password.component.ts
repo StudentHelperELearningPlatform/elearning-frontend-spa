@@ -71,8 +71,8 @@ import { NotificationService } from '../../../../core/services/notification.serv
   `
 })
 export class ForgotPasswordComponent {
-  private fb = inject(FormBuilder);
-  private notificationService = inject(NotificationService);
+  private readonly fb = inject(FormBuilder);
+  private readonly notificationService = inject(NotificationService);
 
   forgotForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]]

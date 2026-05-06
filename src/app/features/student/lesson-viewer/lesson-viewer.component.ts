@@ -173,8 +173,8 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 })
 export class LessonViewerComponent implements OnInit {
   store = inject(LessonsStore);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   currentModuleIndex = signal(0);
 
@@ -188,7 +188,7 @@ export class LessonViewerComponent implements OnInit {
   get currentModule() {
     return () => {
       const lesson = this.store.currentLesson();
-      if (!lesson || !lesson.modules || lesson.modules.length === 0) return null;
+      if (!lesson?.modules?.length) return null;
       return lesson.modules[this.currentModuleIndex()];
     };
   }
@@ -199,7 +199,7 @@ export class LessonViewerComponent implements OnInit {
 
   nextModule() {
     const lesson = this.store.currentLesson();
-    if (lesson && lesson.modules && this.currentModuleIndex() < lesson.modules.length - 1) {
+    if (lesson?.modules && this.currentModuleIndex() < lesson.modules.length - 1) {
       this.currentModuleIndex.update(i => i + 1);
     }
   }

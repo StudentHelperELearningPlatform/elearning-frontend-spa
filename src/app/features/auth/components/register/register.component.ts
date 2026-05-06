@@ -208,10 +208,10 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
   `
 })
 export class RegisterComponent {
-  private fb = inject(FormBuilder);
-  private router = inject(Router);
-  private authService = inject(AuthService);
-  private notificationService = inject(NotificationService);
+  private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly notificationService = inject(NotificationService);
 
   currentStep = signal<RegistrationStep>('ROLE');
   selectedRole = signal<UserRole | null>(null);
@@ -295,7 +295,7 @@ export class RegisterComponent {
   passwordValidator(control: AbstractControl): ValidationErrors | null {
     const value = control.value || '';
     const hasUpperCase = /[A-Z]/.test(value);
-    const hasNumber = /[0-9]/.test(value);
+    const hasNumber = /\d/.test(value);
     
     if (!hasUpperCase || !hasNumber) {
       return { passwordStrength: true };
@@ -330,7 +330,7 @@ export class RegisterComponent {
   getPasswordStrengthClass(index: number) {
     const password = this.commonForm.get('password')?.value || '';
     const hasUpper = /[A-Z]/.test(password);
-    const hasNum   = /[0-9]/.test(password);
+    const hasNum   = /\d/.test(password);
     const isLong   = password.length >= 8;
 
     let strength = 0;

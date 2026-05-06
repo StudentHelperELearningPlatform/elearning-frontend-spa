@@ -22,7 +22,6 @@ import { CardComponent } from '../../shared/components/card/card.component';
         <div class="hidden md:flex items-center gap-8 font-black uppercase text-sm tracking-widest">
           <a routerLink="/for-students" class="hover:text-[#0ABAB5] transition-colors">Students</a>
           <a routerLink="/for-teachers" class="hover:text-[#0ABAB5] transition-colors">Teachers</a>
-          <a routerLink="/for-parents" class="hover:text-[#0ABAB5] transition-colors">Parents</a>
         </div>
         <app-button variant="primary" size="sm" (btnClick)="navigateToAuth()">
           Signup / Login
@@ -41,7 +40,7 @@ import { CardComponent } from '../../shared/components/card/card.component';
           Teach <span class="text-[#0ABAB5] underline decoration-black underline-offset-8">Smarter</span>.
         </h1>
         <p class="text-xl md:text-2xl font-bold max-w-2xl mb-12 italic text-gray-600">
-          The adaptive learning platform that connects students, teachers, and parents for a better educational journey.
+          The adaptive learning platform that connects students and teachers for a better educational journey.
         </p>
         <div class="flex flex-col sm:flex-row gap-6">
           <app-button variant="primary" size="lg" class="text-2xl px-12 py-6" (btnClick)="navigateToAuth()">
@@ -77,11 +76,11 @@ import { CardComponent } from '../../shared/components/card/card.component';
       <section class="px-6 py-20 bg-gray-50 border-b-4 border-black">
         <div class="max-w-7xl mx-auto">
           <div class="text-center mb-16">
-            <h2 class="text-4xl md:text-6xl font-black uppercase italic tracking-tight mb-4">One Platform, Three Worlds</h2>
+            <h2 class="text-4xl md:text-6xl font-black uppercase italic tracking-tight mb-4">One Platform, Two Worlds</h2>
             <div class="h-2 w-48 bg-[#0ABAB5] mx-auto border-2 border-black"></div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl mx-auto">
             <!-- Students -->
             <div class="space-y-6 group cursor-pointer" routerLink="/for-students">
               <div class="w-20 h-20 bg-[#0ABAB5] border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center mb-8 group-hover:-translate-y-2 transition-transform">
@@ -91,7 +90,7 @@ import { CardComponent } from '../../shared/components/card/card.component';
               <p class="font-bold text-gray-500 italic">Personalized AI paths to master any subject.</p>
               <app-button variant="secondary" size="sm">Learn More</app-button>
             </div>
-
+ 
             <!-- Teachers -->
             <div class="space-y-6 group cursor-pointer" routerLink="/for-teachers">
               <div class="w-20 h-20 bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center mb-8 group-hover:-translate-y-2 transition-transform">
@@ -99,16 +98,6 @@ import { CardComponent } from '../../shared/components/card/card.component';
               </div>
               <h3 class="text-3xl font-black uppercase italic tracking-tight group-hover:text-[#0ABAB5] transition-colors">For Teachers</h3>
               <p class="font-bold text-gray-500 italic">Generate content in seconds with AI assistance.</p>
-              <app-button variant="secondary" size="sm">Learn More</app-button>
-            </div>
-
-            <!-- Parents -->
-            <div class="space-y-6 group cursor-pointer" routerLink="/for-parents">
-              <div class="w-20 h-20 bg-black border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center mb-8 group-hover:-translate-y-2 transition-transform">
-                <span class="material-icons text-white text-4xl">family_restroom</span>
-              </div>
-              <h3 class="text-3xl font-black uppercase italic tracking-tight group-hover:text-[#0ABAB5] transition-colors">For Parents</h3>
-              <p class="font-bold text-gray-500 italic">Real-time insights into your child's progress.</p>
               <app-button variant="secondary" size="sm">Learn More</app-button>
             </div>
           </div>
@@ -154,7 +143,7 @@ import { CardComponent } from '../../shared/components/card/card.component';
   `]
 })
 export class LandingComponent {
-  private router = inject(Router);
+  private readonly router = inject(Router);
 
   navigateToAuth() {
     this.router.navigate(['/auth/login']);

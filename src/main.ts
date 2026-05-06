@@ -7,10 +7,11 @@ import { provideEchartsCore } from 'ngx-echarts';
   if (typeof window !== 'undefined') {
     const { environment } = await import('./environments/environment');
 
-    if (!environment.production) {
+    if (!environment.production && environment.useMocks) {
       const { worker } = await import('./mocks/browser');
       await worker.start({ onUnhandledRequest: 'bypass' });
     }
+
   }
 
   bootstrapApplication(App, {
