@@ -43,10 +43,10 @@ export class MilestonesStore {
     this.http
       .get<Milestone[]>(`/api/v1/students/${studentId}/milestones`)
       .subscribe({
-        next: (data: Milestone[]) => {
+        next: (data) => {
           this.milestones.set(data);
 
-          data.forEach((m: Milestone) => {
+          data.forEach((m) => {
             if (m.earnedAt && !this.lastEarnedIds.has(m.id)) {
               this.lastEarnedIds.add(m.id);
 

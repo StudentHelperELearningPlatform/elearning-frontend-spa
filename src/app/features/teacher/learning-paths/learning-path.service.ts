@@ -17,12 +17,12 @@ export class LearningPathEditorService {
     });
   }
 
-  createLearningPath(path: LearningPath): Observable<any> {
+  createLearningPath(path: LearningPath): Observable<unknown> {
     console.log('POST', path);
     return of({ success: true });
   }
 
-  updateLearningPath(id: string, path: LearningPath): Observable<any> {
+  updateLearningPath(id: string, path: LearningPath): Observable<unknown> {
     console.log('PUT', id, path);
     return of({ success: true });
   }

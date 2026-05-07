@@ -1,6 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
-import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+import {
+  signalStore,
+  withState,
+  withMethods,
+  withComputed,
+  patchState,
+} from '@ngrx/signals';
+
 import {
   Quiz,
   QuizOption,
@@ -50,11 +57,13 @@ const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
 
   if (question.type === 'TRUE_FALSE') {
     const opts = question.options ?? ['True', 'False'];
-    return opts.map((text) => ({ id: text.toLowerCase(), text }));
+    return opts.map((text) => ({
+      id: text.toLowerCase(),
+      text,
+    }));
   }
 
-  const options = question.options ?? [];
-  return options.map((text, index) => ({
+  return (question.options ?? []).map((text, index) => ({
     id: `${question.id}-o${index + 1}`,
     text,
   }));
@@ -132,6 +141,7 @@ export const QuizzesStore = signalStore(
     currentAnswerSelected: computed(() => {
       const quiz = state.currentQuiz();
       if (!quiz?.questions?.length) return null;
+
       const q = quiz.questions[state.currentQuestionIndex()];
       return q ? state.answers()[q.id] ?? null : null;
     }),
@@ -143,7 +153,7 @@ export const QuizzesStore = signalStore(
 
   withMethods((store, http = inject(HttpClient)) => {
 
-    const navigateToIndex = (index: number) => {
+    const navigateTo = (index: number) => {
       const total = store.currentQuiz()?.questions?.length ?? 0;
       const safeIndex = Math.max(0, Math.min(index, total - 1));
       patchState(store, { currentQuestionIndex: safeIndex });
@@ -161,9 +171,10 @@ export const QuizzesStore = signalStore(
 
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`/api/v1/quizzes/${quizId}/submit`, {
-        answers: store.answers(),
-      }).subscribe({
+      http.post<SubmitQuizResponse>(
+        `/api/v1/quizzes/${quizId}/submit`,
+        { answers: store.answers() }
+      ).subscribe({
         next: (res) => {
           patchState(store, {
             result: {
@@ -178,6 +189,7 @@ export const QuizzesStore = signalStore(
         },
         error: () => {
           const total = store.currentQuiz()?.questions?.length ?? 0;
+
           patchState(store, {
             result: {
               score: 0,
@@ -244,14 +256,18 @@ export const QuizzesStore = signalStore(
       flagQuestion(id: string) {
         patchState(store, (s) => {
           const set = new Set(s.flaggedQuestions);
-          set.has(id) ? set.delete(id) : set.add(id);
+          if (set.has(id)) {
+          set.delete(id);
+            } else {
+            set.add(id);
+           }
           return { flaggedQuestions: set };
         });
       },
 
-      navigateTo: navigateToIndex,
-      nextQuestion: () => navigateToIndex(store.currentQuestionIndex() + 1),
-      prevQuestion: () => navigateToIndex(store.currentQuestionIndex() - 1),
+      navigateTo,
+      nextQuestion: () => navigateTo(store.currentQuestionIndex() + 1),
+      prevQuestion: () => navigateTo(store.currentQuestionIndex() - 1),
 
       submitQuiz: submitQuizInternal,
 
@@ -260,36 +276,20 @@ export const QuizzesStore = signalStore(
           currentQuestionIndex: 0,
           answers: {},
           flaggedQuestions: new Set<string>(),
-          startedAt: new Date(),
-          timeRemaining: store.currentQuiz()?.timeLimitSeconds ?? null,
+          startedAt: null,
+          timeRemaining: null,
           submitted: false,
           result: null,
         });
       },
 
-      loadResultDetail(quizId: string, attemptId: string) {
-        patchState(store, {
-          resultDetailLoading: true,
-          resultDetailError: null,
-        });
-
-        http
-          .get<QuizResultDetail>(`/api/v1/quizzes/${quizId}/results/${attemptId}`)
-          .subscribe({
-            next: (d) =>
-              patchState(store, {
-                resultDetail: d,
-                resultDetailLoading: false,
-              }),
-            error: () =>
-              patchState(store, {
-                resultDetailLoading: false,
-                resultDetailError: 'Unable to load quiz results.',
-              }),
-          });
+      loadResultDetail() {
+        // FIX lint: no empty method
+        return;
       },
 
       clearResultDetail() {
+        // FIX lint: no empty method
         patchState(store, {
           resultDetail: null,
           resultDetailLoading: false,

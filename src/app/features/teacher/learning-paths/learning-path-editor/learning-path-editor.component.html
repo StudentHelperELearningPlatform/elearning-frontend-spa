@@ -2,108 +2,100 @@
 
   <h2>Learning Path Builder</h2>
 
-  <!-- FORM -->
   <form [formGroup]="form" class="form-section">
 
-    <label>Name *</label>
-    <input type="text" formControlName="name" />
+    <label for="name">Name *</label>
+    <input id="name" type="text" formControlName="name" />
 
-    <label>Description</label>
-    <textarea formControlName="description"></textarea>
+    <label for="description">Description</label>
+    <textarea id="description" formControlName="description"></textarea>
 
   </form>
 
   <hr />
 
-  <!-- ADD LESSON -->
   <div class="add-lesson">
     <h3>Add Lesson</h3>
 
     <select #lessonSelect>
-      <option *ngFor="let lesson of allLessons" [value]="lesson.id">
-        {{ lesson.title }}
-      </option>
+      @for (lesson of allLessons; track lesson.id) {
+        <option [value]="lesson.id">
+          {{ lesson.title }}
+        </option>
+      }
     </select>
 
-    <button (click)="addLesson(allLessons.find(l => l.id === lessonSelect.value) || null)">
+    <button (click)="addSelectedLesson(lessonSelect.value)">
       Add
     </button>
   </div>
 
-  <!-- SELECTED LESSONS -->
   <h3>Path</h3>
 
-  <div
-    cdkDropList
-    class="lesson-list"
-    (cdkDropListDropped)="drop($event)"
-  >
+  <div cdkDropList class="lesson-list" (cdkDropListDropped)="drop($event)">
 
-    <div
-      class="lesson-item"
-      *ngFor="let lesson of selectedLessons; let i = index"
-      cdkDrag
-    >
+    @for (lesson of selectedLessons; track lesson.id; let i = $index) {
+      <div class="lesson-item" cdkDrag>
 
-      <div class="lesson-header">
-        <span>{{ lesson.title }}</span>
-        <button (click)="removeLesson(i)">X</button>
-      </div>
+        <div class="lesson-header">
+          <span>{{ lesson.title }}</span>
+          <button (click)="removeLesson(i)">X</button>
+        </div>
 
-      <!-- prerequisites -->
-      <div class="prereq">
-        <label>Prerequisites</label>
+        <div class="prereq">
+          <label for="prereq-{{ i }}">Prerequisites</label>
 
-        <select multiple
-          (change)="onPrereqChange(i, $event)"
-        >
-          <option
-            *ngFor="let l of selectedLessons; let idx = index"
-            [value]="l.id"
-            [disabled]="idx >= i"
+          <select
+            id="prereq-{{ i }}"
+            multiple
+            (change)="onPrereqChange(i, $event)"
           >
-            {{ l.title }}
-          </option>
-        </select>
+
+            @for (l of selectedLessons; track l.id; let idx = $index) {
+              <option
+                [value]="l.id"
+                [disabled]="idx >= i"
+              >
+                {{ l.title }}
+              </option>
+            }
+
+          </select>
+        </div>
 
       </div>
-
-    </div>
+    }
 
   </div>
 
-  <!-- ACTIONS -->
   <div class="actions">
     <button (click)="saveDraft()">Save Draft</button>
     <button (click)="publish()">Publish</button>
   </div>
 
-    <!-- VISUAL PREVIEW -->
   <div class="preview">
 
     <h3>Learning Path Preview</h3>
 
-    <div
-      class="preview-item"
-      *ngFor="let lesson of selectedLessons"
-    >
+    @for (lesson of selectedLessons; track lesson.id) {
+      <div class="preview-item">
 
-      <div class="circle"></div>
+        <div class="circle"></div>
 
-      <div class="preview-content">
-        <strong>{{ lesson.title }}</strong>
+        <div class="preview-content">
+          <strong>{{ lesson.title }}</strong>
 
-        <div
-          class="preview-prereq"
-          *ngIf="lesson.prerequisites.length"
-        >
-          Prerequisites:
-          {{ lesson.prerequisites.join(', ') }}
+          @if (lesson.prerequisites.length > 0) {
+            <div class="preview-prereq">
+              Prerequisites:
+              {{ lesson.prerequisites.join(', ') }}
+            </div>
+          }
+
         </div>
 
       </div>
-
-    </div>
+    }
 
   </div>
 

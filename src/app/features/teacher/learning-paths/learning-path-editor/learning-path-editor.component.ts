@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonModule } from '@angular/common';
@@ -19,36 +19,34 @@ interface Lesson {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, DragDropModule],
   templateUrl: './learning-path-editor.component.html',
-  styleUrls: ['./learning-path-editor.component.scss']
+  styleUrls: ['./learning-path-editor.component.scss'],
 })
 export class LearningPathEditorComponent implements OnInit {
+
+  private fb = inject(FormBuilder);
+  private learningPathService = inject(LearningPathEditorService);
 
   form!: FormGroup;
 
   allLessons: Lesson[] = [
     { id: '1', title: 'Lesson 1', prerequisites: [] },
     { id: '2', title: 'Lesson 2', prerequisites: [] },
-    { id: '3', title: 'Lesson 3', prerequisites: [] }
+    { id: '3', title: 'Lesson 3', prerequisites: [] },
   ];
 
   selectedLessons: Lesson[] = [];
 
-  constructor(
-    private fb: FormBuilder,
-    private learningPathService: LearningPathEditorService
-  ) {}
-
   ngOnInit(): void {
     this.form = this.fb.group({
       name: ['', Validators.required],
-      description: ['']
+      description: [''],
     });
   }
 
   addLesson(lesson: Lesson | null) {
     if (!lesson) return;
 
-    if (!this.selectedLessons.find(l => l.id === lesson.id)) {
+    if (!this.selectedLessons.find((l) => l.id === lesson.id)) {
       this.selectedLessons.push({ ...lesson, prerequisites: [] });
     }
   }
@@ -61,11 +59,9 @@ export class LearningPathEditorComponent implements OnInit {
     moveItemInArray(this.selectedLessons, event.previousIndex, event.currentIndex);
   }
 
-  // FIX IMPORTANT: validation rule (must be above)
   setPrerequisites(index: number, ids: string[]) {
-
-    const valid = ids.filter(id => {
-      const prereqIndex = this.selectedLessons.findIndex(l => l.id === id);
+    const valid = ids.filter((id) => {
+      const prereqIndex = this.selectedLessons.findIndex((l) => l.id === id);
       return prereqIndex < index;
     });
 
@@ -74,43 +70,45 @@ export class LearningPathEditorComponent implements OnInit {
 
   onPrereqChange(index: number, event: Event) {
     const select = event.target as HTMLSelectElement;
-
-    const values = Array.from(select.selectedOptions).map(o => o.value);
+    const values = Array.from(select.selectedOptions).map((o) => o.value);
 
     this.setPrerequisites(index, values);
   }
 
   saveDraft() {
-
     const payload: LearningPath = {
       name: this.form.value.name,
       description: this.form.value.description,
-      lessons: this.selectedLessons.map(l => ({
+      lessons: this.selectedLessons.map((l) => ({
         id: l.id,
         title: l.title,
-        prerequisites: l.prerequisites
+        prerequisites: l.prerequisites,
       })),
-      status: 'draft'
+      status: 'draft',
     };
 
-    this.learningPathService.createLearningPath(payload)
-      .subscribe(res => console.log('Draft saved', res));
+    this.learningPathService.createLearningPath(payload).subscribe();
   }
 
   publish() {
-
     const payload: LearningPath = {
       name: this.form.value.name,
       description: this.form.value.description,
-      lessons: this.selectedLessons.map(l => ({
+      lessons: this.selectedLessons.map((l) => ({
         id: l.id,
         title: l.title,
-        prerequisites: l.prerequisites
+        prerequisites: l.prerequisites,
       })),
-      status: 'published'
+      status: 'published',
     };
 
-    this.learningPathService.createLearningPath(payload)
-      .subscribe(res => console.log('Published', res));
+    this.learningPathService.createLearningPath(payload).subscribe();
+  }
+
+  addSelectedLesson(lessonId: string | null) {
+    if (!lessonId) return;
+
+    const lesson = this.allLessons.find((l) => l.id === lessonId) ?? null;
+    this.addLesson(lesson);
   }
 }
