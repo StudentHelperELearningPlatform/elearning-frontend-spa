@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MediaUploadComponent } from './media-upload.component';
-import { vi } from 'vitest';
+import { MediaUploadComponent, UploadedMedia } from './media-upload.component';import { vi } from 'vitest';
+import { CdkDragDrop } from '@angular/cdk/drag-drop';
 
 describe('MediaUploadComponent', () => {
   let component: MediaUploadComponent;
@@ -16,15 +16,74 @@ describe('MediaUploadComponent', () => {
     fixture.detectChanges();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
+  describe('Drag & Drop / File Selection Handlers', () => {
+    it('should handle onDragOver', () => {
+      const event = new Event('dragover') as DragEvent;
+      event.preventDefault = vi.fn();
+      event.stopPropagation = vi.fn();
+      
+      component.onDragOver(event);
+      
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(event.stopPropagation).toHaveBeenCalled();
+      expect(component.isDragging()).toBe(true);
+    });
+
+    it('should handle onDragLeave', () => {
+      const event = new Event('dragleave') as DragEvent;
+      event.preventDefault = vi.fn();
+      event.stopPropagation = vi.fn();
+      component.isDragging.set(true); 
+      
+      component.onDragLeave(event);
+      
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(event.stopPropagation).toHaveBeenCalled();
+      expect(component.isDragging()).toBe(false);
+    });
+
+    it('should handle onDrop with files', () => {
+      const file = new File([''], 'test.png', { type: 'image/png' });
+      const event = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        dataTransfer: { files: [file] }
+      } as unknown as DragEvent;
+      const handleSpy = vi.spyOn(component, 'handleFiles').mockImplementation(() => undefined);
+
+      component.onDrop(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(event.stopPropagation).toHaveBeenCalled();
+      expect(component.isDragging()).toBe(false);
+      expect(handleSpy).toHaveBeenCalledWith([file]);
+    });
+
+    it('should handle onFileSelected', () => {
+      const file = new File([''], 'test.png', { type: 'image/png' });
+      const event = {
+        target: { files: [file], value: 'fakepath' }
+      } as unknown as Event;
+      const handleSpy = vi.spyOn(component, 'handleFiles').mockImplementation(() => undefined);
+
+      component.onFileSelected(event);
+
+      expect(handleSpy).toHaveBeenCalledWith([file]);
+      expect((event.target as HTMLInputElement).value).toBe('');
+    });
+  });
+
   describe('File Validation', () => {
     it('should reject files larger than 50MB', () => {
-      // Mock the simulateUpload method so we don't trigger real network logic
-      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);      
-      // Create a fake file that is 51MB
+      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);
       const largeFile = new File([''], 'huge-video.mp4', { type: 'video/mp4' });
       Object.defineProperty(largeFile, 'size', { value: 51 * 1024 * 1024 });
 
@@ -36,8 +95,6 @@ describe('MediaUploadComponent', () => {
 
     it('should reject invalid file types', () => {
       const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);
-      
-      // Create a PDF (which is not in ALLOWED_TYPES)
       const invalidFile = new File([''], 'document.pdf', { type: 'application/pdf' });
 
       component.handleFiles([invalidFile]);
@@ -45,46 +102,98 @@ describe('MediaUploadComponent', () => {
       expect(component.errorMessage()).toContain('Only images, videos, and audio are allowed');
       expect(simulateSpy).not.toHaveBeenCalled();
     });
+  });
 
-    it('should proceed to upload if the file is valid', () => {
-      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);
+  describe('simulateUpload (Network & Timers)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      // Mock native browser APIs used in the component
+      globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+      globalThis.crypto.randomUUID = vi.fn(() => '12345678-1234-1234-1234-1234567890ab') as unknown as typeof crypto.randomUUID;
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should successfully upload a file via fetch and update progress', async () => {
+      const file = new File([''], 'test.png', { type: 'image/png' });
       
-      // Create a valid image file within the size limit
-      const validFile = new File([''], 'photo.png', { type: 'image/png' });
+      // Mock successful fetch
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ url: 'https://mock.url/test.png' })
+      });
 
-      component.handleFiles([validFile]);
+      component.simulateUpload(file);
 
-      expect(component.errorMessage()).toBeNull();
-      expect(simulateSpy).toHaveBeenCalledWith(validFile);
+      // Verify it was added to the list as uploading
+      expect(component.mediaList().length).toBe(1);
+      expect(component.mediaList()[0].status).toBe('uploading');
+
+      // Advance timers by 250ms to trigger one interval tick
+      vi.advanceTimersByTime(250);
+      expect(component.mediaList()[0].progress).toBe(10);
+
+      // Fast-forward until all timers and promises resolve
+      await vi.runAllTimersAsync();
+
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/lessons/new/media', {
+        method: 'POST',
+        body: expect.any(FormData)
+      });
+      expect(component.mediaList()[0].status).toBe('complete');
+      expect(component.mediaList()[0].progress).toBe(100);
+      expect(component.mediaList()[0].url).toBe('https://mock.url/test.png');
+    });
+
+    it('should handle fetch network failures gracefully', async () => {
+      const file = new File([''], 'test.png', { type: 'image/png' });
+      
+      // Mock failed fetch
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+      component.simulateUpload(file);
+      await vi.runAllTimersAsync();
+
+      expect(component.mediaList()[0].status).toBe('error');
+      expect(component.errorMessage()).toContain('Network error: Failed to upload test.png');
     });
   });
 
-  describe('Remove Action', () => {
+  describe('List Management (Drop & Remove)', () => {
     beforeEach(() => {
-      // Seed the media list with one mock item before each removal test
       component.mediaList.set([
-        { id: '123', url: '', name: 'test.png', type: 'image', progress: 100, status: 'complete' }
+        { id: '1', url: '', name: 'first.png', type: 'image', progress: 100, status: 'complete' },
+        { id: '2', url: '', name: 'second.png', type: 'image', progress: 100, status: 'complete' }
       ]);
     });
 
+    it('should reorder media list on drop', () => {
+      const event = {
+        previousIndex: 0,
+        currentIndex: 1
+      } as CdkDragDrop<UploadedMedia[]>;
+
+      component.dropMediaList(event);
+
+      // The item at index 0 should have moved to index 1
+      expect(component.mediaList()[0].id).toBe('2');
+      expect(component.mediaList()[1].id).toBe('1');
+    });
+
     it('should remove media when the user confirms', () => {
-      // Mock the window.confirm dialog to return true (User clicks "OK")
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-
-      component.removeMedia('123');
-
+      component.removeMedia('1');
       expect(confirmSpy).toHaveBeenCalled();
-      expect(component.mediaList().length).toBe(0);
+      expect(component.mediaList().length).toBe(1);
+      expect(component.mediaList()[0].id).toBe('2'); // Only the second remains
     });
 
     it('should NOT remove media when the user cancels', () => {
-      // Mock the window.confirm dialog to return false (User clicks "Cancel")
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-
-      component.removeMedia('123');
-
+      component.removeMedia('1');
       expect(confirmSpy).toHaveBeenCalled();
-      expect(component.mediaList().length).toBe(1); // Item should still be there
+      expect(component.mediaList().length).toBe(2);
     });
   });
 });
