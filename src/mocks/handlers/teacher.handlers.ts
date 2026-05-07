@@ -186,7 +186,7 @@ export const teacherHandlers = [
     return HttpResponse.json(copy, { status: 201 });
   }),
 
-  http.post('/api/v1/lessons/:id/media', async ({ request }) => {
+  http.post('/api/v1/lessons/:id/media', async () => {
     // Simulate a 2.5 second network delay
     await delay(2500);
 

@@ -23,8 +23,7 @@ describe('MediaUploadComponent', () => {
   describe('File Validation', () => {
     it('should reject files larger than 50MB', () => {
       // Mock the simulateUpload method so we don't trigger real network logic
-      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => {});
-      
+      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);      
       // Create a fake file that is 51MB
       const largeFile = new File([''], 'huge-video.mp4', { type: 'video/mp4' });
       Object.defineProperty(largeFile, 'size', { value: 51 * 1024 * 1024 });
@@ -36,7 +35,7 @@ describe('MediaUploadComponent', () => {
     });
 
     it('should reject invalid file types', () => {
-      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => {});
+      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);
       
       // Create a PDF (which is not in ALLOWED_TYPES)
       const invalidFile = new File([''], 'document.pdf', { type: 'application/pdf' });
@@ -48,7 +47,7 @@ describe('MediaUploadComponent', () => {
     });
 
     it('should proceed to upload if the file is valid', () => {
-      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => {});
+      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);
       
       // Create a valid image file within the size limit
       const validFile = new File([''], 'photo.png', { type: 'image/png' });

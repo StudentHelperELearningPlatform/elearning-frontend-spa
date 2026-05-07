@@ -24,15 +24,19 @@ export interface UploadedMedia {
       </div>
 
       <div 
-        class="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer bg-white"
+        class="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
         [ngClass]="{
           'border-[#0ABAB5] bg-[#0ABAB5]/10': isDragging(),
           'border-black/30': !isDragging()
         }"
+        role="button"
+        tabindex="0"
         (dragover)="onDragOver($event)"
         (dragleave)="onDragLeave($event)"
         (drop)="onDrop($event)"
-        (click)="fileInput.click()">
+        (click)="fileInput.click()"
+        (keydown.enter)="fileInput.click()"
+        (keydown.space)="fileInput.click(); $event.preventDefault()">
         
         <span class="material-icons text-5xl text-gray-400 mb-2 transition-colors" [class.text-[#0ABAB5]]="isDragging()">cloud_upload</span>
         <p class="text-black font-bold text-lg tracking-tight mb-1">Drag and drop media here</p>
