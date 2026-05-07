@@ -2,6 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { environment } from '../../../../environments/environment';
+export {
+  type ProgressRecord,
+  type SkillLevel,
+  type StreakData,
+  type Milestone,
+  type ActivityItem,
+  type UpcomingQuiz,
+} from '@shared/models/progress.model';
 import {
   ProgressRecord,
   SkillLevel,
