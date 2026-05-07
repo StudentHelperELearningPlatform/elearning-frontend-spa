@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, delay } from 'msw';
 
 const now = Date.now();
 const dayMs = 24 * 60 * 60 * 1000;
@@ -184,5 +184,15 @@ export const teacherHandlers = [
     };
     lessons.unshift(copy);
     return HttpResponse.json(copy, { status: 201 });
+  }),
+
+  http.post('/api/v1/lessons/:id/media', async () => {
+    // Simulate a 2.5 second network delay
+    await delay(2500);
+
+    // Return a mock asset URL. We use a placeholder image colored with your brand teal!
+    return HttpResponse.json({
+      url: 'https://placehold.co/600x400/0ABAB5/FFFFFF/png?text=Mock+Media+Asset'
+    }, { status: 201 });
   }),
 ];

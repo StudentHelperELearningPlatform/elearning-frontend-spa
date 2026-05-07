@@ -32,6 +32,7 @@ import {
 } from '../state/lesson-editor.store';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
+import { MediaUploadComponent } from './media-upload/media-upload.component';
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 import { UnsavedChangesGuarded } from './unsaved-changes.guard';
 
@@ -61,6 +62,7 @@ interface MetadataForm {
     ButtonComponent,
     CardComponent,
     ErrorStateComponent,
+    MediaUploadComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -256,10 +258,8 @@ interface MetadataForm {
                     (onBlur)="onModuleBlur()"
                     [style]="{ height: '180px' }"
                   ></p-editor>
-                  <div
-                    class="p-3 rounded-xl border-2 border-dashed border-black/30 text-gray-600 text-sm"
-                  >
-                    Media upload area — provided by E5-04.
+                  <div class="mt-4">
+                    <app-media-upload></app-media-upload>
                   </div>
                 </div>
               }
