@@ -1,7 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { environment } from '../../../../environments/environment';
+export {
+  type Question,
+  type Quiz,
+  type QuizResult,
+  type QuizResultDetail,
+} from '@shared/models/quiz.types';
 import {
   Quiz,
   QuizOption,
@@ -319,7 +324,7 @@ export const QuizzesStore = signalStore(
       loadResultDetail(quizId: string, attemptId: string) {
         patchState(store, { resultDetailLoading: true, resultDetailError: null });
         http
-          .get<QuizResultDetail>(`${environment.apiBase}/quizzes/${quizId}/results/${attemptId}`)
+          .get<QuizResultDetail>(`/api/quizzes/${quizId}/results/${attemptId}`)
           .subscribe({
             next: (detail) => {
               patchState(store, {
