@@ -6,7 +6,8 @@ import { ContentEditorComponent } from './content-editor/content-editor.componen
 import { QuizBuilderComponent } from './quiz-builder/quiz-builder.component';
 import { LessonBuilderComponent } from './content-editor/lesson-builder/lesson-builder.component';
 import { PathBuilderComponent } from './content-editor/path-builder/path-builder.component';
-import { LessonListComponent } from './lesson-list/lesson-list.component';
+import { LessonEditorComponent } from './lesson-editor/lesson-editor.component';
+import { unsavedChangesGuard } from './lesson-editor/unsaved-changes.guard';
 import { TeacherDashboardComponent } from './dashboard/teacher-dashboard.component';
 
 export default [
@@ -14,9 +15,16 @@ export default [
   { path: 'analytics', component: AnalyticsDashboardComponent },
   { path: 'classes', component: ClassManagementComponent },
   { path: 'content', component: ContentEditorComponent },
-  { path: 'lessons', component: LessonListComponent },
-  { path: 'lessons/new', component: LessonBuilderComponent },
-  { path: 'lessons/:id/edit', component: LessonBuilderComponent },
+  {
+    path: 'lessons/new',
+    component: LessonEditorComponent,
+    canDeactivate: [unsavedChangesGuard],
+  },
+  {
+    path: 'lessons/:id/edit',
+    component: LessonEditorComponent,
+    canDeactivate: [unsavedChangesGuard],
+  },
   { path: 'lesson-builder', component: LessonBuilderComponent },
   { path: 'lesson-builder/:id', component: LessonBuilderComponent },
   { path: 'path-builder', component: PathBuilderComponent },
