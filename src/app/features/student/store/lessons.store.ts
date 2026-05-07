@@ -76,13 +76,11 @@ export const LessonsStore = signalStore(
   })),
   withMethods((store, http = inject(HttpClient)) => ({
     
-    // 1. Mock-ul reparat pentru teste
     loadLessons(): void {
       patchState(store, { loading: true });
       setTimeout(() => patchState(store, { loading: false }), 500);
     },
 
-    // 2. Metoda lui Andrew cu adaptorul
     loadLesson(id: string): void {
       patchState(store, { loading: true, error: null });
       http.get<BackendLesson>(`${environment.apiUrl}/lessons/${id}`)
@@ -104,7 +102,6 @@ export const LessonsStore = signalStore(
         });
     },
 
-    // 3. Metoda ta pentru task-ul INT-02
     markModuleComplete(lessonId: string, moduleId: string | number): void {
       const payload = {
         moduleId,
