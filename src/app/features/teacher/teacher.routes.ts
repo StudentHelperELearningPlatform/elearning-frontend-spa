@@ -6,6 +6,7 @@ import { ContentEditorComponent } from './content-editor/content-editor.componen
 import { QuizBuilderComponent } from './quiz-builder/quiz-builder.component';
 import { LessonBuilderComponent } from './content-editor/lesson-builder/lesson-builder.component';
 import { PathBuilderComponent } from './content-editor/path-builder/path-builder.component';
+import { LearningPathEditorComponent } from './learning-paths/learning-path-editor/learning-path-editor.component';
 
 export default [
   { path: 'dashboard', component: AnalyticsDashboardComponent },
@@ -16,5 +17,7 @@ export default [
   { path: 'path-builder', component: PathBuilderComponent },
   { path: 'quiz-builder', component: QuizBuilderComponent },
   { path: 'quiz-builder/:id', component: QuizBuilderComponent },
+  { path: 'learning-paths/new', component: LearningPathEditorComponent },
+{ path: 'learning-paths/:id/edit', component: LearningPathEditorComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
 ] as Routes;

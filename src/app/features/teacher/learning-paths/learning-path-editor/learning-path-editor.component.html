@@ -25,7 +25,7 @@
       </option>
     </select>
 
-    <button (click)="addLesson(allLessons.find(l => l.id === lessonSelect.value)!)">
+    <button (click)="addLesson(allLessons.find(l => l.id === lessonSelect.value) || null)">
       Add
     </button>
   </div>
@@ -76,6 +76,35 @@
   <div class="actions">
     <button (click)="saveDraft()">Save Draft</button>
     <button (click)="publish()">Publish</button>
+  </div>
+
+    <!-- VISUAL PREVIEW -->
+  <div class="preview">
+
+    <h3>Learning Path Preview</h3>
+
+    <div
+      class="preview-item"
+      *ngFor="let lesson of selectedLessons"
+    >
+
+      <div class="circle"></div>
+
+      <div class="preview-content">
+        <strong>{{ lesson.title }}</strong>
+
+        <div
+          class="preview-prereq"
+          *ngIf="lesson.prerequisites.length"
+        >
+          Prerequisites:
+          {{ lesson.prerequisites.join(', ') }}
+        </div>
+
+      </div>
+
+    </div>
+
   </div>
 
 </div>

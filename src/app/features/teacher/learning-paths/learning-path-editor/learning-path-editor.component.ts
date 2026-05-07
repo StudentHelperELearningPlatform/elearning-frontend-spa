@@ -5,6 +5,8 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 
+import { LearningPathEditorService } from '../learning-path.service';
+import { LearningPath } from '../learning-path.model';
 
 interface Lesson {
   id: string;
@@ -15,11 +17,7 @@ interface Lesson {
 @Component({
   selector: 'app-learning-path-editor',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    DragDropModule
-  ],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
   templateUrl: './learning-path-editor.component.html',
   styleUrls: ['./learning-path-editor.component.scss']
 })
@@ -35,7 +33,10 @@ export class LearningPathEditorComponent implements OnInit {
 
   selectedLessons: Lesson[] = [];
 
-  constructor(private fb: FormBuilder) {}
+  constructor(
+    private fb: FormBuilder,
+    private learningPathService: LearningPathEditorService
+  ) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({
@@ -44,7 +45,9 @@ export class LearningPathEditorComponent implements OnInit {
     });
   }
 
-  addLesson(lesson: Lesson) {
+  addLesson(lesson: Lesson | null) {
+    if (!lesson) return;
+
     if (!this.selectedLessons.find(l => l.id === lesson.id)) {
       this.selectedLessons.push({ ...lesson, prerequisites: [] });
     }
@@ -58,25 +61,56 @@ export class LearningPathEditorComponent implements OnInit {
     moveItemInArray(this.selectedLessons, event.previousIndex, event.currentIndex);
   }
 
-  setPrerequisites(lessonIndex: number, prereqIds: string[]) {
-    this.selectedLessons[lessonIndex].prerequisites = prereqIds;
-  }
+  // FIX IMPORTANT: validation rule (must be above)
+  setPrerequisites(index: number, ids: string[]) {
 
-  saveDraft() {
-    console.log('SAVE DRAFT', this.form.value, this.selectedLessons);
-  }
+    const valid = ids.filter(id => {
+      const prereqIndex = this.selectedLessons.findIndex(l => l.id === id);
+      return prereqIndex < index;
+    });
 
-  publish() {
-    console.log('PUBLISH', this.form.value, this.selectedLessons);
+    this.selectedLessons[index].prerequisites = valid;
   }
 
   onPrereqChange(index: number, event: Event) {
-  const select = event.target as HTMLSelectElement;
+    const select = event.target as HTMLSelectElement;
 
-  const values = Array
-    .from(select.selectedOptions)
-    .map(option => option.value);
+    const values = Array.from(select.selectedOptions).map(o => o.value);
 
-  this.setPrerequisites(index, values);
-}
+    this.setPrerequisites(index, values);
+  }
+
+  saveDraft() {
+
+    const payload: LearningPath = {
+      name: this.form.value.name,
+      description: this.form.value.description,
+      lessons: this.selectedLessons.map(l => ({
+        id: l.id,
+        title: l.title,
+        prerequisites: l.prerequisites
+      })),
+      status: 'draft'
+    };
+
+    this.learningPathService.createLearningPath(payload)
+      .subscribe(res => console.log('Draft saved', res));
+  }
+
+  publish() {
+
+    const payload: LearningPath = {
+      name: this.form.value.name,
+      description: this.form.value.description,
+      lessons: this.selectedLessons.map(l => ({
+        id: l.id,
+        title: l.title,
+        prerequisites: l.prerequisites
+      })),
+      status: 'published'
+    };
+
+    this.learningPathService.createLearningPath(payload)
+      .subscribe(res => console.log('Published', res));
+  }
 }
