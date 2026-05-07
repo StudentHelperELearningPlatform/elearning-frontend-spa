@@ -2,11 +2,14 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LessonsStore } from '../store/lessons.store';
-import { MediaPlayerComponent } from './media-player/media-player.component';
+import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
+
+// Resolved Imports: Using path aliases while keeping the ErrorStateComponent from develop
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 
 @Component({
@@ -20,6 +23,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
     ButtonComponent,
     CardComponent,
     EmptyStateComponent,
+    ErrorStateComponent,
     BadgeComponent
   ],
   template: `
@@ -96,6 +100,23 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
                 <div class="h-4 bg-gray-200 rounded w-5/6 animate-pulse"></div>
                 <div class="h-4 bg-gray-200 rounded w-4/6 animate-pulse"></div>
               </div>
+            </div>
+          } @else if (store.error()?.kind === 'not-found') {
+            <div class="max-w-2xl mx-auto py-12">
+              <app-empty-state
+                title="Lesson not found"
+                description="We couldn't find the lesson you're looking for. It may have been removed."
+                icon="search_off"
+              ></app-empty-state>
+            </div>
+          } @else if (store.error()) {
+            <div class="max-w-2xl mx-auto py-12">
+              <app-error-state
+                title="Could not load lesson"
+                [message]="store.error()?.message || 'Unknown error'"
+                retryLabel="Retry"
+                (retryClick)="reloadLesson()"
+              ></app-error-state>
             </div>
           } @else if (currentModule()) {
             <div class="max-w-4xl mx-auto">
@@ -179,6 +200,10 @@ export class LessonViewerComponent implements OnInit {
   currentModuleIndex = signal(0);
 
   ngOnInit() {
+    this.reloadLesson();
+  }
+
+  reloadLesson() {
     const lessonId = this.route.snapshot.paramMap.get('id');
     if (lessonId) {
       this.store.loadLesson(lessonId);
@@ -211,7 +236,6 @@ export class LessonViewerComponent implements OnInit {
   }
 
   finishLesson() {
-    // Navigate back or to a summary page
     this.router.navigate(['/student/lessons']);
   }
 

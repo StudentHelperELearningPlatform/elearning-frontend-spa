@@ -1,12 +1,21 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
-import {
-  signalStore,
-  withState,
-  withMethods,
-  withComputed,
-  patchState,
+import { 
+  signalStore, 
+  withState, 
+  withMethods, 
+  withComputed, 
+  patchState 
 } from '@ngrx/signals';
+import { environment } from '../../../../environments/environment';
+
+// Re-exporting types as requested by the develop branch
+export {
+  type Question,
+  type Quiz,
+  type QuizResult,
+  type QuizResultDetail,
+} from '@shared/models/quiz.types';
 
 import {
   Quiz,
@@ -15,7 +24,8 @@ import {
   QuizResultDetail,
 } from '@shared/models/quiz.types';
 
-const API = '/api/v1';
+// Using environment variable for API base path
+const API = environment.apiUrl || '/api/v1';
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
@@ -279,10 +289,10 @@ export const QuizzesStore = signalStore(
         patchState(store, (s) => {
           const set = new Set(s.flaggedQuestions);
           if (set.has(id)) {
-  set.delete(id);
-} else {
-  set.add(id);
-}
+            set.delete(id);
+          } else {
+            set.add(id);
+          }
           return { flaggedQuestions: set };
         });
       },

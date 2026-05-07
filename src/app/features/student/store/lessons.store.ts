@@ -1,5 +1,9 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { computed } from '@angular/core';
+import { computed, inject } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { catchError, EMPTY } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
 export interface Module {
   id: string;
@@ -20,11 +24,16 @@ export interface Lesson {
   modules: Module[];
 }
 
+export interface LessonLoadError {
+  kind: 'not-found' | 'server' | 'unknown';
+  message: string;
+}
+
 interface LessonsState {
   lessons: Lesson[];
   currentLesson: Lesson | null;
   loading: boolean;
-  error: string | null;
+  error: LessonLoadError | null;
 }
 
 export const LessonsStore = signalStore(
@@ -65,17 +74,51 @@ export const LessonsStore = signalStore(
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
   })),
-  withMethods((store) => ({
-    loadLessons() {
+  withMethods((store, http = inject(HttpClient)) => ({
+    
+    loadLessons(): void {
       patchState(store, { loading: true });
       setTimeout(() => patchState(store, { loading: false }), 500);
     },
-    loadLesson(id: string) {
-      patchState(store, { loading: true });
-      setTimeout(() => {
-        const lesson = store.lessons().find(l => l.id === id);
-        patchState(store, { currentLesson: lesson, loading: false });
-      }, 500);
+
+    loadLesson(id: string): void {
+      patchState(store, { loading: true, error: null });
+      http.get<BackendLesson>(`${environment.apiUrl}/lessons/${id}`)
+        .subscribe({
+          next: (backend) => {
+            const lesson = mapLessonResponse(backend);
+            patchState(store, { currentLesson: lesson, loading: false });
+          },
+          error: (err: unknown) => {
+            const status = err instanceof HttpErrorResponse ? err.status : 0;
+            const error: LessonLoadError =
+              status === 404
+                ? { kind: 'not-found', message: 'Lesson not found' }
+                : status >= 500
+                  ? { kind: 'server', message: 'Could not load lesson' }
+                  : { kind: 'unknown', message: 'Could not load lesson' };
+            patchState(store, { loading: false, error });
+          },
+        });
+    },
+
+    markModuleComplete(lessonId: string, moduleId: string | number): void {
+      const payload = {
+        moduleId,
+        completedAt: new Date().toISOString(),
+      };
+
+      http.put(`${environment.apiUrl}/lessons/${lessonId}/progress`, payload)
+        .pipe(
+          catchError((err: unknown) => {
+            console.error('Failed to save module progress', err);
+            return EMPTY; 
+          })
+        )
+        .subscribe((response) => { 
+          console.log('Progress saved', response);
+        });
     }
+    
   }))
 );
