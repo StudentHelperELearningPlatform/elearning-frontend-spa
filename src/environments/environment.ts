@@ -1,8 +1,7 @@
-// src/environments/environment.ts
 export const environment = {
-  production: true,
+  production: false,
   apiBase: '/api/v1',
-  apiUrl: 'https://api.example.com', // TODO: replace with real production API URL
+  apiUrl: '/api/v1',
   keycloak: {
     url: 'https://keycloak-26-0-7-vb34.onrender.com/',
     realm: 'elearning',

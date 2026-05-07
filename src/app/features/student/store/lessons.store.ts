@@ -1,11 +1,9 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { catchError, EMPTY } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import {
-  BackendLesson,
-  mapLessonResponse,
-} from '../../../api/adapters/lesson.adapter';
+import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
 export interface Module {
   id: string;
@@ -77,22 +75,22 @@ export const LessonsStore = signalStore(
     lessonCount: computed(() => state.lessons().length),
   })),
   withMethods((store, http = inject(HttpClient)) => ({
-    loadLessons() {
+    
+    loadLessons(): void {
       patchState(store, { loading: true });
       setTimeout(() => patchState(store, { loading: false }), 500);
     },
-    loadLesson(id: string) {
+
+    loadLesson(id: string): void {
       patchState(store, { loading: true, error: null });
-      http
-        .get<BackendLesson>(`${environment.apiBase}/lessons/${id}`)
+      http.get<BackendLesson>(`${environment.apiUrl}/lessons/${id}`)
         .subscribe({
           next: (backend) => {
             const lesson = mapLessonResponse(backend);
             patchState(store, { currentLesson: lesson, loading: false });
           },
           error: (err: unknown) => {
-            const status =
-              err instanceof HttpErrorResponse ? err.status : 0;
+            const status = err instanceof HttpErrorResponse ? err.status : 0;
             const error: LessonLoadError =
               status === 404
                 ? { kind: 'not-found', message: 'Lesson not found' }
@@ -103,5 +101,24 @@ export const LessonsStore = signalStore(
           },
         });
     },
-  })),
+
+    markModuleComplete(lessonId: string, moduleId: string | number): void {
+      const payload = {
+        moduleId,
+        completedAt: new Date().toISOString(),
+      };
+
+      http.put(`${environment.apiUrl}/lessons/${lessonId}/progress`, payload)
+        .pipe(
+          catchError((err: unknown) => {
+            console.error('Failed to save module progress', err);
+            return EMPTY; 
+          })
+        )
+        .subscribe((response) => { 
+          console.log('Progress saved', response);
+        });
+    }
+    
+  }))
 );

@@ -141,4 +141,34 @@ describe('LessonsStore', () => {
     store.loadLesson('1');
     expect(store.error()?.kind).not.toBe('unknown');
   });
+
+  describe('markModuleComplete (INT-02)', () => {
+    it('should call PUT /api/v1/lessons/:lessonId/progress with correct payload', () => {
+      const putSpy = vi.spyOn(http, 'put').mockReturnValue(of({ message: 'Progress saved successfully' }));
+
+      store.markModuleComplete('lesson-123', 'module-1');
+
+      expect(putSpy).toHaveBeenCalledWith(
+        '/api/v1/lessons/lesson-123/progress',
+        expect.objectContaining({
+          moduleId: 'module-1',
+          completedAt: expect.any(String) 
+        })
+      );
+    });
+
+    it('should catch errors and log them without crashing', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      vi.spyOn(http, 'put').mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' }))
+      );
+
+      store.markModuleComplete('lesson-123', 'module-2');
+
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to save module progress', expect.any(Object));
+      
+      consoleSpy.mockRestore();
+    });
+  });
 });
