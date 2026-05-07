@@ -1,8 +1,9 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { computed, inject } from '@angular/core'; // Adăugat inject
-import { HttpClient } from '@angular/common/http'; // Adăugat HttpClient
-import { catchError, EMPTY } from 'rxjs'; // Adăugate importurile RxJS
-import { environment } from '../../../../environments/environment'; 
+import { computed, inject } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { catchError, EMPTY } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
 export interface Module {
   id: string;
@@ -23,11 +24,16 @@ export interface Lesson {
   modules: Module[];
 }
 
+export interface LessonLoadError {
+  kind: 'not-found' | 'server' | 'unknown';
+  message: string;
+}
+
 interface LessonsState {
   lessons: Lesson[];
   currentLesson: Lesson | null;
   loading: boolean;
-  error: string | null;
+  error: LessonLoadError | null;
 }
 
 export const LessonsStore = signalStore(
@@ -68,14 +74,16 @@ export const LessonsStore = signalStore(
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
   })),
- withMethods((store, http = inject(HttpClient)) => ({
+  
+  // Un singur bloc cu toate metodele unificate
+  withMethods((store, http = inject(HttpClient)) => ({
     
     loadLessons(): void {
       patchState(store, { loading: true, error: null });
       http.get<Lesson[]>(`${environment.apiUrl}/lessons`)
         .pipe(
           catchError(() => {
-            patchState(store, { loading: false, error: 'Failed to load lessons' });
+            patchState(store, { loading: false, error: { kind: 'unknown', message: 'Failed to load lessons' } });
             return EMPTY;
           })
         )
@@ -84,22 +92,27 @@ export const LessonsStore = signalStore(
         });
     },
 
-    // Metoda restaurată pentru a încărca o singură lecție
     loadLesson(id: string): void {
       patchState(store, { loading: true, error: null });
-      http.get<Lesson>(`${environment.apiUrl}/lessons/${id}`)
-        .pipe(
-          catchError(() => {  
-            patchState(store, { loading: false, error: 'Failed to load lesson' });
-            return EMPTY;
-          })
-        )
-        .subscribe((lesson) => {
-          patchState(store, { currentLesson: lesson, loading: false });
+      http.get<BackendLesson>(`${environment.apiUrl}/lessons/${id}`)
+        .subscribe({
+          next: (backend) => {
+            const lesson = mapLessonResponse(backend);
+            patchState(store, { currentLesson: lesson, loading: false });
+          },
+          error: (err: unknown) => {
+            const status = err instanceof HttpErrorResponse ? err.status : 0;
+            const error: LessonLoadError =
+              status === 404
+                ? { kind: 'not-found', message: 'Lesson not found' }
+                : status >= 500
+                  ? { kind: 'server', message: 'Could not load lesson' }
+                  : { kind: 'unknown', message: 'Could not load lesson' };
+            patchState(store, { loading: false, error });
+          },
         });
     },
 
-    // Metoda nouă pentru progres (INT-02)
     markModuleComplete(lessonId: string, moduleId: string | number): void {
       const payload = {
         moduleId,
@@ -117,6 +130,5 @@ export const LessonsStore = signalStore(
           console.log('Progress saved', response);
         });
     }
-    
   }))
 );
