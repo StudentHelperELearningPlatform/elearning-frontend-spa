@@ -5,8 +5,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RegisterComponent } from './register.component';
-import { AuthService } from '../../../../core/services/auth.service';
+import { AuthService } from '@core/services/auth.service';
 import { createAuthServiceStub } from '../../../../../test-utils/auth-testing';
+import { ButtonComponent } from '@shared/components/button/button.component';
+import { CardComponent } from '@shared/components/card/card.component';
 
 describe('RegisterComponent', () => {
   let component: RegisterComponent;
@@ -14,7 +16,7 @@ describe('RegisterComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RegisterComponent, ReactiveFormsModule],
+      imports: [RegisterComponent, ReactiveFormsModule, ButtonComponent, CardComponent],
       providers: [
         provideRouter([]),
         provideHttpClient(),

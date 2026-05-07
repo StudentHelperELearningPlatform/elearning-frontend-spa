@@ -1,62 +1,35 @@
 import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
-import { LearningPathsStore } from './learning-paths.store';
-import { LearningPath } from '@shared/models/learning-path.model';
+import { of } from 'rxjs';
+import { QuizzesStore } from './quizzes.store';
+import { Quiz } from '@shared/models/quiz.types';
 import { patchStore } from '../../../../test-utils/patch-store';
 
-const MOCK_PATH: LearningPath = {
-  id: 'path-1',
-  title: 'Math Mastery',
-  description: 'Learn maths step by step.',
-  totalLessons: 5,
-  estimatedTotalTime: '2 hours',
-  lessons: [
+const MOCK_QUIZ: any = {
+  id: 'q1',
+  title: 'Basic Math',
+  subject: 'Math',
+  timeLimitSeconds: 600,
+  questions: [
     {
-      id: '1',
-      title: 'Fractions',
-      subject: 'Math',
-      duration: '20 min',
-      status: 'COMPLETED',
-      score: 90,
+      id: 'q1-q1',
+      type: 'MULTIPLE_CHOICE',
+      text: 'What is 1+1?',
+      options: ['1', '2', '3'],
+      points: 10
     },
     {
-      id: '2',
-      title: 'Decimals',
-      subject: 'Math',
-      duration: '20 min',
-      status: 'COMPLETED',
-      score: 80,
-    },
-    {
-      id: '3',
-      title: 'Percentages',
-      subject: 'Math',
-      duration: '20 min',
-      status: 'AVAILABLE',
-    },
-    {
-      id: '4',
-      title: 'Ratios',
-      subject: 'Math',
-      duration: '25 min',
-      status: 'LOCKED',
-      prerequisiteTitle: 'Percentages',
-    },
-    {
-      id: '5',
-      title: 'Algebra Intro',
-      subject: 'Math',
-      duration: '30 min',
-      status: 'LOCKED',
-      prerequisiteTitle: 'Ratios',
-    },
-  ],
+      id: 'q1-q2',
+      type: 'TRUE_FALSE',
+      text: 'Is the earth round?',
+      options: ['True', 'False'],
+      points: 5
+    }
+  ]
 };
 
-describe('LearningPathsStore', () => {
-  const getStore = () => TestBed.inject(LearningPathsStore);
+describe('QuizzesStore', () => {
+  const getStore = () => TestBed.inject(QuizzesStore);
   let store: ReturnType<typeof getStore>;
   let http: HttpClient;
 
@@ -64,7 +37,6 @@ describe('LearningPathsStore', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
-        provideRouter([]),
       ],
     });
 
@@ -76,178 +48,103 @@ describe('LearningPathsStore', () => {
     vi.restoreAllMocks();
   });
 
-  it('starts with currentPath as null', () => {
-    expect(store.currentPath()).toBeNull();
+  it('starts with default state', () => {
+    expect(store.currentQuiz()).toBeNull();
+    expect(store.currentQuestionIndex()).toBe(0);
+    expect(store.answers()).toEqual({});
+    expect(store.submitted()).toBe(false);
   });
 
-  it('starts with loading as false', () => {
+  it('loadQuizById fetches and sets quiz', () => {
+    const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_QUIZ));
+    store.loadQuizById('q1');
+    
+    expect(spy).toHaveBeenCalledWith('/api/v1/quizzes/q1');
+    expect(store.currentQuiz()?.id).toBe('q1');
     expect(store.loading()).toBe(false);
   });
 
-  it('starts with error as null', () => {
-    expect(store.error()).toBeNull();
+  it('answerQuestion updates answers state', () => {
+    store.answerQuestion('q1-q1', '2');
+    expect(store.answers()['q1-q1']).toBe('2');
+    expect(store.answeredCount()).toBe(1);
   });
 
-  it('loadPath sets currentPath on success', () => {
-    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
-    store.loadPath('path-1');
-    expect(store.currentPath()).toEqual(MOCK_PATH);
+  it('flagQuestion toggles flag', () => {
+    store.flagQuestion('q1-q1');
+    expect(store.isFlagged('q1-q1')).toBe(true);
+    expect(store.flaggedCount()).toBe(1);
+    
+    store.flagQuestion('q1-q1');
+    expect(store.isFlagged('q1-q1')).toBe(false);
+    expect(store.flaggedCount()).toBe(0);
   });
 
-  it('loadPath clears loading on success', () => {
-    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
-    store.loadPath('path-1');
-    expect(store.loading()).toBe(false);
+  it('navigateTo updates index safely', () => {
+    patchStore(store, { currentQuiz: { ...MOCK_QUIZ, questions: [{}, {}, {}] } as any });
+    
+    store.navigateTo(2);
+    expect(store.currentQuestionIndex()).toBe(2);
+    
+    store.navigateTo(5); // out of bounds
+    expect(store.currentQuestionIndex()).toBe(2);
+    
+    store.navigateTo(-1); // out of bounds
+    expect(store.currentQuestionIndex()).toBe(0);
   });
 
-  it('loadPath sets error on failure', () => {
-    vi.spyOn(http, 'get').mockReturnValue(
-      throwError(() => new Error('Network error'))
-    );
-
-    store.loadPath('path-1');
-
-    expect(store.error()).toBe('Network error');
-    expect(store.loading()).toBe(false);
+  it('progress calculated correctly', () => {
+    patchStore(store, { 
+      currentQuiz: MOCK_QUIZ,
+      answers: { 'q1-q1': '2' }
+    });
+    
+    expect(store.progress()).toBe(50); // 1 out of 2
   });
 
-  it('loadPath clears previous error before fetching', () => {
-    patchStore(store, { error: 'old error' });
-
-    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
-
-    store.loadPath('path-1');
-
-    expect(store.error()).toBeNull();
-  });
-
-  it('loadPath calls GET /api/learning-paths/:id', () => {
-    const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
-
-    store.loadPath('path-42');
-
-    expect(spy).toHaveBeenCalledWith('/api/v1/learning-paths/path-42');
-  });
-
-  it('completedCount returns 0 when path is null', () => {
-    expect(store.completedCount()).toBe(0);
-  });
-
-  it('completedCount returns count of COMPLETED lessons', () => {
-    patchStore(store, { currentPath: MOCK_PATH });
-    expect(store.completedCount()).toBe(2);
-  });
-
-  it('completedCount is 0 when all lessons are locked', () => {
-    const allLocked = {
-      ...MOCK_PATH,
-      lessons: MOCK_PATH.lessons.map((l) => ({
-        ...l,
-        status: 'LOCKED' as const,
-      })),
+  it('submitQuiz calls API and updates result', () => {
+    patchStore(store, { 
+      currentQuiz: MOCK_QUIZ,
+      answers: { 'q1-q1': '2', 'q1-q2': 'true' }
+    });
+    
+    const mockResponse = {
+      attemptId: 'att-1',
+      score: 15,
+      totalPoints: 15,
+      percentage: 100,
+      passed: true
     };
-
-    patchStore(store, { currentPath: allLocked });
-    expect(store.completedCount()).toBe(0);
+    
+    const spy = vi.spyOn(http, 'post').mockReturnValue(of(mockResponse));
+    
+    store.submitQuiz();
+    
+    expect(spy).toHaveBeenCalledWith('/api/v1/quizzes/q1/submit', {
+      answers: { 'q1-q1': '2', 'q1-q2': 'true' }
+    });
+    expect(store.submitted()).toBe(true);
+    expect(store.result()?.score).toBe(15);
   });
 
-  it('totalCount returns 0 when path is null', () => {
-    expect(store.totalCount()).toBe(0);
+  it('tickTimer decrements time remaining', () => {
+    patchStore(store, { timeRemaining: 100 });
+    store.tickTimer();
+    expect(store.timeRemaining()).toBe(99);
   });
 
-  it('totalCount returns the number of lessons in the path', () => {
-    patchStore(store, { currentPath: MOCK_PATH });
-    expect(store.totalCount()).toBe(5);
-  });
-
-  it('progressPercent returns 0 when path is null', () => {
-    expect(store.progressPercent()).toBe(0);
-  });
-
-  it('progressPercent is 0 when no lessons are completed', () => {
-    const none = {
-      ...MOCK_PATH,
-      lessons: MOCK_PATH.lessons.map((l) => ({
-        ...l,
-        status: 'LOCKED' as const,
-      })),
-    };
-
-    patchStore(store, { currentPath: none });
-    expect(store.progressPercent()).toBe(0);
-  });
-
-  it('progressPercent is 100 when all lessons are completed', () => {
-    const all = {
-      ...MOCK_PATH,
-      lessons: MOCK_PATH.lessons.map((l) => ({
-        ...l,
-        status: 'COMPLETED' as const,
-      })),
-    };
-
-    patchStore(store, { currentPath: all });
-    expect(store.progressPercent()).toBe(100);
-  });
-
-  it('progressPercent is 40 for 2 of 5 completed', () => {
-    patchStore(store, { currentPath: MOCK_PATH });
-    expect(store.progressPercent()).toBe(40);
-  });
-
-  it('progressPercent rounds correctly', () => {
-    const path: LearningPath = {
-      ...MOCK_PATH,
-      lessons: [
-        {
-          id: '1',
-          title: 'L1',
-          subject: 'Math',
-          duration: '10 min',
-          status: 'COMPLETED',
-        },
-        {
-          id: '2',
-          title: 'L2',
-          subject: 'Math',
-          duration: '10 min',
-          status: 'AVAILABLE',
-        },
-        {
-          id: '3',
-          title: 'L3',
-          subject: 'Math',
-          duration: '10 min',
-          status: 'LOCKED',
-          prerequisiteTitle: 'L2',
-        },
-      ],
-    };
-
-    patchStore(store, { currentPath: path });
-
-    expect(store.progressPercent()).toBe(33);
-  });
-
-  it('nextAvailableLesson returns null when path is null', () => {
-    expect(store.nextAvailableLesson()).toBeNull();
-  });
-
-  it('nextAvailableLesson returns the first AVAILABLE lesson', () => {
-    patchStore(store, { currentPath: MOCK_PATH });
-    expect(store.nextAvailableLesson()?.id).toBe('3');
-  });
-
-  it('nextAvailableLesson returns null when all lessons are locked or completed', () => {
-    const none = {
-      ...MOCK_PATH,
-      lessons: MOCK_PATH.lessons.map((l) => ({
-        ...l,
-        status: 'LOCKED' as const,
-      })),
-    };
-
-    patchStore(store, { currentPath: none });
-    expect(store.nextAvailableLesson()).toBeNull();
+  it('tickTimer submits when time reaches zero', () => {
+    patchStore(store, { 
+      currentQuiz: MOCK_QUIZ,
+      timeRemaining: 1,
+      submitted: false 
+    });
+    
+    const spy = vi.spyOn(http, 'post').mockReturnValue(of({}));
+    
+    store.tickTimer();
+    
+    expect(store.timeRemaining()).toBe(0);
+    expect(spy).toHaveBeenCalled();
   });
 });
