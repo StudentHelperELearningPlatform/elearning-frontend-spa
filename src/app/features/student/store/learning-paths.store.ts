@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { LearningPath } from '@shared/models/learning-path.model';
-import { API_URL } from '../../../core/tokens/api.token';
+import { API_URL } from 'src/app/core/tokens/api.token'; // ✔ corect
 
 export type { LearningPath };
 
