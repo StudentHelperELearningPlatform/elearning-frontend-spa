@@ -1,301 +1,253 @@
-import { HttpClient } from '@angular/common/http';
-import { computed, inject } from '@angular/core';
-import {
-  signalStore,
-  withState,
-  withMethods,
-  withComputed,
-  patchState,
-} from '@ngrx/signals';
+import { HttpClient, provideHttpClient } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { of, throwError } from 'rxjs';
+import { LearningPathsStore } from './learning-paths.store';
+import { LearningPath } from '@shared/models/learning-path.model';
+import { patchStore } from '../../../../test-utils/patch-store';
 
-import {
-  Quiz,
-  QuizOption,
-  QuizResult,
-  QuizResultDetail,
-} from '@shared/models/quiz.types';
-
-type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
-
-interface QuizApiQuestion {
-  id: string;
-  type: QuestionType;
-  text: string;
-  options?: string[];
-  points: number;
-}
-
-interface QuizApiResponse {
-  id: string;
-  title: string;
-  subject: string;
-  timeLimitSeconds?: number | null;
-  questions: QuizApiQuestion[];
-}
-
-interface SubmitQuizResponse {
-  attemptId: string;
-  score: number;
-  totalPoints: number;
-  percentage: number;
-  passed: boolean;
-  timeSpent?: number;
-}
-
-type QuizWithMeta = Quiz & {
-  subject?: string;
-  timeLimitSeconds?: number | null;
+const MOCK_PATH: LearningPath = {
+  id: 'path-1',
+  title: 'Math Mastery',
+  description: 'Learn maths step by step.',
+  totalLessons: 5,
+  estimatedTotalTime: '2 hours',
+  lessons: [
+    {
+      id: '1',
+      title: 'Fractions',
+      subject: 'Math',
+      duration: '20 min',
+      status: 'COMPLETED',
+      score: 90,
+    },
+    {
+      id: '2',
+      title: 'Decimals',
+      subject: 'Math',
+      duration: '20 min',
+      status: 'COMPLETED',
+      score: 80,
+    },
+    {
+      id: '3',
+      title: 'Percentages',
+      subject: 'Math',
+      duration: '20 min',
+      status: 'AVAILABLE',
+    },
+    {
+      id: '4',
+      title: 'Ratios',
+      subject: 'Math',
+      duration: '25 min',
+      status: 'LOCKED',
+      prerequisiteTitle: 'Percentages',
+    },
+    {
+      id: '5',
+      title: 'Algebra Intro',
+      subject: 'Math',
+      duration: '30 min',
+      status: 'LOCKED',
+      prerequisiteTitle: 'Ratios',
+    },
+  ],
 };
 
-type QuizResultWithMeta = QuizResult & {
-  attemptId?: string;
-  passed?: boolean;
-};
+describe('LearningPathsStore', () => {
+  const getStore = () => TestBed.inject(LearningPathsStore);
+  let store: ReturnType<typeof getStore>;
+  let http: HttpClient;
 
-const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
-  if (question.type === 'SHORT_ANSWER') return [];
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+      ],
+    });
 
-  if (question.type === 'TRUE_FALSE') {
-    const opts = question.options ?? ['True', 'False'];
-    return opts.map((text) => ({
-      id: text.toLowerCase(),
-      text,
-    }));
-  }
+    store = getStore();
+    http = TestBed.inject(HttpClient);
+  });
 
-  return (question.options ?? []).map((text, index) => ({
-    id: `${question.id}-o${index + 1}`,
-    text,
-  }));
-};
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-const mapQuizResponse = (response: QuizApiResponse): QuizWithMeta => ({
-  id: response.id,
-  title: response.title,
-  subject: response.subject,
-  timeLimit: response.timeLimitSeconds ?? 0,
-  timeLimitSeconds: response.timeLimitSeconds ?? null,
-  questions: response.questions.map((q) => ({
-    id: q.id,
-    type: q.type,
-    text: q.text,
-    points: q.points,
-    options: mapQuestionOptions(q),
-  })),
+  it('starts with currentPath as null', () => {
+    expect(store.currentPath()).toBeNull();
+  });
+
+  it('starts with loading as false', () => {
+    expect(store.loading()).toBe(false);
+  });
+
+  it('starts with error as null', () => {
+    expect(store.error()).toBeNull();
+  });
+
+  it('loadPath sets currentPath on success', () => {
+    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
+    store.loadPath('path-1');
+    expect(store.currentPath()).toEqual(MOCK_PATH);
+  });
+
+  it('loadPath clears loading on success', () => {
+    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
+    store.loadPath('path-1');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('loadPath sets error on failure', () => {
+    vi.spyOn(http, 'get').mockReturnValue(
+      throwError(() => new Error('Network error'))
+    );
+
+    store.loadPath('path-1');
+
+    expect(store.error()).toBe('Network error');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('loadPath clears previous error before fetching', () => {
+    patchStore(store, { error: 'old error' });
+
+    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
+
+    store.loadPath('path-1');
+
+    expect(store.error()).toBeNull();
+  });
+
+  it('loadPath calls GET /api/learning-paths/:id', () => {
+    const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_PATH));
+
+    store.loadPath('path-42');
+
+    expect(spy).toHaveBeenCalledWith('/api/v1/learning-paths/path-42');
+  });
+
+  it('completedCount returns 0 when path is null', () => {
+    expect(store.completedCount()).toBe(0);
+  });
+
+  it('completedCount returns count of COMPLETED lessons', () => {
+    patchStore(store, { currentPath: MOCK_PATH });
+    expect(store.completedCount()).toBe(2);
+  });
+
+  it('completedCount is 0 when all lessons are locked', () => {
+    const allLocked = {
+      ...MOCK_PATH,
+      lessons: MOCK_PATH.lessons.map((l) => ({
+        ...l,
+        status: 'LOCKED' as const,
+      })),
+    };
+
+    patchStore(store, { currentPath: allLocked });
+    expect(store.completedCount()).toBe(0);
+  });
+
+  it('totalCount returns 0 when path is null', () => {
+    expect(store.totalCount()).toBe(0);
+  });
+
+  it('totalCount returns the number of lessons in the path', () => {
+    patchStore(store, { currentPath: MOCK_PATH });
+    expect(store.totalCount()).toBe(5);
+  });
+
+  it('progressPercent returns 0 when path is null', () => {
+    expect(store.progressPercent()).toBe(0);
+  });
+
+  it('progressPercent is 0 when no lessons are completed', () => {
+    const none = {
+      ...MOCK_PATH,
+      lessons: MOCK_PATH.lessons.map((l) => ({
+        ...l,
+        status: 'LOCKED' as const,
+      })),
+    };
+
+    patchStore(store, { currentPath: none });
+    expect(store.progressPercent()).toBe(0);
+  });
+
+  it('progressPercent is 100 when all lessons are completed', () => {
+    const all = {
+      ...MOCK_PATH,
+      lessons: MOCK_PATH.lessons.map((l) => ({
+        ...l,
+        status: 'COMPLETED' as const,
+      })),
+    };
+
+    patchStore(store, { currentPath: all });
+    expect(store.progressPercent()).toBe(100);
+  });
+
+  it('progressPercent is 40 for 2 of 5 completed', () => {
+    patchStore(store, { currentPath: MOCK_PATH });
+    expect(store.progressPercent()).toBe(40);
+  });
+
+  it('progressPercent rounds correctly', () => {
+    const path: LearningPath = {
+      ...MOCK_PATH,
+      lessons: [
+        {
+          id: '1',
+          title: 'L1',
+          subject: 'Math',
+          duration: '10 min',
+          status: 'COMPLETED',
+        },
+        {
+          id: '2',
+          title: 'L2',
+          subject: 'Math',
+          duration: '10 min',
+          status: 'AVAILABLE',
+        },
+        {
+          id: '3',
+          title: 'L3',
+          subject: 'Math',
+          duration: '10 min',
+          status: 'LOCKED',
+          prerequisiteTitle: 'L2',
+        },
+      ],
+    };
+
+    patchStore(store, { currentPath: path });
+
+    expect(store.progressPercent()).toBe(33);
+  });
+
+  it('nextAvailableLesson returns null when path is null', () => {
+    expect(store.nextAvailableLesson()).toBeNull();
+  });
+
+  it('nextAvailableLesson returns the first AVAILABLE lesson', () => {
+    patchStore(store, { currentPath: MOCK_PATH });
+    expect(store.nextAvailableLesson()?.id).toBe('3');
+  });
+
+  it('nextAvailableLesson returns null when all lessons are locked or completed', () => {
+    const none = {
+      ...MOCK_PATH,
+      lessons: MOCK_PATH.lessons.map((l) => ({
+        ...l,
+        status: 'LOCKED' as const,
+      })),
+    };
+
+    patchStore(store, { currentPath: none });
+    expect(store.nextAvailableLesson()).toBeNull();
+  });
 });
-
-interface QuizzesState {
-  currentQuiz: QuizWithMeta | null;
-  currentQuestionIndex: number;
-  answers: Record<string, string>;
-  flaggedQuestions: Set<string>;
-  startedAt: Date | null;
-  timeRemaining: number | null;
-  submitted: boolean;
-  result: QuizResultWithMeta | null;
-  loading: boolean;
-  resultDetail: QuizResultDetail | null;
-  resultDetailLoading: boolean;
-  resultDetailError: string | null;
-}
-
-export const QuizzesStore = signalStore(
-  { providedIn: 'root' },
-
-  withState<QuizzesState>({
-    currentQuiz: null,
-    currentQuestionIndex: 0,
-    answers: {},
-    flaggedQuestions: new Set<string>(),
-    startedAt: null,
-    timeRemaining: null,
-    submitted: false,
-    result: null,
-    loading: false,
-    resultDetail: null,
-    resultDetailLoading: false,
-    resultDetailError: null,
-  }),
-
-  withComputed((state) => ({
-    answeredCount: computed(() => Object.keys(state.answers()).length),
-    flaggedCount: computed(() => state.flaggedQuestions().size),
-    canSubmit: computed(() => Object.keys(state.answers()).length > 0),
-    started: computed(() => state.startedAt() !== null),
-
-    progress: computed(() => {
-      const total = state.currentQuiz()?.questions?.length || 1;
-      return Math.round((Object.keys(state.answers()).length / total) * 100);
-    }),
-
-    isLastQuestion: computed(() => {
-      const total = state.currentQuiz()?.questions?.length || 0;
-      return state.currentQuestionIndex() === total - 1;
-    }),
-
-    currentQuestion: computed(() => {
-      const quiz = state.currentQuiz();
-      return quiz?.questions?.[state.currentQuestionIndex()] ?? null;
-    }),
-
-    currentAnswerSelected: computed(() => {
-      const quiz = state.currentQuiz();
-      if (!quiz?.questions?.length) return null;
-
-      const q = quiz.questions[state.currentQuestionIndex()];
-      return q ? state.answers()[q.id] ?? null : null;
-    }),
-
-    score: computed(() => state.result()?.score || 0),
-    totalPoints: computed(() => state.result()?.totalPoints || 0),
-    timeSpent: computed(() => state.result()?.timeSpent || 0),
-  })),
-
-  withMethods((store, http = inject(HttpClient)) => {
-
-    const navigateTo = (index: number) => {
-      const total = store.currentQuiz()?.questions?.length ?? 0;
-      const safeIndex = Math.max(0, Math.min(index, total - 1));
-      patchState(store, { currentQuestionIndex: safeIndex });
-    };
-
-    const submitQuizInternal = () => {
-      if (store.submitted()) return;
-
-      const quizId = store.currentQuiz()?.id;
-      if (!quizId) return;
-
-      const timeSpent = store.startedAt()
-        ? Math.floor((Date.now() - store.startedAt()!.getTime()) / 1000)
-        : 0;
-
-      patchState(store, { submitted: true });
-
-      http.post<SubmitQuizResponse>(
-        `/api/v1/quizzes/${quizId}/submit`,
-        { answers: store.answers() }
-      ).subscribe({
-        next: (res) => {
-          patchState(store, {
-            result: {
-              score: res.score,
-              totalPoints: res.totalPoints,
-              percentage: res.percentage,
-              passed: res.passed,
-              attemptId: res.attemptId,
-              timeSpent: res.timeSpent ?? timeSpent,
-            },
-          });
-        },
-        error: () => {
-          const total = store.currentQuiz()?.questions?.length ?? 0;
-
-          patchState(store, {
-            result: {
-              score: 0,
-              totalPoints: total * 10,
-              percentage: 0,
-              passed: false,
-              attemptId: `fallback-${Date.now()}`,
-              timeSpent,
-            },
-          });
-        },
-      });
-    };
-
-    return {
-      loadQuizById(id: string) {
-        patchState(store, { loading: true });
-
-        http.get<QuizApiResponse>(`/api/v1/quizzes/${id}`).subscribe({
-          next: (quiz) => {
-            patchState(store, {
-              loading: false,
-              currentQuiz: mapQuizResponse(quiz),
-              currentQuestionIndex: 0,
-              answers: {},
-              flaggedQuestions: new Set<string>(),
-              submitted: false,
-              result: null,
-            });
-          },
-          error: () => patchState(store, { loading: false }),
-        });
-      },
-
-      startQuiz(id: string) {
-        patchState(store, { loading: true });
-
-        http.get<QuizApiResponse>(`/api/v1/quizzes/${id}`).subscribe({
-          next: (quiz) => {
-            const mapped = mapQuizResponse(quiz);
-
-            patchState(store, {
-              loading: false,
-              currentQuiz: mapped,
-              currentQuestionIndex: 0,
-              answers: {},
-              flaggedQuestions: new Set<string>(),
-              startedAt: new Date(),
-              timeRemaining: mapped.timeLimitSeconds ?? null,
-              submitted: false,
-              result: null,
-            });
-          },
-          error: () => patchState(store, { loading: false }),
-        });
-      },
-
-      answerQuestion(id: string, answer: string) {
-        patchState(store, (s) => ({
-          answers: { ...s.answers, [id]: answer },
-        }));
-      },
-
-      flagQuestion(id: string) {
-        patchState(store, (s) => {
-          const set = new Set(s.flaggedQuestions);
-          if (set.has(id)) {
-          set.delete(id);
-            } else {
-            set.add(id);
-           }
-          return { flaggedQuestions: set };
-        });
-      },
-
-      navigateTo,
-      nextQuestion: () => navigateTo(store.currentQuestionIndex() + 1),
-      prevQuestion: () => navigateTo(store.currentQuestionIndex() - 1),
-
-      submitQuiz: submitQuizInternal,
-
-      resetQuiz() {
-        patchState(store, {
-          currentQuestionIndex: 0,
-          answers: {},
-          flaggedQuestions: new Set<string>(),
-          startedAt: null,
-          timeRemaining: null,
-          submitted: false,
-          result: null,
-        });
-      },
-
-      loadResultDetail() {
-        // FIX lint: no empty method
-        return;
-      },
-
-      clearResultDetail() {
-        // FIX lint: no empty method
-        patchState(store, {
-          resultDetail: null,
-          resultDetailLoading: false,
-          resultDetailError: null,
-        });
-      },
-    };
-  })
-);
