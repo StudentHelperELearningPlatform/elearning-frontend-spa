@@ -124,6 +124,7 @@ export const QuizzesStore = signalStore(
     flaggedCount: computed(() => state.flaggedQuestions().size),
     canSubmit: computed(() => Object.keys(state.answers()).length > 0),
     started: computed(() => state.startedAt() !== null),
+    showResults: computed(() => !!state.result()),
 
     progress: computed(() => {
       const total = state.currentQuiz()?.questions?.length ?? 1;
