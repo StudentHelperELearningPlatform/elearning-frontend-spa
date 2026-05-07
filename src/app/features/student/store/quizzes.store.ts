@@ -8,7 +8,6 @@ import {
   withComputed, 
   patchState 
 } from '@ngrx/signals';
-import { environment } from '../../../../environments/environment';
 
 // Re-exporting types as requested by the develop branch
 export {

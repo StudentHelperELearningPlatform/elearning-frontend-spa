@@ -10,13 +10,13 @@ interface MockQuizResponse {
   title: string;
   subject: string;
   timeLimitSeconds: number;
-  questions: Array<{
+  questions: {
     id: string;
     type: string;
     text: string;
     options: string[];
     points: number;
-  }>;
+  }[];
 }
 
 const MOCK_QUIZ: MockQuizResponse = {
