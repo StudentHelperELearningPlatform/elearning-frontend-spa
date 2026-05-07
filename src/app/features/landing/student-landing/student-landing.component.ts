@@ -8,7 +8,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
 @Component({
   selector: 'app-student-landing',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonComponent, CardComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent],
   template: `
     <div class="min-h-screen bg-white font-sans text-black overflow-x-hidden">
       <!-- Navigation -->

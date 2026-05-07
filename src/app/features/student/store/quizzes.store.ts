@@ -1,18 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-export {
-  type Question,
-  type Quiz,
-  type QuizResult,
-  type QuizResultDetail,
-} from '@shared/models/quiz.types';
+
 import {
   Quiz,
   QuizOption,
   QuizResult,
   QuizResultDetail,
 } from '@shared/models/quiz.types';
+
+const API = '/api/v1';
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
@@ -52,20 +49,17 @@ type QuizResultWithMeta = QuizResult & {
 };
 
 const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
-  if (question.type === 'SHORT_ANSWER') {
-    return [];
-  }
+  if (question.type === 'SHORT_ANSWER') return [];
 
   if (question.type === 'TRUE_FALSE') {
-    const trueFalseOptions = question.options ?? ['True', 'False'];
-    return trueFalseOptions.map((text) => ({
+    const opts = question.options ?? ['True', 'False'];
+    return opts.map((text) => ({
       id: text.toLowerCase(),
       text,
     }));
   }
 
-  const options = question.options ?? [];
-  return options.map((text, index) => ({
+  return (question.options ?? []).map((text, index) => ({
     id: `${question.id}-o${index + 1}`,
     text,
   }));
@@ -77,12 +71,12 @@ const mapQuizResponse = (response: QuizApiResponse): QuizWithMeta => ({
   subject: response.subject,
   timeLimit: response.timeLimitSeconds ?? 0,
   timeLimitSeconds: response.timeLimitSeconds ?? null,
-  questions: response.questions.map((question) => ({
-    id: question.id,
-    type: question.type,
-    text: question.text,
-    points: question.points,
-    options: mapQuestionOptions(question),
+  questions: response.questions.map((q) => ({
+    id: q.id,
+    type: q.type,
+    text: q.text,
+    points: q.points,
+    options: mapQuestionOptions(q),
   })),
 });
 
@@ -103,6 +97,7 @@ interface QuizzesState {
 
 export const QuizzesStore = signalStore(
   { providedIn: 'root' },
+
   withState<QuizzesState>({
     currentQuiz: null,
     currentQuestionIndex: 0,
@@ -117,218 +112,184 @@ export const QuizzesStore = signalStore(
     resultDetailLoading: false,
     resultDetailError: null,
   }),
+
   withComputed((state) => ({
     answeredCount: computed(() => Object.keys(state.answers()).length),
     flaggedCount: computed(() => state.flaggedQuestions().size),
     canSubmit: computed(() => Object.keys(state.answers()).length > 0),
     started: computed(() => state.startedAt() !== null),
+
     progress: computed(() => {
       const total = state.currentQuiz()?.questions?.length || 1;
       return Math.round((Object.keys(state.answers()).length / total) * 100);
     }),
+
     isLastQuestion: computed(() => {
       const total = state.currentQuiz()?.questions?.length || 0;
       return state.currentQuestionIndex() === total - 1;
     }),
+
     currentQuestion: computed(() => {
       const quiz = state.currentQuiz();
-      if (!quiz || !quiz.questions) return null;
+      if (!quiz) return null;
       return quiz.questions[state.currentQuestionIndex()];
     }),
+
     currentAnswerSelected: computed(() => {
       const quiz = state.currentQuiz();
-      if (!quiz || !quiz.questions?.length) return null;
-      const question = quiz.questions[state.currentQuestionIndex()];
-      if (!question) return null;
-      return state.answers()[question.id] ?? null;
+      if (!quiz?.questions?.length) return null;
+
+      const q = quiz.questions[state.currentQuestionIndex()];
+      return state.answers()[q.id] ?? null;
     }),
+
     showResults: computed(() => state.submitted()),
     score: computed(() => state.result()?.score || 0),
     totalPoints: computed(() => state.result()?.totalPoints || 0),
     timeSpent: computed(() => state.result()?.timeSpent || 0),
   })),
+
   withMethods((store, http = inject(HttpClient)) => {
-    const navigateToIndex = (index: number) => {
+
+    const navigateTo = (index: number) => {
       const total = store.currentQuiz()?.questions?.length ?? 0;
-      if (total === 0) {
-        patchState(store, { currentQuestionIndex: 0 });
-        return;
-      }
-      const boundedIndex = Math.max(0, Math.min(index, total - 1));
-      patchState(store, { currentQuestionIndex: boundedIndex });
+      const safe = Math.max(0, Math.min(index, total - 1));
+      patchState(store, { currentQuestionIndex: safe });
     };
 
-    const submitQuizInternal = () => {
-      // Guard: prevent double-submit (e.g. from tickTimer firing multiple times at 0)
-      if (store.submitted()) {
-        return;
-      }
+    const submitInternal = () => {
+      if (store.submitted()) return;
+
+      const quizId = store.currentQuiz()?.id;
+      if (!quizId) return;
 
       const timeSpent = store.startedAt()
-        ? Math.floor((new Date().getTime() - store.startedAt()!.getTime()) / 1000)
+        ? Math.floor((Date.now() - store.startedAt()!.getTime()) / 1000)
         : 0;
 
       const answers = store.answers();
-      const quizId = store.currentQuiz()?.id;
-      if (!quizId) {
-        return;
-      }
 
-      // Mark submitted immediately so the UI reacts and tickTimer cannot fire again
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`${environment.apiBase}/quizzes/${quizId}/submit`, { answers }).subscribe({
-        next: (submission) => {
-          patchState(store, {
-            result: {
-              score: submission.score,
-              totalPoints: submission.totalPoints,
-              timeSpent: submission.timeSpent ?? timeSpent,
-              percentage: submission.percentage,
-              passed: submission.passed,
-              attemptId: submission.attemptId,
-            },
-          });
-        },
-        error: () => {
-          // Fallback so UI never stays blank on network failure
-          const questions = store.currentQuiz()?.questions ?? [];
-          const totalPoints = questions.reduce((sum, q) => sum + (q.points || 10), 0);
-          patchState(store, {
-            result: {
-              score: 0,
-              totalPoints,
-              timeSpent,
-              percentage: 0,
-              passed: false,
-              attemptId: `attempt-${Date.now()}`,
-            },
-          });
-        },
-      });
+      http.post<SubmitQuizResponse>(`${API}/quizzes/${quizId}/submit`, { answers })
+        .subscribe({
+          next: (res) => {
+            patchState(store, {
+              result: {
+                score: res.score,
+                totalPoints: res.totalPoints,
+                percentage: res.percentage,
+                passed: res.passed,
+                timeSpent: res.timeSpent ?? timeSpent,
+                attemptId: res.attemptId,
+              },
+            });
+          },
+          error: () => {
+            const totalPoints =
+              store.currentQuiz()?.questions?.reduce((s, q) => s + (q.points || 10), 0) ?? 0;
+
+            patchState(store, {
+              result: {
+                score: 0,
+                totalPoints,
+                percentage: 0,
+                passed: false,
+                timeSpent,
+                attemptId: `attempt-${Date.now()}`,
+              },
+            });
+          },
+        });
     };
 
     return {
       loadQuizById(id: string) {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`${environment.apiBase}/quizzes/${id}`).subscribe({
-          next: (quiz) => {
-            patchState(store, {
-              loading: false,
-              currentQuiz: mapQuizResponse(quiz),
-              currentQuestionIndex: 0,
-              answers: {},
-              flaggedQuestions: new Set<string>(),
-              submitted: false,
-              result: null,
-            });
-          },
-          error: () => {
-            patchState(store, { loading: false });
-          },
-        });
+
+        http.get<QuizApiResponse>(`${API}/quizzes/${id}`)
+          .subscribe({
+            next: (data) => {
+              patchState(store, {
+                loading: false,
+                currentQuiz: mapQuizResponse(data),
+                currentQuestionIndex: 0,
+                answers: {},
+                flaggedQuestions: new Set<string>(),
+                submitted: false,
+                result: null,
+              });
+            },
+            error: () => patchState(store, { loading: false }),
+          });
       },
+
       startQuiz(id: string) {
         patchState(store, { loading: true });
-        http.get<QuizApiResponse>(`${environment.apiBase}/quizzes/${id}`).subscribe({
-          next: (quiz) => {
-            const mappedQuiz = mapQuizResponse(quiz);
-            patchState(store, {
-              loading: false,
-              currentQuiz: mappedQuiz,
-              currentQuestionIndex: 0,
-              answers: {},
-              flaggedQuestions: new Set<string>(),
-              startedAt: new Date(),
-              timeRemaining: mappedQuiz.timeLimitSeconds ?? null,
-              submitted: false,
-              result: null,
-            });
-          },
-          error: () => {
-            patchState(store, { loading: false });
-          },
-        });
+
+        http.get<QuizApiResponse>(`${API}/quizzes/${id}`)
+          .subscribe({
+            next: (data) => {
+              const quiz = mapQuizResponse(data);
+
+              patchState(store, {
+                loading: false,
+                currentQuiz: quiz,
+                currentQuestionIndex: 0,
+                answers: {},
+                flaggedQuestions: new Set<string>(),
+                startedAt: new Date(),
+                timeRemaining: quiz.timeLimitSeconds ?? null,
+                submitted: false,
+                result: null,
+              });
+            },
+            error: () => patchState(store, { loading: false }),
+          });
       },
+
       answerQuestion(questionId: string, answer: string) {
-        patchState(store, (state) => ({
-          answers: { ...state.answers, [questionId]: answer },
+        patchState(store, (s) => ({
+          answers: { ...s.answers, [questionId]: answer },
         }));
       },
+
       flagQuestion(questionId: string) {
-        patchState(store, (state) => {
-          const nextFlags = new Set(state.flaggedQuestions);
-          if (nextFlags.has(questionId)) {
-            nextFlags.delete(questionId);
-          } else {
-            nextFlags.add(questionId);
-          }
-          return { flaggedQuestions: nextFlags };
+        patchState(store, (s) => {
+          const set = new Set(s.flaggedQuestions);
+          set.has(questionId) ? set.delete(questionId) : set.add(questionId);
+          return { flaggedQuestions: set };
         });
       },
-      navigateTo(index: number) {
-        navigateToIndex(index);
-      },
-      nextQuestion() {
-        navigateToIndex(store.currentQuestionIndex() + 1);
-      },
-      prevQuestion() {
-        navigateToIndex(store.currentQuestionIndex() - 1);
-      },
-      previousQuestion() {
-        navigateToIndex(store.currentQuestionIndex() - 1);
-      },
-      submitQuiz() {
-        submitQuizInternal();
-      },
+
+      nextQuestion: () => navigateTo(store.currentQuestionIndex() + 1),
+      prevQuestion: () => navigateTo(store.currentQuestionIndex() - 1),
+      navigateTo,
+
+      submitQuiz: submitInternal,
+
       tickTimer(this: { submitQuiz: () => void }) {
         const remaining = store.timeRemaining();
         if (remaining === null) return;
 
         if (remaining > 0) {
-          const nextValue = remaining - 1;
-          patchState(store, { timeRemaining: nextValue });
-          if (nextValue === 0 && !store.submitted()) {
+          const next = remaining - 1;
+          patchState(store, { timeRemaining: next });
+
+          if (next === 0 && !store.submitted()) {
             this.submitQuiz();
           }
-          return;
         }
+      },
 
-        if (remaining === 0 && !store.submitted()) {
-          this.submitQuiz();
-        }
-      },
-      isAnswered(questionId: string | null | undefined) {
-        return computed(() => {
-          if (!questionId) return false;
-          return Object.prototype.hasOwnProperty.call(store.answers(), questionId);
-        });
-      },
-      isFlagged(questionId: string | null | undefined) {
-        return computed(() => {
-          if (!questionId) return false;
-          return store.flaggedQuestions().has(questionId);
-        });
-      },
-      resetQuiz() {
-        patchState(store, {
-          currentQuestionIndex: 0,
-          answers: {},
-          flaggedQuestions: new Set<string>(),
-          startedAt: new Date(),
-          timeRemaining: store.currentQuiz()?.timeLimitSeconds ?? null,
-          submitted: false,
-          result: null,
-        });
-      },
       loadResultDetail(quizId: string, attemptId: string) {
-        patchState(store, { resultDetailLoading: true, resultDetailError: null });
-        http
-          .get<QuizResultDetail>(`/api/quizzes/${quizId}/results/${attemptId}`)
+        patchState(store, { resultDetailLoading: true });
+
+        http.get<QuizResultDetail>(`${API}/quizzes/${quizId}/results/${attemptId}`)
           .subscribe({
-            next: (detail) => {
+            next: (data) => {
               patchState(store, {
-                resultDetail: detail,
+                resultDetail: data,
                 resultDetailLoading: false,
                 resultDetailError: null,
               });
@@ -342,6 +303,7 @@ export const QuizzesStore = signalStore(
             },
           });
       },
+
       clearResultDetail() {
         patchState(store, {
           resultDetail: null,
@@ -349,6 +311,27 @@ export const QuizzesStore = signalStore(
           resultDetailError: null,
         });
       },
+
+      resetQuiz() {
+        patchState(store, {
+          currentQuestionIndex: 0,
+          answers: {},
+          flaggedQuestions: new Set<string>(),
+          startedAt: null,
+          timeRemaining: null,
+          submitted: false,
+          result: null,
+        });
+      },
+
+      // ✅ FIX pentru erorile tale din component
+      isAnswered(questionId: string): boolean {
+        return !!store.answers()[questionId];
+      },
+
+      isFlagged(questionId: string): boolean {
+        return store.flaggedQuestions().has(questionId);
+      },
     };
-  }),
+  })
 );

@@ -60,7 +60,7 @@
           [total]="totalQuestions()"
           [selectedOptionId]="selectedOptionId()"
           [selectedAnswer]="selectedOptionId()"
-          [isFlagged]="store.isFlagged(currentQuestion()?.id)()"
+          [isFlagged]="store.isFlagged(currentQuestion()?.id ?? '')"
           (answered)="selectOption($event)"
           (flagged)="currentQuestion()?.id ? store.flagQuestion(currentQuestion()?.id || '') : null"
         ></app-question-card>
