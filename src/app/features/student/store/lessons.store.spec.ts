@@ -158,8 +158,8 @@ describe('LessonsStore', () => {
     });
 
     it('should catch errors and log them without crashing', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
       vi.spyOn(http, 'put').mockReturnValue(
         throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' }))
       );
