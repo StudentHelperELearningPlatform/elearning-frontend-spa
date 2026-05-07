@@ -1,9 +1,11 @@
 import { HttpClient, HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { provideRouter } from '@angular/router';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { LessonsStore, Lesson } from './lessons.store';
 import { BackendLesson } from '../../../api/adapters/lesson.adapter';
+import { API_URL } from '@core/tokens/api.token';
 
 describe('LessonsStore', () => {
   const getStore = () => TestBed.inject(LessonsStore);
@@ -39,7 +41,13 @@ describe('LessonsStore', () => {
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient()] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        { provide: API_URL, useValue: '/api/v1' }
+      ],
+    });
     store = getStore();
     http = TestBed.inject(HttpClient);
   });

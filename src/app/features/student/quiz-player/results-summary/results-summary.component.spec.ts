@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { EnvironmentInjector, runInInjectionContext, NO_ERRORS_SCHEMA } from '@angular/core';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { patchStore } from '../../../../../test-utils/patch-store';
 import { QuizzesStore } from '../../store/quizzes.store';
 import { QuizResultDetail } from '@shared/models/quiz.types';
 import { ResultsSummaryComponent } from './results-summary.component';
+import { API_URL } from '@core/tokens/api.token';
 
 const MOCK_DETAIL: QuizResultDetail = {
   attemptId: 'attempt-1',
@@ -73,7 +74,9 @@ describe('ResultsSummaryComponent', () => {
         provideHttpClient(),
         provideRouter([]),
         { provide: ActivatedRoute, useValue: route },
+        { provide: API_URL, useValue: '/api/v1' }
       ],
+      schemas: [NO_ERRORS_SCHEMA],
     });
     injector = TestBed.inject(EnvironmentInjector);
     store = TestBed.inject(QuizzesStore);

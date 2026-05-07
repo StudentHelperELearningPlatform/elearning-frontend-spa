@@ -1,10 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LessonViewerComponent } from './lesson-viewer.component';
 import { LessonsStore, Lesson } from '../store/lessons.store';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
+import { API_URL } from '@core/tokens/api.token';
 
 const MOCK_LESSON: Lesson = {
   id: '1',
@@ -38,11 +40,13 @@ describe('LessonViewerComponent', () => {
       imports: [LessonViewerComponent, ButtonComponent, CardComponent],
       providers: [
         provideRouter([]),
+        { provide: API_URL, useValue: '/api/v1' },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => '1' } } },
         },
       ],
+      schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
 
     store = TestBed.inject(LessonsStore);

@@ -1,10 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RegisterComponent } from './register.component';
+import { API_URL } from '@core/tokens/api.token';
 import { AuthService } from '@core/services/auth.service';
 import { createAuthServiceStub } from '../../../../../test-utils/auth-testing';
 import { ButtonComponent } from '@shared/components/button/button.component';
@@ -22,7 +24,9 @@ describe('RegisterComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: createAuthServiceStub() },
+        { provide: API_URL, useValue: '/api/v1' },
       ],
+      schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
 
     fixture = TestBed.createComponent(RegisterComponent);

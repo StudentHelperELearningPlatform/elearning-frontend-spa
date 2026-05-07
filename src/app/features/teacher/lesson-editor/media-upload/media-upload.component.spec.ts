@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { MediaUploadComponent, UploadedMedia } from './media-upload.component';import { vi } from 'vitest';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 
@@ -8,7 +9,8 @@ describe('MediaUploadComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MediaUploadComponent]
+      imports: [MediaUploadComponent],
+      schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
 
     fixture = TestBed.createComponent(MediaUploadComponent);

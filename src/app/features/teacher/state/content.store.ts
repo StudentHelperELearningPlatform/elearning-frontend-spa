@@ -1,7 +1,7 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
+import { API_URL } from '@core/tokens/api.token';
 import { Question } from '@shared/models/quiz.types';
 
 export type { Question };
@@ -88,11 +88,11 @@ export const ContentStore = signalStore(
     totalLessonsCount: computed(() => state.lessons().length),
     totalQuizzesCount: computed(() => state.quizzes().length),
   })),
-  withMethods((store, http = inject(HttpClient)) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => ({
     loadDashboard(teacherId: string) {
       patchState(store, { loading: true, error: null });
       http
-        .get<DashboardResponse>(`${environment.apiBase}/teacher/${teacherId}/dashboard`)
+        .get<DashboardResponse>(`${apiBase}/teacher/${teacherId}/dashboard`)
         .subscribe({
           next: (data) => {
             const revived = reviveDates(data);

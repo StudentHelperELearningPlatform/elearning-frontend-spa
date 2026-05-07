@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
+import { API_URL } from '@core/tokens/api.token';
 import { 
   signalStore, 
   withState, 
@@ -23,9 +24,6 @@ import {
   QuizResult,
   QuizResultDetail,
 } from '@shared/models/quiz.types';
-
-// Using environment variable for API base path
-const API = environment.apiUrl || '/api/v1';
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
@@ -164,7 +162,7 @@ export const QuizzesStore = signalStore(
     timeSpent: computed(() => state.result()?.timeSpent ?? 0),
   })),
 
-  withMethods((store, http = inject(HttpClient)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => {
 
     const navigateTo = (index: number) => {
       const total = store.currentQuiz()?.questions?.length ?? 0;
@@ -186,7 +184,7 @@ export const QuizzesStore = signalStore(
       patchState(store, { submitted: true });
 
       http.post<SubmitQuizResponse>(
-        `${API}/quizzes/${quizId}/submit`,
+        `${apiBase}/quizzes/${quizId}/submit`,
         { answers: store.answers() }
       ).subscribe({
         next: (res) => {
@@ -211,7 +209,7 @@ export const QuizzesStore = signalStore(
       });
 
       http.get<QuizResultDetail>(
-        `${API}/quizzes/${quizId}/results/${attemptId}`
+        `${apiBase}/quizzes/${quizId}/results/${attemptId}`
       ).subscribe({
         next: (data) => {
           patchState(store, {
@@ -239,8 +237,8 @@ export const QuizzesStore = signalStore(
     return {
       loadQuizById(id: string) {
         patchState(store, { loading: true });
-
-        http.get<QuizApiResponse>(`${API}/quizzes/${id}`).subscribe({
+ 
+        http.get<QuizApiResponse>(`${apiBase}/quizzes/${id}`).subscribe({
           next: (quiz) => {
             patchState(store, {
               loading: false,
@@ -255,11 +253,11 @@ export const QuizzesStore = signalStore(
           error: () => patchState(store, { loading: false }),
         });
       },
-
+ 
       startQuiz(id: string) {
         patchState(store, { loading: true });
-
-        http.get<QuizApiResponse>(`${API}/quizzes/${id}`).subscribe({
+ 
+        http.get<QuizApiResponse>(`${apiBase}/quizzes/${id}`).subscribe({
           next: (quiz) => {
             const mapped = mapQuizResponse(quiz);
 

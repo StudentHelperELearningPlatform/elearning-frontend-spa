@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
+import { API_URL } from '@core/tokens/api.token';
 
 export type ModuleType = 'text' | 'video' | 'image' | 'audio' | 'quiz' | 'interactive';
 export type LessonStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -71,14 +71,14 @@ export const LessonEditorStore = signalStore(
       );
     }),
   })),
-  withMethods((store, http = inject(HttpClient)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => {
     const markUnsaved = () => patchState(store, { saveState: 'unsaved' });
 
     const persist = (lesson: LessonDraft, onComplete?: (saved: LessonDraft) => void): void => {
       patchState(store, { saveState: 'saving', saveError: null });
       const url = isPersisted(lesson)
-        ? `${environment.apiBase}/lessons/${lesson.id}`
-        : `${environment.apiBase}/lessons`;
+        ? `${apiBase}/lessons/${lesson.id}`
+        : `${apiBase}/lessons`;
       const stream$: Observable<LessonDraft> = isPersisted(lesson)
         ? http.put<LessonDraft>(url, lesson)
         : http.post<LessonDraft>(url, lesson);
@@ -108,7 +108,7 @@ export const LessonEditorStore = signalStore(
 
       loadLesson(id: string) {
         patchState(store, { loading: true });
-        http.get<LessonDraft>(`${environment.apiBase}/lessons/${id}`).subscribe({
+        http.get<LessonDraft>(`${apiBase}/lessons/${id}`).subscribe({
           next: (lesson) => {
             patchState(store, {
               lesson: { ...lesson, modules: lesson.modules ?? [] },
@@ -182,7 +182,7 @@ export const LessonEditorStore = signalStore(
         const callPublish = (id: string, base: LessonDraft) => {
           patchState(store, { saveState: 'saving', saveError: null });
           http
-            .patch<LessonDraft>(`${environment.apiBase}/lessons/${id}/publish`, {})
+            .patch<LessonDraft>(`${apiBase}/lessons/${id}/publish`, {})
             .subscribe({
               next: (published) => {
                 const next = { ...published, modules: published.modules ?? base.modules };
@@ -214,7 +214,7 @@ export const LessonEditorStore = signalStore(
         if (!isPersisted(lesson)) return;
         patchState(store, { saveState: 'saving', saveError: null });
         http
-          .patch<LessonDraft>(`${environment.apiBase}/lessons/${lesson.id}/unpublish`, {})
+          .patch<LessonDraft>(`${apiBase}/lessons/${lesson.id}/unpublish`, {})
           .subscribe({
             next: (updated) => {
               const next = { ...updated, modules: updated.modules ?? lesson.modules };

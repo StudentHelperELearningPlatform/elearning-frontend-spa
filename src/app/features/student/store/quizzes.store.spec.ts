@@ -2,10 +2,24 @@ import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { QuizzesStore } from './quizzes.store';
-import { Quiz } from '@shared/models/quiz.types';
+import { API_URL } from '@core/tokens/api.token';
 import { patchStore } from '../../../../test-utils/patch-store';
 
-const MOCK_QUIZ: any = {
+interface MockQuizResponse {
+  id: string;
+  title: string;
+  subject: string;
+  timeLimitSeconds: number;
+  questions: Array<{
+    id: string;
+    type: string;
+    text: string;
+    options: string[];
+    points: number;
+  }>;
+}
+
+const MOCK_QUIZ: MockQuizResponse = {
   id: 'q1',
   title: 'Basic Math',
   subject: 'Math',
@@ -37,6 +51,7 @@ describe('QuizzesStore', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
+        { provide: API_URL, useValue: '/api/v1' }
       ],
     });
 
@@ -81,7 +96,16 @@ describe('QuizzesStore', () => {
   });
 
   it('navigateTo updates index safely', () => {
-    patchStore(store, { currentQuiz: { ...MOCK_QUIZ, questions: [{}, {}, {}] } as any });
+    patchStore(store, { 
+      currentQuiz: { 
+        ...MOCK_QUIZ, 
+        questions: [
+          { id: 'q1', text: 'Q1', type: 'MULTIPLE_CHOICE', options: [], points: 0 },
+          { id: 'q2', text: 'Q2', type: 'MULTIPLE_CHOICE', options: [], points: 0 },
+          { id: 'q3', text: 'Q3', type: 'MULTIPLE_CHOICE', options: [], points: 0 }
+        ] 
+      } as unknown as MockQuizResponse
+    });
     
     store.navigateTo(2);
     expect(store.currentQuestionIndex()).toBe(2);

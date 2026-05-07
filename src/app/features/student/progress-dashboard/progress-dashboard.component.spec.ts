@@ -2,8 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { ProgressDashboardComponent } from './progress-dashboard.component';
 import { ProgressStore } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
-import { signal, WritableSignal } from '@angular/core';
+import { ElementRef, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
+import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
 
 describe('ProgressDashboardComponent (Logic)', () => {
   let component: ProgressDashboardComponent;

@@ -4,6 +4,7 @@ import { provideRouter, ActivatedRoute } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { of } from 'rxjs';
 import { LessonEditorComponent } from './lesson-editor.component';
+import { API_URL } from '@core/tokens/api.token';
 import { LessonEditorStore } from '../state/lesson-editor.store';
 
 describe('LessonEditorComponent', () => {
@@ -19,6 +20,7 @@ describe('LessonEditorComponent', () => {
         provideRouter([]),
         provideHttpClient(),
         provideAnimationsAsync(),
+        { provide: API_URL, useValue: '/api/v1' },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => null } } },
