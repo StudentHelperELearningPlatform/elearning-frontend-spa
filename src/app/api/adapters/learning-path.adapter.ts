@@ -1,4 +1,4 @@
-export type BackendLessonStatus = 'LOCKED' | 'locked' | 'AVAILABLE' | 'available' | 'COMPLETED' | 'completed' | 'IN_PROGRESS' | 'in_progress' | string;
+export type BackendLessonStatus = 'LOCKED' | 'locked' | 'AVAILABLE' | 'available' | 'COMPLETED' | 'completed' | 'IN_PROGRESS' | 'in_progress';
 
 export interface BackendLesson {
   id: string | number;

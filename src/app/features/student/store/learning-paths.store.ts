@@ -3,9 +3,8 @@ import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { catchError, map, EMPTY } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { mapLearningPathResponse, LearningPathViewModel, PathLessonViewModel, BackendLearningPath } from '../../../api/adapters/learning-path.adapter';
-
-export type { LearningPathViewModel as LearningPath, PathLessonViewModel as PathLesson };
+import { mapLearningPathResponse, BackendLearningPath, LearningPathViewModel } from '../../../api/adapters/learning-path.adapter';
+export { type LearningPathViewModel as LearningPath, type PathLessonViewModel as PathLesson } from '../../../api/adapters/learning-path.adapter';
 
 interface LearningPathsState {
   currentPath: LearningPathViewModel | null;
