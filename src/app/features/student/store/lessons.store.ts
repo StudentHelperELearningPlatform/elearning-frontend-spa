@@ -74,7 +74,7 @@ export const LessonsStore = signalStore(
       patchState(store, { loading: true, error: null });
       http.get<Lesson[]>(`${environment.apiUrl}/lessons`)
         .pipe(
-          catchError((err: unknown) => {
+          catchError(() => {
             patchState(store, { loading: false, error: 'Failed to load lessons' });
             return EMPTY;
           })
@@ -89,7 +89,7 @@ export const LessonsStore = signalStore(
       patchState(store, { loading: true, error: null });
       http.get<Lesson>(`${environment.apiUrl}/lessons/${id}`)
         .pipe(
-          catchError((err: unknown) => {
+          catchError(() => {
             patchState(store, { loading: false, error: 'Failed to load lesson' });
             return EMPTY;
           })
