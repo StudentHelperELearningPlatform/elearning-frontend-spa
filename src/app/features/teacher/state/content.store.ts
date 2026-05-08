@@ -1,7 +1,7 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { API_URL } from '@core/tokens/api.token';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { Question } from '@shared/models/quiz.types';
 
 export type { Question };
@@ -88,11 +88,11 @@ export const ContentStore = signalStore(
     totalLessonsCount: computed(() => state.lessons().length),
     totalQuizzesCount: computed(() => state.quizzes().length),
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => ({
     loadDashboard(teacherId: string) {
       patchState(store, { loading: true, error: null });
       http
-        .get<DashboardResponse>(`${apiBase}/teacher/${teacherId}/dashboard`)
+        .get<DashboardResponse>(`${apiBase}/teachers/me/profile`) // Using profile as proxy for dashboard data for now
         .subscribe({
           next: (data) => {
             const revived = reviveDates(data);

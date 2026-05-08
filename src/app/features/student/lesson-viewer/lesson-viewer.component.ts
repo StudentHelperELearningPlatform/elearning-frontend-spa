@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { LessonsStore } from '../store/lessons.store';
+import { LessonsStore, Subcapitol, Module } from '../store/lessons.store';
 import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
 
@@ -43,46 +43,52 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
           </div>
         </div>
         
-        <div class="flex-1 overflow-y-auto p-4 space-y-3">
-          <h3 class="font-bold text-gray-500 uppercase tracking-wider text-sm mb-4">Modules</h3>
-          
+        <div class="flex-1 overflow-y-auto p-4 space-y-6">
           @if (store.loading()) {
             @for (i of [1,2,3]; track i) {
               <div class="h-20 bg-gray-200 rounded-2xl border-2 border-gray-300 animate-pulse"></div>
             }
           } @else {
-            @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
-              <div 
-                (click)="selectModule(idx)"
-                (keydown.enter)="selectModule(idx)"
-                tabindex="0"
-                class="p-4 rounded-2xl border-4 cursor-pointer transition-all duration-200 flex items-center group relative overflow-hidden"
-                [ngClass]="{
-                  'border-black bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]': currentModuleIndex() === idx,
-                  'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]': currentModuleIndex() !== idx
-                }">
+            @for (sub of store.currentLesson()?.subcapitols; track sub.id) {
+              <div class="space-y-3">
+                <h3 class="font-black text-black uppercase tracking-wider text-xs mb-2 px-2 opacity-50">{{ sub.title }}</h3>
                 
-                <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg mr-4 border-2"
-                     [ngClass]="{
-                       'bg-white text-[#0ABAB5] border-black': currentModuleIndex() === idx,
-                       'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black': currentModuleIndex() !== idx
-                     }">
-                  {{ idx + 1 }}
-                </div>
-                
-                <div class="flex-1">
-                  <h4 class="font-bold text-lg leading-tight" [ngClass]="{'text-white': currentModuleIndex() === idx, 'text-black': currentModuleIndex() !== idx}">
-                    {{ module.title }}
-                  </h4>
-                  <div class="flex items-center mt-1 text-sm font-medium opacity-80" [ngClass]="{'text-white': currentModuleIndex() === idx, 'text-gray-500': currentModuleIndex() !== idx}">
-                    <span class="material-icons text-base mr-1">{{ getModuleIcon(module.type) }}</span>
-                    <span class="capitalize">{{ module.type }}</span>
+                @for (module of sub.blocks; track module.id) {
+                  @let globalIdx = getGlobalIndex(sub, module);
+                  <div 
+                    (click)="selectModule(globalIdx)"
+                    (keydown.enter)="selectModule(globalIdx)"
+                    tabindex="0"
+                    class="p-4 rounded-2xl border-4 cursor-pointer transition-all duration-200 flex items-center group relative overflow-hidden"
+                    [ngClass]="{
+                      'border-black bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]': currentModuleIndex() === globalIdx,
+                      'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]': currentModuleIndex() !== globalIdx
+                    }">
+                    
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm mr-3 border-2"
+                         [ngClass]="{
+                           'bg-white text-[#0ABAB5] border-black': currentModuleIndex() === globalIdx,
+                           'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black': currentModuleIndex() !== globalIdx
+                         }">
+                      {{ globalIdx + 1 }}
+                    </div>
+                    
+                    <div class="flex-1">
+                      <h4 class="font-bold text-base leading-tight" [ngClass]="{'text-white': currentModuleIndex() === globalIdx, 'text-black': currentModuleIndex() !== globalIdx}">
+                        {{ module.title }}
+                      </h4>
+                      <div class="flex items-center mt-1 text-xs font-medium opacity-80" [ngClass]="{'text-white': currentModuleIndex() === globalIdx, 'text-gray-500': currentModuleIndex() !== globalIdx}">
+                        <span class="material-icons text-sm mr-1">{{ getModuleIcon(module.type) }}</span>
+                        <span class="capitalize">{{ module.type }}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                }
               </div>
             }
           }
         </div>
+
       </div>
 
       <!-- Main Content Area -->
@@ -241,6 +247,21 @@ export class LessonViewerComponent implements OnInit {
 
   goBack() {
     this.router.navigate(['/student/lessons']);
+  }
+
+  getGlobalIndex(sub: Subcapitol, module: Module): number {
+    const lesson = this.store.currentLesson();
+    if (!lesson) return -1;
+    
+    let index = 0;
+    for (const s of lesson.subcapitols) {
+      if (s.id === sub.id) {
+        const moduleIdx = s.blocks.findIndex(b => b.id === module.id);
+        return index + moduleIdx;
+      }
+      index += s.blocks.length;
+    }
+    return -1;
   }
 
   getModuleIcon(type: string): string {

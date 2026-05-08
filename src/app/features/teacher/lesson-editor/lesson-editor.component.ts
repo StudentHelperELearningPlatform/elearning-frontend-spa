@@ -37,7 +37,7 @@ import { ErrorStateComponent } from '../../../shared/components/error-state/erro
 import { UnsavedChangesGuarded } from './unsaved-changes.guard';
 
 const SUBJECTS = ['Math', 'Science', 'History', 'English', 'Geography', 'Art', 'Music'];
-const GRADES = [3, 4, 5, 6, 7, 8, 9];
+const DIFFICULTIES = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
 const MODULE_TYPES: ModuleType[] = ['text', 'video', 'image', 'audio', 'quiz', 'interactive'];
 
 export const AUTO_SAVE_DEBOUNCE_MS = 30_000;
@@ -45,8 +45,8 @@ export const AUTO_SAVE_DEBOUNCE_MS = 30_000;
 interface MetadataForm {
   title: string;
   subject: string;
-  grade: number | null;
-  description: string;
+  difficulty_level: string;
+  short_description: string;
 }
 
 @Component({
@@ -157,26 +157,26 @@ interface MetadataForm {
           </label>
 
           <label class="flex flex-col text-sm font-bold col-span-1">
-            <span class="mb-1">Grade Level <span aria-hidden="true">*</span></span>
+            <span class="mb-1">Difficulty Level <span aria-hidden="true">*</span></span>
             <select
-              formControlName="grade"
+              formControlName="difficulty_level"
               class="px-3 py-2 border-2 border-black rounded-xl font-medium bg-white"
               aria-required="true"
             >
-              <option [ngValue]="null">Select grade…</option>
-              @for (g of gradeOptions; track g) {
-                <option [ngValue]="g">Grade {{ g }}</option>
+              <option value="">Select difficulty…</option>
+              @for (d of difficultyOptions; track d) {
+                <option [value]="d">{{ d }}</option>
               }
             </select>
-            @if (metaForm.controls.grade.invalid && metaForm.controls.grade.touched) {
-              <span class="text-red-600 text-sm mt-1">Grade is required.</span>
+            @if (metaForm.controls.difficulty_level.invalid && metaForm.controls.difficulty_level.touched) {
+              <span class="text-red-600 text-sm mt-1">Difficulty is required.</span>
             }
           </label>
 
           <label class="flex flex-col text-sm font-bold col-span-1 md:col-span-2">
-            <span class="mb-1">Description (optional)</span>
+            <span class="mb-1">Short Description (optional)</span>
             <textarea
-              formControlName="description"
+              formControlName="short_description"
               rows="3"
               class="px-3 py-2 border-2 border-black rounded-xl font-medium"
             ></textarea>
@@ -284,20 +284,20 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   private readonly autoSave$ = new Subject<void>();
 
   protected readonly subjectOptions = SUBJECTS;
-  protected readonly gradeOptions = GRADES;
+  protected readonly difficultyOptions = DIFFICULTIES;
   protected readonly moduleTypes = MODULE_TYPES;
   protected readonly modules = computed(() => this.store.lesson().modules);
 
   protected readonly metaForm: FormGroup<{
     title: AbstractControl<string>;
     subject: AbstractControl<string>;
-    grade: AbstractControl<number | null>;
-    description: AbstractControl<string>;
+    difficulty_level: AbstractControl<string>;
+    short_description: AbstractControl<string>;
   }> = this.fb.nonNullable.group({
     title: ['', [Validators.required]],
     subject: ['', [Validators.required]],
-    grade: this.fb.control<number | null>(null, { validators: [Validators.required] }),
-    description: [''],
+    difficulty_level: ['', [Validators.required]],
+    short_description: [''],
   }) as never;
 
   private readonly collapsed = new Set<string>();
@@ -320,8 +320,8 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
         this.store.updateMetadata({
           title: v.title ?? '',
           subject: v.subject ?? '',
-          grade: v.grade ?? null,
-          description: v.description ?? '',
+          difficulty_level: v.difficulty_level ?? 'BEGINNER',
+          short_description: v.short_description ?? '',
         });
         this.autoSave$.next();
       });
@@ -351,8 +351,8 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
       {
         title: l.title,
         subject: l.subject,
-        grade: l.grade,
-        description: l.description,
+        difficulty_level: l.difficulty_level,
+        short_description: l.short_description,
       },
       { emitEvent: false },
     );

@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { catchError, EMPTY } from 'rxjs';
-import { API_URL } from '@core/tokens/api.token';
+import { LEARNING_PATH_API_URL } from '@core/tokens/api.token';
 import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
 export interface Module {
@@ -11,6 +11,13 @@ export interface Module {
   type: 'video' | 'text' | 'quiz' | 'interactive' | 'audio' | 'image';
   content: string;
   mediaUrl?: string;
+  blockType?: string; // Align with backend naming
+}
+
+export interface Subcapitol {
+  id: string;
+  title: string;
+  blocks: Module[];
 }
 
 export interface Lesson {
@@ -21,8 +28,10 @@ export interface Lesson {
   difficulty: string;
   duration: string;
   status: string;
-  modules: Module[];
+  subcapitols: Subcapitol[];
+  modules: Module[]; // Keep flat modules for backward compatibility in UI if needed
 }
+
 
 export interface LessonLoadError {
   kind: 'not-found' | 'server' | 'unknown';
@@ -39,42 +48,17 @@ interface LessonsState {
 export const LessonsStore = signalStore(
   { providedIn: 'root' },
   withState<LessonsState>({
-    lessons: [
-      { 
-        id: '1', 
-        title: 'Intro to Fractions', 
-        subject: 'Math', 
-        grade: 5, 
-        difficulty: 'Easy', 
-        duration: '15 min', 
-        status: 'Not Started',
-        modules: [
-          { id: 'm1', title: 'What are fractions?', type: 'video', content: 'Fractions represent parts of a whole.', mediaUrl: 'https://example.com/video1.mp4' }
-        ]
-      },
-      { 
-        id: '2', 
-        title: 'Adding Fractions', 
-        subject: 'Math', 
-        grade: 5, 
-        difficulty: 'Medium', 
-        duration: '20 min', 
-        status: 'In Progress',
-        modules: [
-          { id: 'm2', title: 'Adding like fractions', type: 'text', content: 'To add fractions with the same denominator, add the numerators.' },
-          { id: 'm3', title: 'Practice Quiz', type: 'quiz', content: 'Solve these problems.' }
-        ]
-      }
-    ],
+    lessons: [],
     currentLesson: null,
     loading: false,
     error: null,
   }),
+
   withComputed((state) => ({
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(LEARNING_PATH_API_URL)) => ({
     
     loadLessons(): void {
       patchState(store, { loading: true });

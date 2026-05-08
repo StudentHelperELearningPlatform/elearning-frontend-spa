@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { NotificationService } from '../../../core/services/notification.service';
 
 export interface Milestone {
@@ -37,11 +38,13 @@ export class MilestonesStore {
   earnedCount = computed(() => this.earnedMilestones().length);
   totalCount = computed(() => this.milestones().length);
 
+  private readonly userPlatformApi = inject(USER_PLATFORM_API_URL);
+
   loadMilestones(studentId: string) {
     this.loading.set(true);
 
     this.http
-      .get<Milestone[]>(`/api/v1/students/${studentId}/milestones`)
+      .get<Milestone[]>(`${this.userPlatformApi}/students/${studentId}/milestones`)
       .subscribe({
         next: (data) => {
           this.milestones.set(data);

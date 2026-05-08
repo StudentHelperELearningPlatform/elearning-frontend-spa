@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { API_URL } from '@core/tokens/api.token';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 export {
   type ProgressRecord,
@@ -23,11 +23,11 @@ import {
 } from '@shared/models/progress.model';
 
 interface ProgressState {
-  student: DashboardData['student'] | null;
-  progressRecords: ProgressRecord[];
+  firstName: string | null;
+  lastName: string | null;
+  studentId: string | null;
   skillLevels: SkillLevel[];
-  streak: StreakData | null;
-  milestones: Milestone[];
+  currentStreak: number;
   recentActivity: ActivityItem[];
   upcomingQuizzes: UpcomingQuiz[];
   loading: boolean;
@@ -37,11 +37,11 @@ interface ProgressState {
 export const ProgressStore = signalStore(
   { providedIn: 'root' },
   withState<ProgressState>({
-    student: null,
-    progressRecords: [],
+    firstName: null,
+    lastName: null,
+    studentId: null,
     skillLevels: [],
-    streak: null,
-    milestones: [],
+    currentStreak: 0,
     recentActivity: [],
     upcomingQuizzes: [],
     loading: false,
@@ -49,42 +49,28 @@ export const ProgressStore = signalStore(
   }),
   withComputed((state) => ({
     overallProgressPercent: computed(() => {
-      const s = state.student();
-      if (!s || s.totalLessons === 0) return 0;
-      return Math.round((s.completedLessons / s.totalLessons) * 100);
+      // In new backend, we don't have total/completed lessons directly in dashboard
+      return 0;
     }),
-    activeStreak: computed(() => state.streak()?.currentStreak ?? 0),
-    recentMilestones: computed(() =>
-      state
-        .milestones()
-        .filter((m): m is Milestone & { earnedAt: string } => m.earnedAt !== null)
-        .sort((a, b) => new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime())
-        .slice(0, 3)
-    ),
-    continueLesson: computed(() => {
-      const inProgress = state
-        .progressRecords()
-        .filter((r) => r.status === 'IN_PROGRESS')
-        .sort(
-          (a, b) => new Date(b.lastAccessedAt).getTime() - new Date(a.lastAccessedAt).getTime()
-        );
-      return inProgress[0] ?? null;
-    }),
+    activeStreak: computed(() => state.currentStreak()),
+    streak: computed(() => ({
+      currentStreak: state.currentStreak(),
+      longestStreak: state.currentStreak(), // Placeholder
+    })),
+    continueLesson: computed(() => null as ProgressRecord | null), // Placeholder
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => ({
-    loadDashboard(studentId: string) {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => ({
+    loadDashboard(classId: string) {
       patchState(store, { loading: true, error: null });
       
-      http.get<DashboardData>(`${apiBase}/students/${studentId}/dashboard`).subscribe({
+      http.get<DashboardData>(`${apiBase}/progress/me/dashboard?classId=${classId}`).subscribe({
         next: (data) => {
           patchState(store, {
-            student: data.student,
-            streak: data.streak,
-            skillLevels: data.skillLevels,
-            progressRecords: data.progressRecords,
-            recentActivity: data.recentActivity,
-            milestones: data.milestones,
-            upcomingQuizzes: data.upcomingQuizzes,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            studentId: data.studentId,
+            skillLevels: data.subjects,
+            currentStreak: data.currentStreak,
             loading: false,
             error: null,
           });

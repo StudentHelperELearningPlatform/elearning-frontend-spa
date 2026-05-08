@@ -3,7 +3,7 @@ import { computed, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize, map } from 'rxjs/operators';
-import { API_URL } from '@core/tokens/api.token';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 export type TeacherLessonStatus = 'PUBLISHED' | 'DRAFT' | 'ARCHIVED';
 
@@ -11,16 +11,17 @@ export interface TeacherLesson {
   id: string;
   title: string;
   subject: string;
-  grade: number;
+  difficulty_level: string;
   status: TeacherLessonStatus;
-  lastModified: string;
+  estimated_duration_minutes: number;
+  created_at: string;
 }
 
 export interface TeacherLessonFilters {
   search: string;
   status: TeacherLessonStatus | '';
   subject: string;
-  grade: string;
+  difficulty: string;
 }
 
 export interface TeacherLessonSort {
@@ -48,7 +49,7 @@ const initialState: TeacherLessonsState = {
   loading: false,
   error: null,
   selectedIds: [],
-  filters: { search: '', status: '', subject: '', grade: '' },
+  filters: { search: '', status: '', subject: '', difficulty: '' },
   sort: { field: 'lastModified', order: 'desc' },
 };
 
@@ -72,7 +73,7 @@ export const TeacherLessonsStore = signalStore(
     ),
     pageCount: computed(() => Math.max(1, Math.ceil(state.total() / state.pageSize()))),
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => {
     const buildParams = (): HttpParams => {
       const f = store.filters();
       const s = store.sort();
@@ -84,19 +85,19 @@ export const TeacherLessonsStore = signalStore(
       if (f.search) params = params.set('search', f.search);
       if (f.status) params = params.set('status', f.status);
       if (f.subject) params = params.set('subject', f.subject);
-      if (f.grade) params = params.set('grade', f.grade);
+      if (f.difficulty) params = params.set('difficulty', f.difficulty);
       return params;
     };
 
     const fetchList = () => {
       patchState(store, { loading: true, error: null });
       http
-        .get<ListResponse>(`${apiBase}/lessons`, { params: buildParams() })
+        .get<TeacherLesson[]>(`${apiBase}/teachers/lessons`, { params: buildParams() })
         .subscribe({
           next: (res) =>
             patchState(store, {
-              items: res.items,
-              total: res.total,
+              items: res,
+              total: res.length,
               loading: false,
             }),
           error: (err: unknown) => {
@@ -120,7 +121,7 @@ export const TeacherLessonsStore = signalStore(
       },
       clearFilters() {
         patchState(store, {
-          filters: { search: '', status: '', subject: '', grade: '' },
+          filters: { search: '', status: '', subject: '', difficulty: '' },
           page: 0,
         });
         fetchList();
@@ -155,7 +156,7 @@ export const TeacherLessonsStore = signalStore(
       publish(id: string) {
         patchState(store, { loading: true });
         http
-          .patch<TeacherLesson>(`${apiBase}/lessons/${id}/publish`, {})
+          .post<TeacherLesson>(`${apiBase}/teachers/lessons/${id}/publish`, {})
           .subscribe({
             next: () => fetchList(),
             error: () => patchState(store, { loading: false }),
@@ -164,7 +165,7 @@ export const TeacherLessonsStore = signalStore(
       archive(id: string) {
         patchState(store, { loading: true });
         http
-          .patch<TeacherLesson>(`${apiBase}/lessons/${id}/archive`, {})
+          .post<TeacherLesson>(`${apiBase}/teachers/lessons/${id}/archive`, {})
           .subscribe({
             next: () => fetchList(),
             error: () => patchState(store, { loading: false }),
@@ -173,7 +174,7 @@ export const TeacherLessonsStore = signalStore(
       unpublish(id: string) {
         patchState(store, { loading: true });
         http
-          .patch<TeacherLesson>(`${apiBase}/lessons/${id}/unpublish`, {})
+          .post<TeacherLesson>(`${apiBase}/teachers/lessons/${id}/unpublish`, {})
           .subscribe({
             next: () => fetchList(),
             error: () => patchState(store, { loading: false }),
@@ -182,7 +183,7 @@ export const TeacherLessonsStore = signalStore(
       duplicate(id: string) {
         patchState(store, { loading: true });
         http
-          .post<TeacherLesson>(`${apiBase}/lessons/${id}/duplicate`, {})
+          .post<TeacherLesson>(`${apiBase}/teachers/lessons/${id}/duplicate`, {})
           .subscribe({
             next: () => fetchList(),
             error: () => patchState(store, { loading: false }),
@@ -190,7 +191,7 @@ export const TeacherLessonsStore = signalStore(
       },
       remove(id: string) {
         patchState(store, { loading: true });
-        http.delete(`${apiBase}/lessons/${id}`).subscribe({
+        http.delete(`${apiBase}/teachers/lessons/${id}`).subscribe({
           next: () => {
             patchState(store, (s) => ({
               selectedIds: s.selectedIds.filter((x) => x !== id),
@@ -205,12 +206,12 @@ export const TeacherLessonsStore = signalStore(
         if (ids.length === 0) return;
         const operation = (id: string) => {
           if (action === 'publish') {
-            return http.patch(`${apiBase}/lessons/${id}/publish`, {}).pipe(catchError(() => of(null)));
+            return http.post(`${apiBase}/teachers/lessons/${id}/publish`, {}).pipe(catchError(() => of(null)));
           }
           if (action === 'archive') {
-            return http.patch(`${apiBase}/lessons/${id}/archive`, {}).pipe(catchError(() => of(null)));
+            return http.post(`${apiBase}/teachers/lessons/${id}/archive`, {}).pipe(catchError(() => of(null)));
           }
-          return http.delete(`${apiBase}/lessons/${id}`).pipe(catchError(() => of(null)));
+          return http.delete(`${apiBase}/teachers/lessons/${id}`).pipe(catchError(() => of(null)));
         };
 
         patchState(store, { loading: true });

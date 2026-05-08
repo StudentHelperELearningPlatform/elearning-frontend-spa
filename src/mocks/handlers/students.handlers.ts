@@ -271,7 +271,7 @@ export const studentsHandlers = [
   // Task: INT-02 (Learning Path & Progress)
 
   // GET Learning Path
-  http.get(`${environment.apiUrl}/learning-paths/:id`, ({ params }) => {
+  http.get(`${environment.userPlatformApiUrl}/learning-paths/:id`, ({ params }) => {
     return HttpResponse.json({
       id: params['id'],
       title: 'Mocked Angular Mastery Path',
@@ -287,7 +287,7 @@ export const studentsHandlers = [
   }),
 
   // PUT Module Progress
-  http.put(`${environment.apiUrl}/lessons/:lessonId/progress`, async ({ request, params }) => {
+  http.put(`${environment.userPlatformApiUrl}/lessons/:lessonId/progress`, async ({ request, params }) => {
     const body = await request.json() as { moduleId: string | number; completedAt: string };
     
     return HttpResponse.json({

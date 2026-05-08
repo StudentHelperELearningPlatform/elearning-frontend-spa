@@ -12,10 +12,6 @@ export interface ProgressRecord {
   thumbnailGradient?: string;
 }
 
-export interface SkillLevel {
-  subject: string;
-  level: number; // 0-100
-}
 
 export interface StreakData {
   currentStreak: number;
@@ -52,17 +48,16 @@ export interface UpcomingQuiz {
   dueDate?: string;
 }
 
+export interface SkillLevel {
+  subjectId: string;
+  skillLevel: number;
+  confidence: number;
+}
+
 export interface DashboardData {
-  student: {
-    id: string;
-    firstName: string;
-    totalLessons: number;
-    completedLessons: number;
-  };
-  streak: StreakData;
-  skillLevels: SkillLevel[];
-  progressRecords: ProgressRecord[];
-  recentActivity: ActivityItem[];
-  milestones: Milestone[];
-  upcomingQuizzes: UpcomingQuiz[];
+  firstName: string;
+  lastName: string;
+  studentId: string;
+  subjects: SkillLevel[];
+  currentStreak: number;
 }

@@ -53,7 +53,7 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   get studentFirstName(): string {
-    return this.progressStore.student()?.firstName ?? 'Student';
+    return this.progressStore.firstName() ?? 'Student';
   }
 
   get initials(): string {
@@ -61,11 +61,11 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   get completedLessons(): number {
-    return this.progressStore.student()?.completedLessons ?? 0;
+    return 0; // Backend doesn't provide this in the dashboard response anymore
   }
 
   get totalLessons(): number {
-    return this.progressStore.student()?.totalLessons ?? 0;
+    return 0; // Backend doesn't provide this in the dashboard response anymore
   }
 
   get streakHasGoldGlow(): boolean {
@@ -73,11 +73,16 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnInit() {
-    const studentId = this.authStore.user()?.id ?? '1';
-    this.progressStore.loadDashboard(studentId);
+    // The backend now requires a classId instead of studentId for the dashboard
+    // In a real scenario, this would come from the student's enrolled classes
+    const placeholderClassId = '00000000-0000-0000-0000-000000000000';
+    this.progressStore.loadDashboard(placeholderClassId);
 
     effect(() => {
-      const skills = this.progressStore.skillLevels();
+      const skills = this.progressStore.skillLevels().map(s => ({
+        subject: s.subjectId, // Using ID as name for now, ideally we'd map to a friendly name
+        level: s.skillLevel
+      }));
       if (skills.length > 0 && this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }
@@ -85,13 +90,19 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngAfterViewInit() {
-    const skills = this.progressStore.skillLevels();
+    const skills = this.progressStore.skillLevels().map(s => ({
+      subject: s.subjectId,
+      level: s.skillLevel
+    }));
     if (skills.length > 0 && this.radarContainer?.nativeElement) {
       this.renderRadarChart(skills);
     }
 
     this.resizeObserver = new ResizeObserver(() => {
-      const skills = this.progressStore.skillLevels();
+      const skills = this.progressStore.skillLevels().map(s => ({
+        subject: s.subjectId,
+        level: s.skillLevel
+      }));
       if (skills.length > 0 && this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }

@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { API_URL } from '@core/tokens/api.token';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 export type ModuleType = 'text' | 'video' | 'image' | 'audio' | 'quiz' | 'interactive';
 export type LessonStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -19,8 +19,9 @@ export interface LessonDraft {
   id: string | null;
   title: string;
   subject: string;
-  grade: number | null;
-  description: string;
+  difficulty_level: string;
+  estimated_duration_minutes: number;
+  short_description: string;
   status: LessonStatus;
   modules: LessonModuleDraft[];
 }
@@ -39,8 +40,9 @@ const blankLesson: LessonDraft = {
   id: null,
   title: '',
   subject: '',
-  grade: null,
-  description: '',
+  difficulty_level: 'BEGINNER',
+  estimated_duration_minutes: 0,
+  short_description: '',
   status: 'DRAFT',
   modules: [],
 };
@@ -66,19 +68,21 @@ export const LessonEditorStore = signalStore(
       return (
         l.title.trim().length > 0 &&
         l.subject.trim().length > 0 &&
-        l.grade != null &&
+        l.estimated_duration_minutes > 0 &&
         l.modules.length > 0
       );
     }),
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => {
     const markUnsaved = () => patchState(store, { saveState: 'unsaved' });
 
     const persist = (lesson: LessonDraft, onComplete?: (saved: LessonDraft) => void): void => {
       patchState(store, { saveState: 'saving', saveError: null });
       const url = isPersisted(lesson)
-        ? `${apiBase}/lessons/${lesson.id}`
-        : `${apiBase}/lessons`;
+        ? `${apiBase}/teachers/lessons/${lesson.id}`
+        : `${apiBase}/teachers/lessons`;
+
+
       const stream$: Observable<LessonDraft> = isPersisted(lesson)
         ? http.put<LessonDraft>(url, lesson)
         : http.post<LessonDraft>(url, lesson);
@@ -108,7 +112,7 @@ export const LessonEditorStore = signalStore(
 
       loadLesson(id: string) {
         patchState(store, { loading: true });
-        http.get<LessonDraft>(`${apiBase}/lessons/${id}`).subscribe({
+        http.get<LessonDraft>(`${apiBase}/teachers/lessons/${id}`).subscribe({
           next: (lesson) => {
             patchState(store, {
               lesson: { ...lesson, modules: lesson.modules ?? [] },
@@ -124,7 +128,7 @@ export const LessonEditorStore = signalStore(
         });
       },
 
-      updateMetadata(patch: Partial<Pick<LessonDraft, 'title' | 'subject' | 'grade' | 'description'>>) {
+      updateMetadata(patch: Partial<Pick<LessonDraft, 'title' | 'subject' | 'difficulty_level' | 'estimated_duration_minutes' | 'short_description'>>) {
         patchState(store, (s) => ({ lesson: { ...s.lesson, ...patch } }));
         markUnsaved();
       },
@@ -182,7 +186,7 @@ export const LessonEditorStore = signalStore(
         const callPublish = (id: string, base: LessonDraft) => {
           patchState(store, { saveState: 'saving', saveError: null });
           http
-            .patch<LessonDraft>(`${apiBase}/lessons/${id}/publish`, {})
+            .post<LessonDraft>(`${apiBase}/teachers/lessons/${id}/publish`, {})
             .subscribe({
               next: (published) => {
                 const next = { ...published, modules: published.modules ?? base.modules };
@@ -214,7 +218,7 @@ export const LessonEditorStore = signalStore(
         if (!isPersisted(lesson)) return;
         patchState(store, { saveState: 'saving', saveError: null });
         http
-          .patch<LessonDraft>(`${apiBase}/lessons/${lesson.id}/unpublish`, {})
+          .post<LessonDraft>(`${apiBase}/teachers/lessons/${lesson.id}/unpublish`, {})
           .subscribe({
             next: (updated) => {
               const next = { ...updated, modules: updated.modules ?? lesson.modules };

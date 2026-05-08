@@ -25,7 +25,6 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 
 const SUBJECT_OPTIONS = ['Math', 'Science', 'History', 'English', 'Geography', 'Art', 'Music'];
-const GRADE_OPTIONS = [3, 4, 5, 6, 7, 8, 9];
 
 @Component({
   selector: 'app-teacher-lesson-list',
@@ -108,17 +107,17 @@ const GRADE_OPTIONS = [3, 4, 5, 6, 7, 8, 9];
           </select>
         </label>
         <label class="flex flex-col text-sm font-bold">
-          <span class="mb-1">Grade</span>
+          <span class="mb-1">Difficulty</span>
           <select
             class="px-3 py-2 border-2 border-black rounded-xl font-medium bg-white"
-            [ngModel]="store.filters().grade"
-            (ngModelChange)="setFilter('grade', $event)"
-            aria-label="Filter by grade"
+            [ngModel]="store.filters().difficulty"
+            (ngModelChange)="setFilter('difficulty', $event)"
+            aria-label="Filter by difficulty"
           >
             <option value="">All</option>
-            @for (g of gradeOptions; track g) {
-              <option [value]="g">Grade {{ g }}</option>
-            }
+            <option value="BEGINNER">Beginner</option>
+            <option value="INTERMEDIATE">Intermediate</option>
+            <option value="ADVANCED">Advanced</option>
           </select>
         </label>
       </div>
@@ -190,13 +189,13 @@ const GRADE_OPTIONS = [3, 4, 5, 6, 7, 8, 9];
                 <span class="material-icons text-sm align-middle">{{ sortIcon('title') }}</span>
               </th>
               <th class="p-3" scope="col">Subject</th>
-              <th class="p-3" scope="col">Grade</th>
+              <th class="p-3" scope="col">Difficulty</th>
               <th class="p-3 cursor-pointer" scope="col" (click)="toggleSort('status')">
                 Status
                 <span class="material-icons text-sm align-middle">{{ sortIcon('status') }}</span>
               </th>
               <th class="p-3 cursor-pointer" scope="col" (click)="toggleSort('lastModified')">
-                Last Modified
+                Created At
                 <span class="material-icons text-sm align-middle">{{
                   sortIcon('lastModified')
                 }}</span>
@@ -217,11 +216,11 @@ const GRADE_OPTIONS = [3, 4, 5, 6, 7, 8, 9];
               </td>
               <td class="p-3 font-bold">{{ lesson.title }}</td>
               <td class="p-3">{{ lesson.subject }}</td>
-              <td class="p-3">{{ lesson.grade }}</td>
+              <td class="p-3">{{ lesson.difficulty_level }}</td>
               <td class="p-3">
                 <app-badge [variant]="badgeVariant(lesson.status)">{{ lesson.status }}</app-badge>
               </td>
-              <td class="p-3 text-sm">{{ formatDate(lesson.lastModified) }}</td>
+              <td class="p-3 text-sm">{{ formatDate(lesson.created_at) }}</td>
               <td class="p-3">
                 <div class="flex gap-2 justify-end">
                   <app-button
@@ -338,7 +337,6 @@ export class LessonListComponent implements OnInit, OnDestroy {
   private readonly searchInput$ = new Subject<string>();
 
   protected readonly subjectOptions = SUBJECT_OPTIONS;
-  protected readonly gradeOptions = GRADE_OPTIONS;
   protected searchInput = '';
 
   protected readonly lessonPendingDelete = signal<TeacherLesson | null>(null);
@@ -366,7 +364,7 @@ export class LessonListComponent implements OnInit, OnDestroy {
     this.searchInput$.next(value);
   }
 
-  setFilter(key: 'status' | 'subject' | 'grade', value: string): void {
+  setFilter(key: 'status' | 'subject' | 'difficulty', value: string): void {
     if (key === 'status') {
       this.store.setFilter('status', value as TeacherLessonStatus | '');
     } else {
