@@ -15,8 +15,13 @@ export const authGuard: CanActivateFn = (
   const authStore = inject(AuthStore);
   const router = inject(Router);
 
-  if (authStore.isAuthenticated()) {
+  if (authStore.isAuthenticated() && authStore.isFullyLoaded()) {
     return true;
+  }
+
+  // If not authenticated or still loading profile
+  if (authStore.loading()) {
+    return true; 
   }
 
   return router.createUrlTree(['/auth/login'], {

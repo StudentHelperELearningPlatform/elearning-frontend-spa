@@ -94,13 +94,22 @@ export const ContentStore = signalStore(
       http
         .get<DashboardResponse>(`${apiBase}/teachers/me/profile`) // Using profile as proxy for dashboard data for now
         .subscribe({
-          next: (data) => {
-            const revived = reviveDates(data);
+          next: (data: any) => {
+            // Handle both DashboardResponse and TeacherProfileResponse
+            const lessons = data.lessons || [];
+            const quizzes = data.quizzes || [];
+            const recentActivity = data.recentActivity || [];
+            const classes = data.classes || [];
+
+            const revivedLessons = lessons.map((l: any) => ({ ...l, lastModified: new Date(l.lastModified || Date.now()) }));
+            const revivedQuizzes = quizzes.map((q: any) => ({ ...q, lastModified: new Date(q.lastModified || Date.now()) }));
+            const revivedActivity = recentActivity.map((a: any) => ({ ...a, timestamp: new Date(a.timestamp || Date.now()) }));
+
             patchState(store, {
-              lessons: revived.lessons,
-              quizzes: revived.quizzes,
-              recentActivity: revived.recentActivity,
-              classes: revived.classes,
+              lessons: revivedLessons,
+              quizzes: revivedQuizzes,
+              recentActivity: revivedActivity,
+              classes: classes,
               loading: false,
             });
           },

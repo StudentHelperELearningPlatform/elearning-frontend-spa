@@ -12,9 +12,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error) => {
-      if ([401, 403].includes(error.status)) {
+      if (error.status === 401) {
+        // Only logout if it's a genuine auth failure, not a transient error
         authStore.logout();
         router.navigate(['/auth/login']);
+      } else if (error.status === 403) {
+        // Access Denied - don't logout, just inform the user or redirect to unauthorized
+        router.navigate(['/unauthorized']);
       }
 
       const errorMessage = error.error?.message || error.statusText;

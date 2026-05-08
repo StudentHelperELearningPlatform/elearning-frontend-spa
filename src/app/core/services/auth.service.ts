@@ -101,7 +101,12 @@ export class AuthService {
 
     if (isAuth && this.keycloak.token) {
       const payload = parseJwt(this.keycloak.token);
-      const roles = payload.realm_access?.roles ?? [];
+      
+      // Check both realm-level roles and client-level roles
+      const realmRoles = payload.realm_access?.roles ?? [];
+      const clientRoles = (payload as any).resource_access?.['elearning-angular']?.roles ?? [];
+      const roles = [...new Set([...realmRoles, ...clientRoles])];
+      
       const email = payload.email || payload.preferred_username || '';
       const id = payload.sub || '';
       this._currentUser.set({ id, email, roles });

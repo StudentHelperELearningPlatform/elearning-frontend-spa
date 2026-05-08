@@ -34,8 +34,6 @@ export default [
   },
   
   // Builder Routes
-  { path: 'lesson-builder', component: LessonBuilderComponent },
-  { path: 'lesson-builder/:id', component: LessonBuilderComponent },
   { path: 'path-builder', component: PathBuilderComponent },
   { path: 'quiz-builder', component: QuizBuilderComponent },
   { path: 'quiz-builder/:id', component: QuizBuilderComponent },

@@ -28,15 +28,17 @@ export const AuthStore = signalStore(
     user: null,
     token: null,
     role: null,
-    loading: false,
-    isAuthReady: true,
+    loading: true,
+    isAuthReady: false,
     error: null,
   }),
   withComputed((state) => ({
     isAuthenticated: computed(() => !!state.token()),
-    isTeacher: computed(() => state.role() === 'TEACHER'),
+    isTeacher: computed(() => state.role() === 'TEACHER' || state.role() === 'PROFESSOR'),
     isStudent: computed(() => state.role() === 'STUDENT'),
     isAdmin: computed(() => state.role() === 'ADMIN'),
+    // Wait for both token and profile
+    isFullyLoaded: computed(() => !!state.token() && !!state.user()),
   })),
   withMethods((store) => {
     const authService = inject(AuthService);
@@ -48,30 +50,41 @@ export const AuthStore = signalStore(
       const accessToken = authService.getAccessToken();
 
       if (!isAuth || !currentUser) {
-        patchState(store, { user: null, token: null, role: null });
+        localStorage.removeItem('access_token');
+        patchState(store, { user: null, token: null, role: null, loading: !isAuth ? false : store.loading() });
       } else {
-        const roles = (currentUser.roles || []).map(r => r.toUpperCase());
-        let primaryRole: string;
+        if (accessToken) {
+          localStorage.setItem('access_token', accessToken);
+        }
+        
+        const rawRoles = (currentUser.roles || []).map(r => r.toUpperCase());
+        let primaryRole: string = 'STUDENT';
 
-        if (roles.includes('ADMIN')) {
+        if (rawRoles.includes('ADMIN')) {
           primaryRole = 'ADMIN';
-        } else if (roles.includes('TEACHER') || roles.includes('PROFESSOR')) {
-          primaryRole = 'TEACHER';
-        } else if (roles.includes('STUDENT') || roles.length === 0) {
+        } else if (rawRoles.some(r => r === 'PROFESSOR' || r === 'TEACHER' || r === 'INSTRUCTOR')) {
+          primaryRole = 'PROFESSOR';
+        } else if (rawRoles.includes('STUDENT')) {
           primaryRole = 'STUDENT';
         } else {
-          primaryRole = roles[0];
+          // DEVELOPER FALLBACK: If email contains teacher/professor, grant PROFESSOR role
+          const email = (currentUser.email || '').toLowerCase();
+          if (email.includes('teacher') || email.includes('professor') || email === 'student@test.com') {
+             primaryRole = email === 'student@test.com' ? 'STUDENT' : 'PROFESSOR';
+          } else {
+             primaryRole = rawRoles.find(r => !['OFFLINE_ACCESS', 'UMA_AUTHORIZATION', 'DEFAULT-ROLES-ELEARNING'].includes(r)) || 'STUDENT';
+          }
         }
 
         const mappedUser: User = {
-          id: '1',
+          id: currentUser.id,
           name: currentUser.email,
           email: currentUser.email,
           role: primaryRole,
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.email}`,
           memberSince: new Date().toISOString(),
           grade: primaryRole === 'STUDENT' ? 10 : undefined,
-          school: primaryRole === 'TEACHER' ? 'Lincoln High School' : undefined,
+          school: primaryRole === 'TEACHER' || primaryRole === 'PROFESSOR' ? 'Lincoln High School' : undefined,
         };
 
         patchState(store, {

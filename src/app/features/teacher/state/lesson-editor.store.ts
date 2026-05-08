@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
+import { CONTENT_API_URL } from '@core/tokens/api.token';
 
 export type ModuleType = 'text' | 'video' | 'image' | 'audio' | 'quiz' | 'interactive';
 export type LessonStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -73,27 +73,51 @@ export const LessonEditorStore = signalStore(
       );
     }),
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(CONTENT_API_URL)) => {
     const markUnsaved = () => patchState(store, { saveState: 'unsaved' });
 
     const persist = (lesson: LessonDraft, onComplete?: (saved: LessonDraft) => void): void => {
       patchState(store, { saveState: 'saving', saveError: null });
       const url = isPersisted(lesson)
-        ? `${apiBase}/teachers/lessons/${lesson.id}`
-        : `${apiBase}/teachers/lessons`;
+        ? `${apiBase}/lessons/${lesson.id}`
+        : `${apiBase}/lessons`;
 
+      // Map frontend model to Ariana's expected CreateLessonRequest/UpdateLessonRequest (camelCase)
+      const payload = {
+        title: lesson.title,
+        subject: lesson.subject,
+        difficultyLevel: lesson.difficulty_level,
+        estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
+        shortDescription: lesson.short_description,
+        subcapitols: lesson.modules.map((m, idx) => ({
+          title: m.title,
+          orderIndex: idx + 1
+        }))
+      };
 
-      const stream$: Observable<LessonDraft> = isPersisted(lesson)
-        ? http.put<LessonDraft>(url, lesson)
-        : http.post<LessonDraft>(url, lesson);
+      const stream$ = isPersisted(lesson)
+        ? http.put<any>(url, payload)
+        : http.post<any>(url, payload);
       stream$.subscribe({
-        next: (saved) => {
+        next: (saved: any) => {
+          // Map backend response back to frontend model (handles both camelCase and snake_case)
+          const updatedLesson: LessonDraft = {
+            id: saved.id,
+            title: saved.title,
+            subject: saved.subject,
+            difficulty_level: saved.difficultyLevel || saved.difficulty_level,
+            estimated_duration_minutes: saved.estimatedDurationMinutes || saved.estimated_duration_minutes,
+            short_description: saved.shortDescription || saved.short_description,
+            status: saved.status,
+            modules: lesson.modules 
+          };
+
           patchState(store, {
-            lesson: { ...saved, modules: saved.modules ?? lesson.modules },
+            lesson: updatedLesson,
             saveState: 'saved',
             lastSavedAt: new Date(),
           });
-          onComplete?.(saved);
+          onComplete?.(updatedLesson);
         },
         error: (err: unknown) => {
           const message = err instanceof Error ? err.message : 'Save failed';
@@ -112,10 +136,19 @@ export const LessonEditorStore = signalStore(
 
       loadLesson(id: string) {
         patchState(store, { loading: true });
-        http.get<LessonDraft>(`${apiBase}/teachers/lessons/${id}`).subscribe({
-          next: (lesson) => {
+        http.get<any>(`${apiBase}/lessons/${id}`).subscribe({
+          next: (saved) => {
             patchState(store, {
-              lesson: { ...lesson, modules: lesson.modules ?? [] },
+              lesson: {
+                id: saved.id,
+                title: saved.title,
+                subject: saved.subject,
+                difficulty_level: saved.difficultyLevel || saved.difficulty_level,
+                estimated_duration_minutes: saved.estimatedDurationMinutes || saved.estimated_duration_minutes,
+                short_description: saved.shortDescription || saved.short_description,
+                status: saved.status,
+                modules: saved.modules ?? []
+              },
               loading: false,
               saveState: 'saved',
               lastSavedAt: new Date(),
@@ -186,10 +219,19 @@ export const LessonEditorStore = signalStore(
         const callPublish = (id: string, base: LessonDraft) => {
           patchState(store, { saveState: 'saving', saveError: null });
           http
-            .post<LessonDraft>(`${apiBase}/teachers/lessons/${id}/publish`, {})
+            .post<any>(`${apiBase}/lessons/${id}/publish`, {})
             .subscribe({
               next: (published) => {
-                const next = { ...published, modules: published.modules ?? base.modules };
+                const next: LessonDraft = {
+                  id: published.id,
+                  title: published.title,
+                  subject: published.subject,
+                  difficulty_level: published.difficultyLevel || published.difficulty_level,
+                  estimated_duration_minutes: published.estimatedDurationMinutes || published.estimated_duration_minutes,
+                  short_description: published.shortDescription || published.short_description,
+                  status: published.status,
+                  modules: published.modules ?? base.modules
+                };
                 patchState(store, {
                   lesson: next,
                   saveState: 'saved',
@@ -218,10 +260,19 @@ export const LessonEditorStore = signalStore(
         if (!isPersisted(lesson)) return;
         patchState(store, { saveState: 'saving', saveError: null });
         http
-          .post<LessonDraft>(`${apiBase}/teachers/lessons/${lesson.id}/unpublish`, {})
+          .post<any>(`${apiBase}/lessons/${lesson.id}/unpublish`, {})
           .subscribe({
             next: (updated) => {
-              const next = { ...updated, modules: updated.modules ?? lesson.modules };
+              const next: LessonDraft = {
+                id: updated.id,
+                title: updated.title,
+                subject: updated.subject,
+                difficulty_level: updated.difficultyLevel || updated.difficulty_level,
+                estimated_duration_minutes: updated.estimatedDurationMinutes || updated.estimated_duration_minutes,
+                short_description: updated.shortDescription || updated.short_description,
+                status: updated.status,
+                modules: updated.modules ?? lesson.modules
+              };
               patchState(store, {
                 lesson: next,
                 saveState: 'saved',

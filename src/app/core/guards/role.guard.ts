@@ -13,8 +13,23 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     return true;
   }
 
-  // 2. If the user is authenticated and has a matching role, allow access
-  if (authStore.isAuthenticated() && requiredRoles.includes(authStore.role() || '')) {
+  // 2. If the user is authenticated and profile is ready
+  if (authStore.isAuthenticated() && authStore.isFullyLoaded()) {
+    const userRole = (authStore.role() || '').toUpperCase();
+    
+    // Check if user has any of the required roles (case-insensitive)
+    const hasRequiredRole = requiredRoles.some(role => {
+      const target = role.toUpperCase();
+      if (target === 'STUDENT') return authStore.isStudent();
+      if (target === 'TEACHER' || target === 'PROFESSOR') return authStore.isTeacher();
+      if (target === 'ADMIN') return authStore.isAdmin();
+      return userRole === target;
+    });
+
+    if (hasRequiredRole) {
+      return true;
+    }
+  } else if (authStore.loading()) {
     return true;
   }
 

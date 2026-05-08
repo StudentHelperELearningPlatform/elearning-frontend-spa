@@ -24,21 +24,42 @@ export class App {
   private router = inject(Router);
 
   constructor() {
+    const router = inject(Router);
+    
+    // 1. Initial redirect for users on landing pages
     effect(() => {
-      const user = this.authStore.user();
       const isAuth = this.authStore.isAuthenticated();
-      const currentUrl = this.router.url;
+      const isReady = this.authStore.isFullyLoaded();
+      const currentUrl = router.url;
 
-      if (isAuth && user && (currentUrl === '/' || currentUrl.startsWith('/auth'))) {
-        const role = user.role.toLowerCase();
-        if (role === 'student') {
-          this.router.navigate(['/student/dashboard']);
-        } else if (role === 'teacher' || role === 'professor') {
-          this.router.navigate(['/teacher/dashboard']);
-        } else if (role === 'admin') {
-          this.router.navigate(['/admin/dashboard']);
-        }
+      if (isAuth && isReady && (currentUrl === '/' || currentUrl.startsWith('/auth'))) {
+        this.performRedirect(router);
       }
     });
+
+    // 2. Watch for future navigation to landing pages
+    router.events.subscribe(() => {
+      const isAuth = this.authStore.isAuthenticated();
+      const isReady = this.authStore.isFullyLoaded();
+      const currentUrl = router.url;
+
+      if (isAuth && isReady && (currentUrl === '/' || currentUrl.startsWith('/auth') || currentUrl.startsWith('/for-'))) {
+        this.performRedirect(router);
+      }
+    });
+  }
+
+  private performRedirect(router: Router) {
+    const user = this.authStore.user();
+    if (!user) return;
+    
+    const role = user.role.toLowerCase();
+    if (role === 'student') {
+      router.navigate(['/student/dashboard']);
+    } else if (role === 'teacher' || role === 'professor') {
+      router.navigate(['/teacher/dashboard']);
+    } else if (role === 'admin') {
+      router.navigate(['/admin/dashboard']);
+    }
   }
 }
