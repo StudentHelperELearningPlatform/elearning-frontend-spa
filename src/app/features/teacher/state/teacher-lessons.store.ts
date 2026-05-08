@@ -3,7 +3,7 @@ import { computed, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize, map } from 'rxjs/operators';
-import { environment } from '../../../../environments/environment';
+import { API_URL } from '@core/tokens/api.token';
 
 export type TeacherLessonStatus = 'PUBLISHED' | 'DRAFT' | 'ARCHIVED';
 
@@ -72,7 +72,7 @@ export const TeacherLessonsStore = signalStore(
     ),
     pageCount: computed(() => Math.max(1, Math.ceil(state.total() / state.pageSize()))),
   })),
-  withMethods((store, http = inject(HttpClient)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => {
     const buildParams = (): HttpParams => {
       const f = store.filters();
       const s = store.sort();
@@ -91,7 +91,7 @@ export const TeacherLessonsStore = signalStore(
     const fetchList = () => {
       patchState(store, { loading: true, error: null });
       http
-        .get<ListResponse>(`${environment.apiBase}/lessons`, { params: buildParams() })
+        .get<ListResponse>(`${apiBase}/lessons`, { params: buildParams() })
         .subscribe({
           next: (res) =>
             patchState(store, {
@@ -155,7 +155,7 @@ export const TeacherLessonsStore = signalStore(
       publish(id: string) {
         patchState(store, { loading: true });
         http
-          .patch<TeacherLesson>(`${environment.apiBase}/lessons/${id}/publish`, {})
+          .patch<TeacherLesson>(`${apiBase}/lessons/${id}/publish`, {})
           .subscribe({
             next: () => fetchList(),
             error: () => patchState(store, { loading: false }),
@@ -164,7 +164,7 @@ export const TeacherLessonsStore = signalStore(
       archive(id: string) {
         patchState(store, { loading: true });
         http
-          .patch<TeacherLesson>(`${environment.apiBase}/lessons/${id}/archive`, {})
+          .patch<TeacherLesson>(`${apiBase}/lessons/${id}/archive`, {})
           .subscribe({
             next: () => fetchList(),
             error: () => patchState(store, { loading: false }),
@@ -173,7 +173,7 @@ export const TeacherLessonsStore = signalStore(
       unpublish(id: string) {
         patchState(store, { loading: true });
         http
-          .patch<TeacherLesson>(`${environment.apiBase}/lessons/${id}/unpublish`, {})
+          .patch<TeacherLesson>(`${apiBase}/lessons/${id}/unpublish`, {})
           .subscribe({
             next: () => fetchList(),
             error: () => patchState(store, { loading: false }),
@@ -182,7 +182,7 @@ export const TeacherLessonsStore = signalStore(
       duplicate(id: string) {
         patchState(store, { loading: true });
         http
-          .post<TeacherLesson>(`${environment.apiBase}/lessons/${id}/duplicate`, {})
+          .post<TeacherLesson>(`${apiBase}/lessons/${id}/duplicate`, {})
           .subscribe({
             next: () => fetchList(),
             error: () => patchState(store, { loading: false }),
@@ -190,7 +190,7 @@ export const TeacherLessonsStore = signalStore(
       },
       remove(id: string) {
         patchState(store, { loading: true });
-        http.delete(`${environment.apiBase}/lessons/${id}`).subscribe({
+        http.delete(`${apiBase}/lessons/${id}`).subscribe({
           next: () => {
             patchState(store, (s) => ({
               selectedIds: s.selectedIds.filter((x) => x !== id),
@@ -203,7 +203,6 @@ export const TeacherLessonsStore = signalStore(
       bulkAction(action: 'publish' | 'archive' | 'delete') {
         const ids = store.selectedIds();
         if (ids.length === 0) return;
-        const apiBase = environment.apiBase;
         const operation = (id: string) => {
           if (action === 'publish') {
             return http.patch(`${apiBase}/lessons/${id}/publish`, {}).pipe(catchError(() => of(null)));

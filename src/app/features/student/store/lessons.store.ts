@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { catchError, EMPTY } from 'rxjs';
-import { environment } from '../../../../environments/environment';
+import { API_URL } from '@core/tokens/api.token';
 import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
 export interface Module {
@@ -74,7 +74,7 @@ export const LessonsStore = signalStore(
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
   })),
-  withMethods((store, http = inject(HttpClient)) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => ({
     
     loadLessons(): void {
       patchState(store, { loading: true });
@@ -83,7 +83,7 @@ export const LessonsStore = signalStore(
 
     loadLesson(id: string): void {
       patchState(store, { loading: true, error: null });
-      http.get<BackendLesson>(`${environment.apiUrl}/lessons/${id}`)
+      http.get<BackendLesson>(`${apiBase}/lessons/${id}`)
         .subscribe({
           next: (backend) => {
             const lesson = mapLessonResponse(backend);
@@ -108,7 +108,7 @@ export const LessonsStore = signalStore(
         completedAt: new Date().toISOString(),
       };
 
-      http.put(`${environment.apiUrl}/lessons/${lessonId}/progress`, payload)
+      http.put(`${apiBase}/lessons/${lessonId}/progress`, payload)
         .pipe(
           catchError((err: unknown) => {
             console.error('Failed to save module progress', err);

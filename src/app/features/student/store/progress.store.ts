@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { environment } from '../../../../environments/environment';
+import { API_URL } from '@core/tokens/api.token';
+
 export {
   type ProgressRecord,
   type SkillLevel,
@@ -10,6 +11,7 @@ export {
   type ActivityItem,
   type UpcomingQuiz,
 } from '@shared/models/progress.model';
+
 import {
   ProgressRecord,
   SkillLevel,
@@ -69,10 +71,11 @@ export const ProgressStore = signalStore(
       return inProgress[0] ?? null;
     }),
   })),
-  withMethods((store, http = inject(HttpClient)) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => ({
     loadDashboard(studentId: string) {
       patchState(store, { loading: true, error: null });
-      http.get<DashboardData>(`${environment.apiBase}/students/${studentId}/dashboard`).subscribe({
+      
+      http.get<DashboardData>(`${apiBase}/students/${studentId}/dashboard`).subscribe({
         next: (data) => {
           patchState(store, {
             student: data.student,

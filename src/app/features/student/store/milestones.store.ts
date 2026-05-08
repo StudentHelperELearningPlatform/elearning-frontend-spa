@@ -1,7 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NotificationService } from '../../../core/services/notification.service';
-import { environment } from '../../../../environments/environment';
 
 export interface Milestone {
   id: string;
@@ -22,41 +21,32 @@ export class MilestonesStore {
   private readonly http = inject(HttpClient);
   private readonly notification = inject(NotificationService);
 
-  // STATE
   milestones = signal<Milestone[]>([]);
-  loading = signal<boolean>(false);
+  loading = signal(false);
 
   private readonly lastEarnedIds = new Set<string>();
 
-  // COMPUTED
   earnedMilestones = computed(() =>
-    this.milestones().filter(m => m.earnedAt)
+    this.milestones().filter(m => !!m.earnedAt)
   );
 
   lockedMilestones = computed(() =>
     this.milestones().filter(m => !m.earnedAt)
   );
 
-  earnedCount = computed(() =>
-    this.earnedMilestones().length
-  );
+  earnedCount = computed(() => this.earnedMilestones().length);
+  totalCount = computed(() => this.milestones().length);
 
-  totalCount = computed(() =>
-    this.milestones().length
-  );
-
-  // METHOD
   loadMilestones(studentId: string) {
     this.loading.set(true);
 
     this.http
-      .get<Milestone[]>(`${environment.apiBase}/students/${studentId}/milestones`)
+      .get<Milestone[]>(`/api/v1/students/${studentId}/milestones`)
       .subscribe({
         next: (data) => {
           this.milestones.set(data);
 
-          // detect NEW earned badges
-          data.forEach(m => {
+          data.forEach((m) => {
             if (m.earnedAt && !this.lastEarnedIds.has(m.id)) {
               this.lastEarnedIds.add(m.id);
 
@@ -70,6 +60,7 @@ export class MilestonesStore {
         },
         error: () => {
           this.loading.set(false);
+          this.notification.error('Failed to load milestones');
         }
       });
   }

@@ -4,11 +4,13 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LessonsStore } from '../store/lessons.store';
 import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
-import { ButtonComponent } from '../../../shared/components/button/button.component';
-import { CardComponent } from '../../../shared/components/card/card.component';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
-import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+
+// Resolved Imports: Using path aliases while keeping the ErrorStateComponent from develop
+import { ButtonComponent } from '@shared/components/button/button.component';
+import { CardComponent } from '@shared/components/card/card.component';
+import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
+import { BadgeComponent } from '@shared/components/badge/badge.component';
 
 @Component({
   selector: 'app-lesson-viewer',
@@ -234,7 +236,6 @@ export class LessonViewerComponent implements OnInit {
   }
 
   finishLesson() {
-    // Navigate back or to a summary page
     this.router.navigate(['/student/lessons']);
   }
 
