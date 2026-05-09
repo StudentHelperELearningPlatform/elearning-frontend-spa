@@ -4,10 +4,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { authInterceptor } from './auth.interceptor';
 import { AuthService } from '../services/auth.service';
 
+import { signal } from '@angular/core';
+
 // Stub AuthService — avoids needing a real Keycloak instance in unit tests
 const createAuthServiceStub = (token: string | null) => ({
   getAccessToken: () => token,
   isAuthenticated: () => !!token,
+  currentUser: () => signal(token ? { id: 'u1', email: 't@t.com', roles: ['STUDENT'] } : null)
 });
 
 describe('authInterceptor', () => {

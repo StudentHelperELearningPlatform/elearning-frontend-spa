@@ -1,12 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LessonViewerComponent } from './lesson-viewer.component';
 import { LessonsStore, Lesson } from '../store/lessons.store';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
+import { AuthStore } from '../../auth/store/auth.store';
+import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 
 const MOCK_LESSON: Lesson = {
   id: '1',
@@ -16,6 +17,31 @@ const MOCK_LESSON: Lesson = {
   difficulty: 'Easy',
   duration: '15 min',
   status: 'Not Started',
+  subcapitols: [
+    {
+      id: 'sub1',
+      title: 'Chapter 1',
+      orderIndex: 0,
+      blocks: [
+        { id: 'm1', title: 'Module 1', type: 'text', content: '<p>Hello world</p>' },
+        {
+          id: 'm2',
+          title: 'Module 2',
+          type: 'video',
+          content: 'Video content',
+          mediaUrl: 'https://example.com/vid.mp4',
+        },
+      ]
+    },
+    {
+      id: 'sub2',
+      title: 'Chapter 2',
+      orderIndex: 1,
+      blocks: [
+        { id: 'm3', title: 'Module 3', type: 'text', content: '<p>Last module</p>' },
+      ]
+    }
+  ],
   modules: [
     { id: 'm1', title: 'Module 1', type: 'text', content: '<p>Hello world</p>' },
     {
@@ -40,18 +66,21 @@ describe('LessonViewerComponent', () => {
       imports: [LessonViewerComponent, ButtonComponent, CardComponent],
       providers: [
         provideRouter([]),
-        { provide: API_URL, useValue: '/api/v1' },
+        { provide: AuthStore, useValue: createAuthStoreStub({ isAuthenticated: true }) },
+        ...provideApiMocks(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => '1' } } },
         },
       ],
-      schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
 
     store = TestBed.inject(LessonsStore);
     router = TestBed.inject(Router);
 
+    // Mock loadLesson to avoid resetting state during ngOnInit
+    vi.spyOn(store, 'loadLesson').mockImplementation(() => { /* mock */ });
+    
     patchStore(store, { currentLesson: MOCK_LESSON, loading: false });
 
     fixture = TestBed.createComponent(LessonViewerComponent);

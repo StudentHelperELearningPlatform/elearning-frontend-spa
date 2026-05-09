@@ -31,7 +31,9 @@ describe('mapLessonResponse', () => {
         id: 'b-1',
         title: 'What is a fraction?',
         type: 'text',
+        blockType: 'TEXT',
         content: '<p>A fraction is…</p>',
+        mediaUrl: undefined,
       },
     ]);
   });

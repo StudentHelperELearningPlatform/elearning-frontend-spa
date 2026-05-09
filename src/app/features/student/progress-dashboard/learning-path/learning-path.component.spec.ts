@@ -8,7 +8,7 @@ import { patchStore } from '../../../../../test-utils/patch-store';
 import { LearningPathComponent } from './learning-path.component';
 import { LearningPathsStore } from '../../store/learning-paths.store';
 import { LearningPath, PathLesson } from '../../../../shared/models/learning-path.model';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../../test-utils/api-testing';
 
 // LearningPathComponent uses templateUrl — cannot be DOM-mounted in Vitest.
 // We instantiate the class inside runInInjectionContext and drive the store
@@ -60,7 +60,7 @@ describe('LearningPathComponent', () => {
       providers: [
         provideHttpClient(),
         provideRouter([]),
-        { provide: API_URL, useValue: '/api/v1' },
+        ...provideApiMocks(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'path-1' } } },

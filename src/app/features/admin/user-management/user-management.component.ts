@@ -1,4 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
+import { AdminService } from '../../../core/services/admin.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { CommonModule } from '@angular/common';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -137,9 +139,12 @@ interface User {
                       <button class="w-8 h-8 rounded-lg border-2 border-black bg-white text-black flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px]" title="Edit">
                         <span class="material-icons text-sm">edit</span>
                       </button>
-                      <button class="w-8 h-8 rounded-lg border-2 border-black bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px]" title="Delete">
+                      <button 
+                        (click)="deleteUser(user.id)"
+                        class="w-8 h-8 rounded-lg border-2 border-black bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px]" title="Delete">
                         <span class="material-icons text-sm">delete</span>
                       </button>
+
                     </div>
                   </td>
                 </tr>
@@ -180,6 +185,24 @@ export class UserManagementComponent {
     { id: '4', name: 'Emily Davis', email: 'emily@example.com', role: 'STUDENT', status: 'PENDING', avatarSeed: 'Emily' },
     { id: '5', name: 'Admin User', email: 'admin@example.com', role: 'ADMIN', status: 'ACTIVE', avatarSeed: 'Admin' },
   ]);
+  
+  private adminService = inject(AdminService);
+  private notificationService = inject(NotificationService);
+
+  deleteUser(userId: string) {
+    if (confirm('Are you sure you want to delete this user?')) {
+      this.adminService.deleteUser(userId).subscribe({
+        next: () => {
+          this.users.update(users => users.filter(u => u.id !== userId));
+          this.notificationService.success('User deleted successfully.');
+        },
+        error: () => {
+          this.notificationService.error('Failed to delete user.');
+        }
+      });
+    }
+  }
+
 
   getRoleBadgeVariant(role: string): 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'neutral' {
     switch (role) {

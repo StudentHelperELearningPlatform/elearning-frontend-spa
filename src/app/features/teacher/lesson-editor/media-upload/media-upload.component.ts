@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MediaPlayerComponent } from '../../../../shared/components/media-player/media-player.component';
+import { LEARNING_PATH_API_URL } from '@core/tokens/api.token';
 
 export interface UploadedMedia {
   id: string;
@@ -123,6 +124,9 @@ export interface UploadedMedia {
   `
 })
 export class MediaUploadComponent {
+  // Services
+  private readonly contentApi = inject(LEARNING_PATH_API_URL);
+
   // State
   isDragging = signal(false);
   errorMessage = signal<string | null>(null);
@@ -222,7 +226,7 @@ export class MediaUploadComponent {
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch('/api/v1/lessons/new/media', {
+    fetch(`${this.contentApi}/lessons/new/media`, {
       method: 'POST',
       body: formData
     })

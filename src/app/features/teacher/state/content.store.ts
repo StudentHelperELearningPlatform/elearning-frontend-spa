@@ -1,7 +1,9 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { API_URL } from '@core/tokens/api.token';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { Question } from '@shared/models/quiz.types';
 
 export type { Question };
@@ -35,13 +37,6 @@ export interface TeacherClassSummary {
   averageProgress: number;
 }
 
-interface DashboardResponse {
-  lessons: ContentItem[];
-  quizzes: ContentItem[];
-  recentActivity: RecentActivityItem[];
-  classes: TeacherClassSummary[];
-}
-
 interface ContentState {
   lessons: ContentItem[];
   quizzes: ContentItem[];
@@ -59,16 +54,6 @@ const initialState: ContentState = {
   loading: false,
   error: null,
 };
-
-const reviveDates = (data: DashboardResponse): DashboardResponse => ({
-  lessons: data.lessons.map((l) => ({ ...l, lastModified: new Date(l.lastModified) })),
-  quizzes: data.quizzes.map((q) => ({ ...q, lastModified: new Date(q.lastModified) })),
-  recentActivity: data.recentActivity.map((a) => ({
-    ...a,
-    timestamp: new Date(a.timestamp),
-  })),
-  classes: data.classes,
-});
 
 export const ContentStore = signalStore(
   { providedIn: 'root' },
@@ -88,32 +73,73 @@ export const ContentStore = signalStore(
     totalLessonsCount: computed(() => state.lessons().length),
     totalQuizzesCount: computed(() => state.quizzes().length),
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => ({
-    loadDashboard(teacherId: string) {
+  withMethods((
+    store,
+    http = inject(HttpClient),
+    contentApi = inject(CONTENT_API_URL),
+    userApi = inject(USER_PLATFORM_API_URL),
+  ) => ({
+    loadDashboard() {
       patchState(store, { loading: true, error: null });
-      http
-        .get<DashboardResponse>(`${apiBase}/teacher/${teacherId}/dashboard`)
-        .subscribe({
-          next: (data) => {
-            const revived = reviveDates(data);
-            patchState(store, {
-              lessons: revived.lessons,
-              quizzes: revived.quizzes,
-              recentActivity: revived.recentActivity,
-              classes: revived.classes,
-              loading: false,
-            });
-          },
-          error: (err: unknown) => {
-            const message = err instanceof Error ? err.message : 'Failed to load dashboard';
-            patchState(store, { loading: false, error: message });
-          },
-        });
+
+      // Fetch lessons from ARIANA (content service) and classes from MOISA (user platform)
+      // Both calls are independent — if MOISA isn't ready yet, classes just show empty
+      forkJoin({
+        lessons: http.get<Record<string, unknown>[]>(`${contentApi}/lessons`),
+        profile: http.get<Record<string, unknown> | null>(`${userApi}/teachers/me/profile`).pipe(
+          catchError(() => of(null)), // MOISA endpoint may not exist yet — degrade gracefully
+        ),
+      }).subscribe({
+        next: ({ lessons, profile }) => {
+          let rawLessons: Record<string, unknown>[] = [];
+          if (Array.isArray(lessons)) {
+            rawLessons = lessons as Record<string, unknown>[];
+          } else if (lessons && Array.isArray((lessons as Record<string, unknown>)['content'])) {
+            rawLessons = (lessons as Record<string, unknown>)['content'] as Record<string, unknown>[];
+          } else if (lessons && Array.isArray((lessons as Record<string, unknown>)['lessons'])) {
+            rawLessons = (lessons as Record<string, unknown>)['lessons'] as Record<string, unknown>[];
+          }
+
+          const mappedLessons: ContentItem[] = rawLessons.map((l: Record<string, unknown>) => ({
+            id: l['id'] as string,
+            title: l['title'] as string,
+            subject: l['subject'] as string,
+            status: l['status'] as ContentStatus ?? 'DRAFT',
+            lastModified: new Date((l['updatedAt'] || l['lastModified'] || Date.now()) as string | number | Date),
+          }));
+
+          // Build recent activity from lessons sorted by lastModified
+          const recentActivity: RecentActivityItem[] = [...mappedLessons]
+            .sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
+            .slice(0, 10)
+            .map((l) => ({
+              id: l.id,
+              type: l.status === 'PUBLISHED' ? 'published' : 'updated',
+              contentTitle: l.title,
+              contentType: 'lesson',
+              timestamp: l.lastModified,
+            }));
+
+          patchState(store, {
+            lessons: mappedLessons,
+            recentActivity,
+            classes: (profile as Record<string, unknown>)?.['classes'] as TeacherClassSummary[] ?? [],
+            loading: false,
+            error: null,
+          });
+        },
+        error: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to load dashboard';
+          patchState(store, { loading: false, error: message });
+        },
+      });
     },
+
     loadContent() {
       patchState(store, { loading: true });
       setTimeout(() => patchState(store, { loading: false }), 300);
     },
+
     createLesson(lesson: Omit<ContentItem, 'id' | 'lastModified'>) {
       patchState(store, (state) => ({
         lessons: [
@@ -122,6 +148,7 @@ export const ContentStore = signalStore(
         ],
       }));
     },
+
     updateLesson(id: string, updates: Partial<Omit<ContentItem, 'id' | 'lastModified'>>) {
       patchState(store, (state) => ({
         lessons: state.lessons.map((l) =>
@@ -129,11 +156,13 @@ export const ContentStore = signalStore(
         ),
       }));
     },
+
     deleteLesson(id: string) {
       patchState(store, (state) => ({
         lessons: state.lessons.filter((l) => l.id !== id),
       }));
     },
+
     createQuiz(quiz: Omit<ContentItem, 'id' | 'lastModified'>) {
       patchState(store, (state) => ({
         quizzes: [
@@ -142,6 +171,7 @@ export const ContentStore = signalStore(
         ],
       }));
     },
+
     updateQuiz(id: string, updates: Partial<Omit<ContentItem, 'id' | 'lastModified'>>) {
       patchState(store, (state) => ({
         quizzes: state.quizzes.map((q) =>
@@ -149,11 +179,13 @@ export const ContentStore = signalStore(
         ),
       }));
     },
+
     deleteQuiz(id: string) {
       patchState(store, (state) => ({
         quizzes: state.quizzes.filter((q) => q.id !== id),
       }));
     },
+
     reset() {
       patchState(store, initialState);
     },

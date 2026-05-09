@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { LearningPathsStore } from './learning-paths.store';
 import { LearningPath } from '@shared/models/learning-path.model';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 const MOCK_PATH: LearningPath = {
   id: 'path-1',
@@ -60,7 +60,7 @@ describe('LearningPathsStore', () => {
       providers: [
         provideHttpClient(),
         provideRouter([]),
-        { provide: API_URL, useValue: '/api/v1' }
+        ...provideApiMocks(),
       ],
     });
     store = getStore();

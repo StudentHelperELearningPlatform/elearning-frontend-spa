@@ -2,7 +2,7 @@ import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { NEVER, of, throwError } from 'rxjs';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 import { patchStore } from '../../../../test-utils/patch-store';
 import {
   ContentStore,
@@ -49,7 +49,7 @@ describe('ContentStore', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: API_URL, useValue: '/api/v1' }
+        ...provideApiMocks(),
       ],
     });
     store = getStore();
@@ -71,26 +71,35 @@ describe('ContentStore', () => {
   });
 
   // ── loadDashboard ────────────────────────────────────────────────────────
-  it('loadDashboard calls GET /api/v1/teacher/:id/dashboard', () => {
-    const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_RESPONSE));
-    store.loadDashboard('teacher-42');
-    expect(spy).toHaveBeenCalledWith('/api/v1/teacher/teacher-42/dashboard');
+  it('loadDashboard calls split microservice endpoints', () => {
+    const spy = vi.spyOn(http, 'get').mockImplementation((url: string) => {
+      if (url.includes('/lessons')) return of(MOCK_RESPONSE.lessons);
+      if (url.includes('/profile')) return of(null);
+      return of([]);
+    });
+    store.loadDashboard();
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('/lessons'));
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('/profile'));
   });
 
   it('loadDashboard populates state on success', () => {
-    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_RESPONSE));
-    store.loadDashboard('me');
+    vi.spyOn(http, 'get').mockImplementation((url: string) => {
+      if (url.includes('/lessons')) return of(MOCK_RESPONSE.lessons);
+      return of(null);
+    });
+    store.loadDashboard();
     expect(store.lessons().length).toBe(4);
-    expect(store.quizzes().length).toBe(1);
-    expect(store.recentActivity().length).toBe(1);
-    expect(store.classes().length).toBe(1);
+    expect(store.recentActivity().length).toBe(4); // derived from lessons
     expect(store.loading()).toBe(false);
     expect(store.error()).toBeNull();
   });
 
   it('loadDashboard revives ISO timestamps into Date instances', () => {
-    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_RESPONSE));
-    store.loadDashboard('me');
+    vi.spyOn(http, 'get').mockImplementation((url: string) => {
+      if (url.includes('/lessons')) return of(MOCK_RESPONSE.lessons);
+      return of(null);
+    });
+    store.loadDashboard();
     expect(store.lessons()[0].lastModified).toBeInstanceOf(Date);
     expect(store.recentActivity()[0].timestamp).toBeInstanceOf(Date);
   });

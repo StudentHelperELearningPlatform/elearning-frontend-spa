@@ -51,7 +51,7 @@ export const routes: Routes = [
   {
     path: 'teacher',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['TEACHER'] },
+    data: { roles: ['TEACHER', 'PROFESSOR'] },
     loadComponent: () =>
       import('./shared/components/app-shell/app-shell.component').then((m) => m.AppShellComponent),
     loadChildren: () => import('./features/teacher/teacher.routes'),

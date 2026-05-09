@@ -22,6 +22,6 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
   `
 })
 export class ModuleContentComponent {
-  content = input.required<string>();
+  content = input<string>('');
   loading = input<boolean>(false);
 }

@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { catchError, map, EMPTY } from 'rxjs';
-import { API_URL } from '@core/tokens/api.token';
+import { LEARNING_PATH_API_URL } from '@core/tokens/api.token';
 import { 
   mapLearningPathResponse, 
   BackendLearningPath, 
@@ -41,7 +41,7 @@ export const LearningPathsStore = signalStore(
     nextAvailableLesson: computed(() => state.currentPath()?.lessons.find((l) => l.status === 'AVAILABLE') ?? null),
   })),
 
-  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(LEARNING_PATH_API_URL)) => ({
     loadPath(id: string): void {
       patchState(store, { loading: true, error: null });
 

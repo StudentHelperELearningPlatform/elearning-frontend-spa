@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
-import { API_URL } from '@core/tokens/api.token';
+import { QUIZ_API_URL } from '@core/tokens/api.token';
 import { 
   signalStore, 
   withState, 
@@ -24,22 +24,21 @@ import {
   QuizResultDetail,
 } from '@shared/models/quiz.types';
 
-type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
 interface QuizApiQuestion {
   id: string;
-  type: QuestionType;
-  text: string;
-  options?: string[];
-  points: number;
+  questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+  questionText: string;
+  options?: { id: string; text: string; isCorrect: boolean }[];
+  orderIndex: number;
 }
 
 interface QuizApiResponse {
   id: string;
-  title: string;
-  subject: string;
-  timeLimitSeconds?: number | null;
   questions: QuizApiQuestion[];
+  passThreshold?: number;
+  mandatory?: boolean;
+  maxAttempts?: number;
 }
 
 interface SubmitQuizResponse {
@@ -62,33 +61,35 @@ type QuizResultWithMeta = QuizResult & {
 };
 
 const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
-  if (question.type === 'SHORT_ANSWER') return [];
+  if (question.questionType === 'SHORT_ANSWER') return [];
 
-  if (question.type === 'TRUE_FALSE') {
-    const opts = question.options ?? ['True', 'False'];
-    return opts.map((text) => ({
+  if (question.questionType === 'TRUE_FALSE') {
+    // For TRUE_FALSE, we expect the options to be either provided by backend or default to True/False
+    const opts = (question.options ?? []).map(o => o.text);
+    const displayOpts = opts.length > 0 ? opts : ['True', 'False'];
+    return displayOpts.map((text) => ({
       id: text.toLowerCase(),
       text,
     }));
   }
 
-  return (question.options ?? []).map((text, index) => ({
-    id: `${question.id}-o${index + 1}`,
-    text,
+  return (question.options ?? []).map((opt) => ({
+    id: opt.id,
+    text: opt.text,
   }));
 };
 
-const mapQuizResponse = (response: QuizApiResponse): QuizWithMeta => ({
+const mapQuizResponse = (response: QuizApiResponse, title = 'Quiz', subject = ''): QuizWithMeta => ({
   id: response.id,
-  title: response.title,
-  subject: response.subject,
-  timeLimit: response.timeLimitSeconds ?? 0,
-  timeLimitSeconds: response.timeLimitSeconds ?? null,
+  title,
+  subject,
+  timeLimit: 0,
+  timeLimitSeconds: null,
   questions: response.questions.map((q) => ({
     id: q.id,
-    type: q.type,
-    text: q.text,
-    points: q.points,
+    type: q.questionType,
+    text: q.questionText,
+    points: 1, // Default points if not in DTO
     options: mapQuestionOptions(q),
   })),
 });
@@ -106,6 +107,7 @@ interface QuizzesState {
   resultDetail: QuizResultDetail | null;
   resultDetailLoading: boolean;
   resultDetailError: string | null;
+  error: string | null;
 }
 
 export const QuizzesStore = signalStore(
@@ -124,6 +126,7 @@ export const QuizzesStore = signalStore(
     resultDetail: null,
     resultDetailLoading: false,
     resultDetailError: null,
+    error: null,
   }),
 
   withComputed((state) => ({
@@ -161,7 +164,7 @@ export const QuizzesStore = signalStore(
     timeSpent: computed(() => state.result()?.timeSpent ?? 0),
   })),
 
-  withMethods((store, http = inject(HttpClient), apiBase = inject(API_URL)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(QUIZ_API_URL)) => {
 
     const navigateTo = (index: number) => {
       const total = store.currentQuiz()?.questions?.length ?? 0;
@@ -182,8 +185,11 @@ export const QuizzesStore = signalStore(
 
       patchState(store, { submitted: true });
 
+      // Note: Generic quiz submission is deprecated in backend. 
+      // This should ideally call submitCheckQuiz or submitFinalQuiz.
+      // We fall back to lessons final-quiz if unsure.
       http.post<SubmitQuizResponse>(
-        `${apiBase}/quizzes/${quizId}/submit`,
+        `${apiBase}/lessons/${quizId}/final-quiz/submit`,
         { answers: store.answers() }
       ).subscribe({
         next: (res) => {
@@ -207,8 +213,9 @@ export const QuizzesStore = signalStore(
         resultDetailError: null,
       });
 
+      // Try lesson results first as it's the most common
       http.get<QuizResultDetail>(
-        `${apiBase}/quizzes/${quizId}/results/${attemptId}`
+        `${apiBase}/lessons/${quizId}/final-quiz/results/${attemptId}`
       ).subscribe({
         next: (data) => {
           patchState(store, {
@@ -237,7 +244,8 @@ export const QuizzesStore = signalStore(
       loadQuizById(id: string) {
         patchState(store, { loading: true });
  
-        http.get<QuizApiResponse>(`${apiBase}/quizzes/${id}`).subscribe({
+        // Default to loading as a final quiz for now
+        http.get<QuizApiResponse>(`${apiBase}/lessons/${id}/final-quiz`).subscribe({
           next: (quiz) => {
             patchState(store, {
               loading: false,
@@ -256,7 +264,7 @@ export const QuizzesStore = signalStore(
       startQuiz(id: string) {
         patchState(store, { loading: true });
  
-        http.get<QuizApiResponse>(`${apiBase}/quizzes/${id}`).subscribe({
+        http.get<QuizApiResponse>(`${apiBase}/lessons/${id}/final-quiz`).subscribe({
           next: (quiz) => {
             const mapped = mapQuizResponse(quiz);
 
@@ -299,6 +307,57 @@ export const QuizzesStore = signalStore(
       prevQuestion: () => navigateTo(store.currentQuestionIndex() - 1),
 
       submitQuiz: submitQuizInternal,
+
+      submitCheckQuiz(subcapitolId: string) {
+        if (store.submitted()) return;
+        patchState(store, { submitted: true, error: null });
+
+        http.post<SubmitQuizResponse>(
+          `${apiBase}/subcapitols/${subcapitolId}/check-quiz/submit`,
+          { answers: store.answers() }
+        ).subscribe({
+          next: (res) => {
+            patchState(store, {
+              result: {
+                score: res.score,
+                totalPoints: res.totalPoints,
+                percentage: res.percentage,
+                passed: res.passed,
+                attemptId: res.attemptId,
+                timeSpent: 0,
+              },
+            });
+          },
+          error: (err) => {
+            console.error('[QuizzesStore] Failed to submit check quiz:', err);
+            patchState(store, { error: err.message || 'Failed to submit quiz' });
+          }
+        });
+      },
+
+      loadFinalQuiz(lessonId: string) {
+        patchState(store, { loading: true, error: null });
+        http.get<QuizApiResponse>(`${apiBase}/lessons/${lessonId}/final-quiz`).subscribe({
+          next: (quiz) => {
+            patchState(store, {
+              loading: false,
+              currentQuiz: mapQuizResponse(quiz, 'Final Quiz'),
+              currentQuestionIndex: 0,
+              answers: {},
+              flaggedQuestions: new Set<string>(),
+              submitted: false,
+              result: null,
+            });
+          },
+          error: (err) => {
+            console.error('[QuizzesStore] Failed to load final quiz:', err);
+            patchState(store, { 
+              loading: false, 
+              error: (err as { message?: string })?.message || 'Failed to load quiz' 
+            });
+          },
+        });
+      },
 
       tickTimer() {
         const remaining = store.timeRemaining();
