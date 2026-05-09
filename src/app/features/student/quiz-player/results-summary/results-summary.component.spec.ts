@@ -6,7 +6,7 @@ import { patchStore } from '../../../../../test-utils/patch-store';
 import { QuizzesStore } from '../../store/quizzes.store';
 import { QuizResultDetail } from '@shared/models/quiz.types';
 import { ResultsSummaryComponent } from './results-summary.component';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../../test-utils/api-testing';
 
 const MOCK_DETAIL: QuizResultDetail = {
   attemptId: 'attempt-1',
@@ -74,7 +74,7 @@ describe('ResultsSummaryComponent', () => {
         provideHttpClient(),
         provideRouter([]),
         { provide: ActivatedRoute, useValue: route },
-        { provide: API_URL, useValue: '/api/v1' }
+        ...provideApiMocks(),
       ],
       schemas: [NO_ERRORS_SCHEMA],
     });

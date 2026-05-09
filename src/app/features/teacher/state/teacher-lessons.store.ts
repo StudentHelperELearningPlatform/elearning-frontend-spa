@@ -86,12 +86,13 @@ export const TeacherLessonsStore = signalStore(
       patchState(store, { loading: true, error: null });
       // FIX: was /teachers/lessons (MOISA path) — correct path is /lessons on ARIANA
       http
-        .get<any>(`${apiBase}/lessons`, { params: buildParams() })
+        .get<unknown>(`${apiBase}/lessons`, { params: buildParams() })
         .subscribe({
-          next: (res) => {
+          next: (res: unknown) => {
             // Handle both array response and paginated { items, total } response
-            const items: TeacherLesson[] = Array.isArray(res) ? res : (res.items ?? []);
-            const total: number = Array.isArray(res) ? res.length : (res.total ?? res.length ?? 0);
+            const response = res as any;
+            const items: TeacherLesson[] = Array.isArray(response) ? response : (response.items ?? []);
+            const total: number = Array.isArray(response) ? response.length : (response.total ?? response.length ?? 0);
             patchState(store, { items, total, loading: false });
           },
           error: (err: unknown) => {

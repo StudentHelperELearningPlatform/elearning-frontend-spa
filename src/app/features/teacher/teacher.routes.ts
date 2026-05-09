@@ -4,7 +4,6 @@ import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-das
 import { ClassManagementComponent } from './class-management/class-management.component';
 import { ContentEditorComponent } from './content-editor/content-editor.component';
 import { QuizBuilderComponent } from './quiz-builder/quiz-builder.component';
-import { LessonBuilderComponent } from './content-editor/lesson-builder/lesson-builder.component';
 import { PathBuilderComponent } from './content-editor/path-builder/path-builder.component';
 
 // From feat/E5-05-learning-path-builder

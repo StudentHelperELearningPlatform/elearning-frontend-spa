@@ -6,7 +6,9 @@ import { LessonViewerComponent } from './lesson-viewer.component';
 import { LessonsStore, Lesson } from '../store/lessons.store';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
+import { AuthStore } from '../../auth/store/auth.store';
+import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 
 const MOCK_LESSON: Lesson = {
   id: '1',
@@ -40,7 +42,8 @@ describe('LessonViewerComponent', () => {
       imports: [LessonViewerComponent, ButtonComponent, CardComponent],
       providers: [
         provideRouter([]),
-        { provide: API_URL, useValue: '/api/v1' },
+        { provide: AuthStore, useValue: createAuthStoreStub({ isAuthenticated: true }) },
+        ...provideApiMocks(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => '1' } } },

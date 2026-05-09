@@ -24,7 +24,6 @@ import {
   QuizResultDetail,
 } from '@shared/models/quiz.types';
 
-type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
 interface QuizApiQuestion {
   id: string;

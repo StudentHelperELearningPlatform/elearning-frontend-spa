@@ -3,7 +3,7 @@ import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { QuizzesStore } from '../store/quizzes.store';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 import { NO_ERRORS_SCHEMA, EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
 // QuizPlayerComponent uses templateUrl so we cannot mount it in Vitest.
@@ -59,7 +59,7 @@ describe('QuizPlayerComponent (logic)', () => {
       providers: [
         provideHttpClient(),
         provideRouter([]),
-        { provide: API_URL, useValue: '/api/v1' },
+        ...provideApiMocks(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'quiz-1' } } },

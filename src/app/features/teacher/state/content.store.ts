@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { Question } from '@shared/models/quiz.types';
 
@@ -85,15 +85,15 @@ export const ContentStore = signalStore(
       // Fetch lessons from ARIANA (content service) and classes from MOISA (user platform)
       // Both calls are independent — if MOISA isn't ready yet, classes just show empty
       forkJoin({
-        lessons: http.get<any[]>(`${contentApi}/lessons`).pipe(
+        lessons: http.get<Record<string, unknown>[]>(`${contentApi}/lessons`).pipe(
           catchError(() => of([])),
         ),
-        profile: http.get<any>(`${userApi}/teachers/me/profile`).pipe(
+        profile: http.get<Record<string, unknown> | null>(`${userApi}/teachers/me/profile`).pipe(
           catchError(() => of(null)), // MOISA endpoint may not exist yet — degrade gracefully
         ),
       }).subscribe({
         next: ({ lessons, profile }) => {
-          const mappedLessons: ContentItem[] = lessons.map((l: any) => ({
+          const mappedLessons: ContentItem[] = (lessons as any[]).map((l: any) => ({
             id: l.id,
             title: l.title,
             subject: l.subject,
@@ -116,7 +116,7 @@ export const ContentStore = signalStore(
           patchState(store, {
             lessons: mappedLessons,
             recentActivity,
-            classes: profile?.classes ?? [],
+            classes: (profile as any)?.['classes'] ?? [],
             loading: false,
             error: null,
           });

@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { LessonEditorStore } from './lesson-editor.store';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('LessonEditorStore', () => {
   const getStore = () => TestBed.inject(LessonEditorStore);
@@ -15,7 +15,7 @@ describe('LessonEditorStore', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: API_URL, useValue: '/api/v1' }
+        ...provideApiMocks(),
       ],
     });
     store = getStore();

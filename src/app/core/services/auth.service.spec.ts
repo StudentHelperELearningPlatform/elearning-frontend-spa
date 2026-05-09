@@ -4,6 +4,7 @@ import Keycloak from 'keycloak-js';
 import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType } from 'keycloak-angular';
 import { signal } from '@angular/core';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { provideApiMocks } from '../../../test-utils/api-testing';
 
 /** Minimal Keycloak instance stub */
 const createKeycloakStub = (authenticated = false) => ({
@@ -28,6 +29,7 @@ describe('AuthService', () => {
       providers: [
         { provide: Keycloak, useValue: keycloakStub },
         { provide: KEYCLOAK_EVENT_SIGNAL, useValue: eventSignal },
+        ...provideApiMocks(),
       ],
     });
 
@@ -101,7 +103,7 @@ describe('AuthService', () => {
 
       service.register(payload).subscribe();
 
-      const req = httpMock.expectOne(req => req.url.includes('/api/v1/auth/register'));
+      const req = httpMock.expectOne(req => req.url.includes('/api/auth/register'));
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual(payload);
       req.flush({});
@@ -116,7 +118,7 @@ describe('AuthService', () => {
 
       service.checkEmailAvailability(email).subscribe();
 
-      const req = httpMock.expectOne(req => req.url.includes('/api/v1/auth/check-email'));
+      const req = httpMock.expectOne(req => req.url.includes('/api/auth/check-email'));
       expect(req.request.method).toBe('GET');
       expect(req.request.url).toContain('email=' + encodeURIComponent(email));
       req.flush({ available: true });

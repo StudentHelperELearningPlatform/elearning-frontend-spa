@@ -2,7 +2,7 @@ import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { QuizzesStore } from './quizzes.store';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 import { patchStore } from '../../../../test-utils/patch-store';
 
 interface MockQuizResponse {
@@ -51,7 +51,7 @@ describe('QuizzesStore', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
-        { provide: API_URL, useValue: '/api/v1' }
+        ...provideApiMocks(),
       ],
     });
 

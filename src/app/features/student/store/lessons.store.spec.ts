@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { LessonsStore, Lesson } from './lessons.store';
 import { BackendLesson } from '../../../api/adapters/lesson.adapter';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('LessonsStore', () => {
   const getStore = () => TestBed.inject(LessonsStore);
@@ -45,7 +45,7 @@ describe('LessonsStore', () => {
       providers: [
         provideHttpClient(),
         provideRouter([]),
-        { provide: API_URL, useValue: '/api/v1' }
+        ...provideApiMocks(),
       ],
     });
     store = getStore();

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, effect } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LessonsStore } from '../../store/lessons.store';
 import { AuthStore } from '../../../auth/store/auth.store';
@@ -151,11 +151,11 @@ export class LessonListComponent implements OnInit {
     this.lessonsStore.loadLessons();
   }
 
-  hasAccess(lessonId: string): boolean {
+  hasAccess(_lessonId: string): boolean {
     return true;
   }
 
-  getStatus(lessonId: string): string {
+  getStatus(_lessonId: string): string {
     return 'Not Started';
   }
 }

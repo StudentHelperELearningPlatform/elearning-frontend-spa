@@ -16,6 +16,7 @@ interface JwtPayload {
   email?: string;
   preferred_username?: string;
   realm_access?: { roles: string[] };
+  resource_access?: Record<string, { roles: string[] }>;
 }
 
 function parseJwt(token: string): JwtPayload {
@@ -71,7 +72,7 @@ export class AuthService {
       return user ? user.roles.includes(role) : false;
     });
 
-  register(payload: Record<string, any>): Observable<unknown> {
+  register(payload: Record<string, unknown>): Observable<unknown> {
     const nameParts = (payload['name'] as string || '').split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
@@ -102,7 +103,7 @@ export class AuthService {
       
       // Check both realm-level roles and client-level roles
       const realmRoles = payload.realm_access?.roles ?? [];
-      const clientRoles = (payload as any).resource_access?.['elearning-angular']?.roles ?? [];
+      const clientRoles = payload.resource_access?.['elearning-angular']?.roles ?? [];
       const roles = [...new Set([...realmRoles, ...clientRoles])];
       
       const email = payload.email || payload.preferred_username || '';

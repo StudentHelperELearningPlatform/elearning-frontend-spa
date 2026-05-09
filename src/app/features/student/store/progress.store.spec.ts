@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { API_URL } from '@core/tokens/api.token';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { ProgressStore } from './progress.store';
 import { DashboardData } from '@shared/models/progress.model';
@@ -122,7 +122,7 @@ describe('ProgressStore', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: API_URL, useValue: '/api/v1' }
+        ...provideApiMocks(),
       ],
     });
     store = TestBed.inject(ProgressStore);

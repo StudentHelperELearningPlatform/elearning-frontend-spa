@@ -1,7 +1,6 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, EMPTY } from 'rxjs';
 import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
@@ -116,19 +115,19 @@ export const LessonsStore = signalStore(
 
     loadLessons(): void {
       patchState(store, { loading: true });
-      http.get<any>(`${apiBase}/lessons`).subscribe({
+      http.get<unknown>(`${apiBase}/lessons`).subscribe({
         next: (response) => {
           console.log('[LessonsStore] API Response:', response);
           let data: BackendLesson[] = [];
           
           if (Array.isArray(response)) {
-            data = response;
-          } else if (response && Array.isArray(response.content)) {
-            data = response.content;
-          } else if (response && Array.isArray(response.lessons)) {
-            data = response.lessons;
-          } else if (response && typeof response === 'object' && response.id) {
-            data = [response];
+            data = response as BackendLesson[];
+          } else if (response && Array.isArray((response as any).content)) {
+            data = (response as any).content;
+          } else if (response && Array.isArray((response as any).lessons)) {
+            data = (response as any).lessons;
+          } else if (response && typeof response === 'object' && (response as any).id) {
+            data = [response as BackendLesson];
           }
 
           console.log('[LessonsStore] Parsed data array length:', data.length);
@@ -166,18 +165,18 @@ export const LessonsStore = signalStore(
 
     loadLesson(id: string): void {
       patchState(store, { loading: true, error: null, currentLesson: null });
-      http.get<any>(`${apiBase}/lessons/${id}`)
+      http.get<unknown>(`${apiBase}/lessons/${id}`)
         .subscribe({
           next: (response) => {
             console.log(`[LessonsStore] Single Lesson API Response (${id}):`, response);
             let data = response;
-            if (response && response.lesson) {
-              data = response.lesson;
-            } else if (response && response.content && !Array.isArray(response.content)) {
-              data = response.content;
+            if (response && (response as any).lesson) {
+              data = (response as any).lesson;
+            } else if (response && (response as any).content && !Array.isArray((response as any).content)) {
+              data = (response as any).content;
             }
 
-            const currentLesson = mapLessonResponse(data);
+            const currentLesson = mapLessonResponse(data as any);
             patchState(store, { currentLesson, loading: false });
           },
           error: (err: HttpErrorResponse) => {

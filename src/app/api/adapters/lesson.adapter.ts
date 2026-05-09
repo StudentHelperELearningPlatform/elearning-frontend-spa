@@ -1,4 +1,4 @@
-import { Lesson, Module, Subcapitol } from '../../features/student/store/lessons.store';
+import { Lesson, Module } from '../../features/student/store/lessons.store';
 
 /**
  * Backend-shaped lesson response (subcapitols → blocks).
@@ -8,10 +8,11 @@ import { Lesson, Module, Subcapitol } from '../../features/student/store/lessons
  */
 export interface BackendBlock {
   id: string;
-  blockType: 'TEXT' | 'IMAGE' | 'VIDEO' | 'CODE' | 'LATEX' | 'FILE';
+  blockType: string;
   content?: string | null;
   mediaId?: string | null;
-  orderIndex: number;
+  mediaUrl?: string | null;
+  orderIndex?: number;
   languageTag?: string | null;
   codeLanguage?: string | null;
 }
@@ -24,15 +25,17 @@ export interface BackendSubcapitol {
 }
 
 export interface BackendLesson {
-  id: string;
-  title: string;
-  subject: string;
-  difficultyLevel: string;
-  status: string;
-  estimatedDurationMinutes: number;
+  id: string | number;
+  title?: string;
+  subject?: string;
+  difficultyLevel?: string;
+  grade?: number | string;
+  status?: string;
+  estimatedDurationMinutes?: number;
+  duration?: string;
   shortDescription?: string;
-  authorId: string;
-  subcapitols: BackendSubcapitol[];
+  authorId?: string;
+  subcapitols?: BackendSubcapitol[];
 }
 
 const KNOWN_TYPES: readonly Module['type'][] = [
@@ -54,8 +57,7 @@ const blockToModule = (block: BackendBlock, subTitle: string): Module => ({
   title: subTitle || 'Untitled module',
   type: normaliseModuleType(block.blockType),
   content: block.content || '',
-  // Note: Backend gives mediaId, we might need to resolve it to a URL or use it as is if the player handles it
-  mediaUrl: block.mediaId || undefined,
+  mediaUrl: block.mediaUrl || block.mediaId || undefined,
 });
 
 /**
@@ -76,12 +78,14 @@ export const mapLessonResponse = (backend: BackendLesson): Lesson => {
   const modules = subcapitols.flatMap(s => s.blocks);
 
   return {
-    id: backend.id,
+    id: backend.id?.toString() || '',
     title: backend.title || '',
     subject: backend.subject || '',
-    grade: 0, // Grade not present in Ariana LessonResponse
+    grade: Number(backend.grade) || 0,
     difficulty: backend.difficultyLevel || 'Easy',
-    duration: backend.estimatedDurationMinutes ? `${backend.estimatedDurationMinutes}m` : '',
+    duration: backend.estimatedDurationMinutes 
+      ? `${backend.estimatedDurationMinutes}m` 
+      : (backend.duration || ''),
     status: backend.status || 'Not Started',
     description: backend.shortDescription || '',
     subcapitols,

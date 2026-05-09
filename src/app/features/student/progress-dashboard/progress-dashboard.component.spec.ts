@@ -4,6 +4,7 @@ import { ProgressStore } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { ElementRef, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
+import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
 
 describe('ProgressDashboardComponent (Logic)', () => {
@@ -22,9 +23,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     overallProgressPercent: WritableSignal<number>;
     continueLesson: WritableSignal<unknown>;
   };
-  let authStoreMock: {
-    user: WritableSignal<{ id: string, name: string } | null>;
-  };
+  let authStoreStub: ReturnType<typeof createAuthStoreStub>;
   let routerMock: {
     navigate: ReturnType<typeof vi.fn>;
   };
@@ -52,9 +51,10 @@ describe('ProgressDashboardComponent (Logic)', () => {
       continueLesson: signal(null),
     };
 
-    authStoreMock = {
-      user: signal({ id: '123', name: 'Test User' }),
-    };
+    authStoreStub = createAuthStoreStub({
+      user: { id: '123', name: 'Test User' },
+      isAuthenticated: true
+    });
 
     routerMock = {
       navigate: vi.fn(),
@@ -63,7 +63,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ProgressStore, useValue: progressStoreMock },
-        { provide: AuthStore, useValue: authStoreMock },
+        { provide: AuthStore, useValue: authStoreStub },
         { provide: Router, useValue: routerMock },
       ],
     });
@@ -86,7 +86,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
   });
 
   it('should use fallback studentId "1" if user is not set', () => {
-    authStoreMock.user.set(null);
+    (authStoreStub.user as WritableSignal<any>).set(null);
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });

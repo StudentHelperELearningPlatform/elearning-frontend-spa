@@ -58,7 +58,7 @@ export const AuthStore = signalStore(
         }
         
         const rawRoles = (currentUser.roles || []).map(r => r.toUpperCase());
-        let primaryRole: string = 'STUDENT';
+        let primaryRole = 'STUDENT';
 
         if (rawRoles.includes('ADMIN')) {
           primaryRole = 'ADMIN';

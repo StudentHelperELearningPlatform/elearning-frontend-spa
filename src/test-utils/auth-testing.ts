@@ -63,6 +63,7 @@ export const createAuthStoreStub = (options: AuthServiceStubOptions = {}): any =
     token: () => (isAuthenticated ? 'stub-token' : null),
     role: () => roles[0] ?? null,
     isAuthReady: () => true,
+    isFullyLoaded: () => isAuthenticated,
     error: () => null,
     loading: () => false,
     // eslint-disable-next-line @typescript-eslint/no-empty-function
