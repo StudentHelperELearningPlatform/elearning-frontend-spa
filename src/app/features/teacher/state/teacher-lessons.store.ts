@@ -90,9 +90,9 @@ export const TeacherLessonsStore = signalStore(
         .subscribe({
           next: (res: unknown) => {
             // Handle both array response and paginated { items, total } response
-            const response = res as any;
-            const items: TeacherLesson[] = Array.isArray(response) ? response : (response.items ?? []);
-            const total: number = Array.isArray(response) ? response.length : (response.total ?? response.length ?? 0);
+            const response = res as Record<string, unknown>;
+            const items: TeacherLesson[] = Array.isArray(response) ? response : (response['items'] as TeacherLesson[] ?? []);
+            const total: number = Array.isArray(response) ? response.length : (response['total'] as number ?? (response['items'] as unknown[])?.length ?? 0);
             patchState(store, { items, total, loading: false });
           },
           error: (err: unknown) => {

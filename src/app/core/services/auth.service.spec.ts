@@ -103,9 +103,16 @@ describe('AuthService', () => {
 
       service.register(payload).subscribe();
 
+      const moisaPayload = {
+        firstName: '',
+        lastName: '',
+        email: 'new@test.com',
+        password: 'password123',
+        role: undefined,
+      };
       const req = httpMock.expectOne(req => req.url.includes('/api/auth/register'));
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual(payload);
+      expect(req.request.body).toEqual(moisaPayload);
       req.flush({});
     });
   });

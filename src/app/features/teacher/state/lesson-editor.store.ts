@@ -81,7 +81,7 @@ const toUpdatePayload = (lesson: LessonDraft) => ({
   shortDescription: lesson.short_description,
 });
 
-const mapFromResponse = (saved: Record<string, any>, fallbackModules: LessonModuleDraft[]): LessonDraft => ({
+const mapFromResponse = (saved: Record<string, unknown>, fallbackModules: LessonModuleDraft[]): LessonDraft => ({
   id: saved['id'] as string,
   title: saved['title'] as string,
   subject: saved['subject'] as string,
@@ -90,11 +90,11 @@ const mapFromResponse = (saved: Record<string, any>, fallbackModules: LessonModu
   short_description: (saved['shortDescription'] ?? saved['short_description']) as string,
   status: saved['status'] as LessonStatus,
   // Backend returns subcapitols — map them to frontend modules
-  modules: ((saved['subcapitols'] ?? saved['modules']) as any[])?.map((s: any, idx: number) => ({
-    id: (s.id ?? `module-${idx}`) as string,
-    title: s.title as string,
+  modules: ((saved['subcapitols'] ?? saved['modules']) as Record<string, unknown>[])?.map((s: Record<string, unknown>, idx: number) => ({
+    id: (s['id'] ?? `module-${idx}`) as string,
+    title: s['title'] as string,
     type: 'text' as ModuleType,
-    content: (s.content ?? '') as string,
+    content: (s['content'] ?? '') as string,
   })) ?? fallbackModules,
 });
 
@@ -134,7 +134,7 @@ export const LessonEditorStore = signalStore(
 
       stream$.subscribe({
         next: (saved: unknown) => {
-          const updatedLesson = mapFromResponse(saved as Record<string, any>, lesson.modules);
+          const updatedLesson = mapFromResponse(saved as Record<string, unknown>, lesson.modules);
           patchState(store, { lesson: updatedLesson, saveState: 'saved', lastSavedAt: new Date() });
           onComplete?.(updatedLesson);
         },
@@ -158,7 +158,7 @@ export const LessonEditorStore = signalStore(
         http.get<unknown>(`${apiBase}/lessons/${id}`).subscribe({
           next: (saved) => {
             patchState(store, {
-              lesson: mapFromResponse(saved as Record<string, any>, []),
+              lesson: mapFromResponse(saved as Record<string, unknown>, []),
               loading: false,
               saveState: 'saved',
               lastSavedAt: new Date(),
@@ -233,7 +233,7 @@ export const LessonEditorStore = signalStore(
           patchState(store, { saveState: 'saving', saveError: null });
           http.post<unknown>(`${apiBase}/lessons/${id}/publish`, {}).subscribe({
             next: (published) => {
-              const next = mapFromResponse(published as Record<string, any>, base.modules);
+              const next = mapFromResponse(published as Record<string, unknown>, base.modules);
               patchState(store, { lesson: next, saveState: 'saved', lastSavedAt: new Date() });
               onComplete?.(next);
             },
@@ -259,7 +259,7 @@ export const LessonEditorStore = signalStore(
         patchState(store, { saveState: 'saving', saveError: null });
         http.post<unknown>(`${apiBase}/lessons/${lesson.id}/unpublish`, {}).subscribe({
           next: (updated) => {
-            const next = mapFromResponse(updated as Record<string, any>, lesson.modules);
+            const next = mapFromResponse(updated as Record<string, unknown>, lesson.modules);
             patchState(store, { lesson: next, saveState: 'saved', lastSavedAt: new Date() });
             onComplete?.(next);
           },

@@ -55,6 +55,9 @@ describe('LessonViewerComponent', () => {
     store = TestBed.inject(LessonsStore);
     router = TestBed.inject(Router);
 
+    // Mock loadLesson to avoid resetting state during ngOnInit
+    vi.spyOn(store, 'loadLesson').mockImplementation(() => {});
+    
     patchStore(store, { currentLesson: MOCK_LESSON, loading: false });
 
     fixture = TestBed.createComponent(LessonViewerComponent);

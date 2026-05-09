@@ -122,12 +122,12 @@ export const LessonsStore = signalStore(
           
           if (Array.isArray(response)) {
             data = response as BackendLesson[];
-          } else if (response && Array.isArray((response as any).content)) {
-            data = (response as any).content;
-          } else if (response && Array.isArray((response as any).lessons)) {
-            data = (response as any).lessons;
-          } else if (response && typeof response === 'object' && (response as any).id) {
-            data = [response as BackendLesson];
+          } else if (response && Array.isArray((response as Record<string, unknown>)['content'])) {
+            data = (response as Record<string, unknown>)['content'] as BackendLesson[];
+          } else if (response && Array.isArray((response as Record<string, unknown>)['lessons'])) {
+            data = (response as Record<string, unknown>)['lessons'] as BackendLesson[];
+          } else if (response && typeof response === 'object' && (response as Record<string, unknown>)['id']) {
+            data = [response as unknown as BackendLesson];
           }
 
           console.log('[LessonsStore] Parsed data array length:', data.length);
@@ -170,24 +170,30 @@ export const LessonsStore = signalStore(
           next: (response) => {
             console.log(`[LessonsStore] Single Lesson API Response (${id}):`, response);
             let data = response;
-            if (response && (response as any).lesson) {
-              data = (response as any).lesson;
-            } else if (response && (response as any).content && !Array.isArray((response as any).content)) {
-              data = (response as any).content;
+            if (response && (response as Record<string, unknown>)['lesson']) {
+              data = (response as Record<string, unknown>)['lesson'];
+            } else if (response && (response as Record<string, unknown>)['content'] && !Array.isArray((response as Record<string, unknown>)['content'])) {
+              data = (response as Record<string, unknown>)['content'];
             }
 
-            const currentLesson = mapLessonResponse(data as any);
+            const currentLesson = mapLessonResponse(data as unknown as BackendLesson);
             patchState(store, { currentLesson, loading: false });
           },
           error: (err: HttpErrorResponse) => {
             console.error(`[LessonsStore] Failed to load lesson ${id}:`, err);
             let kind: LessonLoadError['kind'] = 'unknown';
-            if (err.status === 404) kind = 'not-found';
-            else if (err.status >= 500) kind = 'server';
+            let message = 'Unknown error';
+            if (err.status === 404) {
+              kind = 'not-found';
+              message = 'Lesson not found';
+            } else if (err.status >= 500) {
+              kind = 'server';
+              message = 'Server error';
+            }
             
             patchState(store, { 
               loading: false, 
-              error: { kind, message: err.message || 'Unknown error' } 
+              error: { kind, message } 
             });
           },
         });

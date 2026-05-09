@@ -117,10 +117,10 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <span class="text-green-600">COMPLETED</span>
               } @else {
                 <span [ngClass]="{
-                  'text-[#0ABAB5]': getStatus(lesson.id) === 'In Progress',
-                  'text-gray-400': getStatus(lesson.id) === 'Not Started'
+                  'text-[#0ABAB5]': lesson.status === 'In Progress',
+                  'text-gray-400': lesson.status === 'Not Started'
                 }">
-                  {{ getStatus(lesson.id) }}
+                  {{ lesson.status }}
                 </span>
               }
             </span>
@@ -133,7 +133,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               @if (type === 'history') {
                 Review
               } @else {
-                {{ getStatus(lesson.id) === 'In Progress' ? 'Continue' : 'Start' }}
+                {{ lesson.status === 'In Progress' ? 'Continue' : 'Start' }}
               }
             </app-button>
           </div>
@@ -151,11 +151,11 @@ export class LessonListComponent implements OnInit {
     this.lessonsStore.loadLessons();
   }
 
-  hasAccess(_lessonId: string): boolean {
+  hasAccess(): boolean {
     return true;
   }
 
-  getStatus(_lessonId: string): string {
+  getStatus(): string {
     return 'Not Started';
   }
 }

@@ -4,8 +4,7 @@ import { patchState } from '@ngrx/signals';
 import { QuizzesStore } from '../store/quizzes.store';
 import { quizCanDeactivate } from './quiz.can-deactivate.guard';
 import { QuizPlayerComponent } from './quiz-player.component';
-import { API_URL } from '@core/tokens/api.token';
-import { provideHttpClient } from '@angular/common/http';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('quizCanDeactivate', () => {
   const runGuard = () =>
@@ -23,7 +22,7 @@ describe('quizCanDeactivate', () => {
       providers: [
         provideRouter([]),
         provideHttpClient(),
-        { provide: API_URL, useValue: '/api/v1' }
+        provideApiMocks(),
       ],
     });
 

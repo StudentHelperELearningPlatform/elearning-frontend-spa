@@ -79,7 +79,7 @@ export const ContentStore = signalStore(
     contentApi = inject(CONTENT_API_URL),
     userApi = inject(USER_PLATFORM_API_URL),
   ) => ({
-    loadDashboard(_teacherId: string) {
+    loadDashboard() {
       patchState(store, { loading: true, error: null });
 
       // Fetch lessons from ARIANA (content service) and classes from MOISA (user platform)
@@ -93,12 +93,21 @@ export const ContentStore = signalStore(
         ),
       }).subscribe({
         next: ({ lessons, profile }) => {
-          const mappedLessons: ContentItem[] = (lessons as any[]).map((l: any) => ({
-            id: l.id,
-            title: l.title,
-            subject: l.subject,
-            status: l.status ?? 'DRAFT',
-            lastModified: new Date(l.updatedAt || l.lastModified || Date.now()),
+          let rawLessons: Record<string, unknown>[] = [];
+          if (Array.isArray(lessons)) {
+            rawLessons = lessons as Record<string, unknown>[];
+          } else if (lessons && Array.isArray((lessons as Record<string, unknown>)['content'])) {
+            rawLessons = (lessons as Record<string, unknown>)['content'] as Record<string, unknown>[];
+          } else if (lessons && Array.isArray((lessons as Record<string, unknown>)['lessons'])) {
+            rawLessons = (lessons as Record<string, unknown>)['lessons'] as Record<string, unknown>[];
+          }
+
+          const mappedLessons: ContentItem[] = rawLessons.map((l: Record<string, unknown>) => ({
+            id: l['id'] as string,
+            title: l['title'] as string,
+            subject: l['subject'] as string,
+            status: l['status'] as ContentStatus ?? 'DRAFT',
+            lastModified: new Date((l['updatedAt'] || l['lastModified'] || Date.now()) as string | number | Date),
           }));
 
           // Build recent activity from lessons sorted by lastModified
@@ -116,7 +125,7 @@ export const ContentStore = signalStore(
           patchState(store, {
             lessons: mappedLessons,
             recentActivity,
-            classes: (profile as any)?.['classes'] ?? [],
+            classes: (profile as Record<string, unknown>)?.['classes'] as TeacherClassSummary[] ?? [],
             loading: false,
             error: null,
           });

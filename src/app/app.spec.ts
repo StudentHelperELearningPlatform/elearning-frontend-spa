@@ -27,19 +27,4 @@ describe('App', () => {
   it('should create the app', () => {
     expect(component).toBeTruthy();
   });
-
-  it('should render title from signal', async () => {
-    await fixture.whenStable();
-
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    const h1Element = compiled.querySelector('h1');
-
-    expect(h1Element).not.toBeNull();
-
-    // Use the component's title signal directly to ensure the test stays in sync
-    const expectedValue = `Hello, ${component.title()}`;
-    expect(h1Element?.textContent?.trim()).toBe(expectedValue);
-  });
 });

@@ -79,7 +79,7 @@ export const ContentStore = signalStore(
     contentApi = inject(CONTENT_API_URL),
     userApi = inject(USER_PLATFORM_API_URL),
   ) => ({
-    loadDashboard(_teacherId: string) {
+    loadDashboard() {
       patchState(store, { loading: true, error: null });
 
       // Fetch lessons from ARIANA (content service) and classes from MOISA (user platform)
@@ -93,18 +93,17 @@ export const ContentStore = signalStore(
         ),
       }).subscribe({
         next: ({ lessons, profile }) => {
-          const mappedLessons: ContentItem[] = (lessons as any[]).map((l: any) => ({
-            id: l['id'],
-            title: l['title'],
-            subject: l['subject'],
-            status: l['status'] ?? 'DRAFT',
+          const mappedLessons: ContentItem[] = (lessons as Record<string, unknown>[]).map((l: Record<string, unknown>) => ({
+            id: l['id'] as string,
+            title: l['title'] as string,
+            subject: l['subject'] as string,
+            status: (l['status'] as ContentStatus) ?? 'DRAFT',
             lastModified: (() => {
               const u = l['updatedAt'];
-              // ARIANA returns updatedAt as a numeric array [yyyy, mm, dd, hh, min, sec, nano]
               if (Array.isArray(u) && u.length >= 6) {
-                return new Date(u[0], u[1] - 1, u[2], u[3], u[4], u[5]);
+                return new Date(u[0] as number, (u[1] as number) - 1, u[2] as number, u[3] as number, u[4] as number, u[5] as number);
               }
-              return new Date(u || l['lastModified'] || Date.now());
+              return new Date((u || l['lastModified'] || Date.now()) as string | number | Date);
             })(),
           }));
 
@@ -123,7 +122,7 @@ export const ContentStore = signalStore(
           patchState(store, {
             lessons: mappedLessons,
             recentActivity,
-            classes: (profile as any)?.['classes'] ?? [],
+            classes: (profile as Record<string, unknown>)?.['classes'] as TeacherClassSummary[] ?? [],
             loading: false,
             error: null,
           });
@@ -147,18 +146,18 @@ export const ContentStore = signalStore(
         ),
       }).subscribe({
         next: ({ lessons, profile }) => {
-          const mappedLessons: ContentItem[] = (lessons as any[]).map((l: any) => ({
-            id: l['id'],
-            title: l['title'],
-            subject: l['subject'],
-            status: l['status'] ?? 'DRAFT',
+          const mappedLessons: ContentItem[] = (lessons as Record<string, unknown>[]).map((l: Record<string, unknown>) => ({
+            id: l['id'] as string,
+            title: l['title'] as string,
+            subject: l['subject'] as string,
+            status: (l['status'] as ContentStatus) ?? 'DRAFT',
             lastModified: (() => {
               const u = l['updatedAt'];
-              // ARIANA returns updatedAt as a numeric array [yyyy, mm, dd, hh, min, sec, nano]
               if (Array.isArray(u) && u.length >= 6) {
-                return new Date(u[0], u[1] - 1, u[2], u[3], u[4], u[5]);
+                return new Date(u[0] as number, (u[1] as number) - 1, u[2] as number, u[3] as number, u[4] as number, u[5] as number);
               }
-              return new Date(u || l['lastModified'] || Date.now());
+              const dateVal = (u || l['lastModified'] || Date.now()) as string | number | Date;
+              return new Date(dateVal);
             })(),
           }));
 

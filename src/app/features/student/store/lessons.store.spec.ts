@@ -91,16 +91,13 @@ describe('LessonsStore', () => {
 
   // ─── loadLessons (legacy timer flow) ─────────────────────────────────────
   it('loadLessons sets loading to true immediately', () => {
-    vi.useFakeTimers();
     store.loadLessons();
     expect(store.loading()).toBe(true);
-    vi.runAllTimers();
   });
 
-  it('loadLessons clears loading after the timer fires', () => {
-    vi.useFakeTimers();
+  it('loadLessons clears loading after success', () => {
+    vi.spyOn(http, 'get').mockReturnValue(of([]));
     store.loadLessons();
-    vi.advanceTimersByTime(500);
     expect(store.loading()).toBe(false);
   });
 
@@ -140,7 +137,8 @@ describe('LessonsStore', () => {
       throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' })),
     );
     store.loadLesson('1');
-    expect(store.error()?.kind).toBe('server');
+    expect(store.error()).toEqual({ kind: 'server', message: 'Server error' });
+    expect(store.loading()).toBe(false);
   });
 
   it('loadLesson clears previous lesson and error before fetching', () => {

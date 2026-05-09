@@ -52,27 +52,35 @@ export const createAuthServiceStub = (options: AuthServiceStubOptions = {}): any
  * Use as: `{ provide: AuthStore, useValue: createAuthStoreStub() }`
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createAuthStoreStub = (options: AuthServiceStubOptions = {}): any => {
-  const { isAuthenticated = false, roles = [], email = null } = options;
+export const createAuthStoreStub = (options: any = {}): any => {
+  const { 
+    isAuthenticated = false, 
+    roles = [], 
+    email = null,
+    user = null 
+  } = options;
+
+  const _user = signal(user || (email ? { email, roles } : null));
+  const _token = signal(isAuthenticated ? 'stub-token' : null);
+  const _role = signal(roles[0] ?? null);
+  const _loading = signal(false);
+  const _error = signal<string | null>(null);
+
   return {
-    isAuthenticated: () => isAuthenticated,
-    isStudent: () => roles.includes('STUDENT'),
-    isTeacher: () => roles.includes('TEACHER'),
-    isAdmin: () => roles.includes('ADMIN'),
-    user: () => (email ? { email, roles } : null),
-    token: () => (isAuthenticated ? 'stub-token' : null),
-    role: () => roles[0] ?? null,
-    isAuthReady: () => true,
-    isFullyLoaded: () => isAuthenticated,
-    error: () => null,
-    loading: () => false,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    user: _user,
+    token: _token,
+    role: _role,
+    loading: _loading,
+    error: _error,
+    isAuthenticated: computed(() => !!_token()),
+    isStudent: computed(() => _role() === 'STUDENT'),
+    isTeacher: computed(() => _role() === 'TEACHER' || _role() === 'PROFESSOR'),
+    isAdmin: computed(() => _role() === 'ADMIN'),
+    isAuthReady: signal(true),
+    isFullyLoaded: signal(true),
     login: () => {},
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     logout: () => {},
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     init: () => {},
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     updateProfile: () => {},
   };
 };

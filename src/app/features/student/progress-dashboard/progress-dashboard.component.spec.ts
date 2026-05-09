@@ -65,6 +65,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
         { provide: ProgressStore, useValue: progressStoreMock },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: Router, useValue: routerMock },
+        ...provideApiMocks(),
       ],
     });
 
@@ -86,7 +87,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
   });
 
   it('should use fallback studentId "1" if user is not set', () => {
-    (authStoreStub.user as WritableSignal<any>).set(null);
+    (authStoreStub.user as WritableSignal<{ id: string, name: string } | null>).set(null);
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });

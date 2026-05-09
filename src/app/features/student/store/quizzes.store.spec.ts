@@ -74,7 +74,7 @@ describe('QuizzesStore', () => {
     const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_QUIZ));
     store.loadQuizById('q1');
     
-    expect(spy).toHaveBeenCalledWith('/api/v1/quizzes/q1');
+    expect(spy).toHaveBeenCalledWith('/api/v1/lessons/q1/final-quiz');
     expect(store.currentQuiz()?.id).toBe('q1');
     expect(store.loading()).toBe(false);
   });
@@ -144,7 +144,7 @@ describe('QuizzesStore', () => {
     
     store.submitQuiz();
     
-    expect(spy).toHaveBeenCalledWith('/api/v1/quizzes/q1/submit', {
+    expect(spy).toHaveBeenCalledWith('/api/v1/lessons/q1/final-quiz/submit', {
       answers: { 'q1-q1': '2', 'q1-q2': 'true' }
     });
     expect(store.submitted()).toBe(true);

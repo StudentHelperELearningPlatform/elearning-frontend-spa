@@ -107,6 +107,7 @@ interface QuizzesState {
   resultDetail: QuizResultDetail | null;
   resultDetailLoading: boolean;
   resultDetailError: string | null;
+  error: string | null;
 }
 
 export const QuizzesStore = signalStore(
@@ -125,6 +126,7 @@ export const QuizzesStore = signalStore(
     resultDetail: null,
     resultDetailLoading: false,
     resultDetailError: null,
+    error: null,
   }),
 
   withComputed((state) => ({
@@ -308,7 +310,7 @@ export const QuizzesStore = signalStore(
 
       submitCheckQuiz(subcapitolId: string) {
         if (store.submitted()) return;
-        patchState(store, { submitted: true });
+        patchState(store, { submitted: true, error: null });
 
         http.post<SubmitQuizResponse>(
           `${apiBase}/subcapitols/${subcapitolId}/check-quiz/submit`,
@@ -326,11 +328,15 @@ export const QuizzesStore = signalStore(
               },
             });
           },
+          error: (err) => {
+            console.error('[QuizzesStore] Failed to submit check quiz:', err);
+            patchState(store, { error: err.message || 'Failed to submit quiz' });
+          }
         });
       },
 
       loadFinalQuiz(lessonId: string) {
-        patchState(store, { loading: true });
+        patchState(store, { loading: true, error: null });
         http.get<QuizApiResponse>(`${apiBase}/lessons/${lessonId}/final-quiz`).subscribe({
           next: (quiz) => {
             patchState(store, {
@@ -343,7 +349,13 @@ export const QuizzesStore = signalStore(
               result: null,
             });
           },
-          error: () => patchState(store, { loading: false }),
+          error: (err) => {
+            console.error('[QuizzesStore] Failed to load final quiz:', err);
+            patchState(store, { 
+              loading: false, 
+              error: (err as any)?.message || 'Failed to load quiz' 
+            });
+          },
         });
       },
 
