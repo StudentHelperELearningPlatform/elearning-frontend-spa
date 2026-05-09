@@ -1,7 +1,7 @@
 export const environment = {
   production: true,
   quizApiUrl: 'https://quiz-api.example.com',
-  learningPathApiUrl: 'https://content-api.example.com',
+  lessonApiUrl: 'https://content-api.example.com',
   userPlatformApiUrl: 'https://platform-api.example.com',
 
   keycloak: {

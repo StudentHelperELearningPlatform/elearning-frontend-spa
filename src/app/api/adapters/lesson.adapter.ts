@@ -83,6 +83,7 @@ export const mapLessonResponse = (backend: BackendLesson): Lesson => {
     difficulty: backend.difficultyLevel || 'Easy',
     duration: backend.estimatedDurationMinutes ? `${backend.estimatedDurationMinutes}m` : '',
     status: backend.status || 'Not Started',
+    description: backend.shortDescription || '',
     subcapitols,
     modules,
   };

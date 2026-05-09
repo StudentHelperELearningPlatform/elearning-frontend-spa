@@ -184,8 +184,11 @@ export const QuizzesStore = signalStore(
 
       patchState(store, { submitted: true });
 
+      // Note: Generic quiz submission is deprecated in backend. 
+      // This should ideally call submitCheckQuiz or submitFinalQuiz.
+      // We fall back to lessons final-quiz if unsure.
       http.post<SubmitQuizResponse>(
-        `${apiBase}/quizzes/${quizId}/submit`,
+        `${apiBase}/lessons/${quizId}/final-quiz/submit`,
         { answers: store.answers() }
       ).subscribe({
         next: (res) => {
@@ -209,8 +212,9 @@ export const QuizzesStore = signalStore(
         resultDetailError: null,
       });
 
+      // Try lesson results first as it's the most common
       http.get<QuizResultDetail>(
-        `${apiBase}/quizzes/${quizId}/results/${attemptId}`
+        `${apiBase}/lessons/${quizId}/final-quiz/results/${attemptId}`
       ).subscribe({
         next: (data) => {
           patchState(store, {
@@ -239,7 +243,8 @@ export const QuizzesStore = signalStore(
       loadQuizById(id: string) {
         patchState(store, { loading: true });
  
-        http.get<QuizApiResponse>(`${apiBase}/quizzes/${id}`).subscribe({
+        // Default to loading as a final quiz for now
+        http.get<QuizApiResponse>(`${apiBase}/lessons/${id}/final-quiz`).subscribe({
           next: (quiz) => {
             patchState(store, {
               loading: false,
@@ -258,7 +263,7 @@ export const QuizzesStore = signalStore(
       startQuiz(id: string) {
         patchState(store, { loading: true });
  
-        http.get<QuizApiResponse>(`${apiBase}/quizzes/${id}`).subscribe({
+        http.get<QuizApiResponse>(`${apiBase}/lessons/${id}/final-quiz`).subscribe({
           next: (quiz) => {
             const mapped = mapQuizResponse(quiz);
 

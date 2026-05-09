@@ -3,7 +3,7 @@ import { computed, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize, map } from 'rxjs/operators';
-import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
+import { CONTENT_API_URL } from '@core/tokens/api.token'; // FIX: was USER_PLATFORM_API_URL — lessons belong to ARIANA's content service
 
 export type TeacherLessonStatus = 'PUBLISHED' | 'DRAFT' | 'ARCHIVED';
 
@@ -53,13 +53,6 @@ const initialState: TeacherLessonsState = {
   sort: { field: 'lastModified', order: 'desc' },
 };
 
-interface ListResponse {
-  items: TeacherLesson[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
 export const TeacherLessonsStore = signalStore(
   { providedIn: 'root' },
   withState<TeacherLessonsState>(initialState),
@@ -73,7 +66,7 @@ export const TeacherLessonsStore = signalStore(
     ),
     pageCount: computed(() => Math.max(1, Math.ceil(state.total() / state.pageSize()))),
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(CONTENT_API_URL)) => {
     const buildParams = (): HttpParams => {
       const f = store.filters();
       const s = store.sort();
@@ -91,15 +84,16 @@ export const TeacherLessonsStore = signalStore(
 
     const fetchList = () => {
       patchState(store, { loading: true, error: null });
+      // FIX: was /teachers/lessons (MOISA path) — correct path is /lessons on ARIANA
       http
-        .get<TeacherLesson[]>(`${apiBase}/teachers/lessons`, { params: buildParams() })
+        .get<any>(`${apiBase}/lessons`, { params: buildParams() })
         .subscribe({
-          next: (res) =>
-            patchState(store, {
-              items: res,
-              total: res.length,
-              loading: false,
-            }),
+          next: (res) => {
+            // Handle both array response and paginated { items, total } response
+            const items: TeacherLesson[] = Array.isArray(res) ? res : (res.items ?? []);
+            const total: number = Array.isArray(res) ? res.length : (res.total ?? res.length ?? 0);
+            patchState(store, { items, total, loading: false });
+          },
           error: (err: unknown) => {
             const msg = err instanceof Error ? err.message : 'Failed to load lessons';
             patchState(store, { loading: false, error: msg });
@@ -153,45 +147,38 @@ export const TeacherLessonsStore = signalStore(
       clearSelection() {
         patchState(store, { selectedIds: [] });
       },
+      // FIX: was calling /teachers/lessons/:id/publish — correct path is /lessons/:id/publish on ARIANA
       publish(id: string) {
         patchState(store, { loading: true });
-        http
-          .post<TeacherLesson>(`${apiBase}/teachers/lessons/${id}/publish`, {})
-          .subscribe({
-            next: () => fetchList(),
-            error: () => patchState(store, { loading: false }),
-          });
+        http.post<TeacherLesson>(`${apiBase}/lessons/${id}/publish`, {}).subscribe({
+          next: () => fetchList(),
+          error: () => patchState(store, { loading: false }),
+        });
       },
       archive(id: string) {
         patchState(store, { loading: true });
-        http
-          .post<TeacherLesson>(`${apiBase}/teachers/lessons/${id}/archive`, {})
-          .subscribe({
-            next: () => fetchList(),
-            error: () => patchState(store, { loading: false }),
-          });
+        http.post<TeacherLesson>(`${apiBase}/lessons/${id}/archive`, {}).subscribe({
+          next: () => fetchList(),
+          error: () => patchState(store, { loading: false }),
+        });
       },
       unpublish(id: string) {
         patchState(store, { loading: true });
-        http
-          .post<TeacherLesson>(`${apiBase}/teachers/lessons/${id}/unpublish`, {})
-          .subscribe({
-            next: () => fetchList(),
-            error: () => patchState(store, { loading: false }),
-          });
+        http.post<TeacherLesson>(`${apiBase}/lessons/${id}/unpublish`, {}).subscribe({
+          next: () => fetchList(),
+          error: () => patchState(store, { loading: false }),
+        });
       },
       duplicate(id: string) {
         patchState(store, { loading: true });
-        http
-          .post<TeacherLesson>(`${apiBase}/teachers/lessons/${id}/duplicate`, {})
-          .subscribe({
-            next: () => fetchList(),
-            error: () => patchState(store, { loading: false }),
-          });
+        http.post<TeacherLesson>(`${apiBase}/lessons/${id}/duplicate`, {}).subscribe({
+          next: () => fetchList(),
+          error: () => patchState(store, { loading: false }),
+        });
       },
       remove(id: string) {
         patchState(store, { loading: true });
-        http.delete(`${apiBase}/teachers/lessons/${id}`).subscribe({
+        http.delete(`${apiBase}/lessons/${id}`).subscribe({
           next: () => {
             patchState(store, (s) => ({
               selectedIds: s.selectedIds.filter((x) => x !== id),
@@ -206,12 +193,12 @@ export const TeacherLessonsStore = signalStore(
         if (ids.length === 0) return;
         const operation = (id: string) => {
           if (action === 'publish') {
-            return http.post(`${apiBase}/teachers/lessons/${id}/publish`, {}).pipe(catchError(() => of(null)));
+            return http.post(`${apiBase}/lessons/${id}/publish`, {}).pipe(catchError(() => of(null)));
           }
           if (action === 'archive') {
-            return http.post(`${apiBase}/teachers/lessons/${id}/archive`, {}).pipe(catchError(() => of(null)));
+            return http.post(`${apiBase}/lessons/${id}/archive`, {}).pipe(catchError(() => of(null)));
           }
-          return http.delete(`${apiBase}/teachers/lessons/${id}`).pipe(catchError(() => of(null)));
+          return http.delete(`${apiBase}/lessons/${id}`).pipe(catchError(() => of(null)));
         };
 
         patchState(store, { loading: true });

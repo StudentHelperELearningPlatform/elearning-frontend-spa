@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LessonsStore, Subcapitol, Module } from '../store/lessons.store';
+import { AuthStore } from '../../auth/store/auth.store';
 import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
 
@@ -159,54 +160,71 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
         </div>
         
         <!-- Bottom Navigation Bar -->
-        <div class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)]">
-          <app-button 
-            variant="secondary" 
-            icon="arrow_back" 
-            [disabled]="currentModuleIndex() === 0"
-            (btnClick)="previousModule()">
-            Previous
-          </app-button>
-          
-          <div class="hidden md:flex items-center space-x-2">
-            @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
-              <div class="w-3 h-3 rounded-full border-2 border-black transition-colors"
-                   [ngClass]="{'bg-[#0ABAB5]': idx <= currentModuleIndex(), 'bg-gray-200': idx > currentModuleIndex()}">
-              </div>
+        @if (hasAccess()) {
+          <div class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)]">
+            <app-button 
+              variant="secondary" 
+              icon="arrow_back" 
+              [disabled]="currentModuleIndex() === 0"
+              (btnClick)="previousModule()">
+              Previous
+            </app-button>
+            
+            <div class="hidden md:flex items-center space-x-2">
+              @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
+                <div class="w-3 h-3 rounded-full border-2 border-black transition-colors"
+                     [ngClass]="{'bg-[#0ABAB5]': idx <= currentModuleIndex(), 'bg-gray-200': idx > currentModuleIndex()}">
+                </div>
+              }
+            </div>
+
+            @if (currentModuleIndex() < (store.currentLesson()?.modules?.length || 0) - 1) {
+              <app-button 
+                variant="primary" 
+                icon="arrow_forward" 
+                iconPosition="right"
+                (btnClick)="nextModule()">
+                Next Module
+              </app-button>
+            } @else {
+              <app-button 
+                variant="primary" 
+                icon="check_circle" 
+                iconPosition="right"
+                (btnClick)="finishLesson()">
+                Finish Lesson
+              </app-button>
             }
           </div>
-
-          @if (currentModuleIndex() < (store.currentLesson()?.modules?.length || 0) - 1) {
-            <app-button 
-              variant="primary" 
-              icon="arrow_forward" 
-              iconPosition="right"
-              (btnClick)="nextModule()">
-              Next Module
-            </app-button>
-          } @else {
-            <app-button 
-              variant="primary" 
-              icon="check_circle" 
-              iconPosition="right"
-              (btnClick)="finishLesson()">
-              Finish Lesson
-            </app-button>
-          }
-        </div>
+        }
       </div>
     </div>
   `
 })
+
 export class LessonViewerComponent implements OnInit {
   store = inject(LessonsStore);
+  authStore = inject(AuthStore);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
   currentModuleIndex = signal(0);
 
+  hasAccess = computed(() => {
+    // Always return true to disable restricted mode as per user request
+    return true;
+  });
+
   ngOnInit() {
     this.reloadLesson();
+  }
+
+  unlockLesson() {
+    const studentId = this.authStore.user()?.id;
+    const lessonId = this.store.currentLesson()?.id;
+    if (studentId && lessonId) {
+      this.store.checkout(studentId, lessonId);
+    }
   }
 
   reloadLesson() {
@@ -254,7 +272,7 @@ export class LessonViewerComponent implements OnInit {
     if (!lesson) return -1;
     
     let index = 0;
-    for (const s of lesson.subcapitols) {
+    for (const s of lesson.subcapitols ?? []) {
       if (s.id === sub.id) {
         const moduleIdx = s.blocks.findIndex(b => b.id === module.id);
         return index + moduleIdx;

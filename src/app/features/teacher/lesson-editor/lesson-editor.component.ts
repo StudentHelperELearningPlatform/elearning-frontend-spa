@@ -305,10 +305,9 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
+    this.store.reset(); // always clear stale state before loading; prevents 409 on re-navigation
     if (id) {
       this.store.loadLesson(id);
-    } else {
-      this.store.reset();
     }
 
     // Sync form -> store

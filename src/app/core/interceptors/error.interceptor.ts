@@ -13,13 +13,15 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error) => {
       if (error.status === 401) {
-        // Only logout if it's a genuine auth failure, not a transient error
+        // Genuine auth failure — token missing or expired
         authStore.logout();
         router.navigate(['/auth/login']);
-      } else if (error.status === 403) {
-        // Access Denied - don't logout, just inform the user or redirect to unauthorized
-        router.navigate(['/unauthorized']);
       }
+      // NOTE: 403 is intentionally NOT redirected to /unauthorized here.
+      // A 403 means "authenticated but not permitted for this specific resource",
+      // which is often a bad request (e.g. wrong classId) rather than a session
+      // problem. Let individual components/stores handle 403s gracefully instead
+      // of blowing up the entire session with a redirect.
 
       const errorMessage = error.error?.message || error.statusText;
       notificationService.error(errorMessage);

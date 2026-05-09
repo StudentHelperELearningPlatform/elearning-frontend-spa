@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
+import { USER_PLATFORM_API_URL, AUTH_API_URL } from '@core/tokens/api.token';
 import Keycloak from 'keycloak-js';
 
 export interface User {
@@ -33,6 +33,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly keycloak = inject(Keycloak);
   private readonly userPlatformApi = inject(USER_PLATFORM_API_URL);
+  private readonly authApi = inject(AUTH_API_URL);
 
   private _currentUser = signal<User | null>(null);
 
@@ -83,15 +84,12 @@ export class AuthService {
       role: payload['role'] === 'TEACHER' ? 'PROFESSOR' : payload['role'],
     };
 
-    const baseUrl = this.userPlatformApi.replace('/v1', '');
-    return this.http.post(`${baseUrl}/auth/register`, moisaPayload);
+    return this.http.post(`${this.authApi}/register`, moisaPayload);
   }
 
   checkEmailAvailability(email: string): Observable<{ available: boolean }> {
-    // Gateway AuthController is at /api/auth, not /api/v1/auth
-    const baseUrl = this.userPlatformApi.replace('/v1', '');
     return this.http.get<{ available: boolean }>(
-      `${baseUrl}/auth/check-email?email=` + encodeURIComponent(email)
+      `${this.authApi}/check-email?email=` + encodeURIComponent(email)
     );
   }
 

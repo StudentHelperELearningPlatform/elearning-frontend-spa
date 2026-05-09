@@ -1,7 +1,6 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
 import { CONTENT_API_URL } from '@core/tokens/api.token';
 
 export type ModuleType = 'text' | 'video' | 'image' | 'audio' | 'quiz' | 'interactive';
@@ -58,6 +57,47 @@ const initialState: LessonEditorState = {
 const isPersisted = (lesson: LessonDraft): lesson is LessonDraft & { id: string } =>
   typeof lesson.id === 'string' && lesson.id.length > 0;
 
+// POST payload — matches ARIANA's CreateLessonRequest exactly
+// Requires: title, subject, difficultyLevel, subcapitols (@NotEmpty — at least one)
+const toCreatePayload = (lesson: LessonDraft) => ({
+  title: lesson.title,
+  subject: lesson.subject,
+  difficultyLevel: lesson.difficulty_level,
+  estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
+  shortDescription: lesson.short_description,
+  subcapitols: lesson.modules.length > 0
+    ? lesson.modules.map((m, idx) => ({ title: m.title, orderIndex: idx + 1 }))
+    : [{ title: 'Introduction', orderIndex: 1 }], // satisfy @NotEmpty validation
+});
+
+// PUT payload — matches ARIANA's UpdateLessonRequest exactly
+// All fields optional. NO subcapitols (managed via separate subcapitol endpoints).
+// NO status (changed only via /publish and /unpublish endpoints).
+const toUpdatePayload = (lesson: LessonDraft) => ({
+  title: lesson.title,
+  subject: lesson.subject,
+  difficultyLevel: lesson.difficulty_level,
+  estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
+  shortDescription: lesson.short_description,
+});
+
+const mapFromResponse = (saved: any, fallbackModules: LessonModuleDraft[]): LessonDraft => ({
+  id: saved.id,
+  title: saved.title,
+  subject: saved.subject,
+  difficulty_level: saved.difficultyLevel ?? saved.difficulty_level,
+  estimated_duration_minutes: saved.estimatedDurationMinutes ?? saved.estimated_duration_minutes,
+  short_description: saved.shortDescription ?? saved.short_description,
+  status: saved.status,
+  // Backend returns subcapitols — map them to frontend modules
+  modules: (saved.subcapitols ?? saved.modules)?.map((s: any, idx: number) => ({
+    id: s.id ?? `module-${idx}`,
+    title: s.title,
+    type: 'text' as ModuleType,
+    content: s.content ?? '',
+  })) ?? fallbackModules,
+});
+
 export const LessonEditorStore = signalStore(
   { providedIn: 'root' },
   withState<LessonEditorState>(initialState),
@@ -78,45 +118,24 @@ export const LessonEditorStore = signalStore(
 
     const persist = (lesson: LessonDraft, onComplete?: (saved: LessonDraft) => void): void => {
       patchState(store, { saveState: 'saving', saveError: null });
+
       const url = isPersisted(lesson)
         ? `${apiBase}/lessons/${lesson.id}`
         : `${apiBase}/lessons`;
 
-      // Map frontend model to Ariana's expected CreateLessonRequest/UpdateLessonRequest (camelCase)
-      const payload = {
-        title: lesson.title,
-        subject: lesson.subject,
-        difficultyLevel: lesson.difficulty_level,
-        estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
-        shortDescription: lesson.short_description,
-        subcapitols: lesson.modules.map((m, idx) => ({
-          title: m.title,
-          orderIndex: idx + 1
-        }))
-      };
+      // Separate payloads for create vs update — the DTOs have different shapes
+      const payload = isPersisted(lesson)
+        ? toUpdatePayload(lesson)
+        : toCreatePayload(lesson);
 
       const stream$ = isPersisted(lesson)
         ? http.put<any>(url, payload)
         : http.post<any>(url, payload);
+
       stream$.subscribe({
         next: (saved: any) => {
-          // Map backend response back to frontend model (handles both camelCase and snake_case)
-          const updatedLesson: LessonDraft = {
-            id: saved.id,
-            title: saved.title,
-            subject: saved.subject,
-            difficulty_level: saved.difficultyLevel || saved.difficulty_level,
-            estimated_duration_minutes: saved.estimatedDurationMinutes || saved.estimated_duration_minutes,
-            short_description: saved.shortDescription || saved.short_description,
-            status: saved.status,
-            modules: lesson.modules 
-          };
-
-          patchState(store, {
-            lesson: updatedLesson,
-            saveState: 'saved',
-            lastSavedAt: new Date(),
-          });
+          const updatedLesson = mapFromResponse(saved, lesson.modules);
+          patchState(store, { lesson: updatedLesson, saveState: 'saved', lastSavedAt: new Date() });
           onComplete?.(updatedLesson);
         },
         error: (err: unknown) => {
@@ -139,16 +158,7 @@ export const LessonEditorStore = signalStore(
         http.get<any>(`${apiBase}/lessons/${id}`).subscribe({
           next: (saved) => {
             patchState(store, {
-              lesson: {
-                id: saved.id,
-                title: saved.title,
-                subject: saved.subject,
-                difficulty_level: saved.difficultyLevel || saved.difficulty_level,
-                estimated_duration_minutes: saved.estimatedDurationMinutes || saved.estimated_duration_minutes,
-                short_description: saved.shortDescription || saved.short_description,
-                status: saved.status,
-                modules: saved.modules ?? []
-              },
+              lesson: mapFromResponse(saved, []),
               loading: false,
               saveState: 'saved',
               lastSavedAt: new Date(),
@@ -161,7 +171,9 @@ export const LessonEditorStore = signalStore(
         });
       },
 
-      updateMetadata(patch: Partial<Pick<LessonDraft, 'title' | 'subject' | 'difficulty_level' | 'estimated_duration_minutes' | 'short_description'>>) {
+      updateMetadata(patch: Partial<Pick<LessonDraft,
+        'title' | 'subject' | 'difficulty_level' | 'estimated_duration_minutes' | 'short_description'
+      >>) {
         patchState(store, (s) => ({ lesson: { ...s.lesson, ...patch } }));
         markUnsaved();
       },
@@ -216,34 +228,20 @@ export const LessonEditorStore = signalStore(
 
       publish(onComplete?: (saved: LessonDraft) => void): void {
         const lesson = store.lesson();
+
         const callPublish = (id: string, base: LessonDraft) => {
           patchState(store, { saveState: 'saving', saveError: null });
-          http
-            .post<any>(`${apiBase}/lessons/${id}/publish`, {})
-            .subscribe({
-              next: (published) => {
-                const next: LessonDraft = {
-                  id: published.id,
-                  title: published.title,
-                  subject: published.subject,
-                  difficulty_level: published.difficultyLevel || published.difficulty_level,
-                  estimated_duration_minutes: published.estimatedDurationMinutes || published.estimated_duration_minutes,
-                  short_description: published.shortDescription || published.short_description,
-                  status: published.status,
-                  modules: published.modules ?? base.modules
-                };
-                patchState(store, {
-                  lesson: next,
-                  saveState: 'saved',
-                  lastSavedAt: new Date(),
-                });
-                onComplete?.(next);
-              },
-              error: (err: unknown) => {
-                const message = err instanceof Error ? err.message : 'Publish failed';
-                patchState(store, { saveState: 'error', saveError: message });
-              },
-            });
+          http.post<any>(`${apiBase}/lessons/${id}/publish`, {}).subscribe({
+            next: (published) => {
+              const next = mapFromResponse(published, base.modules);
+              patchState(store, { lesson: next, saveState: 'saved', lastSavedAt: new Date() });
+              onComplete?.(next);
+            },
+            error: (err: unknown) => {
+              const message = err instanceof Error ? err.message : 'Publish failed';
+              patchState(store, { saveState: 'error', saveError: message });
+            },
+          });
         };
 
         if (!isPersisted(lesson)) {
@@ -259,32 +257,17 @@ export const LessonEditorStore = signalStore(
         const lesson = store.lesson();
         if (!isPersisted(lesson)) return;
         patchState(store, { saveState: 'saving', saveError: null });
-        http
-          .post<any>(`${apiBase}/lessons/${lesson.id}/unpublish`, {})
-          .subscribe({
-            next: (updated) => {
-              const next: LessonDraft = {
-                id: updated.id,
-                title: updated.title,
-                subject: updated.subject,
-                difficulty_level: updated.difficultyLevel || updated.difficulty_level,
-                estimated_duration_minutes: updated.estimatedDurationMinutes || updated.estimated_duration_minutes,
-                short_description: updated.shortDescription || updated.short_description,
-                status: updated.status,
-                modules: updated.modules ?? lesson.modules
-              };
-              patchState(store, {
-                lesson: next,
-                saveState: 'saved',
-                lastSavedAt: new Date(),
-              });
-              onComplete?.(next);
-            },
-            error: (err: unknown) => {
-              const message = err instanceof Error ? err.message : 'Unpublish failed';
-              patchState(store, { saveState: 'error', saveError: message });
-            },
-          });
+        http.post<any>(`${apiBase}/lessons/${lesson.id}/unpublish`, {}).subscribe({
+          next: (updated) => {
+            const next = mapFromResponse(updated, lesson.modules);
+            patchState(store, { lesson: next, saveState: 'saved', lastSavedAt: new Date() });
+            onComplete?.(next);
+          },
+          error: (err: unknown) => {
+            const message = err instanceof Error ? err.message : 'Unpublish failed';
+            patchState(store, { saveState: 'error', saveError: message });
+          },
+        });
       },
     };
   }),

@@ -1,4 +1,4 @@
-import { Component, signal, inject, effect } from '@angular/core';
+import { Component, inject, effect } from '@angular/core';
 import { RouterOutlet, Router } from '@angular/router';
 import { AuthStore } from './features/auth/store/auth.store';
 
@@ -6,60 +6,50 @@ import { AuthStore } from './features/auth/store/auth.store';
   selector: 'app-root',
   standalone: true,
   imports: [RouterOutlet],
-  template: `
-    <router-outlet></router-outlet>
-  `,
-  styles: [
-    `
-      :host {
-        display: block;
-        height: 100dvh;
-      }
-    `,
-  ],
+  template: `<router-outlet></router-outlet>`,
+  styles: [`
+    :host {
+      display: block;
+      height: 100dvh;
+    }
+  `],
 })
 export class App {
-  title = signal('E-Learning Platform');
   private authStore = inject(AuthStore);
   private router = inject(Router);
 
   constructor() {
-    const router = inject(Router);
-    
-    // 1. Initial redirect for users on landing pages
+    // Single effect — only fires when BOTH authenticated AND fully loaded.
+    // Redirects away from public/auth pages to the correct dashboard.
     effect(() => {
       const isAuth = this.authStore.isAuthenticated();
       const isReady = this.authStore.isFullyLoaded();
-      const currentUrl = router.url;
 
-      if (isAuth && isReady && (currentUrl === '/' || currentUrl.startsWith('/auth'))) {
-        this.performRedirect(router);
-      }
-    });
+      if (!isAuth || !isReady) return;
 
-    // 2. Watch for future navigation to landing pages
-    router.events.subscribe(() => {
-      const isAuth = this.authStore.isAuthenticated();
-      const isReady = this.authStore.isFullyLoaded();
-      const currentUrl = router.url;
+      const currentUrl = this.router.url;
+      const isOnPublicPage =
+        currentUrl === '/' ||
+        currentUrl.startsWith('/auth') ||
+        currentUrl.startsWith('/for-');
 
-      if (isAuth && isReady && (currentUrl === '/' || currentUrl.startsWith('/auth') || currentUrl.startsWith('/for-'))) {
-        this.performRedirect(router);
+      if (isOnPublicPage) {
+        this.performRedirect();
       }
     });
   }
 
-  private performRedirect(router: Router) {
+  private performRedirect() {
     const user = this.authStore.user();
     if (!user) return;
-    
+
     const role = user.role.toLowerCase();
     if (role === 'student') {
-      router.navigate(['/student/dashboard']);
+      this.router.navigate(['/student/dashboard']);
     } else if (role === 'teacher' || role === 'professor') {
-      router.navigate(['/teacher/dashboard']);
+      this.router.navigate(['/teacher/dashboard']);
     } else if (role === 'admin') {
-      router.navigate(['/admin/dashboard']);
+      this.router.navigate(['/admin/dashboard']);
     }
   }
 }

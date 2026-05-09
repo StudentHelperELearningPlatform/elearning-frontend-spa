@@ -61,7 +61,7 @@
             {{ progressStore.activeStreak() }} day streak 🔥
           </h3>
           <p class="text-sm text-gray-600 font-medium">
-            Best: {{ progressStore.streak().longestStreak }} days
+            Best: {{ progressStore.streak()?.longestStreak }} days
           </p>
         </div>
       }
@@ -103,16 +103,16 @@
           </div>
         </div>
         <div class="space-y-2">
-          @for (skill of progressStore.skillLevels().slice(0, 3); track skill.subjectId) {
+          @for (skill of progressStore.skillLevels().slice(0, 3); track skill.subject) {
             <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-gray-700 w-20 flex-shrink-0">{{ skill.subjectId }}</span>
+              <span class="text-xs font-bold text-gray-700 w-20 flex-shrink-0">{{ skill.subject }}</span>
               <div class="flex-1 h-2 bg-gray-100 rounded-full border border-black overflow-hidden">
                 <div
                   class="h-full bg-[#0ABAB5] rounded-full transition-all duration-500"
-                  [style.width.%]="skill.skillLevel"
+                  [style.width.%]="skill.level"
                 ></div>
               </div>
-              <span class="text-xs font-bold text-gray-500 w-8 text-right">{{ skill.skillLevel }}%</span>
+              <span class="text-xs font-bold text-gray-500 w-8 text-right">{{ skill.level }}%</span>
             </div>
           }
         </div>
