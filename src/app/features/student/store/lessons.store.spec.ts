@@ -20,6 +20,7 @@ describe('LessonsStore', () => {
     difficulty: 'Easy',
     duration: '10 min',
     status: 'Not Started',
+    description: 'A test lesson description',
     modules: [{ id: 'm1', title: 'Intro', type: 'text', content: 'Hello' }],
   };
 
@@ -28,13 +29,14 @@ describe('LessonsStore', () => {
     title: 'Intro to Fractions',
     subject: 'Math',
     grade: 5,
-    difficulty: 'Easy',
+    difficultyLevel: 'Easy',
     duration: '15 min',
     status: 'Not Started',
     subcapitols: [
       {
         id: 'sub-1',
         title: 'What are fractions?',
+        orderIndex: 0,
         blocks: [{ id: 'b-1', blockType: 'TEXT', content: '<p>Hello</p>' }],
       },
     ],

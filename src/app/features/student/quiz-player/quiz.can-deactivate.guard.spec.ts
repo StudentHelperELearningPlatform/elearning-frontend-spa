@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, provideRouter, RouterStateSnapshot } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { patchState } from '@ngrx/signals';
 import { QuizzesStore } from '../store/quizzes.store';
 import { quizCanDeactivate } from './quiz.can-deactivate.guard';

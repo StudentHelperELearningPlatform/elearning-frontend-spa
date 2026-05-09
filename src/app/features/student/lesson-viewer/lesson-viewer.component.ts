@@ -110,9 +110,9 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
             </div>
           } @else if (store.error()?.kind === 'not-found') {
             <div class="max-w-2xl mx-auto py-12">
-              <app-empty-state
-                title="Lesson not found"
-                description="We couldn't find the lesson you're looking for. It may have been removed."
+               <app-empty-state
+                [title]="'Lesson not found'"
+                [description]="'We could not find the lesson you are looking for. It may have been removed.'"
                 icon="search_off"
               ></app-empty-state>
             </div>
@@ -150,9 +150,9 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
             </div>
           } @else {
             <div class="h-full flex items-center justify-center">
-              <app-empty-state
-                title="Select a Module"
-                description="Choose a module from the sidebar to start learning."
+               <app-empty-state
+                [title]="'Select a Module'"
+                [description]="'Choose a module from the sidebar to start learning.'"
                 icon="menu_book"
               ></app-empty-state>
             </div>
@@ -234,13 +234,14 @@ export class LessonViewerComponent implements OnInit {
     }
   }
 
-  get currentModule() {
-    return () => {
-      const lesson = this.store.currentLesson();
-      if (!lesson || !lesson.modules || lesson.modules.length === 0) return null;
-      return lesson.modules[this.currentModuleIndex()];
-    };
-  }
+  currentModule = computed(() => {
+    const lesson = this.store.currentLesson();
+    if (!lesson || !lesson.modules || lesson.modules.length === 0) return null;
+    const index = this.currentModuleIndex();
+    if (index < 0 || index >= lesson.modules.length) return null;
+    return lesson.modules[index];
+  });
+
 
   selectModule(index: number) {
     this.currentModuleIndex.set(index);

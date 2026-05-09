@@ -78,9 +78,9 @@ export const createAuthStoreStub = (options: any = {}): any => {
     isAdmin: computed(() => _role() === 'ADMIN'),
     isAuthReady: signal(true),
     isFullyLoaded: signal(true),
-    login: () => {},
-    logout: () => {},
-    init: () => {},
-    updateProfile: () => {},
+    login: () => { /* mock */ },
+    logout: () => { /* mock */ },
+    init: () => { /* mock */ },
+    updateProfile: () => { /* mock */ },
   };
 };

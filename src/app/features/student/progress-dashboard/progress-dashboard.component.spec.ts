@@ -6,6 +6,7 @@ import { ElementRef, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
 import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('ProgressDashboardComponent (Logic)', () => {
   let component: ProgressDashboardComponent;

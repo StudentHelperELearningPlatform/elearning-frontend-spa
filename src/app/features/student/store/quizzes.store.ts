@@ -353,7 +353,7 @@ export const QuizzesStore = signalStore(
             console.error('[QuizzesStore] Failed to load final quiz:', err);
             patchState(store, { 
               loading: false, 
-              error: (err as any)?.message || 'Failed to load quiz' 
+              error: (err as { message?: string })?.message || 'Failed to load quiz' 
             });
           },
         });

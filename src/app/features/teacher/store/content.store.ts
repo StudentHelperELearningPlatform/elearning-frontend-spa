@@ -175,7 +175,7 @@ export const ContentStore = signalStore(
           patchState(store, {
             lessons: mappedLessons,
             recentActivity,
-            classes: (profile as any)?.['classes'] ?? [],
+            classes: (profile as Record<string, unknown>)?.['classes'] as TeacherClassSummary[] ?? [],
             loading: false,
             error: null,
           });

@@ -85,9 +85,7 @@ export const ContentStore = signalStore(
       // Fetch lessons from ARIANA (content service) and classes from MOISA (user platform)
       // Both calls are independent — if MOISA isn't ready yet, classes just show empty
       forkJoin({
-        lessons: http.get<Record<string, unknown>[]>(`${contentApi}/lessons`).pipe(
-          catchError(() => of([])),
-        ),
+        lessons: http.get<Record<string, unknown>[]>(`${contentApi}/lessons`),
         profile: http.get<Record<string, unknown> | null>(`${userApi}/teachers/me/profile`).pipe(
           catchError(() => of(null)), // MOISA endpoint may not exist yet — degrade gracefully
         ),
