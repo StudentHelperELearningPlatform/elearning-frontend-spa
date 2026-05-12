@@ -1,59 +1,44 @@
-# ElearningFrontendSpa
+# Elearning Frontend SPA
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.5.
+Staging URL: https://staging.elearning-platform.example.com
+Production URL: https://elearning-platform.example.com
 
-## Development server
+## Staging URL
+The staging URL is defined in the GitHub workflow environment (deploy-staging.yml). The deploy job is a placeholder and no deployment target is configured.
 
-To start a local development server, run:
+## Overview
+- Angular 21 standalone app
+- State: NgRx SignalStore + Angular signals
+- Auth: keycloak-angular with silent SSO (check-sso)
+- UI: PrimeNG (Lara), ngx-echarts, d3
+- API base: /api/v1 via environment.apiBase
+- MSW mocks in non-production builds
 
+## Local development
 ```bash
-ng serve
+npm install
+npm run start
+```
+Open http://localhost:4200.
+
+### Mock API (MSW)
+In non-production builds (environment.production = false), main.ts starts MSW with handlers in src/mocks/handlers. Unhandled requests are bypassed.
+
+### Auth notes
+Keycloak config comes from src/environments/*. The repo does not include a docker-compose file for Keycloak. The app uses silent SSO via /silent-check-sso.html.
+
+## Scripts
+```bash
+npm run start
+npm run build -- --configuration production
+npm run build -- --configuration staging
+npm run test
+npm run lint
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Documentation
+- docs/AUTH.md
+- docs/ENVIRONMENT.md
+- docs/STATE_MANAGEMENT.md
+- FRONTEND_CONTRACT.md
+- docs/DEPLOY_CHECKLIST.md
