@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpTestingController } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { ProgressStore } from './progress.store';
 import { DashboardData } from '@shared/models/progress.model';
@@ -119,7 +119,11 @@ describe('ProgressStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        ...provideApiMocks(),
+      ],
     });
     store = TestBed.inject(ProgressStore);
     http = TestBed.inject(HttpTestingController);

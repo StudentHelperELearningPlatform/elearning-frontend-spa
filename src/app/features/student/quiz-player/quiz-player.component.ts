@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { interval, Subscription } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { QuizzesStore, Question } from '../store/quizzes.store';
+import { QuizzesStore } from '../store/quizzes.store';
+import { Question } from '../../../shared/models/quiz.types';
 import { QuestionCardComponent } from './question-card/question-card.component';
 import { TimerComponent } from './timer/timer.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -189,8 +190,8 @@ export class QuizPlayerComponent implements OnInit {
 
     const question = this.store.currentQuiz()?.questions[index];
     const isCurrent = this.store.currentQuestionIndex() === index;
-    const isAnswered = question ? this.store.isAnswered(question.id)() : false;
-    const isFlagged = question ? this.store.isFlagged(question.id)() : false;
+    const isAnswered = question ? this.store.isAnswered(question.id) : false;
+    const isFlagged = question ? this.store.isFlagged(question.id) : false;
 
     if (isAnswered) {
       classes.push('answered', 'bg-[#0ABAB5]/20');

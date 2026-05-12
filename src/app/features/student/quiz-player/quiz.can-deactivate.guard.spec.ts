@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, provideRouter, RouterStateSnapshot } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { patchState } from '@ngrx/signals';
 import { QuizzesStore } from '../store/quizzes.store';
 import { quizCanDeactivate } from './quiz.can-deactivate.guard';
 import { QuizPlayerComponent } from './quiz-player.component';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('quizCanDeactivate', () => {
   const runGuard = () =>
@@ -18,7 +20,11 @@ describe('quizCanDeactivate', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideApiMocks(),
+      ],
     });
 
     const store = TestBed.inject(QuizzesStore);

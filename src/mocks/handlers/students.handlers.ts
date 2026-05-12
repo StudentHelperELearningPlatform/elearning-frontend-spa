@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { environment } from '../../environments/environment';
 
 const dashboardData = {
   student: {
@@ -265,6 +266,38 @@ const dashboardData = {
 const milestonesData = dashboardData.milestones;
 
 export const studentsHandlers = [
+
+  // Mocks retained until endpoints are confirmed live on staging
+  // Task: INT-02 (Learning Path & Progress)
+
+  // GET Learning Path
+  http.get(`${environment.userPlatformApiUrl}/learning-paths/:id`, ({ params }) => {
+    return HttpResponse.json({
+      id: params['id'],
+      title: 'Mocked Angular Mastery Path',
+      description: 'Calea mockată pentru dezvoltare locală.',
+      totalLessons: 3,
+      estimatedTotalTime: '1 hour',
+      lessons: [
+        { id: '1', title: 'Introducere', subject: 'Frontend', duration: '15 min', status: 'COMPLETED', score: 95 },
+        { id: '2', title: 'Componente', subject: 'Frontend', duration: '20 min', status: 'AVAILABLE' },
+        { id: '3', title: 'Servicii', subject: 'Frontend', duration: '25 min', status: 'LOCKED', prerequisiteTitle: 'Componente' }
+      ]
+    });
+  }),
+
+  // PUT Module Progress
+  http.put(`${environment.userPlatformApiUrl}/lessons/:lessonId/progress`, async ({ request, params }) => {
+    const body = await request.json() as { moduleId: string | number; completedAt: string };
+    
+    return HttpResponse.json({
+      message: 'Progress recorded successfully',
+      progressPercent: 33,
+      completedModuleIds: [String(body.moduleId)],
+      lessonId: params['lessonId']
+    }, { status: 200 });
+  }),
+
   http.get('/api/v1/students/:id/dashboard', () => {
     return HttpResponse.json(dashboardData);
   }),

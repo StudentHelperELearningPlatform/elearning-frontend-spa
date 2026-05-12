@@ -27,7 +27,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
         </div>
         <div class="flex space-x-3">
           <app-button variant="secondary" icon="add_task" routerLink="/teacher/quiz-builder">New Quiz</app-button>
-          <app-button variant="primary" icon="add_circle" routerLink="/teacher/lesson-builder">New Lesson</app-button>
+          <app-button variant="primary" icon="add_circle" routerLink="/teacher/lessons/new">New Lesson</app-button>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                       Updated {{ lesson.lastModified | date:'shortDate' }}
                     </span>
                     <div class="flex space-x-2">
-                      <button class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-black hover:text-white transition-colors" [routerLink]="['/teacher/lesson-builder', lesson.id]">
+                      <button class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-black hover:text-white transition-colors" [routerLink]="['/teacher/lessons', lesson.id, 'edit']">
                         <span class="material-icons text-sm">edit</span>
                       </button>
                       <button class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" (click)="deleteLesson(lesson.id)">

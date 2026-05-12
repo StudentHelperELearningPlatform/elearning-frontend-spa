@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
@@ -7,6 +8,7 @@ import { patchStore } from '../../../../../test-utils/patch-store';
 import { LearningPathComponent } from './learning-path.component';
 import { LearningPathsStore } from '../../store/learning-paths.store';
 import { LearningPath, PathLesson } from '../../../../shared/models/learning-path.model';
+import { provideApiMocks } from '../../../../../test-utils/api-testing';
 
 // LearningPathComponent uses templateUrl — cannot be DOM-mounted in Vitest.
 // We instantiate the class inside runInInjectionContext and drive the store
@@ -58,11 +60,13 @@ describe('LearningPathComponent', () => {
       providers: [
         provideHttpClient(),
         provideRouter([]),
+        ...provideApiMocks(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'path-1' } } },
         },
       ],
+      schemas: [NO_ERRORS_SCHEMA]
     });
     injector = TestBed.inject(EnvironmentInjector);
     store = TestBed.inject(LearningPathsStore);

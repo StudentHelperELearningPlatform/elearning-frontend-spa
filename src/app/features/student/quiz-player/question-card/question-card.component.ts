@@ -1,6 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Question } from '../../store/quizzes.store';
+import { Question } from '@shared/models/quiz.types';
 
 @Component({
   selector: 'app-question-card',
