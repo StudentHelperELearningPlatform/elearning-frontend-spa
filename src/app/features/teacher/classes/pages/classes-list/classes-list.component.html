@@ -1,0 +1,38 @@
+<div class="page">
+  <h1>My Classes</h1>
+
+  <button (click)="store.loadClasses()">Refresh</button>
+
+  <div *ngIf="loading()">Loading...</div>
+
+  <table *ngIf="!loading()">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Code</th>
+        <th>Students</th>
+        <th>Avg Grade</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr *ngFor="let c of classes()">
+        <td>{{ c.name }}</td>
+        <td>{{ c.code }}</td>
+        <td>{{ c.studentCount }}</td>
+        <td>{{ c.averageGrade }}</td>
+
+        <td>
+          <button [routerLink]="['/teacher/classes', c.id]">
+            View
+          </button>
+
+          <button (click)="onDelete(c.id)">
+            Delete
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

@@ -1,73 +1,193 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { computed } from '@angular/core';
+import { computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { catchError, forkJoin, of } from 'rxjs';
+import { CONTENT_API_URL } from '@core/tokens/api.token';
+
+/* ================= MODELS ================= */
 
 export interface ClassItem {
   id: string;
   name: string;
-  code: string;
+  description?: string;
   studentCount: number;
-  averageGrade: number;
+  lessonCount: number;
+  createdAt: string;
 }
 
 export interface Student {
   id: string;
   name: string;
   email: string;
-  grade: number;
-  progress: number;
-  lastActive: Date;
 }
+
+export interface Lesson {
+  id: string;
+  title: string;
+}
+
+export interface ClassDetail extends ClassItem {
+  students: Student[];
+  lessons: Lesson[];
+}
+
+/* ================= STATE ================= */
 
 interface ClassState {
   classes: ClassItem[];
-  currentClass: ClassItem | null;
-  students: Student[];
+  currentClass: ClassDetail | null;
   loading: boolean;
   error: string | null;
 }
 
+const initialState: ClassState = {
+  classes: [],
+  currentClass: null,
+  loading: false,
+  error: null,
+};
+
+/* ================= STORE ================= */
+
 export const ClassStore = signalStore(
   { providedIn: 'root' },
-  withState<ClassState>({
-    classes: [
-      { id: '1', name: 'Math 101', code: 'MATH101', studentCount: 24, averageGrade: 85 },
-      { id: '2', name: 'Science 202', code: 'SCI202', studentCount: 18, averageGrade: 92 }
-    ],
-    currentClass: null,
-    students: [
-      { id: '1', name: 'Alice Smith', email: 'alice@example.com', grade: 95, progress: 80, lastActive: new Date() },
-      { id: '2', name: 'Bob Johnson', email: 'bob@example.com', grade: 78, progress: 65, lastActive: new Date() },
-      { id: '3', name: 'Charlie Brown', email: 'charlie@example.com', grade: 88, progress: 90, lastActive: new Date() }
-    ],
-    loading: false,
-    error: null
-  }),
+
+  withState(initialState),
+
   withComputed((state) => ({
-    activeClasses: computed(() => state.classes()),
-    topStudents: computed(() => [...state.students()].sort((a, b) => b.grade - a.grade).slice(0, 5))
+    totalClasses: computed(() => state.classes().length),
   })),
-  withMethods((store) => ({
+
+  withMethods((store, http = inject(HttpClient), api = inject(CONTENT_API_URL)) => ({
+
+    /* ================= LOAD ALL CLASSES ================= */
     loadClasses() {
+      patchState(store, { loading: true, error: null });
+
+      http.get<ClassItem[]>(`${api}/teachers/classes`)
+        .pipe(
+          catchError(() => of([]))
+        )
+        .subscribe({
+          next: (data) => {
+            patchState(store, {
+              classes: data,
+              loading: false,
+            });
+          },
+          error: (err) => {
+            patchState(store, {
+              loading: false,
+              error: err?.message ?? 'Failed to load classes',
+            });
+          },
+        });
+    },
+
+    /* ================= CREATE CLASS ================= */
+    createClass(payload: { name: string; description?: string }) {
+      return http.post<ClassItem>(`${api}/teachers/classes`, payload)
+        .subscribe({
+          next: (newClass) => {
+            patchState(store, (state) => ({
+              classes: [...state.classes, newClass],
+            }));
+          },
+        });
+    },
+
+    /* ================= LOAD CLASS DETAIL ================= */
+    loadClassDetail(classId: string) {
       patchState(store, { loading: true });
-      setTimeout(() => {
-        patchState(store, { loading: false });
-      }, 600);
+
+      forkJoin({
+        class: http.get<ClassItem>(`${api}/teachers/classes/${classId}`),
+        students: http.get<Student[]>(`${api}/teachers/classes/${classId}/students`),
+        lessons: http.get<Lesson[]>(`${api}/teachers/classes/${classId}/lessons`),
+      })
+        .pipe(
+          catchError(() =>
+            of({ class: null, students: [], lessons: [] })
+          )
+        )
+        .subscribe({
+          next: (res: any) => {
+            if (!res.class) {
+              patchState(store, { loading: false });
+              return;
+            }
+
+            patchState(store, {
+              currentClass: {
+                ...res.class,
+                students: res.students ?? [],
+                lessons: res.lessons ?? [],
+              },
+              loading: false,
+            });
+          },
+        });
     },
-    loadStudents() {
-      patchState(store, { loading: true });
-      setTimeout(() => {
-        patchState(store, { loading: false });
-      }, 500);
+
+    /* ================= DELETE CLASS ================= */
+    deleteClass(classId: string) {
+      http.delete(`${api}/teachers/classes/${classId}`)
+        .subscribe({
+          next: () => {
+            patchState(store, (state) => ({
+              classes: state.classes.filter(c => c.id !== classId),
+            }));
+          },
+        });
     },
-    addStudent(student: Omit<Student, 'id' | 'lastActive'>) {
-      patchState(store, (state) => ({
-        students: [...state.students, { ...student, id: Math.random().toString(), lastActive: new Date() }]
-      }));
+
+    /* ================= STUDENTS ================= */
+    addStudent(classId: string, studentId: string) {
+      http.post(
+        `${api}/teachers/classes/${classId}/students/${studentId}`,
+        {}
+      ).subscribe({
+        next: () => {
+          this.loadClassDetail(classId);
+        },
+      });
     },
-    removeStudent(id: string) {
-      patchState(store, (state) => ({
-        students: state.students.filter((s: Student) => s.id !== id)
-      }));
-    }
+
+    removeStudent(classId: string, studentId: string) {
+      http.delete(
+        `${api}/teachers/classes/${classId}/students/${studentId}`
+      ).subscribe({
+        next: () => {
+          this.loadClassDetail(classId);
+        },
+      });
+    },
+
+    /* ================= LESSONS ================= */
+    addLesson(classId: string, lessonId: string) {
+      http.post(
+        `${api}/teachers/classes/${classId}/lessons/${lessonId}`,
+        {}
+      ).subscribe({
+        next: () => {
+          this.loadClassDetail(classId);
+        },
+      });
+    },
+
+    removeLesson(classId: string, lessonId: string) {
+      http.delete(
+        `${api}/teachers/classes/${classId}/lessons/${lessonId}`
+      ).subscribe({
+        next: () => {
+          this.loadClassDetail(classId);
+        },
+      });
+    },
+
+    /* ================= RESET ================= */
+    reset() {
+      patchState(store, initialState);
+    },
   }))
 );

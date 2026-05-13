@@ -1,0 +1,8 @@
+<h2>Class Detail</h2>
+
+<div *ngFor="let s of students()">
+  <div>
+    {{ s.name }} - {{ s.email }} - Grade: {{ s.grade }}
+    <button (click)="remove(s.id)">Remove</button>
+  </div>
+</div>

@@ -79,62 +79,43 @@ export const ContentStore = signalStore(
     contentApi = inject(CONTENT_API_URL),
     userApi = inject(USER_PLATFORM_API_URL),
   ) => ({
-    loadDashboard() {
-      patchState(store, { loading: true, error: null });
+ loadDashboard: () => {
+  patchState(store, { loading: true, error: null });
 
-      // Fetch lessons from ARIANA (content service) and classes from MOISA (user platform)
-      // Both calls are independent — if MOISA isn't ready yet, classes just show empty
-      forkJoin({
-        lessons: http.get<Record<string, unknown>[]>(`${contentApi}/lessons`),
-        profile: http.get<Record<string, unknown> | null>(`${userApi}/teachers/me/profile`).pipe(
-          catchError(() => of(null)), // MOISA endpoint may not exist yet — degrade gracefully
-        ),
-      }).subscribe({
-        next: ({ lessons, profile }) => {
-          let rawLessons: Record<string, unknown>[] = [];
-          if (Array.isArray(lessons)) {
-            rawLessons = lessons as Record<string, unknown>[];
-          } else if (lessons && Array.isArray((lessons as Record<string, unknown>)['content'])) {
-            rawLessons = (lessons as Record<string, unknown>)['content'] as Record<string, unknown>[];
-          } else if (lessons && Array.isArray((lessons as Record<string, unknown>)['lessons'])) {
-            rawLessons = (lessons as Record<string, unknown>)['lessons'] as Record<string, unknown>[];
-          }
+  forkJoin({
+    lessons: http.get<any[]>(`${contentApi}/lessons`).pipe(
+      catchError(() => of([]))
+    ),
+    profile: http.get<any>(`${userApi}/teachers/me/profile`).pipe(
+      catchError(() => of(null))
+    ),
+  }).subscribe({
+    next: ({ lessons, profile }) => {
+      const rawLessons = Array.isArray(lessons) ? lessons : [];
 
-          const mappedLessons: ContentItem[] = rawLessons.map((l: Record<string, unknown>) => ({
-            id: l['id'] as string,
-            title: l['title'] as string,
-            subject: l['subject'] as string,
-            status: l['status'] as ContentStatus ?? 'DRAFT',
-            lastModified: new Date((l['updatedAt'] || l['lastModified'] || Date.now()) as string | number | Date),
-          }));
+      const mappedLessons: ContentItem[] = rawLessons.map((l: any) => ({
+        id: l.id,
+        title: l.title,
+        subject: l.subject,
+        status: l.status ?? 'DRAFT',
+        lastModified: new Date(l.updatedAt ?? Date.now()),
+      }));
 
-          // Build recent activity from lessons sorted by lastModified
-          const recentActivity: RecentActivityItem[] = [...mappedLessons]
-            .sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
-            .slice(0, 10)
-            .map((l) => ({
-              id: l.id,
-              type: l.status === 'PUBLISHED' ? 'published' : 'updated',
-              contentTitle: l.title,
-              contentType: 'lesson',
-              timestamp: l.lastModified,
-            }));
-
-          patchState(store, {
-            lessons: mappedLessons,
-            recentActivity,
-            classes: (profile as Record<string, unknown>)?.['classes'] as TeacherClassSummary[] ?? [],
-            loading: false,
-            error: null,
-          });
-        },
-        error: (err: unknown) => {
-          const message = err instanceof Error ? err.message : 'Failed to load dashboard';
-          patchState(store, { loading: false, error: message });
-        },
+      patchState(store, {
+        lessons: mappedLessons,
+        classes: profile?.classes ?? [],
+        loading: false,
+        error: null,
       });
     },
-
+    error: (err: any) => {
+      patchState(store, {
+        loading: false,
+        error: err?.message ?? 'Failed to load dashboard',
+      });
+    },
+  });
+},
     loadContent() {
       patchState(store, { loading: true });
       setTimeout(() => patchState(store, { loading: false }), 300);
