@@ -1,4 +1,4 @@
-import { http, HttpResponse, delay } from 'msw';
+import { http, HttpResponse } from 'msw';
 
 const now = Date.now();
 const dayMs = 24 * 60 * 60 * 1000;

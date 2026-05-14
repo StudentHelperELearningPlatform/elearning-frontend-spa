@@ -228,7 +228,7 @@ export class MediaUploadComponent {
     const formData = new FormData();
     formData.append('file', file);
 
-    const uploadUrl = `${environment.apiBase}/media/upload`;
+    const uploadUrl = `${environment.lessonApiUrl}/api/v1/media/upload`;
 
     this.http.post<{url: string}>(uploadUrl, formData, {
       reportProgress: true,

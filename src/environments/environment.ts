@@ -1,7 +1,6 @@
 export const environment = {
   production: true,
   quizApiUrl: 'https://quiz-api.example.com',
-  apiBase: 'https://api.example.com',
   lessonApiUrl: 'https://content-api.example.com',
   userPlatformApiUrl: 'https://platform-api.example.com',
 
