@@ -1,8 +1,9 @@
 import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import { MediaPlayerComponent } from '../../../../shared/components/media-player/media-player.component';
-import { LEARNING_PATH_API_URL } from '@core/tokens/api.token';
+import { environment } from '../../../../../environments/environment';
 
 export interface UploadedMedia {
   id: string;
@@ -11,6 +12,7 @@ export interface UploadedMedia {
   type: 'image' | 'video' | 'audio';
   progress: number;
   status: 'uploading' | 'complete' | 'error';
+  file?: File;
 }
 
 @Component({
@@ -105,8 +107,20 @@ export interface UploadedMedia {
                   </div>
                 }
 
+                @if (media.status === 'error') {
+                  <div class="h-24 flex flex-col items-center justify-center bg-red-50 rounded-lg border-2 border-red-300 p-2 text-center">
+                    <span class="material-icons text-red-500 mb-1">error</span>
+                    <p class="text-[10px] text-red-700 font-bold leading-tight mb-1">Upload failed. Try again.</p>
+                    <button 
+                      (click)="retryUpload(media.id)" 
+                      class="text-xs bg-red-100 border border-red-500 text-red-700 px-2 py-1 rounded font-bold hover:bg-red-200 focus:ring-2 focus:ring-red-500 cursor-pointer">
+                      Retry
+                    </button>
+                  </div>
+                }
+
                 <button 
-                  class="absolute -top-2 -right-2 bg-white text-red-500 rounded-full w-6 h-6 flex items-center justify-center border-2 border-black opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 z-10"
+                  class="absolute -top-2 -right-2 bg-white text-red-500 rounded-full w-6 h-6 flex items-center justify-center border-2 border-black opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 z-10 focus:opacity-100"
                   (click)="removeMedia(media.id)"
                   aria-label="Remove media">
                   <span class="material-icons text-sm font-black" style="font-size: 14px;">close</span>
@@ -124,8 +138,7 @@ export interface UploadedMedia {
   `
 })
 export class MediaUploadComponent {
-  // Services
-  private readonly contentApi = inject(LEARNING_PATH_API_URL);
+  private http = inject(HttpClient);
 
   // State
   isDragging = signal(false);
@@ -195,66 +208,54 @@ export class MediaUploadComponent {
     }
 
     for (const file of validFiles) {
-      this.simulateUpload(file);
+      this.uploadFile(file);
     }
   }
 
-  simulateUpload(file: File) {
+  uploadFile(file: File, existingId?: string) {
     const mediaType = file.type.split('/')[0] as 'image' | 'video' | 'audio';
-    const newMedia: UploadedMedia = {
-      id: crypto.randomUUID(),
-      url: '',
-      name: file.name,
-      type: mediaType,
-      progress: 0,
-      status: 'uploading'
-    };
+    const id = existingId || crypto.randomUUID();
 
-    this.mediaList.update(list => [...list, newMedia]);
+    if (!existingId) {
+      const newMedia: UploadedMedia = {
+        id, url: '', name: file.name, type: mediaType, progress: 0, status: 'uploading', file
+      };
+      this.mediaList.update(list => [...list, newMedia]);
+    } else {
+      this.mediaList.update(list => list.map(m => m.id === id ? { ...m, status: 'uploading', progress: 0 } : m));
+    }
 
-    const interval = setInterval(() => {
-      this.mediaList.update(list =>
-        list.map(m =>
-          m.id === newMedia.id && m.progress < 90
-            ? { ...m, progress: m.progress + 10 }
-            : m
-        )
-      );
-    }, 250);
-
-    // Make the actual network call (Intercepted by MSW)
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch(`${this.contentApi}/lessons/new/media`, {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-      clearInterval(interval);
-      this.mediaList.update(list => {
-        const item = list.find(m => m.id === newMedia.id);
-        if (item) {
-          item.progress = 100;
-          item.status = 'complete';
-          // Use the mock URL from MSW (or fallback to local if mock fails)
-          item.url = data.url || URL.createObjectURL(file); 
+    const uploadUrl = `${environment.apiBase}/media/upload`;
+
+    this.http.post<{url: string}>(uploadUrl, formData, {
+      reportProgress: true,
+      observe: 'events'
+    }).subscribe({
+      next: (event) => {
+        if (event.type === HttpEventType.UploadProgress && event.total) {
+          const progress = Math.round((100 * event.loaded) / event.total);
+          this.mediaList.update(list => list.map(m => m.id === id ? { ...m, progress } : m));
+        } else if (event.type === HttpEventType.Response) {
+          const url = event.body?.url || URL.createObjectURL(file);
+          this.mediaList.update(list => list.map(m => m.id === id ? { ...m, status: 'complete', progress: 100, url } : m));
+          this.announceA11y(`Upload complete: ${file.name}`);
         }
-        return [...list];
-      });
-      this.announceA11y(`Upload complete: ${file.name}`);
-    })
-    .catch(() => {
-      clearInterval(interval);
-      this.mediaList.update(list => {
-        const item = list.find(m => m.id === newMedia.id);
-        if (item) item.status = 'error';
-        return [...list];
-      });
-      this.errorMessage.set(`Network error: Failed to upload ${file.name}`);
-      this.announceA11y(`Upload failed for ${file.name}`);
+      },
+      error: () => {
+        this.mediaList.update(list => list.map(m => m.id === id ? { ...m, status: 'error' } : m));
+        this.announceA11y(`Upload failed for ${file.name}`);
+      }
     });
+  }
+
+  retryUpload(id: string) {
+    const media = this.mediaList().find(m => m.id === id);
+    if (media && media.file) {
+      this.uploadFile(media.file, id);
+    }
   }
 
   removeMedia(id: string) {
@@ -271,10 +272,6 @@ export class MediaUploadComponent {
     });
   }
 
-  /**
-   * Announces a message for screen readers to improve accessibility.
-   * Updates the a11yMessage signal, which is rendered in a live region.
-   */
   private announceA11y(message: string) {
     this.a11yMessage.set(message);
   }

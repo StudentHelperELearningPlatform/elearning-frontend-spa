@@ -3,26 +3,34 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { MediaUploadComponent, UploadedMedia } from './media-upload.component';
 import { vi } from 'vitest';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
-import { provideApiMocks } from '../../../../../test-utils/api-testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { provideHttpClient, HttpEventType } from '@angular/common/http';
+import { environment } from '../../../../../environments/environment';
 
 describe('MediaUploadComponent', () => {
   let component: MediaUploadComponent;
   let fixture: ComponentFixture<MediaUploadComponent>;
+  let httpTestingController: HttpTestingController;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MediaUploadComponent],
-      providers: [provideApiMocks()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting()
+      ],
       schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
 
     fixture = TestBed.createComponent(MediaUploadComponent);
     component = fixture.componentInstance;
+    httpTestingController = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    httpTestingController.verify();
   });
 
   it('should create', () => {
@@ -88,80 +96,95 @@ describe('MediaUploadComponent', () => {
 
   describe('File Validation', () => {
     it('should reject files larger than 50MB', () => {
-      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
       const largeFile = new File([''], 'huge-video.mp4', { type: 'video/mp4' });
       Object.defineProperty(largeFile, 'size', { value: 51 * 1024 * 1024 });
 
       component.handleFiles([largeFile]);
 
       expect(component.errorMessage()).toContain('Maximum size is 50MB');
-      expect(simulateSpy).not.toHaveBeenCalled();
+      expect(uploadSpy).not.toHaveBeenCalled();
     });
 
     it('should reject invalid file types', () => {
-      const simulateSpy = vi.spyOn(component, 'simulateUpload').mockImplementation(() => undefined);
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
       const invalidFile = new File([''], 'document.pdf', { type: 'application/pdf' });
 
       component.handleFiles([invalidFile]);
 
       expect(component.errorMessage()).toContain('Only images, videos, and audio are allowed');
-      expect(simulateSpy).not.toHaveBeenCalled();
+      expect(uploadSpy).not.toHaveBeenCalled();
     });
   });
 
-  describe('simulateUpload (Network & Timers)', () => {
+  describe('uploadFile (Network & Progress)', () => {
     beforeEach(() => {
-      vi.useFakeTimers();
-      // Mock native browser APIs used in the component
       globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
       globalThis.crypto.randomUUID = vi.fn(() => '12345678-1234-1234-1234-1234567890ab') as unknown as typeof crypto.randomUUID;
     });
 
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it('should successfully upload a file via fetch and update progress', async () => {
+    it('should successfully upload a file via HttpClient and update progress', () => {
       const file = new File([''], 'test.png', { type: 'image/png' });
       
-      // Mock successful fetch
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        json: vi.fn().mockResolvedValue({ url: 'https://mock.url/test.png' })
-      });
-
-      component.simulateUpload(file);
+      component.uploadFile(file);
 
       // Verify it was added to the list as uploading
       expect(component.mediaList().length).toBe(1);
       expect(component.mediaList()[0].status).toBe('uploading');
 
-      // Advance timers by 250ms to trigger one interval tick
-      vi.advanceTimersByTime(250);
-      expect(component.mediaList()[0].progress).toBe(10);
+      // Expect the correct endpoint to be called
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      expect(req.request.method).toBe('POST');
 
-      // Fast-forward until all timers and promises resolve
-      await vi.runAllTimersAsync();
-
-      expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/lessons/new/media', {
-        method: 'POST',
-        body: expect.any(FormData)
+      // Simulate a progress event (e.g., 50%)
+      req.event({
+        type: HttpEventType.UploadProgress,
+        loaded: 50,
+        total: 100
       });
+
+      expect(component.mediaList()[0].progress).toBe(50);
+
+      // Simulate successful completion response
+      req.flush({ url: 'https://mock.url/test.png' });
+
       expect(component.mediaList()[0].status).toBe('complete');
       expect(component.mediaList()[0].progress).toBe(100);
       expect(component.mediaList()[0].url).toBe('https://mock.url/test.png');
     });
 
-    it('should handle fetch network failures gracefully', async () => {
+    it('should handle network failures gracefully', () => {
       const file = new File([''], 'test.png', { type: 'image/png' });
       
-      // Mock failed fetch
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      component.uploadFile(file);
 
-      component.simulateUpload(file);
-      await vi.runAllTimersAsync();
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      
+      // Simulate error
+      req.error(new ProgressEvent('Network error'));
 
       expect(component.mediaList()[0].status).toBe('error');
-      expect(component.errorMessage()).toContain('Network error: Failed to upload test.png');
+    });
+
+    it('should support retrying a failed upload', () => {
+      const file = new File([''], 'test.png', { type: 'image/png' });
+      
+      component.uploadFile(file, 'retry-id-123');
+
+      const req1 = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      req1.error(new ProgressEvent('Network error'));
+
+      // Validate it's in an error state
+      expect(component.mediaList()[0].status).toBe('error');
+
+      // Retry
+      component.retryUpload('retry-id-123');
+
+      // Verify a new request is dispatched
+      const req2 = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      req2.flush({ url: 'https://mock.url/test.png' });
+
+      expect(component.mediaList()[0].status).toBe('complete');
     });
   });
 
