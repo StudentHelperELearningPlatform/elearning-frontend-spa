@@ -5,19 +5,13 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { provideApiMocks } from '../../../../test-utils/api-testing';
 import { ProgressStore } from './progress.store';
 import type {
-  DashboardData,
   LessonStats,
   StudentSummary,
   StudentDetailEntry,
   StudentHistory,
-  LessonProgress,
 } from './progress.store';
 
-// ---------------------------------------------------------------------------
-// Fixtures (S6 — Melora)
-// ---------------------------------------------------------------------------
-
-
+// Fixtures
 const mockLessonStats: LessonStats = {
   lessonId: 'lesson-1',
   classId: 'class-1',
@@ -36,25 +30,6 @@ const mockStudents: StudentSummary[] = [
   },
 ];
 
-const mockDashboard: DashboardData = {
-  student: {
-    id: 'stu-1',
-    firstName: 'Alice',
-    totalLessons: 10,
-    completedLessons: 7,
-  },
-  streak: {
-    currentStreak: 5,
-    longestStreak: 14,
-    lastActivityDate: '2026-05-10T12:00:00Z',
-  },
-  skillLevels: [],
-  progressRecords: [],
-  recentActivity: [],
-  milestones: [],
-  upcomingQuizzes: [],
-};
-
 const mockDetail: StudentDetailEntry[] = [
   {
     className: 'Math 101',
@@ -71,10 +46,6 @@ const mockHistory: StudentHistory = {
   studentName: 'Alice',
   history: mockDetail,
 };
-
-// ---------------------------------------------------------------------------
-// Suite
-// ---------------------------------------------------------------------------
 
 describe('ProgressStore', () => {
   let store: InstanceType<typeof ProgressStore>;
@@ -110,12 +81,10 @@ describe('ProgressStore', () => {
   describe('loadStudents()', () => {
     it('should load and store students list', () => {
       store.loadStudents();
-
       const req = http.expectOne((r) =>
         r.url.includes('/progress/professor/students')
       );
       req.flush(mockStudents);
-
       expect(store.students()).toEqual(mockStudents);
     });
   });
@@ -123,13 +92,11 @@ describe('ProgressStore', () => {
   describe('loadStudentDetail()', () => {
     it('should load detail and set selectedStudentId', () => {
       store.loadStudentDetail({ studentId: 'stu-1' });
-
       const req = http.expectOne((r) =>
         r.url.includes('/progress/professor/students/stu-1') &&
         !r.url.includes('/history')
       );
       req.flush(mockDetail);
-
       expect(store.selectedStudentId()).toBe('stu-1');
       expect(store.selectedStudent()).toEqual(mockDetail);
     });
@@ -138,12 +105,10 @@ describe('ProgressStore', () => {
   describe('loadStudentHistory()', () => {
     it('should load full student history', () => {
       store.loadStudentHistory({ studentId: 'stu-1' });
-
       const req = http.expectOne((r) =>
         r.url.includes('/progress/professor/students/stu-1/history')
       );
       req.flush(mockHistory);
-
       expect(store.studentHistory()).toEqual(mockHistory);
     });
   });
@@ -151,12 +116,10 @@ describe('ProgressStore', () => {
   describe('loadLessonStats()', () => {
     it('should fetch lesson stats and store them', () => {
       store.loadLessonStats({ classId: 'class-1', lessonId: 'lesson-1' });
-
       const req = http.expectOne((r) =>
         r.url.includes('/progress/classes/class-1/lessons/lesson-1/stats')
       );
       req.flush(mockLessonStats);
-
       expect(store.lessonStats()).toEqual(mockLessonStats);
     });
   });

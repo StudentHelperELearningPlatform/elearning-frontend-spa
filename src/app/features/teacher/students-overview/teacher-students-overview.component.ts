@@ -12,15 +12,23 @@ import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 
-// PrimeNG
 import { TableModule } from 'primeng/table';
 import { InputTextModule } from 'primeng/inputtext';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
-// IMPORT CORECTAT
-import { ProgressStore, StudentSummary } from '../../student/store/progress.store';
+import { ProgressStore } from '../../student/store/progress.store';
+
+// Tipul local pentru teacher — câmpurile reale din backend S6
+interface TeacherStudentSummary {
+  studentId: string;
+  studentName: string;
+  classesEnrolled: number;
+  totalLessonsCompleted: number;
+  averageScore: number;
+  lastActive: string | null;
+}
 
 @Component({
   selector: 'app-teacher-students-overview',
@@ -45,10 +53,11 @@ export class TeacherStudentsOverviewComponent implements OnInit {
   searchTerm = signal('');
   private readonly searchInput$ = new Subject<string>();
 
-  readonly filteredStudents = computed<StudentSummary[]>(() => {
+  readonly filteredStudents = computed<TeacherStudentSummary[]>(() => {
     const term = this.searchTerm().toLowerCase().trim();
-    if (!term) return this.store.students();
-    return this.store.students().filter((s) =>
+    const all = this.store.students() as unknown as TeacherStudentSummary[];
+    if (!term) return all;
+    return all.filter((s) =>
       s.studentName.toLowerCase().includes(term),
     );
   });
@@ -64,27 +73,21 @@ export class TeacherStudentsOverviewComponent implements OnInit {
       )
       .subscribe((term) => this.searchTerm.set(term));
 
-    // Show toast if error occurs
-    const checkError = () => {
-      const err = this.store.studentsError();
-      if (err) {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: err,
-        });
-      }
-    };
-
-    // effect-like: run after store has loaded
-    checkError();
+    const err = this.store.studentsError();
+    if (err) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: err,
+      });
+    }
   }
 
   onSearchChange(value: string): void {
     this.searchInput$.next(value);
   }
 
-  onRowSelect(student: StudentSummary): void {
+  onRowSelect(student: TeacherStudentSummary): void {
     void this.router.navigate(['/teacher/students', student.studentId]);
   }
 }

@@ -1,11 +1,20 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { signal } from '@angular/core';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { TeacherStudentsOverviewComponent } from './teacher-students-overview.component';
-import { ProgressStore, StudentSummary } from '../../student/store/progress.store';
+import { ProgressStore } from '../../student/store/progress.store';
 
-const mockStudents: StudentSummary[] = [
+interface TeacherStudentSummary {
+  studentId: string;
+  studentName: string;
+  classesEnrolled: number;
+  totalLessonsCompleted: number;
+  averageScore: number;
+  lastActive: string | null;
+}
+
+const mockStudents: TeacherStudentSummary[] = [
   { studentId: 'stu-1', studentName: 'Alice', classesEnrolled: 3, totalLessonsCompleted: 12, averageScore: 88, lastActive: '2026-05-01T09:00:00Z' },
   { studentId: 'stu-2', studentName: 'Bob', classesEnrolled: 2, totalLessonsCompleted: 5, averageScore: 70, lastActive: '2026-04-28T14:00:00Z' },
 ];
@@ -23,7 +32,7 @@ describe('TeacherStudentsOverviewComponent', () => {
   let fixture: ComponentFixture<TeacherStudentsOverviewComponent>;
   let component: TeacherStudentsOverviewComponent;
   let storeMock: ReturnType<typeof buildStoreMock>;
-  let routerSpy: any;
+  let routerSpy: Pick<Router, 'navigate'>;
 
   beforeEach(async () => {
     storeMock = buildStoreMock();
@@ -60,10 +69,8 @@ describe('TeacherStudentsOverviewComponent', () => {
   it('should return all students when search is empty', () => {
     component.onSearchChange('ali');
     vi.advanceTimersByTime(300);
-
     component.onSearchChange('');
     vi.advanceTimersByTime(300);
-
     fixture.detectChanges();
     expect(component.filteredStudents().length).toBe(2);
   });

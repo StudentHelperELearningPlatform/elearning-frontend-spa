@@ -28,7 +28,7 @@ describe('StudentDetailComponent', () => {
   let fixture: ComponentFixture<StudentDetailComponent>;
   let component: StudentDetailComponent;
   let storeMock: ReturnType<typeof buildStoreMock>;
-  let routerSpy: any;
+  let routerSpy: Pick<Router, 'navigate'>;
 
   beforeEach(async () => {
     storeMock = buildStoreMock();
@@ -68,7 +68,7 @@ describe('StudentDetailComponent', () => {
   });
 
   it('should return rounded average of non-null scores', () => {
-    expect(component.overallAvgScore()).toBe(83); // (90 + 76) / 2
+    expect(component.overallAvgScore()).toBe(83);
   });
 
   it('should navigate to /teacher/students', () => {
