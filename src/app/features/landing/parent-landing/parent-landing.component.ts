@@ -3,12 +3,11 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
-import { CardComponent } from '../../../shared/components/card/card.component';
 
 @Component({
   selector: 'app-parent-landing',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonComponent, CardComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent],
   template: `
     <div class="min-h-screen bg-white font-sans text-black overflow-x-hidden">
       <!-- Navigation -->

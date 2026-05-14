@@ -185,4 +185,8 @@ export const teacherHandlers = [
     lessons.unshift(copy);
     return HttpResponse.json(copy, { status: 201 });
   }),
+
+  http.post('/api/v1/media/upload', async () => {
+    // api is implemented in the media upload component
+  }),
 ];

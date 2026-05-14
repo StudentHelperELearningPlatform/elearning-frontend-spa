@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { LearningPathsStore } from './learning-paths.store';
 import { LearningPath } from '@shared/models/learning-path.model';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 const MOCK_PATH: LearningPath = {
   id: 'path-1',
@@ -56,7 +57,11 @@ describe('LearningPathsStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        ...provideApiMocks(),
+      ],
     });
     store = getStore();
     http = TestBed.inject(HttpClient);

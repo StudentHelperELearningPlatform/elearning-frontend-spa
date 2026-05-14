@@ -162,8 +162,7 @@ export class TeacherDashboardComponent implements OnInit {
   }
 
   reload(): void {
-    const teacherId = this.auth.user()?.id ?? 'me';
-    this.store.loadDashboard(teacherId);
+    this.store.loadDashboard();
   }
 
   activityIcon(type: string): string {

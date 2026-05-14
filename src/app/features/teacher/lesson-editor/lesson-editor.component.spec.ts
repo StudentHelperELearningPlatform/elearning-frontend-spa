@@ -5,6 +5,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { of } from 'rxjs';
 import { LessonEditorComponent } from './lesson-editor.component';
 import { LessonEditorStore } from '../state/lesson-editor.store';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('LessonEditorComponent', () => {
   let fixture: ComponentFixture<LessonEditorComponent>;
@@ -19,6 +20,7 @@ describe('LessonEditorComponent', () => {
         provideRouter([]),
         provideHttpClient(),
         provideAnimationsAsync(),
+        provideApiMocks(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => null } } },

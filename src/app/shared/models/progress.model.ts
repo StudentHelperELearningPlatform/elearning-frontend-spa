@@ -8,19 +8,14 @@ export interface ProgressRecord {
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   completedModules: number;
   totalModules: number;
-  lastAccessedAt: string; // ISO date string
+  lastAccessedAt: string;
   thumbnailGradient?: string;
-}
-
-export interface SkillLevel {
-  subject: string;
-  level: number; // 0-100
 }
 
 export interface StreakData {
   currentStreak: number;
   longestStreak: number;
-  lastActivityDate: string; // ISO date string
+  lastActivityDate: string;
 }
 
 export interface Milestone {
@@ -28,8 +23,8 @@ export interface Milestone {
   title: string;
   description: string;
   category: 'learning' | 'streak' | 'mastery' | 'social';
-  icon: string; // PrimeIcon class e.g. 'pi-star'
-  earnedAt: string | null; // ISO date or null if locked
+  icon: string;
+  earnedAt: string | null;
   progress?: number;
   goal?: number;
 }
@@ -39,7 +34,7 @@ export interface ActivityItem {
   type: 'lesson' | 'quiz' | 'milestone';
   title: string;
   subject?: string;
-  timestamp: string; // ISO date string
+  timestamp: string;
   lessonId?: string;
   quizId?: string;
   attemptId?: string;
@@ -52,13 +47,20 @@ export interface UpcomingQuiz {
   dueDate?: string;
 }
 
+export interface SkillLevel {
+  subject: string;
+  level: number;
+}
+
+export interface StudentSummary {
+  id: string;
+  firstName: string;
+  totalLessons: number;
+  completedLessons: number;
+}
+
 export interface DashboardData {
-  student: {
-    id: string;
-    firstName: string;
-    totalLessons: number;
-    completedLessons: number;
-  };
+  student: StudentSummary;
   streak: StreakData;
   skillLevels: SkillLevel[];
   progressRecords: ProgressRecord[];

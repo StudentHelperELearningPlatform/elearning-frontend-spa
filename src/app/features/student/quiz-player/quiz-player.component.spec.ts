@@ -3,12 +3,13 @@ import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { QuizzesStore } from '../store/quizzes.store';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
+import { NO_ERRORS_SCHEMA, EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
 // QuizPlayerComponent uses templateUrl so we cannot mount it in Vitest.
 // We test the component CLASS logic directly by instantiating it with injected deps.
 
 import { QuizPlayerComponent } from './quiz-player.component';
-import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
 const MOCK_QUIZ = {
   id: 'quiz-1',
@@ -53,16 +54,18 @@ describe('QuizPlayerComponent (logic)', () => {
   let component: QuizPlayerComponent;
   let injector: EnvironmentInjector;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideRouter([]),
+        ...provideApiMocks(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'quiz-1' } } },
         },
       ],
+      schemas: [NO_ERRORS_SCHEMA],
     });
 
     store = TestBed.inject(QuizzesStore);

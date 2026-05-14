@@ -1,15 +1,18 @@
 import { HttpClient, provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 import { TeacherLesson, TeacherLessonsStore } from './teacher-lessons.store';
 
 const mkLesson = (id: string, overrides: Partial<TeacherLesson> = {}): TeacherLesson => ({
   id,
   title: `Lesson ${id}`,
   subject: 'Math',
-  grade: 5,
-  status: 'DRAFT',
-  lastModified: new Date().toISOString(),
+  difficulty_level: 'Easy',
+  status: 'DRAFT' as TeacherLessonStatus,
+  estimated_duration_minutes: 15,
+  created_at: new Date().toISOString(),
   ...overrides,
 });
 
@@ -19,7 +22,13 @@ describe('TeacherLessonsStore', () => {
   let http: HttpClient;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient()] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        ...provideApiMocks(),
+      ],
+    });
     store = getStore();
     http = TestBed.inject(HttpClient);
   });
@@ -83,9 +92,9 @@ describe('TeacherLessonsStore', () => {
   it('clearFilters resets all filters', () => {
     vi.spyOn(http, 'get').mockReturnValue(of({ items: [], total: 0, page: 0, pageSize: 20 }));
     store.setFilter('subject', 'Math');
-    store.setFilter('grade', '5');
+    store.setFilter('difficulty', 'Intermediate');
     store.clearFilters();
-    expect(store.filters()).toEqual({ search: '', status: '', subject: '', grade: '' });
+    expect(store.filters()).toEqual({ search: '', status: '', subject: '', difficulty: '' });
   });
 
   // ── pagination ───────────────────────────────────────────────────────────
@@ -140,28 +149,28 @@ describe('TeacherLessonsStore', () => {
     expect(store.selectedIds()).toEqual([]);
   });
 
-  it('bulkAction publish hits PATCH publish for each selected id and clears selection', () => {
+  it('bulkAction publish hits POST publish for each selected id and clears selection', () => {
     const items = [mkLesson('1'), mkLesson('2')];
     vi.spyOn(http, 'get').mockReturnValue(of({ items, total: 2, page: 0, pageSize: 20 }));
-    const patchSpy = vi.spyOn(http, 'patch').mockReturnValue(of({}));
+    const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({}));
     store.load();
     store.selectAll(true);
     store.bulkAction('publish');
-    expect(patchSpy).toHaveBeenCalledWith('/api/v1/lessons/1/publish', {});
-    expect(patchSpy).toHaveBeenCalledWith('/api/v1/lessons/2/publish', {});
+    expect(postSpy).toHaveBeenCalledWith('/api/v1/lessons/1/publish', {});
+    expect(postSpy).toHaveBeenCalledWith('/api/v1/lessons/2/publish', {});
     expect(store.selectedIds()).toEqual([]);
   });
 
-  it('bulkAction archive hits PATCH archive for each selected id', () => {
+  it('bulkAction archive hits POST archive for each selected id', () => {
     const items = [mkLesson('a'), mkLesson('b')];
     vi.spyOn(http, 'get').mockReturnValue(of({ items, total: 2, page: 0, pageSize: 20 }));
-    const patchSpy = vi.spyOn(http, 'patch').mockReturnValue(of({}));
+    const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({}));
     store.load();
     store.toggleSelected('a');
     store.toggleSelected('b');
     store.bulkAction('archive');
-    expect(patchSpy).toHaveBeenCalledWith('/api/v1/lessons/a/archive', {});
-    expect(patchSpy).toHaveBeenCalledWith('/api/v1/lessons/b/archive', {});
+    expect(postSpy).toHaveBeenCalledWith('/api/v1/lessons/a/archive', {});
+    expect(postSpy).toHaveBeenCalledWith('/api/v1/lessons/b/archive', {});
   });
 
   it('bulkAction delete hits DELETE for each selected id', () => {

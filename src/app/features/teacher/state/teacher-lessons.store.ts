@@ -3,7 +3,7 @@ import { computed, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize, map } from 'rxjs/operators';
-import { environment } from '../../../../environments/environment';
+import { CONTENT_API_URL } from '@core/tokens/api.token'; // FIX: was USER_PLATFORM_API_URL — lessons belong to ARIANA's content service
 
 export type TeacherLessonStatus = 'PUBLISHED' | 'DRAFT' | 'ARCHIVED';
 
@@ -11,16 +11,17 @@ export interface TeacherLesson {
   id: string;
   title: string;
   subject: string;
-  grade: number;
+  difficulty_level: string;
   status: TeacherLessonStatus;
-  lastModified: string;
+  estimated_duration_minutes: number;
+  created_at: string;
 }
 
 export interface TeacherLessonFilters {
   search: string;
   status: TeacherLessonStatus | '';
   subject: string;
-  grade: string;
+  difficulty: string;
 }
 
 export interface TeacherLessonSort {
@@ -48,16 +49,9 @@ const initialState: TeacherLessonsState = {
   loading: false,
   error: null,
   selectedIds: [],
-  filters: { search: '', status: '', subject: '', grade: '' },
+  filters: { search: '', status: '', subject: '', difficulty: '' },
   sort: { field: 'lastModified', order: 'desc' },
 };
-
-interface ListResponse {
-  items: TeacherLesson[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
 
 export const TeacherLessonsStore = signalStore(
   { providedIn: 'root' },
@@ -72,7 +66,7 @@ export const TeacherLessonsStore = signalStore(
     ),
     pageCount: computed(() => Math.max(1, Math.ceil(state.total() / state.pageSize()))),
   })),
-  withMethods((store, http = inject(HttpClient)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(CONTENT_API_URL)) => {
     const buildParams = (): HttpParams => {
       const f = store.filters();
       const s = store.sort();
@@ -84,21 +78,23 @@ export const TeacherLessonsStore = signalStore(
       if (f.search) params = params.set('search', f.search);
       if (f.status) params = params.set('status', f.status);
       if (f.subject) params = params.set('subject', f.subject);
-      if (f.grade) params = params.set('grade', f.grade);
+      if (f.difficulty) params = params.set('difficulty', f.difficulty);
       return params;
     };
 
     const fetchList = () => {
       patchState(store, { loading: true, error: null });
+      // FIX: was /teachers/lessons (MOISA path) — correct path is /lessons on ARIANA
       http
-        .get<ListResponse>(`${environment.apiBase}/lessons`, { params: buildParams() })
+        .get<unknown>(`${apiBase}/lessons`, { params: buildParams() })
         .subscribe({
-          next: (res) =>
-            patchState(store, {
-              items: res.items,
-              total: res.total,
-              loading: false,
-            }),
+          next: (res: unknown) => {
+            // Handle both array response and paginated { items, total } response
+            const response = res as Record<string, unknown>;
+            const items: TeacherLesson[] = Array.isArray(response) ? response : (response['items'] as TeacherLesson[] ?? []);
+            const total: number = Array.isArray(response) ? response.length : (response['total'] as number ?? (response['items'] as unknown[])?.length ?? 0);
+            patchState(store, { items, total, loading: false });
+          },
           error: (err: unknown) => {
             const msg = err instanceof Error ? err.message : 'Failed to load lessons';
             patchState(store, { loading: false, error: msg });
@@ -120,7 +116,7 @@ export const TeacherLessonsStore = signalStore(
       },
       clearFilters() {
         patchState(store, {
-          filters: { search: '', status: '', subject: '', grade: '' },
+          filters: { search: '', status: '', subject: '', difficulty: '' },
           page: 0,
         });
         fetchList();
@@ -152,45 +148,38 @@ export const TeacherLessonsStore = signalStore(
       clearSelection() {
         patchState(store, { selectedIds: [] });
       },
+      // FIX: was calling /teachers/lessons/:id/publish — correct path is /lessons/:id/publish on ARIANA
       publish(id: string) {
         patchState(store, { loading: true });
-        http
-          .patch<TeacherLesson>(`${environment.apiBase}/lessons/${id}/publish`, {})
-          .subscribe({
-            next: () => fetchList(),
-            error: () => patchState(store, { loading: false }),
-          });
+        http.post<TeacherLesson>(`${apiBase}/lessons/${id}/publish`, {}).subscribe({
+          next: () => fetchList(),
+          error: () => patchState(store, { loading: false }),
+        });
       },
       archive(id: string) {
         patchState(store, { loading: true });
-        http
-          .patch<TeacherLesson>(`${environment.apiBase}/lessons/${id}/archive`, {})
-          .subscribe({
-            next: () => fetchList(),
-            error: () => patchState(store, { loading: false }),
-          });
+        http.post<TeacherLesson>(`${apiBase}/lessons/${id}/archive`, {}).subscribe({
+          next: () => fetchList(),
+          error: () => patchState(store, { loading: false }),
+        });
       },
       unpublish(id: string) {
         patchState(store, { loading: true });
-        http
-          .patch<TeacherLesson>(`${environment.apiBase}/lessons/${id}/unpublish`, {})
-          .subscribe({
-            next: () => fetchList(),
-            error: () => patchState(store, { loading: false }),
-          });
+        http.post<TeacherLesson>(`${apiBase}/lessons/${id}/unpublish`, {}).subscribe({
+          next: () => fetchList(),
+          error: () => patchState(store, { loading: false }),
+        });
       },
       duplicate(id: string) {
         patchState(store, { loading: true });
-        http
-          .post<TeacherLesson>(`${environment.apiBase}/lessons/${id}/duplicate`, {})
-          .subscribe({
-            next: () => fetchList(),
-            error: () => patchState(store, { loading: false }),
-          });
+        http.post<TeacherLesson>(`${apiBase}/lessons/${id}/duplicate`, {}).subscribe({
+          next: () => fetchList(),
+          error: () => patchState(store, { loading: false }),
+        });
       },
       remove(id: string) {
         patchState(store, { loading: true });
-        http.delete(`${environment.apiBase}/lessons/${id}`).subscribe({
+        http.delete(`${apiBase}/lessons/${id}`).subscribe({
           next: () => {
             patchState(store, (s) => ({
               selectedIds: s.selectedIds.filter((x) => x !== id),
@@ -203,13 +192,12 @@ export const TeacherLessonsStore = signalStore(
       bulkAction(action: 'publish' | 'archive' | 'delete') {
         const ids = store.selectedIds();
         if (ids.length === 0) return;
-        const apiBase = environment.apiBase;
         const operation = (id: string) => {
           if (action === 'publish') {
-            return http.patch(`${apiBase}/lessons/${id}/publish`, {}).pipe(catchError(() => of(null)));
+            return http.post(`${apiBase}/lessons/${id}/publish`, {}).pipe(catchError(() => of(null)));
           }
           if (action === 'archive') {
-            return http.patch(`${apiBase}/lessons/${id}/archive`, {}).pipe(catchError(() => of(null)));
+            return http.post(`${apiBase}/lessons/${id}/archive`, {}).pipe(catchError(() => of(null)));
           }
           return http.delete(`${apiBase}/lessons/${id}`).pipe(catchError(() => of(null)));
         };

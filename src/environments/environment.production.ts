@@ -1,8 +1,10 @@
 // src/environments/environment.production.ts
 export const environment = {
   production: true,
-  apiBase: '/api/v1',
-  apiUrl: 'https://api.elearning.com',
+  quizApiUrl: 'https://content-api.elearning.com',
+  lessonApiUrl: 'https://content-api.elearning.com',
+  userPlatformApiUrl: 'https://platform-api.elearning.com',
+
   keycloak: {
     url: 'https://auth.elearning.com',
     realm: 'elearning',

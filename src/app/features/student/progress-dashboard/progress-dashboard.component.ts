@@ -73,11 +73,16 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnInit() {
+    // Use the authenticated student's own ID, not a placeholder classId.
+    // MOISA's /students/{id}/dashboard endpoint expects a student ID.
     const studentId = this.authStore.user()?.id ?? '1';
     this.progressStore.loadDashboard(studentId);
 
     effect(() => {
-      const skills = this.progressStore.skillLevels();
+      const skills = this.progressStore.skillLevels().map(s => ({
+        subject: s.subject,
+        level: s.level,
+      }));
       if (skills.length > 0 && this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }
@@ -85,13 +90,19 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngAfterViewInit() {
-    const skills = this.progressStore.skillLevels();
+    const skills = this.progressStore.skillLevels().map(s => ({
+      subject: s.subject,
+      level: s.level,
+    }));
     if (skills.length > 0 && this.radarContainer?.nativeElement) {
       this.renderRadarChart(skills);
     }
 
     this.resizeObserver = new ResizeObserver(() => {
-      const skills = this.progressStore.skillLevels();
+      const skills = this.progressStore.skillLevels().map(s => ({
+        subject: s.subject,
+        level: s.level,
+      }));
       if (skills.length > 0 && this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }
@@ -190,7 +201,7 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
       const angle = angleSlice * i - Math.PI / 2;
       const x = labelRadius * Math.cos(angle);
       const y = labelRadius * Math.sin(angle);
-      
+
       let textAnchor = 'end';
       if (Math.abs(x) < 5) {
         textAnchor = 'middle';

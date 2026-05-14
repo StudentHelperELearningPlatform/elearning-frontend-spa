@@ -1,8 +1,7 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
+import { CONTENT_API_URL } from '@core/tokens/api.token';
 
 export type ModuleType = 'text' | 'video' | 'image' | 'audio' | 'quiz' | 'interactive';
 export type LessonStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -19,8 +18,9 @@ export interface LessonDraft {
   id: string | null;
   title: string;
   subject: string;
-  grade: number | null;
-  description: string;
+  difficulty_level: string;
+  estimated_duration_minutes: number;
+  short_description: string;
   status: LessonStatus;
   modules: LessonModuleDraft[];
 }
@@ -39,8 +39,9 @@ const blankLesson: LessonDraft = {
   id: null,
   title: '',
   subject: '',
-  grade: null,
-  description: '',
+  difficulty_level: 'BEGINNER',
+  estimated_duration_minutes: 0,
+  short_description: '',
   status: 'DRAFT',
   modules: [],
 };
@@ -56,6 +57,47 @@ const initialState: LessonEditorState = {
 const isPersisted = (lesson: LessonDraft): lesson is LessonDraft & { id: string } =>
   typeof lesson.id === 'string' && lesson.id.length > 0;
 
+// POST payload — matches ARIANA's CreateLessonRequest exactly
+// Requires: title, subject, difficultyLevel, subcapitols (@NotEmpty — at least one)
+const toCreatePayload = (lesson: LessonDraft) => ({
+  title: lesson.title,
+  subject: lesson.subject,
+  difficultyLevel: lesson.difficulty_level,
+  estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
+  shortDescription: lesson.short_description,
+  subcapitols: lesson.modules.length > 0
+    ? lesson.modules.map((m, idx) => ({ title: m.title, orderIndex: idx + 1 }))
+    : [{ title: 'Introduction', orderIndex: 1 }], // satisfy @NotEmpty validation
+});
+
+// PUT payload — matches ARIANA's UpdateLessonRequest exactly
+// All fields optional. NO subcapitols (managed via separate subcapitol endpoints).
+// NO status (changed only via /publish and /unpublish endpoints).
+const toUpdatePayload = (lesson: LessonDraft) => ({
+  title: lesson.title,
+  subject: lesson.subject,
+  difficultyLevel: lesson.difficulty_level,
+  estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
+  shortDescription: lesson.short_description,
+});
+
+const mapFromResponse = (saved: Record<string, unknown>, fallbackModules: LessonModuleDraft[]): LessonDraft => ({
+  id: saved['id'] as string,
+  title: saved['title'] as string,
+  subject: saved['subject'] as string,
+  difficulty_level: (saved['difficultyLevel'] ?? saved['difficulty_level']) as string,
+  estimated_duration_minutes: (saved['estimatedDurationMinutes'] ?? saved['estimated_duration_minutes']) as number,
+  short_description: (saved['shortDescription'] ?? saved['short_description']) as string,
+  status: saved['status'] as LessonStatus,
+  // Backend returns subcapitols — map them to frontend modules
+  modules: ((saved['subcapitols'] ?? saved['modules']) as Record<string, unknown>[])?.map((s: Record<string, unknown>, idx: number) => ({
+    id: (s['id'] ?? `module-${idx}`) as string,
+    title: s['title'] as string,
+    type: 'text' as ModuleType,
+    content: (s['content'] ?? '') as string,
+  })) ?? fallbackModules,
+});
+
 export const LessonEditorStore = signalStore(
   { providedIn: 'root' },
   withState<LessonEditorState>(initialState),
@@ -66,30 +108,35 @@ export const LessonEditorStore = signalStore(
       return (
         l.title.trim().length > 0 &&
         l.subject.trim().length > 0 &&
-        l.grade != null &&
+        l.estimated_duration_minutes > 0 &&
         l.modules.length > 0
       );
     }),
   })),
-  withMethods((store, http = inject(HttpClient)) => {
+  withMethods((store, http = inject(HttpClient), apiBase = inject(CONTENT_API_URL)) => {
     const markUnsaved = () => patchState(store, { saveState: 'unsaved' });
 
     const persist = (lesson: LessonDraft, onComplete?: (saved: LessonDraft) => void): void => {
       patchState(store, { saveState: 'saving', saveError: null });
+
       const url = isPersisted(lesson)
-        ? `${environment.apiBase}/lessons/${lesson.id}`
-        : `${environment.apiBase}/lessons`;
-      const stream$: Observable<LessonDraft> = isPersisted(lesson)
-        ? http.put<LessonDraft>(url, lesson)
-        : http.post<LessonDraft>(url, lesson);
+        ? `${apiBase}/lessons/${lesson.id}`
+        : `${apiBase}/lessons`;
+
+      // Separate payloads for create vs update — the DTOs have different shapes
+      const payload = isPersisted(lesson)
+        ? toUpdatePayload(lesson)
+        : toCreatePayload(lesson);
+
+      const stream$ = isPersisted(lesson)
+        ? http.put<unknown>(url, payload)
+        : http.post<unknown>(url, payload);
+
       stream$.subscribe({
-        next: (saved) => {
-          patchState(store, {
-            lesson: { ...saved, modules: saved.modules ?? lesson.modules },
-            saveState: 'saved',
-            lastSavedAt: new Date(),
-          });
-          onComplete?.(saved);
+        next: (saved: unknown) => {
+          const updatedLesson = mapFromResponse(saved as Record<string, unknown>, lesson.modules);
+          patchState(store, { lesson: updatedLesson, saveState: 'saved', lastSavedAt: new Date() });
+          onComplete?.(updatedLesson);
         },
         error: (err: unknown) => {
           const message = err instanceof Error ? err.message : 'Save failed';
@@ -108,10 +155,10 @@ export const LessonEditorStore = signalStore(
 
       loadLesson(id: string) {
         patchState(store, { loading: true });
-        http.get<LessonDraft>(`${environment.apiBase}/lessons/${id}`).subscribe({
-          next: (lesson) => {
+        http.get<unknown>(`${apiBase}/lessons/${id}`).subscribe({
+          next: (saved) => {
             patchState(store, {
-              lesson: { ...lesson, modules: lesson.modules ?? [] },
+              lesson: mapFromResponse(saved as Record<string, unknown>, []),
               loading: false,
               saveState: 'saved',
               lastSavedAt: new Date(),
@@ -124,7 +171,9 @@ export const LessonEditorStore = signalStore(
         });
       },
 
-      updateMetadata(patch: Partial<Pick<LessonDraft, 'title' | 'subject' | 'grade' | 'description'>>) {
+      updateMetadata(patch: Partial<Pick<LessonDraft,
+        'title' | 'subject' | 'difficulty_level' | 'estimated_duration_minutes' | 'short_description'
+      >>) {
         patchState(store, (s) => ({ lesson: { ...s.lesson, ...patch } }));
         markUnsaved();
       },
@@ -179,25 +228,20 @@ export const LessonEditorStore = signalStore(
 
       publish(onComplete?: (saved: LessonDraft) => void): void {
         const lesson = store.lesson();
+
         const callPublish = (id: string, base: LessonDraft) => {
           patchState(store, { saveState: 'saving', saveError: null });
-          http
-            .patch<LessonDraft>(`${environment.apiBase}/lessons/${id}/publish`, {})
-            .subscribe({
-              next: (published) => {
-                const next = { ...published, modules: published.modules ?? base.modules };
-                patchState(store, {
-                  lesson: next,
-                  saveState: 'saved',
-                  lastSavedAt: new Date(),
-                });
-                onComplete?.(next);
-              },
-              error: (err: unknown) => {
-                const message = err instanceof Error ? err.message : 'Publish failed';
-                patchState(store, { saveState: 'error', saveError: message });
-              },
-            });
+          http.post<unknown>(`${apiBase}/lessons/${id}/publish`, {}).subscribe({
+            next: (published) => {
+              const next = mapFromResponse(published as Record<string, unknown>, base.modules);
+              patchState(store, { lesson: next, saveState: 'saved', lastSavedAt: new Date() });
+              onComplete?.(next);
+            },
+            error: (err: unknown) => {
+              const message = err instanceof Error ? err.message : 'Publish failed';
+              patchState(store, { saveState: 'error', saveError: message });
+            },
+          });
         };
 
         if (!isPersisted(lesson)) {
@@ -213,23 +257,17 @@ export const LessonEditorStore = signalStore(
         const lesson = store.lesson();
         if (!isPersisted(lesson)) return;
         patchState(store, { saveState: 'saving', saveError: null });
-        http
-          .patch<LessonDraft>(`${environment.apiBase}/lessons/${lesson.id}/unpublish`, {})
-          .subscribe({
-            next: (updated) => {
-              const next = { ...updated, modules: updated.modules ?? lesson.modules };
-              patchState(store, {
-                lesson: next,
-                saveState: 'saved',
-                lastSavedAt: new Date(),
-              });
-              onComplete?.(next);
-            },
-            error: (err: unknown) => {
-              const message = err instanceof Error ? err.message : 'Unpublish failed';
-              patchState(store, { saveState: 'error', saveError: message });
-            },
-          });
+        http.post<unknown>(`${apiBase}/lessons/${lesson.id}/unpublish`, {}).subscribe({
+          next: (updated) => {
+            const next = mapFromResponse(updated as Record<string, unknown>, lesson.modules);
+            patchState(store, { lesson: next, saveState: 'saved', lastSavedAt: new Date() });
+            onComplete?.(next);
+          },
+          error: (err: unknown) => {
+            const message = err instanceof Error ? err.message : 'Unpublish failed';
+            patchState(store, { saveState: 'error', saveError: message });
+          },
+        });
       },
     };
   }),

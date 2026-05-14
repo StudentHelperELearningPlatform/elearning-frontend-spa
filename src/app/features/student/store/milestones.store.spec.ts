@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { MilestonesStore, Milestone } from './milestones.store';
 import { NotificationService } from '@core/services/notification.service';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('MilestonesStore', () => {
   let store: MilestonesStore;
@@ -21,7 +22,8 @@ describe('MilestonesStore', () => {
       imports: [HttpClientTestingModule],
       providers: [
         MilestonesStore,
-        { provide: NotificationService, useValue: notificationMock }
+        { provide: NotificationService, useValue: notificationMock },
+        ...provideApiMocks(),
       ],
     });
 

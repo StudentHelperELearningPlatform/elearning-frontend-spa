@@ -1,3 +1,4 @@
+// src/mocks/handlers/students.handlers.ts
 import { http, HttpResponse } from 'msw';
 import { environment } from '../../environments/environment';
 
@@ -82,8 +83,8 @@ const milestonesData = dashboardData.milestones;
 
 export const studentsHandlers = [
 
-  // GET Learning Path (Rămâne activ pentru dezvoltare locală)
-  http.get(`${environment.apiUrl}/learning-paths/:id`, ({ params }) => {
+  // GET Learning Path
+  http.get(`${environment.userPlatformApiUrl}/learning-paths/:id`, ({ params }) => {
     return HttpResponse.json({
       id: params['id'],
       title: 'Mocked Angular Mastery Path',
@@ -93,45 +94,29 @@ export const studentsHandlers = [
       lessons: [
         { id: '1', title: 'Introducere', subject: 'Frontend', duration: '15 min', status: 'COMPLETED', score: 95 },
         { id: '2', title: 'Componente', subject: 'Frontend', duration: '20 min', status: 'AVAILABLE' },
-        { id: '3', title: 'Servicii', subject: 'Frontend', duration: '25 min', status: 'LOCKED', prerequisiteTitle: 'Componente' }
-      ]
+        { id: '3', title: 'Servicii', subject: 'Frontend', duration: '25 min', status: 'LOCKED', prerequisiteTitle: 'Componente' },
+      ],
     });
   }),
 
-  http.get('/api/v1/students/:id/milestones', () => {
-    return HttpResponse.json(milestonesData);
-  }),
-
-  // =========================================================================
-  // PROGRESS ENDPOINTS — disabled: wired to live API as of Sprint 6
-  // =========================================================================
-
-  // wired: endpoint live as of sprint 6
-  /*
-  http.put(`${environment.apiUrl}/lessons/:lessonId/progress`, async ({ request, params }) => {
+  // PUT Module Progress
+  http.put(`${environment.userPlatformApiUrl}/lessons/:lessonId/progress`, async ({ request, params }) => {
     const body = await request.json() as { moduleId: string | number; completedAt: string };
     return HttpResponse.json({
       message: 'Progress recorded successfully',
       progressPercent: 33,
       completedModuleIds: [String(body.moduleId)],
-      lessonId: params['lessonId']
+      lessonId: params['lessonId'],
     }, { status: 200 });
   }),
-  */
 
-  // wired: endpoint live as of sprint 6
-  /*
+  // GET Student Dashboard
   http.get('/api/v1/students/:id/dashboard', () => {
     return HttpResponse.json(dashboardData);
   }),
-  */
 
-  // wired: endpoint live as of sprint 6
-  /*
-  http.get(`${environment.apiBase}/api/v1/progress/professor/students`, () =>
-    HttpResponse.json([
-      { studentId: 'stu-1', studentName: 'Alice', classesEnrolled: 3, totalLessonsCompleted: 12, averageScore: 88, lastActive: '2026-05-01T09:00:00Z' }
-    ])
-  ),
-  */
+  // GET Student Milestones
+  http.get('/api/v1/students/:id/milestones', () => {
+    return HttpResponse.json(milestonesData);
+  }),
 ];

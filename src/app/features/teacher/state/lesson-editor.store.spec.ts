@@ -1,7 +1,9 @@
 import { HttpClient, provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { LessonEditorStore } from './lesson-editor.store';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('LessonEditorStore', () => {
   const getStore = () => TestBed.inject(LessonEditorStore);
@@ -9,7 +11,13 @@ describe('LessonEditorStore', () => {
   let http: HttpClient;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient()] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        ...provideApiMocks(),
+      ],
+    });
     store = getStore();
     http = TestBed.inject(HttpClient);
   });
@@ -24,8 +32,9 @@ describe('LessonEditorStore', () => {
       id: null,
       title: '',
       subject: '',
-      grade: null,
-      description: '',
+      difficulty_level: 'BEGINNER',
+      estimated_duration_minutes: 0,
+      short_description: '',
       status: 'DRAFT',
       modules: [],
     });
@@ -33,20 +42,20 @@ describe('LessonEditorStore', () => {
   });
 
   // ── canPublish validation ────────────────────────────────────────────────
-  it('canPublish is false until title, subject, grade and at least one module are present', () => {
+  it('canPublish is false until title, subject, duration and at least one module are present', () => {
     expect(store.canPublish()).toBe(false);
     store.updateMetadata({ title: 'X' });
     expect(store.canPublish()).toBe(false);
     store.updateMetadata({ subject: 'Math' });
     expect(store.canPublish()).toBe(false);
-    store.updateMetadata({ grade: 5 });
+    store.updateMetadata({ estimated_duration_minutes: 15 });
     expect(store.canPublish()).toBe(false);
     store.addModule();
     expect(store.canPublish()).toBe(true);
   });
 
   it('canPublish becomes false again when the only module is removed', () => {
-    store.updateMetadata({ title: 'X', subject: 'Math', grade: 5 });
+    store.updateMetadata({ title: 'X', subject: 'Math', estimated_duration_minutes: 15 });
     store.addModule();
     expect(store.canPublish()).toBe(true);
     const id = store.lesson().modules[0].id;

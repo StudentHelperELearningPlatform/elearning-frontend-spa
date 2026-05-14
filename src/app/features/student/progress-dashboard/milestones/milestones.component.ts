@@ -1,7 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CardComponent } from '../../../../shared/components/card/card.component';
-import { BadgeComponent } from '../../../../shared/components/badge/badge.component';
 
 interface Milestone {
   id: string;
@@ -17,7 +16,7 @@ interface Milestone {
 @Component({
   selector: 'app-milestones',
   standalone: true,
-  imports: [CommonModule, CardComponent, BadgeComponent],
+  imports: [CommonModule, CardComponent],
   template: `
     <div class="p-6 max-w-6xl mx-auto space-y-12 font-sans text-black">
       <!-- Header -->

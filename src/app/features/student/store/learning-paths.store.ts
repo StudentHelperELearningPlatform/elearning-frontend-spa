@@ -1,10 +1,17 @@
+// src/app/features/student/store/learning-paths.store.ts
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { catchError, map, EMPTY } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import { mapLearningPathResponse, BackendLearningPath, LearningPathViewModel } from '../../../api/adapters/learning-path.adapter';
-export { type LearningPathViewModel as LearningPath, type PathLessonViewModel as PathLesson } from '../../../api/adapters/learning-path.adapter';
+import { LEARNING_PATH_API_URL } from '@core/tokens/api.token';
+import {
+  mapLearningPathResponse,
+  BackendLearningPath,
+  LearningPathViewModel,
+} from '../../../api/adapters/learning-path.adapter';
+
+export type { LearningPathViewModel as LearningPath };
+export type { PathLessonViewModel as PathLesson } from '../../../api/adapters/learning-path.adapter';
 
 interface LearningPathsState {
   currentPath: LearningPathViewModel | null;
@@ -20,22 +27,25 @@ export const LearningPathsStore = signalStore(
     error: null,
   }),
   withComputed((state) => ({
-    completedCount: computed(() => state.currentPath()?.lessons.filter((l) => l.status === 'COMPLETED').length ?? 0),
+    completedCount: computed(() =>
+      state.currentPath()?.lessons.filter((l) => l.status === 'COMPLETED').length ?? 0
+    ),
     totalCount: computed(() => state.currentPath()?.lessons.length ?? 0),
     progressPercent: computed(() => {
       const total = state.currentPath()?.lessons.length ?? 0;
-      if (total === 0) return 0;
+      if (!total) return 0;
       const completed = state.currentPath()!.lessons.filter((l) => l.status === 'COMPLETED').length;
       return Math.round((completed / total) * 100);
     }),
-    nextAvailableLesson: computed(() => state.currentPath()?.lessons.find((l) => l.status === 'AVAILABLE') ?? null),
+    nextAvailableLesson: computed(
+      () => state.currentPath()?.lessons.find((l) => l.status === 'AVAILABLE') ?? null
+    ),
   })),
-  withMethods((store, http = inject(HttpClient)) => ({
-    
+  withMethods((store, http = inject(HttpClient), apiBase = inject(LEARNING_PATH_API_URL)) => ({
     loadPath(id: string): void {
       patchState(store, { loading: true, error: null });
-
-      http.get<BackendLearningPath>(`${environment.apiUrl}/learning-paths/${id}`)
+      http
+        .get<BackendLearningPath>(`${apiBase}/learning-paths/${id}`)
         .pipe(
           map((raw) => mapLearningPathResponse(raw)),
           catchError((err: unknown) => {
@@ -48,9 +58,8 @@ export const LearningPathsStore = signalStore(
           patchState(store, { currentPath: path, loading: false, error: null });
         });
     },
-
     resetPath(): void {
       patchState(store, { currentPath: null, error: null });
-    }
+    },
   }))
 );

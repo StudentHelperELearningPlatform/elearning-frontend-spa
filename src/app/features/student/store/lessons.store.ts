@@ -1,8 +1,8 @@
+// src/app/features/student/store/lessons.store.ts
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, EMPTY } from 'rxjs';
-import { environment } from '../../../../environments/environment';
+import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
 export interface Module {
@@ -11,6 +11,13 @@ export interface Module {
   type: 'video' | 'text' | 'quiz' | 'interactive' | 'audio' | 'image';
   content: string;
   mediaUrl?: string;
+  blockType?: string;
+}
+
+export interface Subcapitol {
+  id: string;
+  title: string;
+  blocks: Module[];
 }
 
 export interface Lesson {
@@ -21,13 +28,58 @@ export interface Lesson {
   difficulty: string;
   duration: string;
   status: string;
+  description: string;
+  subcapitols?: Subcapitol[];
   modules: Module[];
+}
+
+export interface LessonHistoryItem {
+  id: string;
+  lessonId: string;
+  startedAt: string;
+  completedAt: string | null;
 }
 
 export interface LessonLoadError {
   kind: 'not-found' | 'server' | 'unknown';
   message: string;
 }
+
+const SEED_LESSONS: Lesson[] = [
+  {
+    id: 'seed-1',
+    title: 'Introduction to Fractions',
+    subject: 'Math',
+    grade: 5,
+    difficulty: 'Easy',
+    duration: '15 min',
+    status: 'Not Started',
+    description: 'Learn the basics of fractions, including numerators and denominators.',
+    modules: [],
+  },
+  {
+    id: 'seed-2',
+    title: 'The Water Cycle',
+    subject: 'Science',
+    grade: 4,
+    difficulty: 'Medium',
+    duration: '20 min',
+    status: 'Not Started',
+    description: 'Explore how water moves through our planet in this engaging science lesson.',
+    modules: [],
+  },
+  {
+    id: 'seed-3',
+    title: 'World War II Overview',
+    subject: 'History',
+    grade: 6,
+    difficulty: 'Medium',
+    duration: '25 min',
+    status: 'Not Started',
+    description: 'A comprehensive look at the key events and figures of the second World War.',
+    modules: [],
+  },
+];
 
 interface LessonsState {
   lessons: Lesson[];
@@ -39,86 +91,122 @@ interface LessonsState {
 export const LessonsStore = signalStore(
   { providedIn: 'root' },
   withState<LessonsState>({
-    lessons: [
-      { 
-        id: '1', 
-        title: 'Intro to Fractions', 
-        subject: 'Math', 
-        grade: 5, 
-        difficulty: 'Easy', 
-        duration: '15 min', 
-        status: 'Not Started',
-        modules: [
-          { id: 'm1', title: 'What are fractions?', type: 'video', content: 'Fractions represent parts of a whole.', mediaUrl: 'https://example.com/video1.mp4' }
-        ]
-      },
-      { 
-        id: '2', 
-        title: 'Adding Fractions', 
-        subject: 'Math', 
-        grade: 5, 
-        difficulty: 'Medium', 
-        duration: '20 min', 
-        status: 'In Progress',
-        modules: [
-          { id: 'm2', title: 'Adding like fractions', type: 'text', content: 'To add fractions with the same denominator, add the numerators.' },
-          { id: 'm3', title: 'Practice Quiz', type: 'quiz', content: 'Solve these problems.' }
-        ]
-      }
-    ],
+    lessons: SEED_LESSONS,
     currentLesson: null,
     loading: false,
     error: null,
   }),
+
   withComputed((state) => ({
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
+    completedLessons: computed(() => [] as Lesson[]),
+    myLessons: computed(() => state.lessons()),
   })),
-  withMethods((store, http = inject(HttpClient)) => ({
-    
+
+  withMethods((
+    store,
+    http = inject(HttpClient),
+    apiBase = inject(CONTENT_API_URL),
+  ) => ({
+
     loadLessons(): void {
       patchState(store, { loading: true });
-      setTimeout(() => patchState(store, { loading: false }), 500);
+      http.get<unknown>(`${apiBase}/lessons`).subscribe({
+        next: (response) => {
+          console.log('[LessonsStore] API Response:', response);
+          let data: BackendLesson[] = [];
+
+          if (Array.isArray(response)) {
+            data = response as BackendLesson[];
+          } else if (response && Array.isArray((response as Record<string, unknown>)['content'])) {
+            data = (response as Record<string, unknown>)['content'] as BackendLesson[];
+          } else if (response && Array.isArray((response as Record<string, unknown>)['lessons'])) {
+            data = (response as Record<string, unknown>)['lessons'] as BackendLesson[];
+          } else if (response && typeof response === 'object' && (response as Record<string, unknown>)['id']) {
+            data = [response as unknown as BackendLesson];
+          }
+
+          console.log('[LessonsStore] Parsed data array length:', data.length);
+          const lessons = data.map(mapLessonResponse);
+          patchState(store, { lessons, loading: false });
+        },
+        error: (err) => {
+          console.error('[LessonsStore] Failed to load lessons:', err);
+          patchState(store, { loading: false });
+        },
+      });
+    },
+
+    checkout(studentId: string, lessonId: string): void {
+      patchState(store, { loading: true });
+      http.post(`${inject(USER_PLATFORM_API_URL)}/payments/checkout`, null, {
+        params: {
+          studentId,
+          bundleId: lessonId,
+          itemType: 'LESSON',
+          itemId: lessonId,
+        },
+      }).subscribe({
+        next: () => {
+          patchState(store, { loading: false });
+        },
+        error: () => {
+          patchState(store, {
+            loading: false,
+            error: { kind: 'unknown', message: 'Failed to initiate unlock. Please try again.' },
+          });
+        },
+      });
     },
 
     loadLesson(id: string): void {
-      patchState(store, { loading: true, error: null });
-      http.get<BackendLesson>(`${environment.apiUrl}/lessons/${id}`)
+      patchState(store, { loading: true, error: null, currentLesson: null });
+      http.get<unknown>(`${apiBase}/lessons/${id}`).subscribe({
+        next: (response) => {
+          console.log(`[LessonsStore] Single Lesson API Response (${id}):`, response);
+          let data = response;
+          if (response && (response as Record<string, unknown>)['lesson']) {
+            data = (response as Record<string, unknown>)['lesson'];
+          } else if (
+            response &&
+            (response as Record<string, unknown>)['content'] &&
+            !Array.isArray((response as Record<string, unknown>)['content'])
+          ) {
+            data = (response as Record<string, unknown>)['content'];
+          }
+
+          const currentLesson = mapLessonResponse(data as unknown as BackendLesson);
+          patchState(store, { currentLesson, loading: false });
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error(`[LessonsStore] Failed to load lesson ${id}:`, err);
+          let kind: LessonLoadError['kind'] = 'unknown';
+          let message = 'Unknown error';
+          if (err.status === 404) {
+            kind = 'not-found';
+            message = 'Lesson not found';
+          } else if (err.status >= 500) {
+            kind = 'server';
+            message = 'Server error';
+          }
+          patchState(store, { loading: false, error: { kind, message } });
+        },
+      });
+    },
+
+    markModuleComplete(lessonId: string, moduleId: string): void {
+      http
+        .put(`${apiBase}/lessons/${lessonId}/progress`, {
+          moduleId,
+          completedAt: new Date().toISOString(),
+        })
         .subscribe({
-          next: (backend) => {
-            const lesson = mapLessonResponse(backend);
-            patchState(store, { currentLesson: lesson, loading: false });
-          },
-          error: (err: unknown) => {
-            const status = err instanceof HttpErrorResponse ? err.status : 0;
-            const error: LessonLoadError =
-              status === 404
-                ? { kind: 'not-found', message: 'Lesson not found' }
-                : status >= 500
-                  ? { kind: 'server', message: 'Could not load lesson' }
-                  : { kind: 'unknown', message: 'Could not load lesson' };
-            patchState(store, { loading: false, error });
+          next: () => { /* progress saved — no state change needed */ },
+          error: (err) => {
+            console.error('Failed to save module progress', err);
           },
         });
     },
-
-    markModuleComplete(lessonId: string, moduleId: string | number): void {
-      const payload = {
-        moduleId,
-        completedAt: new Date().toISOString(),
-      };
-
-      http.put(`${environment.apiUrl}/lessons/${lessonId}/progress`, payload)
-        .pipe(
-          catchError((err: unknown) => {
-            console.error('Failed to save module progress', err);
-            return EMPTY; 
-          })
-        )
-        .subscribe((response) => { 
-          console.log('Progress saved', response);
-        });
-    }
-    
   }))
 );

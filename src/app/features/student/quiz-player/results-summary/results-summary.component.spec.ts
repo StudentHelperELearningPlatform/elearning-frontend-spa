@@ -1,11 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { EnvironmentInjector, runInInjectionContext, NO_ERRORS_SCHEMA } from '@angular/core';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { patchStore } from '../../../../../test-utils/patch-store';
 import { QuizzesStore } from '../../store/quizzes.store';
 import { QuizResultDetail } from '@shared/models/quiz.types';
 import { ResultsSummaryComponent } from './results-summary.component';
+import { provideApiMocks } from '../../../../../test-utils/api-testing';
 
 const MOCK_DETAIL: QuizResultDetail = {
   attemptId: 'attempt-1',
@@ -71,12 +73,19 @@ describe('ResultsSummaryComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([]),
         { provide: ActivatedRoute, useValue: route },
+        ...provideApiMocks(),
       ],
+      schemas: [NO_ERRORS_SCHEMA],
     });
     injector = TestBed.inject(EnvironmentInjector);
     store = TestBed.inject(QuizzesStore);
+    
+    // Mock loadResultDetail to avoid real HTTP calls
+    vi.spyOn(store, 'loadResultDetail').mockImplementation(() => undefined);
+    
     return runInInjectionContext(injector, () => new ResultsSummaryComponent());
   };
 

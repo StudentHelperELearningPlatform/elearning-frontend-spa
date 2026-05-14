@@ -1,9 +1,11 @@
 import { HttpClient, HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { provideRouter } from '@angular/router';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { LessonsStore, Lesson } from './lessons.store';
 import { BackendLesson } from '../../../api/adapters/lesson.adapter';
+import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('LessonsStore', () => {
   const getStore = () => TestBed.inject(LessonsStore);
@@ -18,6 +20,7 @@ describe('LessonsStore', () => {
     difficulty: 'Easy',
     duration: '10 min',
     status: 'Not Started',
+    description: 'A test lesson description',
     modules: [{ id: 'm1', title: 'Intro', type: 'text', content: 'Hello' }],
   };
 
@@ -26,20 +29,27 @@ describe('LessonsStore', () => {
     title: 'Intro to Fractions',
     subject: 'Math',
     grade: 5,
-    difficulty: 'Easy',
+    difficultyLevel: 'Easy',
     duration: '15 min',
     status: 'Not Started',
     subcapitols: [
       {
         id: 'sub-1',
         title: 'What are fractions?',
+        orderIndex: 0,
         blocks: [{ id: 'b-1', blockType: 'TEXT', content: '<p>Hello</p>' }],
       },
     ],
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient()] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        ...provideApiMocks(),
+      ],
+    });
     store = getStore();
     http = TestBed.inject(HttpClient);
   });
@@ -83,16 +93,13 @@ describe('LessonsStore', () => {
 
   // ─── loadLessons (legacy timer flow) ─────────────────────────────────────
   it('loadLessons sets loading to true immediately', () => {
-    vi.useFakeTimers();
     store.loadLessons();
     expect(store.loading()).toBe(true);
-    vi.runAllTimers();
   });
 
-  it('loadLessons clears loading after the timer fires', () => {
-    vi.useFakeTimers();
+  it('loadLessons clears loading after success', () => {
+    vi.spyOn(http, 'get').mockReturnValue(of([]));
     store.loadLessons();
-    vi.advanceTimersByTime(500);
     expect(store.loading()).toBe(false);
   });
 
@@ -132,7 +139,8 @@ describe('LessonsStore', () => {
       throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' })),
     );
     store.loadLesson('1');
-    expect(store.error()?.kind).toBe('server');
+    expect(store.error()).toEqual({ kind: 'server', message: 'Server error' });
+    expect(store.loading()).toBe(false);
   });
 
   it('loadLesson clears previous lesson and error before fetching', () => {

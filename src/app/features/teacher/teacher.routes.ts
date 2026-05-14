@@ -4,8 +4,8 @@ import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-das
 import { ClassManagementComponent } from './class-management/class-management.component';
 import { ContentEditorComponent } from './content-editor/content-editor.component';
 import { QuizBuilderComponent } from './quiz-builder/quiz-builder.component';
-import { LessonBuilderComponent } from './content-editor/lesson-builder/lesson-builder.component';
 import { PathBuilderComponent } from './content-editor/path-builder/path-builder.component';
+import { LearningPathEditorComponent } from './learning-paths/learning-path-editor/learning-path-editor.component';
 import { LessonEditorComponent } from './lesson-editor/lesson-editor.component';
 import { unsavedChangesGuard } from './lesson-editor/unsaved-changes.guard';
 import { TeacherDashboardComponent } from './dashboard/teacher-dashboard.component';
@@ -15,6 +15,8 @@ export default [
   { path: 'analytics', component: AnalyticsDashboardComponent },
   { path: 'classes', component: ClassManagementComponent },
   { path: 'content', component: ContentEditorComponent },
+
+  // Lesson Editor Routes (develop)
   {
     path: 'lessons/new',
     component: LessonEditorComponent,
@@ -25,12 +27,17 @@ export default [
     component: LessonEditorComponent,
     canDeactivate: [unsavedChangesGuard],
   },
-  { path: 'lesson-builder', component: LessonBuilderComponent },
-  { path: 'lesson-builder/:id', component: LessonBuilderComponent },
+
+  // Builder Routes
   { path: 'path-builder', component: PathBuilderComponent },
   { path: 'quiz-builder', component: QuizBuilderComponent },
   { path: 'quiz-builder/:id', component: QuizBuilderComponent },
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+
+  // Learning Path Routes (develop / feat/E5-05)
+  { path: 'learning-paths/new', component: LearningPathEditorComponent },
+  { path: 'learning-paths/:id/edit', component: LearningPathEditorComponent },
+
+  // Students Overview (S6 — Melora)
   {
     path: 'students',
     loadComponent: () =>
@@ -44,4 +51,5 @@ export default [
         .then((m) => m.StudentDetailComponent),
   },
 
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ] as Routes;

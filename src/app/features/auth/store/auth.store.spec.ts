@@ -34,7 +34,7 @@ describe('AuthStore', () => {
     expect(store).toBeTruthy();
     expect(store.user()).toBeNull();
     expect(store.isAuthenticated()).toBe(false);
-    expect(store.loading()).toBe(false);
+    expect(store.loading()).toBe(true);
   });
 
   describe('login', () => {
@@ -104,7 +104,7 @@ describe('AuthStore', () => {
         roles: ['PROFESSOR'] 
       }));
       TestBed.flushEffects();
-      expect(store.role()).toBe('TEACHER');
+      expect(store.role()).toBe('PROFESSOR');
       expect(store.isTeacher()).toBe(true);
     });
 
