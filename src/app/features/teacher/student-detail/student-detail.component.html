@@ -1,0 +1,145 @@
+<p-toast />
+
+<div class="p-6">
+
+  <!-- Back button & header -->
+  <div class="mb-6 flex items-center gap-4">
+    <p-button
+      icon="pi pi-arrow-left"
+      label="Back to Students"
+      severity="secondary"
+      [text]="true"
+      (click)="goBack()"
+    />
+    <h1 class="text-2xl font-bold text-gray-800">
+      Student Detail
+      @if (store.selectedStudentId()) {
+        <span class="ml-2 text-base font-normal text-gray-400">
+          (ID: {{ store.selectedStudentId() }})
+        </span>
+      }
+    </h1>
+  </div>
+
+  <!-- Loading -->
+  @if (store.selectedStudentLoading()) {
+    <div class="flex justify-center py-12">
+      <p-progressSpinner strokeWidth="4" />
+    </div>
+  }
+
+  <!-- Error -->
+  @if (store.selectedStudentError() && !store.selectedStudentLoading()) {
+    <div class="rounded-lg bg-red-50 p-4 text-red-700">
+      <i class="pi pi-exclamation-triangle mr-2"></i>
+      {{ store.selectedStudentError() }}
+    </div>
+  }
+
+  <!-- Summary cards -->
+  @if (!store.selectedStudentLoading() && !store.selectedStudentError()) {
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <p class="text-sm text-gray-500">Total Completed</p>
+        <p class="text-3xl font-bold text-indigo-600">{{ totalCompleted() }}</p>
+      </div>
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <p class="text-sm text-gray-500">Overall Avg Score</p>
+        <p class="text-3xl font-bold"
+          [class.text-green-600]="overallAvgScore() >= 80"
+          [class.text-yellow-600]="overallAvgScore() >= 60 && overallAvgScore() < 80"
+          [class.text-red-600]="overallAvgScore() < 60"
+        >
+          {{ overallAvgScore() }}%
+        </p>
+      </div>
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <p class="text-sm text-gray-500">Classes</p>
+        <p class="text-3xl font-bold text-gray-700">{{ groupedByClass().length }}</p>
+      </div>
+    </div>
+
+    <!-- Grouped tables per class -->
+    @for (group of groupedByClass(); track group.className) {
+      <div class="mb-8">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-700">
+            <i class="pi pi-book mr-2 text-indigo-500"></i>{{ group.className }}
+          </h2>
+          <span class="text-sm text-gray-400">
+            {{ group.completedCount }} / {{ group.lessons.length }} completed
+            &nbsp;|&nbsp;
+            Avg: {{ group.avgScore }}%
+          </span>
+        </div>
+
+        <p-table
+          [value]="group.lessons"
+          styleClass="p-datatable-sm p-datatable-striped"
+          [tableStyle]="{ 'min-width': '40rem' }"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th pSortableColumn="lessonTitle">
+                Lesson <p-sortIcon field="lessonTitle" />
+              </th>
+              <th pSortableColumn="status">
+                Status <p-sortIcon field="status" />
+              </th>
+              <th pSortableColumn="score">
+                Score <p-sortIcon field="score" />
+              </th>
+              <th pSortableColumn="dateCompleted">
+                Date Completed <p-sortIcon field="dateCompleted" />
+              </th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-lesson>
+            <tr>
+              <td>{{ lesson.lessonTitle }}</td>
+              <td>
+                <p-tag
+                  [value]="statusLabel(lesson.status)"
+                  [severity]="statusSeverity(lesson.status)"
+                />
+              </td>
+              <td>
+                @if (lesson.score !== null) {
+                  <span
+                    [class.text-green-600]="lesson.score >= 80"
+                    [class.text-yellow-600]="lesson.score >= 60 && lesson.score < 80"
+                    [class.text-red-600]="lesson.score < 60"
+                    class="font-semibold"
+                  >
+                    {{ lesson.score }}%
+                  </span>
+                } @else {
+                  <span class="text-gray-400">—</span>
+                }
+              </td>
+              <td>
+                {{ lesson.dateCompleted
+                  ? (lesson.dateCompleted | date: 'dd MMM yyyy')
+                  : '—' }}
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="4" class="py-4 text-center text-gray-400">No lessons found.</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    }
+
+    @if (groupedByClass().length === 0) {
+      <div class="py-12 text-center text-gray-400">
+        <i class="pi pi-inbox mb-2 text-5xl"></i>
+        <p>No lesson data available for this student.</p>
+      </div>
+    }
+  }
+</div>

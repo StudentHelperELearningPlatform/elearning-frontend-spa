@@ -54,28 +54,6 @@ const dashboardData = {
       lastAccessedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       thumbnailGradient: 'linear-gradient(135deg, #10b981, #059669)',
     },
-    {
-      id: 'pr4',
-      lessonId: '4',
-      lessonTitle: 'Essay Writing Basics',
-      subject: 'English',
-      status: 'NOT_STARTED',
-      completedModules: 0,
-      totalModules: 6,
-      lastAccessedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      thumbnailGradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    },
-    {
-      id: 'pr5',
-      lessonId: '5',
-      lessonTitle: 'World War II Overview',
-      subject: 'History',
-      status: 'NOT_STARTED',
-      completedModules: 0,
-      totalModules: 7,
-      lastAccessedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      thumbnailGradient: 'linear-gradient(135deg, #ef4444, #dc2626)',
-    },
   ],
   recentActivity: [
     {
@@ -85,52 +63,6 @@ const dashboardData = {
       subject: 'Math',
       timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
       lessonId: '1',
-    },
-    {
-      id: 'act2',
-      type: 'quiz',
-      title: 'Quiz passed: Fractions Basics',
-      subject: 'Math',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      quizId: 'q1',
-      attemptId: 'attempt-101',
-    },
-    {
-      id: 'act3',
-      type: 'milestone',
-      title: 'Badge earned: First Lesson',
-      timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'act4',
-      type: 'lesson',
-      title: 'Started: Adding Fractions',
-      subject: 'Math',
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      lessonId: '2',
-    },
-    {
-      id: 'act5',
-      type: 'lesson',
-      title: 'Started: The Water Cycle',
-      subject: 'Science',
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      lessonId: '3',
-    },
-    {
-      id: 'act6',
-      type: 'quiz',
-      title: 'Quiz attempted: Science Basics',
-      subject: 'Science',
-      timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      quizId: 'q2',
-      attemptId: 'attempt-100',
-    },
-    {
-      id: 'act7',
-      type: 'milestone',
-      title: 'Badge earned: 7-Day Streak',
-      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     },
   ],
   milestones: [
@@ -142,135 +74,15 @@ const dashboardData = {
       icon: 'pi-book',
       earnedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     },
-    {
-      id: 'm2',
-      title: '7-Day Streak',
-      description: 'Study 7 days in a row',
-      category: 'streak',
-      icon: 'pi-bolt',
-      earnedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'm3',
-      title: 'Perfect Score',
-      description: 'Get 100% on any quiz',
-      category: 'mastery',
-      icon: 'pi-star',
-      earnedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'm4',
-      title: 'Social Butterfly',
-      description: 'Link your account to a parent',
-      category: 'social',
-      icon: 'pi-users',
-      earnedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'm5',
-      title: 'Knowledge Seeker',
-      description: 'Complete 10 lessons',
-      category: 'learning',
-      icon: 'pi-book',
-      earnedAt: null,
-      progress: 4,
-      goal: 10,
-    },
-    {
-      id: 'm6',
-      title: 'Streak Master',
-      description: 'Reach a 30-day streak',
-      category: 'streak',
-      icon: 'pi-bolt',
-      earnedAt: null,
-      progress: 5,
-      goal: 30,
-    },
-    {
-      id: 'm7',
-      title: 'Math Wizard',
-      description: 'Score 90%+ on 5 Math quizzes',
-      category: 'mastery',
-      icon: 'pi-star',
-      earnedAt: null,
-      progress: 2,
-      goal: 5,
-    },
-    {
-      id: 'm8',
-      title: 'Science Explorer',
-      description: 'Complete all Science lessons',
-      category: 'learning',
-      icon: 'pi-globe',
-      earnedAt: null,
-      progress: 1,
-      goal: 8,
-    },
-    {
-      id: 'm9',
-      title: 'English Pro',
-      description: 'Achieve Proficient in English skill',
-      category: 'mastery',
-      icon: 'pi-check-circle',
-      earnedAt: null,
-      progress: 85,
-      goal: 100,
-    },
-    {
-      id: 'm10',
-      title: 'History Buff',
-      description: 'Complete 3 History lessons',
-      category: 'learning',
-      icon: 'pi-book',
-      earnedAt: null,
-      progress: 0,
-      goal: 3,
-    },
-    {
-      id: 'm11',
-      title: 'Peer Leader',
-      description: 'Share 5 lesson results',
-      category: 'social',
-      icon: 'pi-users',
-      earnedAt: null,
-      progress: 1,
-      goal: 5,
-    },
-    {
-      id: 'm12',
-      title: 'Geography Champion',
-      description: 'Score 80%+ in Geography',
-      category: 'mastery',
-      icon: 'pi-globe',
-      earnedAt: null,
-      progress: 61,
-      goal: 80,
-    },
   ],
-  upcomingQuizzes: [
-    {
-      id: 'uq1',
-      title: 'Fractions & Decimals',
-      subject: 'Math',
-      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'uq2',
-      title: 'Water Cycle Assessment',
-      subject: 'Science',
-      dueDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-  ],
+  upcomingQuizzes: [],
 };
 
 const milestonesData = dashboardData.milestones;
 
 export const studentsHandlers = [
 
-  // Mocks retained until endpoints are confirmed live on staging
-  // Task: INT-02 (Learning Path & Progress)
-
-  // GET Learning Path
+  // GET Learning Path (Rămâne activ pentru dezvoltare locală)
   http.get(`${environment.apiUrl}/learning-paths/:id`, ({ params }) => {
     return HttpResponse.json({
       id: params['id'],
@@ -286,10 +98,18 @@ export const studentsHandlers = [
     });
   }),
 
-  // PUT Module Progress
+  http.get('/api/v1/students/:id/milestones', () => {
+    return HttpResponse.json(milestonesData);
+  }),
+
+  // =========================================================================
+  // PROGRESS ENDPOINTS — disabled: wired to live API as of Sprint 6
+  // =========================================================================
+
+  // wired: endpoint live as of sprint 6
+  /*
   http.put(`${environment.apiUrl}/lessons/:lessonId/progress`, async ({ request, params }) => {
     const body = await request.json() as { moduleId: string | number; completedAt: string };
-    
     return HttpResponse.json({
       message: 'Progress recorded successfully',
       progressPercent: 33,
@@ -297,36 +117,21 @@ export const studentsHandlers = [
       lessonId: params['lessonId']
     }, { status: 200 });
   }),
+  */
 
+  // wired: endpoint live as of sprint 6
+  /*
   http.get('/api/v1/students/:id/dashboard', () => {
     return HttpResponse.json(dashboardData);
   }),
+  */
 
-  http.get('/api/v1/students/:id/milestones', () => {
-    return HttpResponse.json(milestonesData);
-  }),
-
-  http.get('/api/v1/students/:id/skills/:subject', ({ params }) => {
-    const subject = params['subject'] as string;
-    const trendData = Array.from({ length: 10 }, (_, i) => ({
-      date: new Date(Date.now() - (9 - i) * 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      level: Math.max(10, Math.round(50 + i * 3 + Math.random() * 8)),
-    }));
-
-    return HttpResponse.json({
-      subject,
-      level: 72,
-      confidence: 'Proficient',
-      trendData,
-      recentQuizzes: [
-        { id: 'q1', title: 'Fractions Basics', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), score: 85, passed: true, attemptId: 'attempt-101' },
-        { id: 'q2', title: 'Adding Fractions', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), score: 70, passed: true, attemptId: 'attempt-100' },
-      ],
-      recommendations: [
-        'Review fractions — your accuracy dropped 12% this week',
-        `Try the 'Decimal Operations' quiz to test your skills`,
-        `You're close to '${subject} Master' — complete 2 more lessons`,
-      ],
-    });
-  }),
+  // wired: endpoint live as of sprint 6
+  /*
+  http.get(`${environment.apiBase}/api/v1/progress/professor/students`, () =>
+    HttpResponse.json([
+      { studentId: 'stu-1', studentName: 'Alice', classesEnrolled: 3, totalLessonsCompleted: 12, averageScore: 88, lastActive: '2026-05-01T09:00:00Z' }
+    ])
+  ),
+  */
 ];

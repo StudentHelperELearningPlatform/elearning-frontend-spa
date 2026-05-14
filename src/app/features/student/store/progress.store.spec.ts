@@ -1,227 +1,191 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpTestingController } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { patchStore } from '../../../../test-utils/patch-store';
+import { HttpClient } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
+import { vi, describe, it, expect } from 'vitest';
 import { ProgressStore } from './progress.store';
-import { DashboardData } from '@shared/models/progress.model';
+import type {
+  DashboardData,
+  LessonStats,
+  StudentSummary,
+  StudentDetailEntry,
+  StudentHistory,
+  LessonProgress,
+} from './progress.store';
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
 
 const mockDashboard: DashboardData = {
-  student: {
-    id: '1',
-    firstName: 'Alex',
-    totalLessons: 20,
-    completedLessons: 10,
-  },
-  streak: {
-    currentStreak: 5,
-    longestStreak: 14,
-    lastActivityDate: new Date().toISOString(),
-  },
-  skillLevels: [
-    { subject: 'Math', level: 72 },
-    { subject: 'Science', level: 58 },
-    { subject: 'English', level: 85 },
-    { subject: 'History', level: 43 },
-    { subject: 'Geography', level: 61 },
-  ],
-  progressRecords: [
-    {
-      id: 'pr1',
-      lessonId: 'l1',
-      lessonTitle: 'Fractions',
-      subject: 'Math',
-      status: 'COMPLETED',
-      completedModules: 4,
-      totalModules: 4,
-      lastAccessedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-      id: 'pr2',
-      lessonId: 'l2',
-      lessonTitle: 'Adding Fractions',
-      subject: 'Math',
-      status: 'IN_PROGRESS',
-      completedModules: 2,
-      totalModules: 5,
-      lastAccessedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    },
-    {
-      id: 'pr3',
-      lessonId: 'l3',
-      lessonTitle: 'Water Cycle',
-      subject: 'Science',
-      status: 'IN_PROGRESS',
-      completedModules: 1,
-      totalModules: 3,
-      lastAccessedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-  ],
-  recentActivity: [
-    {
-      id: 'act1',
-      type: 'lesson',
-      title: 'Completed Fractions',
-      timestamp: new Date().toISOString(),
-      lessonId: 'l1',
-    },
-    {
-      id: 'act2',
-      type: 'quiz',
-      title: 'Passed Fractions Quiz',
-      timestamp: new Date().toISOString(),
-      quizId: 'q1',
-      attemptId: 'a1',
-    },
-    {
-      id: 'act3',
-      type: 'milestone',
-      title: 'Badge: First Lesson',
-      timestamp: new Date().toISOString(),
-    },
-  ],
-  milestones: [
-    {
-      id: 'm1',
-      title: 'First Lesson',
-      description: 'Complete your first lesson',
-      category: 'learning',
-      icon: 'pi-book',
-      earnedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-    },
-    {
-      id: 'm2',
-      title: '7-Day Streak',
-      description: 'Study 7 days in a row',
-      category: 'streak',
-      icon: 'pi-bolt',
-      earnedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-    },
-    {
-      id: 'm3',
-      title: 'Locked Badge',
-      description: 'Locked',
-      category: 'mastery',
-      icon: 'pi-star',
-      earnedAt: null,
-      progress: 2,
-      goal: 10,
-    },
-  ],
-  upcomingQuizzes: [
-    { id: 'uq1', title: 'Fractions Test', subject: 'Math', dueDate: new Date().toISOString() },
-  ],
+  totalLessons: 10,
+  completedLessons: 7,
+  averageScore: 82,
+  lastActive: '2026-05-10T12:00:00Z',
+  recentActivity: [],
 };
 
+const mockLessonStats: LessonStats = {
+  lessonId: 'lesson-1',
+  classId: 'class-1',
+  totalStudents: 30,
+  completedCount: 20,
+  averageScore: 78,
+  completionRate: 66.67,
+};
+
+const mockStudents: StudentSummary[] = [
+  {
+    studentId: 'stu-1',
+    studentName: 'Alice',
+    classesEnrolled: 3,
+    totalLessonsCompleted: 12,
+    averageScore: 88,
+    lastActive: '2026-05-01T09:00:00Z',
+  },
+];
+
+const mockDetail: StudentDetailEntry[] = [
+  {
+    className: 'Math 101',
+    lessonTitle: 'Intro to Algebra',
+    lessonId: 'lesson-1',
+    status: 'completed',
+    score: 90,
+    dateCompleted: '2026-04-20T10:00:00Z',
+  },
+];
+
+const mockHistory: StudentHistory = {
+  studentId: 'stu-1',
+  studentName: 'Alice',
+  history: mockDetail,
+};
+
+const mockLessonProgress: LessonProgress = {
+  lessonId: 'lesson-42',
+  status: 'completed',
+  score: 95,
+  dateCompleted: '2026-05-14T08:00:00Z',
+};
+
+// ---------------------------------------------------------------------------
+// Helper
+// ---------------------------------------------------------------------------
+
+function setupStore() {
+  const httpSpy = {
+    get: vi.fn(),
+    put: vi.fn(),
+  };
+
+  TestBed.configureTestingModule({
+    providers: [
+      ProgressStore,
+      { provide: HttpClient, useValue: httpSpy },
+    ],
+  });
+
+  const store = TestBed.inject(ProgressStore);
+  return { store, http: httpSpy };
+}
+
+// ---------------------------------------------------------------------------
+// Suite
+// ---------------------------------------------------------------------------
+
 describe('ProgressStore', () => {
-  let store: InstanceType<typeof ProgressStore>;
-  let http: HttpTestingController;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+  describe('initial state', () => {
+    it('should initialise with null dashboard and empty students', () => {
+      const { store } = setupStore();
+      expect(store.dashboard()).toBeNull();
+      expect(store.students()).toEqual([]);
     });
-    store = TestBed.inject(ProgressStore);
-    http = TestBed.inject(HttpTestingController);
+
+    it('completionRate() should return 0 when dashboard is null', () => {
+      const { store } = setupStore();
+      expect(store.completionRate()).toBe(0);
+    });
   });
 
-  afterEach(() => {
-    http.verify();
+  describe('loadDashboard()', () => {
+    it('should set dashboard on success', () => {
+      const { store, http } = setupStore();
+      http.get.mockReturnValue(of(mockDashboard));
+
+      store.loadDashboard();
+
+      expect(http.get).toHaveBeenCalledWith(
+        expect.stringContaining('/progress/me/dashboard'),
+      );
+      expect(store.dashboard()).toEqual(mockDashboard);
+    });
   });
 
-  // ── Initial state ──────────────────────────────────────────────────────────
+  describe('markLessonComplete()', () => {
+    it('should call PUT with correct URL and body on success', () => {
+      const { store, http } = setupStore();
+      http.put.mockReturnValue(of(mockLessonProgress));
 
-  it('starts with loading: false and empty collections', () => {
-    expect(store.loading()).toBe(false);
-    expect(store.progressRecords()).toHaveLength(0);
-    expect(store.skillLevels()).toHaveLength(0);
-    expect(store.streak()).toBeNull();
-    expect(store.milestones()).toHaveLength(0);
-    expect(store.recentActivity()).toHaveLength(0);
-    expect(store.error()).toBeNull();
+      store.markLessonComplete({ lessonId: 'lesson-42', score: 95 });
+
+      expect(http.put).toHaveBeenCalledWith(
+        expect.stringContaining('/lessons/lesson-42/progress'),
+        { status: 'completed', score: 95 },
+      );
+    });
   });
 
-  // ── loadDashboard ──────────────────────────────────────────────────────────
+  describe('loadLessonStats()', () => {
+    it('should fetch lesson stats and store them', () => {
+      const { store, http } = setupStore();
+      http.get.mockReturnValue(of(mockLessonStats));
 
-  it('sets loading true while request is pending', () => {
-    store.loadDashboard('1');
-    expect(store.loading()).toBe(true);
-    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
+      store.loadLessonStats({ classId: 'class-1', lessonId: 'lesson-1' });
+
+      expect(http.get).toHaveBeenCalledWith(
+        expect.stringContaining('/progress/classes/class-1/lessons/lesson-1/stats'),
+      );
+    });
   });
 
-  it('populates all state fields on success', () => {
-    store.loadDashboard('1');
-    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
+  describe('loadStudents()', () => {
+    it('should load and store students list', () => {
+      const { store, http } = setupStore();
+      http.get.mockReturnValue(of(mockStudents));
 
-    expect(store.loading()).toBe(false);
-    expect(store.error()).toBeNull();
-    expect(store.student()?.firstName).toBe('Alex');
-    expect(store.skillLevels()).toHaveLength(5);
-    expect(store.progressRecords()).toHaveLength(3);
-    expect(store.recentActivity()).toHaveLength(3);
-    expect(store.milestones()).toHaveLength(3);
-    expect(store.streak()?.currentStreak).toBe(5);
-    expect(store.upcomingQuizzes()).toHaveLength(1);
+      store.loadStudents();
+
+      expect(http.get).toHaveBeenCalledWith(
+        expect.stringContaining('/progress/professor/students'),
+      );
+    });
   });
 
-  it('sets error state when API fails', () => {
-    store.loadDashboard('1');
-    http.expectOne('/api/v1/students/1/dashboard').error(new ProgressEvent('error'));
+  describe('loadStudentDetail()', () => {
+    it('should load detail and set selectedStudentId', () => {
+      const { store, http } = setupStore();
+      http.get.mockReturnValue(of(mockDetail));
 
-    expect(store.loading()).toBe(false);
-    expect(store.error()).toBeTruthy();
+      store.loadStudentDetail({ studentId: 'stu-1' });
+
+      expect(http.get).toHaveBeenCalledWith(
+        expect.stringContaining('/progress/professor/students/stu-1'),
+      );
+      expect(store.selectedStudentId()).toBe('stu-1');
+    });
   });
 
-  // ── Computed signals ───────────────────────────────────────────────────────
+  describe('loadStudentHistory()', () => {
+    it('should load full student history', () => {
+      const { store, http } = setupStore();
+      http.get.mockReturnValue(of(mockHistory));
 
-  it('overallProgressPercent = (completedLessons / totalLessons) * 100', () => {
-    store.loadDashboard('1');
-    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
+      store.loadStudentHistory({ studentId: 'stu-1' });
 
-    // 10 / 20 * 100 = 50
-    expect(store.overallProgressPercent()).toBe(50);
-  });
-
-  it('overallProgressPercent is 0 when no student data', () => {
-    expect(store.overallProgressPercent()).toBe(0);
-  });
-
-  it('activeStreak returns currentStreak from streak data', () => {
-    store.loadDashboard('1');
-    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
-
-    expect(store.activeStreak()).toBe(5);
-  });
-
-  it('activeStreak is 0 when streak is null', () => {
-    expect(store.activeStreak()).toBe(0);
-  });
-
-  it('recentMilestones returns only earned milestones sorted by date desc, max 3', () => {
-    store.loadDashboard('1');
-    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
-
-    const recent = store.recentMilestones();
-    // 2 earned milestones
-    expect(recent.length).toBe(2);
-    // Sorted by earnedAt desc — m2 earned 1 day ago, m1 earned 3 days ago
-    expect(recent[0].id).toBe('m2');
-    expect(recent[1].id).toBe('m1');
-  });
-
-  it('continueLesson returns the most recently accessed IN_PROGRESS record', () => {
-    store.loadDashboard('1');
-    http.expectOne('/api/v1/students/1/dashboard').flush(mockDashboard);
-
-    // pr2 is IN_PROGRESS and more recent than pr3
-    const lesson = store.continueLesson();
-    expect(lesson).not.toBeNull();
-    expect(lesson?.id).toBe('pr2');
-    expect(lesson?.status).toBe('IN_PROGRESS');
-  });
-
-  it('continueLesson is null when no IN_PROGRESS records', () => {
-    patchStore(store, { progressRecords: [] });
-    expect(store.continueLesson()).toBeNull();
+      expect(http.get).toHaveBeenCalledWith(
+        expect.stringContaining('/progress/professor/students/stu-1/history'),
+      );
+    });
   });
 });

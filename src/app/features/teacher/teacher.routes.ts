@@ -30,5 +30,18 @@ export default [
   { path: 'path-builder', component: PathBuilderComponent },
   { path: 'quiz-builder', component: QuizBuilderComponent },
   { path: 'quiz-builder/:id', component: QuizBuilderComponent },
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  {
+    path: 'students',
+    loadComponent: () =>
+      import('./students-overview/teacher-students-overview.component')
+        .then((m) => m.TeacherStudentsOverviewComponent),
+  },
+  {
+    path: 'students/:studentId',
+    loadComponent: () =>
+      import('./student-detail/student-detail.component')
+        .then((m) => m.StudentDetailComponent),
+  },
+
 ] as Routes;
