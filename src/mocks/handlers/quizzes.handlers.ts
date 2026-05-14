@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { environment } from '../../environments/environment';
 
 // NOTE: This is the v1 API contract matching the backend.
 // The legacy handler shapes (difficulty, aiExplanation, lessonId, nextLessonId,
@@ -53,12 +54,76 @@ const quizTemplate = {
 
 export const quizzesHandlers = [
   // GET /api/v1/lessons/:lessonId/final-quiz/questions
-  http.get('/api/v1/lessons/:lessonId/final-quiz/questions', ({ params }) => {
+  http.get(`${environment.quizApiUrl}/api/v1/lessons/:lessonId/final-quiz/questions`, ({ params }) => {
     return HttpResponse.json({ id: params['lessonId'], ...quizTemplate });
   }),
 
+  // GET /api/v1/lessons/:lessonId/final-quiz
+  http.get(`${environment.quizApiUrl}/api/v1/lessons/:lessonId/final-quiz`, ({ params }) => {
+    return HttpResponse.json({
+      id: params['lessonId'],
+      questions: quizTemplate.questions.map(q => ({
+        id: q.id,
+        questionType: q.type,
+        questionText: q.text,
+        options: q.options
+          ? q.options.map((text, i) => ({ id: `${q.id}-o${i + 1}`, text, isCorrect: `${q.id}-o${i + 1}` === q.correctAnswer }))
+          : undefined,
+        orderIndex: 0,
+      })),
+      passThreshold: 70,
+      mandatory: true,
+      maxAttempts: null,
+    });
+  }),
+
+  // POST /api/v1/lessons/:lessonId/final-quiz/submit
+  http.post(`${environment.quizApiUrl}/api/v1/lessons/:lessonId/final-quiz/submit`, async ({ request }) => {
+    const body = (await request.json()) as { answers: Record<string, string> };
+    const submitted = body.answers ?? {};
+
+    let score = 0;
+    const totalPoints = quizTemplate.questions.reduce((sum, q) => sum + q.points, 0);
+
+    for (const q of quizTemplate.questions) {
+      if (q.correctAnswer === null) {
+        if ((submitted[q.id] ?? '').trim().length > 0) score += q.points;
+      } else if (submitted[q.id] === q.correctAnswer) {
+        score += q.points;
+      }
+    }
+
+    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+
+    return HttpResponse.json({
+      attemptId: `attempt-final-${Date.now()}`,
+      score,
+      totalPoints,
+      percentage,
+      passed: percentage >= 70,
+      timeSpent: 0,
+    });
+  }),
+
+  // GET /api/v1/lessons/:lessonId/final-quiz/attempts
+  http.get(`${environment.quizApiUrl}/api/v1/lessons/:lessonId/final-quiz/attempts`, () => {
+    return HttpResponse.json([]);
+  }),
+
+  // POST /api/v1/lessons/:lessonId/final-quiz/explain
+  http.post(`${environment.quizApiUrl}/api/v1/lessons/:lessonId/final-quiz/explain`, () => {
+    return HttpResponse.json(
+      Object.fromEntries(
+        quizTemplate.questions.map(q => [
+          q.id,
+          `The correct answer for "${q.text}" is "${q.correctAnswer ?? 'open-ended'}". Review the relevant section to reinforce your understanding.`,
+        ])
+      )
+    );
+  }),
+
   // GET /api/v1/subcapitols/:id/check-quiz
-  http.get('/api/v1/subcapitols/:id/check-quiz', ({ params }) => {
+  http.get(`${environment.quizApiUrl}/api/v1/subcapitols/:id/check-quiz`, ({ params }) => {
     return HttpResponse.json({
       id: params['id'],
       ...quizTemplate,
@@ -67,7 +132,7 @@ export const quizzesHandlers = [
   }),
 
   // POST /api/v1/subcapitols/:id/check-quiz/submit
-  http.post('/api/v1/subcapitols/:id/check-quiz/submit', async ({ request }) => {
+  http.post(`${environment.quizApiUrl}/api/v1/subcapitols/:id/check-quiz/submit`, async ({ request }) => {
     const body = (await request.json()) as { answers: Record<string, string> };
     const submitted = body.answers ?? {};
 

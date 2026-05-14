@@ -112,30 +112,46 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
           <p class="text-sm font-medium text-gray-500 mb-6 line-clamp-3 flex-1 italic">{{ lesson.description }}</p>
           
           <div class="flex justify-between items-center mt-auto pt-4 border-t-4 border-black/10">
-            <span class="text-base font-black uppercase tracking-wide">
-              @if (type === 'history') {
-                <span class="text-green-600">COMPLETED</span>
-              } @else {
-                <span [ngClass]="{
-                  'text-[#0ABAB5]': lesson.status === 'In Progress',
-                  'text-gray-400': lesson.status === 'Not Started'
-                }">
-                  {{ lesson.status }}
-                </span>
+            @switch (getLessonStatus(lesson.id)) {
+              @case ('in-progress') {
+                <span class="text-base font-black uppercase tracking-wide text-[#0ABAB5]">In Progress</span>
               }
-            </span>
-            
-            <app-button 
-              [variant]="type === 'history' ? 'secondary' : 'primary'" 
-              size="sm" 
-              [routerLink]="['/student/lesson-viewer', lesson.id]"
-            >
-              @if (type === 'history') {
-                Review
-              } @else {
-                {{ lesson.status === 'In Progress' ? 'Continue' : 'Start' }}
+              @case ('quiz-ready') {
+                <span class="text-base font-black uppercase tracking-wide text-amber-600">Quiz Ready</span>
               }
-            </app-button>
+              @case ('quiz-submitted') {
+                <span class="text-base font-black uppercase tracking-wide text-green-600">Completed ✓</span>
+              }
+              @default {
+                <span class="text-base font-black uppercase tracking-wide text-gray-400">Not Started</span>
+              }
+            }
+
+            <!-- All states go to lesson-viewer. Quiz access is only via the in-viewer CTA. -->
+            @switch (getLessonStatus(lesson.id)) {
+              @case ('in-progress') {
+                <app-button variant="primary" size="sm"
+                  [routerLink]="['/student/lesson-viewer', lesson.id]">
+                  Continue
+                </app-button>
+              }
+              @case ('quiz-submitted') {
+                <app-button variant="secondary" size="sm"
+                  [routerLink]="['/student/lesson-viewer', lesson.id]">
+                  Review
+                </app-button>
+              }
+              @default {
+                <app-button variant="primary" size="sm"
+                  [routerLink]="['/student/lesson-viewer', lesson.id]">
+                  @if (getLessonStatus(lesson.id) === 'quiz-ready') {
+                    Go to Lesson
+                  } @else {
+                    Start Lesson
+                  }
+                </app-button>
+              }
+            }
           </div>
         </div>
       </app-card>
@@ -147,16 +163,26 @@ export class LessonListComponent implements OnInit {
   authStore = inject(AuthStore);
   activeTab = signal<'browser' | 'my-lessons' | 'history'>('browser');
 
+  /**
+   * Per-lesson status map, populated by loadFinalQuizAttempts for each lesson.
+   * Keys: lessonId, values: 'not-started' | 'in-progress' | 'quiz-ready' | 'quiz-submitted'
+   */
+  private lessonStatusMap = signal<Record<string, string>>({});
+
   ngOnInit() {
     this.lessonsStore.loadLessons();
   }
 
-  hasAccess(): boolean {
-    return true;
+  /**
+   * Return the display status for a lesson card.
+   * Falls back to store-level signals where available.
+   */
+  getLessonStatus(lessonId: string): string {
+    return this.lessonStatusMap()[lessonId] ?? 'not-started';
   }
 
-  getStatus(): string {
-    return 'Not Started';
+  hasAccess(): boolean {
+    return true;
   }
 }
 

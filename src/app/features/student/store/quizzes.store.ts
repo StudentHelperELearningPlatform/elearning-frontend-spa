@@ -108,6 +108,9 @@ interface QuizzesState {
   resultDetailLoading: boolean;
   resultDetailError: string | null;
   error: string | null;
+  /** AI explanations keyed by lessonId+attemptId */
+  aiExplanations: Record<string, string> | null;
+  aiExplainLoading: boolean;
 }
 
 export const QuizzesStore = signalStore(
@@ -127,6 +130,8 @@ export const QuizzesStore = signalStore(
     resultDetailLoading: false,
     resultDetailError: null,
     error: null,
+    aiExplanations: null,
+    aiExplainLoading: false,
   }),
 
   withComputed((state) => ({
@@ -383,6 +388,69 @@ export const QuizzesStore = signalStore(
           timeRemaining: null,
           submitted: false,
           result: null,
+          aiExplanations: null,
+          aiExplainLoading: false,
+        });
+      },
+
+      /**
+       * Submit the final quiz for a lesson.
+       * Endpoint: POST /api/v1/lessons/{lessonId}/final-quiz/submit
+       * This is the primary submission path for S6-final-quiz-ui.
+       */
+      submitFinalQuiz(lessonId: string) {
+        if (store.submitted()) return;
+
+        const startedAt = store.startedAt();
+        const timeSpent = startedAt
+          ? Math.floor((Date.now() - startedAt.getTime()) / 1000)
+          : 0;
+
+        patchState(store, { submitted: true, error: null });
+
+        http.post<SubmitQuizResponse>(
+          `${apiBase}/lessons/${lessonId}/final-quiz/submit`,
+          { answers: store.answers() }
+        ).subscribe({
+          next: (res) => {
+            patchState(store, {
+              result: {
+                score: res.score,
+                totalPoints: res.totalPoints,
+                percentage: res.percentage,
+                passed: res.passed,
+                attemptId: res.attemptId,
+                timeSpent: res.timeSpent ?? timeSpent,
+              },
+            });
+          },
+          error: (err) => {
+            console.error('[QuizzesStore] Failed to submit final quiz:', err);
+            patchState(store, {
+              submitted: false,
+              error: (err as { message?: string })?.message || 'Failed to submit quiz',
+            });
+          },
+        });
+      },
+
+      /**
+       * Request AI explanations for wrong answers after final quiz submission.
+       * Endpoint: POST /api/v1/lessons/{lessonId}/final-quiz/explain
+       */
+      explainFinalQuizMistakes(lessonId: string) {
+        patchState(store, { aiExplainLoading: true });
+        http.post<Record<string, string>>(
+          `${apiBase}/lessons/${lessonId}/final-quiz/explain`,
+          { answers: store.answers() }
+        ).subscribe({
+          next: (explanations) => {
+            patchState(store, { aiExplanations: explanations, aiExplainLoading: false });
+          },
+          error: () => {
+            // Non-blocking — don't show error, just clear loading
+            patchState(store, { aiExplainLoading: false });
+          },
         });
       },
 

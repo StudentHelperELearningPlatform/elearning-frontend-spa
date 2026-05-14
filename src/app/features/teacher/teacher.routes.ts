@@ -18,6 +18,8 @@ export default [
   { path: 'dashboard', component: TeacherDashboardComponent },
   { path: 'analytics', component: AnalyticsDashboardComponent },
   { path: 'classes', component: ClassManagementComponent },
+  { path: 'classes/:classId/stats', loadComponent: () => import('./class-stats/class-stats.component').then(m => m.ClassStatsComponent) },
+  { path: 'classes/:classId/students/:studentId', loadComponent: () => import('./student-detail/student-detail.component').then(m => m.StudentDetailComponent) },
   { path: 'content', component: ContentEditorComponent },
   
   // Lesson Editor Routes (from develop)

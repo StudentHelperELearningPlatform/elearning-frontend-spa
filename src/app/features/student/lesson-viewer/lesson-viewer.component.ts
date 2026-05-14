@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LessonsStore, Subcapitol, Module } from '../store/lessons.store';
@@ -6,7 +6,6 @@ import { AuthStore } from '../../auth/store/auth.store';
 import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
 
-// Resolved Imports: Using path aliases while keeping the ErrorStateComponent from develop
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
@@ -25,7 +24,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
     CardComponent,
     EmptyStateComponent,
     ErrorStateComponent,
-    BadgeComponent
+    BadgeComponent,
   ],
   template: `
     <div class="h-[calc(100vh-80px)] flex flex-col md:flex-row bg-gray-50 overflow-hidden">
@@ -158,18 +157,56 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
             </div>
           }
         </div>
-        
+
+        <!-- Final Quiz CTA Banner (shown when all modules complete) -->
+        @if (store.allModulesComplete() && hasAccess()) {
+          @if (store.lastQuizAttempt(); as attempt) {
+            <!-- Already submitted: show score + retake -->
+            <div class="mx-6 mb-4 p-5 rounded-2xl border-4 border-[#0ABAB5] bg-[#0ABAB5]/10 flex flex-col md:flex-row items-center justify-between gap-4"
+                 data-testid="quiz-completed-banner">
+              <div class="flex items-center gap-3">
+                <span class="material-icons text-[#0ABAB5] text-4xl">emoji_events</span>
+                <div>
+                  <p class="font-black text-black text-lg">Final Quiz Completed!</p>
+                  <p class="text-gray-600 font-medium text-sm">
+                    Last score: <span class="font-black text-[#0ABAB5]">{{ attempt.score }}/{{ attempt.totalPoints }} ({{ attempt.percentage }}%)</span>
+                    &nbsp;&bull;&nbsp;{{ attempt.passed ? '✓ Passed' : '✕ Not passed' }}
+                  </p>
+                </div>
+              </div>
+              <app-button variant="secondary" icon="refresh" (btnClick)="startFinalQuiz()">
+                Retake Quiz
+              </app-button>
+            </div>
+          } @else {
+            <!-- All done, quiz not yet submitted -->
+            <div class="mx-6 mb-4 p-5 rounded-2xl border-4 border-black bg-[#FFD700]/20 flex flex-col md:flex-row items-center justify-between gap-4"
+                 data-testid="final-quiz-cta-banner">
+              <div class="flex items-center gap-3">
+                <span class="text-3xl" aria-hidden="true">🎉</span>
+                <div>
+                  <p class="font-black text-black text-lg">Lesson complete! Ready for the final quiz?</p>
+                  <p class="text-gray-600 font-medium text-sm">Test your knowledge across all modules.</p>
+                </div>
+              </div>
+              <app-button variant="primary" icon="quiz" iconPosition="right" (btnClick)="startFinalQuiz()">
+                Start Final Quiz
+              </app-button>
+            </div>
+          }
+        }
+
         <!-- Bottom Navigation Bar -->
         @if (hasAccess()) {
           <div class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)]">
-            <app-button 
-              variant="secondary" 
-              icon="arrow_back" 
+            <app-button
+              variant="secondary"
+              icon="arrow_back"
               [disabled]="currentModuleIndex() === 0"
               (btnClick)="previousModule()">
               Previous
             </app-button>
-            
+
             <div class="hidden md:flex items-center space-x-2">
               @for (module of store.currentLesson()?.modules; track module.id; let idx = $index) {
                 <div class="w-3 h-3 rounded-full border-2 border-black transition-colors"
@@ -179,19 +216,19 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
             </div>
 
             @if (currentModuleIndex() < (store.currentLesson()?.modules?.length || 0) - 1) {
-              <app-button 
-                variant="primary" 
-                icon="arrow_forward" 
+              <app-button
+                variant="primary"
+                icon="arrow_forward"
                 iconPosition="right"
                 (btnClick)="nextModule()">
                 Next Module
               </app-button>
             } @else {
-              <app-button 
-                variant="primary" 
-                icon="check_circle" 
+              <app-button
+                variant="primary"
+                icon="check_circle"
                 iconPosition="right"
-                (btnClick)="finishLesson()">
+                (btnClick)="completeLastModule()">
                 Finish Lesson
               </app-button>
             }
@@ -202,21 +239,23 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
   `
 })
 
-export class LessonViewerComponent implements OnInit {
+export class LessonViewerComponent implements OnInit, OnDestroy {
   store = inject(LessonsStore);
   authStore = inject(AuthStore);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
   currentModuleIndex = signal(0);
+  private lessonId = signal<string | null>(null);
 
-  hasAccess = computed(() => {
-    // Always return true to disable restricted mode as per user request
-    return true;
-  });
+  hasAccess = computed(() => true);
 
   ngOnInit() {
     this.reloadLesson();
+  }
+
+  ngOnDestroy() {
+    this.store.clearCompletionState();
   }
 
   unlockLesson() {
@@ -228,9 +267,11 @@ export class LessonViewerComponent implements OnInit {
   }
 
   reloadLesson() {
-    const lessonId = this.route.snapshot.paramMap.get('id');
-    if (lessonId) {
-      this.store.loadLesson(lessonId);
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.lessonId.set(id);
+      this.store.loadLesson(id);
+      this.store.loadFinalQuizAttempts(id);
     }
   }
 
@@ -260,8 +301,24 @@ export class LessonViewerComponent implements OnInit {
     }
   }
 
+  /** Called when clicking "Finish Lesson" on the last module — marks it complete and shows the CTA. */
+  completeLastModule() {
+    const lesson = this.store.currentLesson();
+    const module = this.currentModule();
+    if (lesson && module) {
+      this.store.markModuleComplete(lesson.id, module.id);
+    }
+  }
+
   finishLesson() {
     this.router.navigate(['/student/lessons']);
+  }
+
+  startFinalQuiz() {
+    const id = this.lessonId();
+    if (id) {
+      this.router.navigate(['/student/quiz-player', id]);
+    }
   }
 
   goBack() {

@@ -4,6 +4,15 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
+export interface FinalQuizAttempt {
+  attemptId: string;
+  score: number;
+  totalPoints: number;
+  percentage: number;
+  passed: boolean;
+  submittedAt: string;
+}
+
 export interface Module {
   id: string;
   title: string;
@@ -88,6 +97,11 @@ interface LessonsState {
   currentLesson: Lesson | null;
   loading: boolean;
   error: LessonLoadError | null;
+  /** Set of module IDs the student has completed in the current session */
+  completedModuleIds: Set<string>;
+  /** Final quiz attempts for the current lesson; null = not yet loaded */
+  finalQuizAttempts: FinalQuizAttempt[] | null;
+  attemptsLoading: boolean;
 }
 
 export const LessonsStore = signalStore(
@@ -97,6 +111,9 @@ export const LessonsStore = signalStore(
     currentLesson: null,
     loading: false,
     error: null,
+    completedModuleIds: new Set<string>(),
+    finalQuizAttempts: null,
+    attemptsLoading: false,
   }),
 
   withComputed((state) => ({
@@ -105,6 +122,35 @@ export const LessonsStore = signalStore(
     // Since history is removed, these will be empty for now
     completedLessons: computed(() => [] as Lesson[]),
     myLessons: computed(() => state.lessons()),
+
+    /** True when every module in the current lesson has been marked complete */
+    allModulesComplete: computed(() => {
+      const lesson = state.currentLesson();
+      if (!lesson) return false;
+      const allModules = lesson.modules;
+      if (!allModules || allModules.length === 0) return false;
+      const done = state.completedModuleIds();
+      return allModules.every(m => done.has(m.id));
+    }),
+
+    /** Derive lesson-card status from completion state */
+    lessonCardStatus: computed(() => {
+      const lesson = state.currentLesson();
+      if (!lesson) return 'not-started';
+      const done = state.completedModuleIds();
+      const allModules = lesson.modules ?? [];
+      const attempts = state.finalQuizAttempts();
+      if (attempts && attempts.length > 0) return 'quiz-submitted';
+      if (allModules.length > 0 && allModules.every(m => done.has(m.id))) return 'quiz-ready';
+      if (done.size > 0) return 'in-progress';
+      return 'not-started';
+    }),
+
+    lastQuizAttempt: computed(() => {
+      const attempts = state.finalQuizAttempts();
+      if (!attempts || attempts.length === 0) return null;
+      return attempts[attempts.length - 1];
+    }),
   })),
 
   withMethods((
@@ -200,6 +246,11 @@ export const LessonsStore = signalStore(
     },
 
     markModuleComplete(lessonId: string, moduleId: string): void {
+      // Track locally so allModulesComplete updates immediately
+      patchState(store, (s) => ({
+        completedModuleIds: new Set([...s.completedModuleIds, moduleId]),
+      }));
+
       http.put(`${apiBase}/lessons/${lessonId}/progress`, {
         moduleId,
         completedAt: new Date().toISOString(),
@@ -209,6 +260,29 @@ export const LessonsStore = signalStore(
           console.error('Failed to save module progress', err);
         },
       });
+    },
+
+    /**
+     * Load the final quiz attempt history for a lesson.
+     * Used by the lesson viewer to check whether the student already submitted.
+     * Endpoint: GET /api/v1/lessons/{id}/final-quiz/attempts
+     */
+    loadFinalQuizAttempts(lessonId: string): void {
+      patchState(store, { attemptsLoading: true });
+      http.get<FinalQuizAttempt[]>(`${apiBase}/lessons/${lessonId}/final-quiz/attempts`).subscribe({
+        next: (attempts) => {
+          patchState(store, { finalQuizAttempts: attempts, attemptsLoading: false });
+        },
+        error: () => {
+          // Treat as no attempts on error — don't block the lesson viewer
+          patchState(store, { finalQuizAttempts: [], attemptsLoading: false });
+        },
+      });
+    },
+
+    /** Reset completion tracking (e.g. when leaving the lesson) */
+    clearCompletionState(): void {
+      patchState(store, { completedModuleIds: new Set<string>(), finalQuizAttempts: null });
     },
   }))
 );

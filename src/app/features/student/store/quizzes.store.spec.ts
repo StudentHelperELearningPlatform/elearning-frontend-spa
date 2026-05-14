@@ -171,4 +171,39 @@ describe('QuizzesStore', () => {
     expect(store.timeRemaining()).toBe(0);
     expect(spy).toHaveBeenCalled();
   });
+
+  // ─── S6-final-quiz-ui ─────────────────────────────────────────────────────
+  it('submitFinalQuiz calls POST /api/v1/lessons/:id/final-quiz/submit', () => {
+    patchStore(store, {
+      currentQuiz: MOCK_QUIZ,
+      answers: { 'q1-q1': '2', 'q1-q2': 'true' },
+    });
+
+    const mockResponse = {
+      attemptId: 'att-final-1',
+      score: 15,
+      totalPoints: 15,
+      percentage: 100,
+      passed: true,
+    };
+
+    const spy = vi.spyOn(http, 'post').mockReturnValue(of(mockResponse));
+
+    store.submitFinalQuiz('lesson-99');
+
+    expect(spy).toHaveBeenCalledWith(
+      '/api/v1/lessons/lesson-99/final-quiz/submit',
+      { answers: { 'q1-q1': '2', 'q1-q2': 'true' } }
+    );
+    expect(store.submitted()).toBe(true);
+    expect(store.result()?.score).toBe(15);
+    expect(store.result()?.attemptId).toBe('att-final-1');
+  });
+
+  it('submitFinalQuiz is idempotent when already submitted', () => {
+    patchStore(store, { currentQuiz: MOCK_QUIZ, submitted: true });
+    const spy = vi.spyOn(http, 'post').mockReturnValue(of({}));
+    store.submitFinalQuiz('lesson-99');
+    expect(spy).not.toHaveBeenCalled();
+  });
 });
