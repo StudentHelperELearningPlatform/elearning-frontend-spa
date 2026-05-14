@@ -52,7 +52,7 @@ export interface UploadedMedia {
           id="fileInput"
           class="sr-only" 
           multiple 
-          accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/wav"
+          accept="image/jpeg,image/png,image/gif,video/mp4,application/pdf"
           (change)="onFileSelected($event)"
           tabindex="-1" />
           
@@ -150,9 +150,9 @@ export class MediaUploadComponent {
   readonly MAX_SIZE_MB = 50;
   readonly MAX_SIZE_BYTES = this.MAX_SIZE_MB * 1024 * 1024;
   readonly ALLOWED_TYPES = [
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-    'video/mp4', 'video/webm',
-    'audio/mpeg', 'audio/wav'
+    'image/jpeg', 'image/png', 'image/gif', 
+    'video/mp4', 
+    'application/pdf'
   ];
 
   onDragOver(event: DragEvent) {
