@@ -1,8 +1,0 @@
-{
-  "/api": {
-    "target": "https://e-learning-backend-team1-api-gateway.onrender.com",
-    "secure": true,
-    "changeOrigin": true,
-    "logLevel": "debug"
-  }
-}
