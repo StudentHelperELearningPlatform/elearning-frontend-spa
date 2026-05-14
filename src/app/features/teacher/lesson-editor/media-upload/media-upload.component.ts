@@ -138,7 +138,7 @@ export interface UploadedMedia {
   `
 })
 export class MediaUploadComponent {
-  private http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
 
   // State
   isDragging = signal(false);
@@ -216,13 +216,13 @@ export class MediaUploadComponent {
     const mediaType = file.type.split('/')[0] as 'image' | 'video' | 'audio';
     const id = existingId || crypto.randomUUID();
 
-    if (!existingId) {
+    if (existingId) {
+      this.mediaList.update(list => list.map(m => m.id === id ? { ...m, status: 'uploading', progress: 0 } : m));
+    } else {
       const newMedia: UploadedMedia = {
         id, url: '', name: file.name, type: mediaType, progress: 0, status: 'uploading', file
       };
       this.mediaList.update(list => [...list, newMedia]);
-    } else {
-      this.mediaList.update(list => list.map(m => m.id === id ? { ...m, status: 'uploading', progress: 0 } : m));
     }
 
     const formData = new FormData();
@@ -253,7 +253,9 @@ export class MediaUploadComponent {
 
   retryUpload(id: string) {
     const media = this.mediaList().find(m => m.id === id);
-    if (media && media.file) {
+    
+    // Uses optional chaining (?.) instead of &&
+    if (media?.file) {
       this.uploadFile(media.file, id);
     }
   }
