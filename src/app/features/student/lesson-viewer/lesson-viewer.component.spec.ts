@@ -17,6 +17,7 @@ const MOCK_LESSON: Lesson = {
   difficulty: 'Easy',
   duration: '15 min',
   status: 'Not Started',
+  description: 'A mock lesson description',
   subcapitols: [
     {
       id: 'sub1',
@@ -191,5 +192,56 @@ describe('LessonViewerComponent', () => {
     const spy = vi.spyOn(store, 'loadLesson');
     component.ngOnInit();
     expect(spy).toHaveBeenCalledWith('1');
+  });
+
+  // ─── Final Quiz CTA Banner ────────────────────────────────────────────────
+
+  it('does not show Final Quiz banner when not all modules are complete', () => {
+    patchStore(store, { 
+      currentLesson: MOCK_LESSON, 
+      completedModuleIds: new Set(['m1']) 
+    });
+    fixture.detectChanges();
+    
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('[data-testid="quiz-completed-banner"]')).toBeFalsy();
+    expect(element.textContent).not.toContain('Take Final Quiz');
+  });
+
+  it('shows "Take Final Quiz" CTA when all modules complete and no previous attempt', () => {
+    patchStore(store, { 
+      currentLesson: MOCK_LESSON, 
+      completedModuleIds: new Set(['m1', 'm2', 'm3']),
+      finalQuizAttempts: []
+    });
+    fixture.detectChanges();
+    
+    const element = fixture.nativeElement as HTMLElement;
+    // Check for the un-attempted banner (the text inside the button or header)
+    expect(element.textContent).toContain('Start Final Quiz');
+  });
+
+  it('shows quiz completed banner with score when there is a previous attempt', () => {
+    patchStore(store, { 
+      currentLesson: MOCK_LESSON, 
+      completedModuleIds: new Set(['m1', 'm2', 'm3']),
+      finalQuizAttempts: [
+        { attemptId: 'a1', score: 9, totalPoints: 10, percentage: 90, passed: true, submittedAt: '' }
+      ]
+    });
+    fixture.detectChanges();
+    
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('[data-testid="quiz-completed-banner"]')).toBeTruthy();
+    expect(element.textContent).toContain('Final Quiz Completed!');
+    expect(element.textContent).toContain('90%');
+    expect(element.textContent).toContain('Retake Quiz');
+  });
+
+  it('startFinalQuiz navigates to quiz player', () => {
+    patchStore(store, { currentLesson: MOCK_LESSON });
+    const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.startFinalQuiz();
+    expect(spy).toHaveBeenCalledWith(['/student/quiz-player', '1']);
   });
 });

@@ -75,7 +75,7 @@ export const TeacherProgressStore = signalStore(
                 classStudents: response.students,
                 loading: false 
               }),
-              error: (err: any) => patchState(store, { error: err.message || 'Failed to load class stats', loading: false }),
+              error: (err: Error) => patchState(store, { error: err.message || 'Failed to load class stats', loading: false }),
             })
           )
         )
@@ -89,7 +89,7 @@ export const TeacherProgressStore = signalStore(
           http.get<StudentDetail>(`${apiBase}/progress/professor/students/${studentId}`).pipe(
             tapResponse({
               next: (detail) => patchState(store, { selectedStudentDetail: detail, loading: false }),
-              error: (err: any) => patchState(store, { error: err.message || 'Failed to load student detail', loading: false }),
+              error: (err: Error) => patchState(store, { error: err.message || 'Failed to load student detail', loading: false }),
             })
           )
         )
@@ -104,7 +104,7 @@ export const TeacherProgressStore = signalStore(
           http.get<StudentProgressRow[]>(`${apiBase}/progress/professor/students`).pipe(
             tapResponse({
               next: (students) => patchState(store, { allStudents: students, loading: false }),
-              error: (err: any) => patchState(store, { error: err.message || 'Failed to load all students', loading: false }),
+              error: (err: Error) => patchState(store, { error: err.message || 'Failed to load all students', loading: false }),
             })
           )
         )

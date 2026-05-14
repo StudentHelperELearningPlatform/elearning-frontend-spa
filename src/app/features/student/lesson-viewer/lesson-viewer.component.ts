@@ -290,6 +290,11 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   nextModule() {
     const lesson = this.store.currentLesson();
+    const module = this.currentModule();
+    if (lesson && module) {
+      this.store.markModuleComplete(lesson.id, module.id);
+    }
+    
     if (lesson && lesson.modules && this.currentModuleIndex() < lesson.modules.length - 1) {
       this.currentModuleIndex.update(i => i + 1);
     }

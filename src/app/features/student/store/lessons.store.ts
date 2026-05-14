@@ -20,11 +20,13 @@ export interface Module {
   content: string;
   mediaUrl?: string;
   blockType?: string;
+  orderIndex?: number;
 }
 
 export interface Subcapitol {
   id: string;
   title: string;
+  orderIndex?: number;
   blocks: Module[];
 }
 
