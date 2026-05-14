@@ -89,13 +89,26 @@ const mapFromResponse = (saved: Record<string, unknown>, fallbackModules: Lesson
   estimated_duration_minutes: (saved['estimatedDurationMinutes'] ?? saved['estimated_duration_minutes']) as number,
   short_description: (saved['shortDescription'] ?? saved['short_description']) as string,
   status: saved['status'] as LessonStatus,
-  // Backend returns subcapitols — map them to frontend modules
-  modules: ((saved['subcapitols'] ?? saved['modules']) as Record<string, unknown>[])?.map((s: Record<string, unknown>, idx: number) => ({
-    id: (s['id'] ?? `module-${idx}`) as string,
-    title: s['title'] as string,
-    type: 'text' as ModuleType,
-    content: (s['content'] ?? '') as string,
-  })) ?? fallbackModules,
+  
+  // BACKEND CONTRACT UPDATE: Subcapitols now contain an array of 'blocks'
+  modules: ((saved['subcapitols'] ?? saved['modules']) as any[])?.map((s: any, idx: number) => {
+    
+    // 1. Find the current drafted module in the UI state
+    const fallback = fallbackModules.find(fm => fm.id === s.id || fm.title === s.title);
+    
+    // 2. Look for the TEXT block in the backend response
+    const textBlock = s.blocks?.find((b: any) => b.blockType === 'TEXT' || b.blockType === 'text');
+    const backendContent = textBlock?.content || '';
+
+    return {
+      id: s.id ?? fallback?.id ?? `module-${idx}`,
+      title: s.title,
+      type: 'text' as ModuleType,
+      // 3. Keep the frontend drafted content so it doesn't wipe on blur! 
+      // If no draft exists, use the backend content.
+      content: fallback?.content || backendContent || '',
+    };
+  }) ?? fallbackModules,
 });
 
 export const LessonEditorStore = signalStore(
