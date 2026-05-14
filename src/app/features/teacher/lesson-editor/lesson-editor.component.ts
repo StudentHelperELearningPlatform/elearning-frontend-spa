@@ -5,6 +5,7 @@ import {
   OnInit,
   computed,
   inject,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -25,6 +26,7 @@ import {
   moveItemInArray,
 } from '@angular/cdk/drag-drop';
 import { EditorModule } from 'primeng/editor';
+import { DialogModule } from 'primeng/dialog'; // ADDED
 import {
   LessonEditorStore,
   LessonModuleDraft,
@@ -35,6 +37,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
 import { MediaUploadComponent } from './media-upload/media-upload.component';
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 import { UnsavedChangesGuarded } from './unsaved-changes.guard';
+import { QuestionManagerComponent } from '../quiz-builder/question-manager.component'; // ADDED - Adjust path if needed
 
 const SUBJECTS = ['Math', 'Science', 'History', 'English', 'Geography', 'Art', 'Music'];
 const DIFFICULTIES = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
@@ -51,6 +54,7 @@ interface MetadataForm {
 
 @Component({
   selector: 'app-lesson-editor',
+  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -59,15 +63,16 @@ interface MetadataForm {
     CdkDrag,
     CdkDragHandle,
     EditorModule,
+    DialogModule, // ADDED
     ButtonComponent,
     CardComponent,
     ErrorStateComponent,
-    MediaUploadComponent
+    MediaUploadComponent,
+    QuestionManagerComponent // ADDED
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
-      <!-- Header / status -->
       <div
         class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
       >
@@ -120,7 +125,6 @@ interface MetadataForm {
         />
       }
 
-      <!-- Metadata -->
       <app-card header="Lesson Details">
         <form [formGroup]="metaForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label class="flex flex-col text-sm font-bold col-span-1">
@@ -184,7 +188,6 @@ interface MetadataForm {
         </form>
       </app-card>
 
-      <!-- Modules -->
       <app-card header="Modules">
         @if (modules().length === 0) {
           <p class="text-gray-600">No modules yet. Add one to get started.</p>
@@ -258,8 +261,23 @@ interface MetadataForm {
                     (onBlur)="onModuleBlur()"
                     [style]="{ height: '180px' }"
                   ></p-editor>
-                  <div class="mt-4">
-                    <app-media-upload></app-media-upload>
+                  
+                  <div class="mt-4 flex flex-col md:flex-row gap-4 items-start">
+                    <div class="flex-1 w-full">
+                      <app-media-upload></app-media-upload>
+                    </div>
+                    
+                    <div class="w-full md:w-auto shrink-0 bg-purple-50 p-4 border-2 border-purple-200 rounded-xl flex flex-col items-center justify-center min-w-[200px]">
+                      <span class="material-icons text-purple-500 text-3xl mb-2">fact_check</span>
+                      <p class="text-sm font-bold text-purple-900 mb-3">Module Quiz</p>
+                      <app-button
+                        variant="secondary"
+                        icon="edit"
+                        (btnClick)="openCheckQuiz(module.id)"
+                      >
+                        Manage Questions
+                      </app-button>
+                    </div>
                   </div>
                 </div>
               }
@@ -272,7 +290,34 @@ interface MetadataForm {
           </app-button>
         </div>
       </app-card>
+
+      @if (store.lesson().id) {
+        <app-card header="Final Quiz Management">
+          <app-question-manager 
+            quizType="final" 
+            [parentId]="store.lesson().id!">
+          </app-question-manager>
+        </app-card>
+      }
+
     </div>
+
+    <p-dialog 
+      header="Manage Check Quiz" 
+      [visible]="!!activeCheckQuizModuleId()" 
+      (visibleChange)="closeCheckQuiz()"
+      [modal]="true" 
+      [style]="{ width: '90vw', maxWidth: '800px' }" 
+      [draggable]="false" 
+      [resizable]="false">
+      
+      @if (activeCheckQuizModuleId()) {
+        <app-question-manager 
+          quizType="check" 
+          [parentId]="activeCheckQuizModuleId()!">
+        </app-question-manager>
+      }
+    </p-dialog>
   `,
 })
 export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesGuarded {
@@ -282,6 +327,9 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   private readonly router = inject(Router);
   private readonly destroy$ = new Subject<void>();
   private readonly autoSave$ = new Subject<void>();
+
+  // State for Check Quiz Dialog
+  protected activeCheckQuizModuleId = signal<string | null>(null);
 
   protected readonly subjectOptions = SUBJECTS;
   protected readonly difficultyOptions = DIFFICULTIES;
@@ -305,7 +353,7 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
-    this.store.reset(); // always clear stale state before loading; prevents 409 on re-navigation
+    this.store.reset(); 
     if (id) {
       this.store.loadLesson(id);
     }
@@ -358,7 +406,6 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.syncing = false;
   }
 
-  /** Called by the debounced auto-save effect — exposed for unit tests. */
   autoSaveTick(): void {
     if (this.store.saveState() === 'unsaved') {
       this.store.save();
@@ -432,5 +479,20 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   protected onUnpublish(): void {
     if (!globalThis.confirm('Unpublish this lesson?')) return;
     this.store.unpublish();
+  }
+
+  protected openCheckQuiz(moduleId: string) {
+    // A module must be saved to the DB to have a real UUID for the subcapitol check-quiz endpoints.
+    // If it starts with 'module-', it's an unsaved draft.
+    if (moduleId.startsWith('module-') || !this.store.lesson().id) {
+      alert('Please save the lesson draft first before managing quiz questions for this module.');
+      this.store.save(); // Attempt to auto-save to help the user
+      return;
+    }
+    this.activeCheckQuizModuleId.set(moduleId);
+  }
+
+  protected closeCheckQuiz() {
+    this.activeCheckQuizModuleId.set(null);
   }
 }
