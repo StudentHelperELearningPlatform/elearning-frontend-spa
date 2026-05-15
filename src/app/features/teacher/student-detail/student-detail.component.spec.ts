@@ -58,9 +58,19 @@ describe('StudentDetailComponent', () => {
     expect(storeMock.loadStudentDetail).toHaveBeenCalledWith({ studentId: 'stu-1' });
   });
 
+  it('should call loadStudentHistory with the route studentId', () => {
+    expect(storeMock.loadStudentHistory).toHaveBeenCalledWith({ studentId: 'stu-1' });
+  });
+
   it('should group entries by className', () => {
     const groups = component.groupedByClass();
     expect(groups.length).toBe(2);
+  });
+
+  it('should compute avgScore per class', () => {
+    const groups = component.groupedByClass();
+    const math = groups.find((g) => g.className === 'Math 101')!;
+    expect(math.avgScore).toBe(90);
   });
 
   it('should count only completed lessons', () => {
@@ -68,11 +78,44 @@ describe('StudentDetailComponent', () => {
   });
 
   it('should return rounded average of non-null scores', () => {
+    // (90 + 76) / 2 = 83
     expect(component.overallAvgScore()).toBe(83);
+  });
+
+  it('should return 0 overallAvgScore when no entries have scores', () => {
+    storeMock.selectedStudent.set([
+      { className: 'A', lessonTitle: 'L1', lessonId: 'l1', status: 'not_started', score: null, dateCompleted: null },
+    ]);
+    fixture.detectChanges();
+    expect(component.overallAvgScore()).toBe(0);
+  });
+
+  it('should return empty groupedByClass when selectedStudent is empty', () => {
+    storeMock.selectedStudent.set([]);
+    fixture.detectChanges();
+    expect(component.groupedByClass()).toEqual([]);
   });
 
   it('should navigate to /teacher/students', () => {
     component.goBack();
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/teacher/students']);
+  });
+
+  it('statusSeverity: completed -> success', () => {
+    expect(component.statusSeverity('completed')).toBe('success');
+  });
+
+  it('statusSeverity: in_progress -> warn', () => {
+    expect(component.statusSeverity('in_progress')).toBe('warn');
+  });
+
+  it('statusSeverity: not_started -> danger', () => {
+    expect(component.statusSeverity('not_started')).toBe('danger');
+  });
+
+  it('statusLabel: returns correct labels', () => {
+    expect(component.statusLabel('completed')).toBe('Completed');
+    expect(component.statusLabel('in_progress')).toBe('In Progress');
+    expect(component.statusLabel('not_started')).toBe('Not Started');
   });
 });

@@ -1,17 +1,34 @@
-// src/app/features/student/store/progress.store.spec.ts
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
 import { ProgressStore } from './progress.store';
 import type {
+  DashboardData,
   LessonStats,
   StudentSummary,
   StudentDetailEntry,
   StudentHistory,
 } from './progress.store';
 
+// ---------------------------------------------------------------------------
 // Fixtures
+// ---------------------------------------------------------------------------
+
+const mockDashboard: DashboardData = {
+  student: null,
+  skillLevels: [],
+  streak: null,
+  progressRecords: [],
+  recentActivity: [],
+  milestones: [],
+  upcomingQuizzes: [],
+  totalLessons: 10,
+  completedLessons: 7,
+  averageScore: 82,
+  lastActive: '2026-05-10T12:00:00Z',
+};
+
 const mockLessonStats: LessonStats = {
   lessonId: 'lesson-1',
   classId: 'class-1',
@@ -47,6 +64,10 @@ const mockHistory: StudentHistory = {
   history: mockDetail,
 };
 
+// ---------------------------------------------------------------------------
+// Suite
+// ---------------------------------------------------------------------------
+
 describe('ProgressStore', () => {
   let store: InstanceType<typeof ProgressStore>;
   let http: HttpTestingController;
@@ -67,6 +88,8 @@ describe('ProgressStore', () => {
     http.verify();
   });
 
+  // ── Initial state ──────────────────────────────────────────────────────────
+
   describe('initial state', () => {
     it('should initialise with null dashboard and empty students', () => {
       expect(store.dashboard()).toBeNull();
@@ -76,51 +99,232 @@ describe('ProgressStore', () => {
     it('completionRate() should return 0 when dashboard is null', () => {
       expect(store.completionRate()).toBe(0);
     });
+
+    it('should initialise loading flags as false', () => {
+      expect(store.dashboardLoading()).toBe(false);
+      expect(store.studentsLoading()).toBe(false);
+      expect(store.markCompleteLoading()).toBe(false);
+      expect(store.selectedStudentLoading()).toBe(false);
+      expect(store.studentHistoryLoading()).toBe(false);
+      expect(store.lessonStatsLoading()).toBe(false);
+    });
+
+    it('should initialise legacy state as empty', () => {
+      expect(store.student()).toBeNull();
+      expect(store.skillLevels()).toEqual([]);
+      expect(store.streak()).toBeNull();
+      expect(store.progressRecords()).toEqual([]);
+      expect(store.milestones()).toEqual([]);
+    });
+
+    it('activeStreak() should return 0 when streak is null', () => {
+      expect(store.activeStreak()).toBe(0);
+    });
+
+    it('continueLesson() should return null when no progress records', () => {
+      expect(store.continueLesson()).toBeNull();
+    });
+
+    it('recentMilestones() should return empty array when no milestones', () => {
+      expect(store.recentMilestones()).toEqual([]);
+    });
+
+    it('studentsFiltered() should return empty array initially', () => {
+      expect(store.studentsFiltered()).toEqual([]);
+    });
+
+    it('firstName() should return null when student is null', () => {
+      expect(store.firstName()).toBeNull();
+    });
   });
+
+  // ── loadMyDashboard (Sprint 6) ─────────────────────────────────────────────
+
+  describe('loadMyDashboard()', () => {
+    it('should set dashboard on success', () => {
+      store.loadMyDashboard();
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/dashboard'),
+      );
+      req.flush(mockDashboard);
+      expect(store.dashboard()).toEqual(mockDashboard);
+      expect(store.dashboardLoading()).toBe(false);
+    });
+
+    it('completionRate() should compute from dashboard on success', () => {
+      store.loadMyDashboard();
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/dashboard'),
+      );
+      req.flush(mockDashboard);
+      // 7/10 * 100 = 70
+      expect(store.completionRate()).toBe(70);
+    });
+
+    it('should set dashboardError on failure', () => {
+      store.loadMyDashboard();
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/dashboard'),
+      );
+      req.flush('Server error', { status: 500, statusText: 'Server Error' });
+      expect(store.dashboardLoading()).toBe(false);
+      expect(store.dashboardError()).toBeTruthy();
+    });
+  });
+
+  // ── loadDashboard (Legacy) ─────────────────────────────────────────────────
+
+  describe('loadDashboard() — legacy', () => {
+    it('should populate legacy state fields on success', () => {
+      store.loadDashboard('stu-1');
+      const req = http.expectOne((r) =>
+        r.url.includes('/students/stu-1/dashboard'),
+      );
+      req.flush(mockDashboard);
+      expect(store.loading()).toBe(false);
+      expect(store.error()).toBeNull();
+    });
+
+    it('should set error state when legacy API fails', () => {
+      store.loadDashboard('stu-1');
+      const req = http.expectOne((r) =>
+        r.url.includes('/students/stu-1/dashboard'),
+      );
+      req.error(new ProgressEvent('error'));
+      expect(store.loading()).toBe(false);
+      expect(store.error()).toBeTruthy();
+    });
+  });
+
+  // ── markLessonComplete ─────────────────────────────────────────────────────
+
+  describe('markLessonComplete()', () => {
+    it('should call PUT with correct URL and body', () => {
+      store.markLessonComplete({ lessonId: 'lesson-42', score: 95 });
+      const req = http.expectOne((r) =>
+        r.url.includes('/lessons/lesson-42/progress') && r.method === 'PUT',
+      );
+      expect(req.request.body).toEqual({ status: 'completed', score: 95 });
+      req.flush({});
+      expect(store.markCompleteLoading()).toBe(false);
+    });
+
+    it('should use null score when score is omitted', () => {
+      store.markLessonComplete({ lessonId: 'lesson-1' });
+      const req = http.expectOne((r) =>
+        r.url.includes('/lessons/lesson-1/progress') && r.method === 'PUT',
+      );
+      expect(req.request.body).toEqual({ status: 'completed', score: null });
+      req.flush({});
+    });
+
+    it('should set markCompleteError on failure', () => {
+      store.markLessonComplete({ lessonId: 'lesson-1', score: 80 });
+      const req = http.expectOne((r) =>
+        r.url.includes('/lessons/lesson-1/progress') && r.method === 'PUT',
+      );
+      req.flush('Error', { status: 500, statusText: 'Server Error' });
+      expect(store.markCompleteLoading()).toBe(false);
+      expect(store.markCompleteError()).toBeTruthy();
+    });
+  });
+
+  // ── loadLessonStats ────────────────────────────────────────────────────────
+
+  describe('loadLessonStats()', () => {
+    it('should fetch lesson stats and store them', () => {
+      store.loadLessonStats({ classId: 'class-1', lessonId: 'lesson-1' });
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/classes/class-1/lessons/lesson-1/stats'),
+      );
+      req.flush(mockLessonStats);
+      expect(store.lessonStats()).toEqual(mockLessonStats);
+      expect(store.lessonStatsLoading()).toBe(false);
+    });
+
+    it('should set lessonStatsError on failure', () => {
+      store.loadLessonStats({ classId: 'class-1', lessonId: 'lesson-1' });
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/classes/class-1/lessons/lesson-1/stats'),
+      );
+      req.flush('Not found', { status: 404, statusText: 'Not Found' });
+      expect(store.lessonStatsLoading()).toBe(false);
+      expect(store.lessonStatsError()).toBeTruthy();
+    });
+  });
+
+  // ── loadStudents ───────────────────────────────────────────────────────────
 
   describe('loadStudents()', () => {
     it('should load and store students list', () => {
       store.loadStudents();
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/professor/students')
+        r.url.includes('/progress/professor/students'),
       );
       req.flush(mockStudents);
       expect(store.students()).toEqual(mockStudents);
+      expect(store.studentsLoading()).toBe(false);
+    });
+
+    it('should set studentsError on failure', () => {
+      store.loadStudents();
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/professor/students'),
+      );
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+      expect(store.studentsLoading()).toBe(false);
+      expect(store.studentsError()).toBeTruthy();
     });
   });
+
+  // ── loadStudentDetail ──────────────────────────────────────────────────────
 
   describe('loadStudentDetail()', () => {
     it('should load detail and set selectedStudentId', () => {
       store.loadStudentDetail({ studentId: 'stu-1' });
       const req = http.expectOne((r) =>
         r.url.includes('/progress/professor/students/stu-1') &&
-        !r.url.includes('/history')
+        !r.url.includes('/history'),
       );
       req.flush(mockDetail);
       expect(store.selectedStudentId()).toBe('stu-1');
       expect(store.selectedStudent()).toEqual(mockDetail);
+      expect(store.selectedStudentLoading()).toBe(false);
+    });
+
+    it('should set selectedStudentError on failure', () => {
+      store.loadStudentDetail({ studentId: 'stu-999' });
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/professor/students/stu-999') &&
+        !r.url.includes('/history'),
+      );
+      req.flush('Not found', { status: 404, statusText: 'Not Found' });
+      expect(store.selectedStudentLoading()).toBe(false);
+      expect(store.selectedStudentError()).toBeTruthy();
     });
   });
+
+  // ── loadStudentHistory ─────────────────────────────────────────────────────
 
   describe('loadStudentHistory()', () => {
     it('should load full student history', () => {
       store.loadStudentHistory({ studentId: 'stu-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/professor/students/stu-1/history')
+        r.url.includes('/progress/professor/students/stu-1/history'),
       );
       req.flush(mockHistory);
       expect(store.studentHistory()).toEqual(mockHistory);
+      expect(store.studentHistoryLoading()).toBe(false);
     });
-  });
 
-  describe('loadLessonStats()', () => {
-    it('should fetch lesson stats and store them', () => {
-      store.loadLessonStats({ classId: 'class-1', lessonId: 'lesson-1' });
+    it('should set studentHistoryError on failure', () => {
+      store.loadStudentHistory({ studentId: 'stu-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/classes/class-1/lessons/lesson-1/stats')
+        r.url.includes('/progress/professor/students/stu-1/history'),
       );
-      req.flush(mockLessonStats);
-      expect(store.lessonStats()).toEqual(mockLessonStats);
+      req.flush('Server error', { status: 500, statusText: 'Server Error' });
+      expect(store.studentHistoryLoading()).toBe(false);
+      expect(store.studentHistoryError()).toBeTruthy();
     });
   });
 });
