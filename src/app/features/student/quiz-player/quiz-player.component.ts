@@ -190,8 +190,8 @@ export class QuizPlayerComponent implements OnInit {
 
     const question = this.store.currentQuiz()?.questions[index];
     const isCurrent = this.store.currentQuestionIndex() === index;
-    const isAnswered = question ? this.store.isAnswered(question.id) : false;
-    const isFlagged = question ? this.store.isFlagged(question.id) : false;
+    const isAnswered = question ? this.store.isAnswered(question.id)() : false;
+    const isFlagged = question ? this.store.isFlagged(question.id)() : false;
 
     if (isAnswered) {
       classes.push('answered', 'bg-[#0ABAB5]/20');

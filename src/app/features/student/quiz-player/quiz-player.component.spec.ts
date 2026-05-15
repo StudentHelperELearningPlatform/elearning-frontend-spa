@@ -3,13 +3,13 @@ import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { QuizzesStore } from '../store/quizzes.store';
-import { provideApiMocks } from '../../../../test-utils/api-testing';
-import { NO_ERRORS_SCHEMA, EnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { computed } from '@angular/core';
 
 // QuizPlayerComponent uses templateUrl so we cannot mount it in Vitest.
 // We test the component CLASS logic directly by instantiating it with injected deps.
 
 import { QuizPlayerComponent } from './quiz-player.component';
+import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
 const MOCK_QUIZ = {
   id: 'quiz-1',
@@ -54,18 +54,16 @@ describe('QuizPlayerComponent (logic)', () => {
   let component: QuizPlayerComponent;
   let injector: EnvironmentInjector;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
+  beforeEach(() => {
+    TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideRouter([]),
-        ...provideApiMocks(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'quiz-1' } } },
         },
       ],
-      schemas: [NO_ERRORS_SCHEMA],
     });
 
     store = TestBed.inject(QuizzesStore);
@@ -219,21 +217,28 @@ describe('QuizPlayerComponent (logic)', () => {
   // ─── getPaletteClass ─────────────────────────────────────────────────────
 
   it('getPaletteClass includes "answered" when question is answered', () => {
-    patchStore(store, { answers: { q1: 'q1-o1' } });
-    expect(component.getPaletteClass(0)).toContain('answered');
+    vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => true));
+    vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => false));
+    expect(component.getPaletteClass(0)).toMatch(/\banswered\b/);
+    expect(component.getPaletteClass(0)).not.toMatch(/\bunanswered\b/);
   });
 
   it('getPaletteClass includes "unanswered" when question is not answered', () => {
-    patchStore(store, { answers: {} });
-    expect(component.getPaletteClass(0)).toContain('unanswered');
+    vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => false));
+    vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => false));
+    expect(component.getPaletteClass(0)).toMatch(/\bunanswered\b/);
+    expect(component.getPaletteClass(0)).not.toMatch(/\banswered\b/);
   });
 
   it('getPaletteClass includes "flagged" when question is flagged', () => {
-    patchStore(store, { flaggedQuestions: new Set(['q1']) });
+    vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => false));
+    vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => true));
     expect(component.getPaletteClass(0)).toContain('flagged');
   });
 
   it('getPaletteClass includes "current" for the active question index', () => {
+    vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => false));
+    vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => false));
     patchStore(store, { currentQuestionIndex: 0 });
     expect(component.getPaletteClass(0)).toContain('current');
   });

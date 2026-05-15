@@ -91,6 +91,7 @@ interface QuizzesState {
   submitted: boolean;
   result: QuizResultWithMeta | null;
   loading: boolean;
+  error: string | null;
   resultDetail: QuizResultDetail | null;
   resultDetailLoading: boolean;
   resultDetailError: string | null;
@@ -104,6 +105,7 @@ const getInitialQuizState = (quiz: QuizWithMeta | null, isStart: boolean) => ({
   timeRemaining: isStart ? (quiz?.timeLimitSeconds ?? null) : null,
   submitted: false,
   result: null,
+  error: null,
 });
 
 export const QuizzesStore = signalStore(
@@ -118,6 +120,7 @@ export const QuizzesStore = signalStore(
     submitted: false,
     result: null,
     loading: false,
+    error: null,
     resultDetail: null,
     resultDetailLoading: false,
     resultDetailError: null,
@@ -164,7 +167,7 @@ export const QuizzesStore = signalStore(
     };
 
     const fetchQuiz = (id: string, isStart: boolean) => {
-      patchState(store, { loading: true });
+      patchState(store, { loading: true, error: null });
       http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
         next: (quiz) => {
           const mappedQuiz = mapQuizResponse(quiz);
@@ -174,7 +177,10 @@ export const QuizzesStore = signalStore(
             ...getInitialQuizState(mappedQuiz, isStart),
           });
         },
-        error: () => patchState(store, { loading: false }),
+        error: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to load quiz';
+          patchState(store, { loading: false, error: message });
+        },
       });
     };
 
