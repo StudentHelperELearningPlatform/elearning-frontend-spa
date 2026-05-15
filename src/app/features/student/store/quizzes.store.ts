@@ -1,64 +1,321 @@
+// src/app/features/student/store/quizzes.store.ts
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { QUIZ_API_URL } from '@core/tokens/api.token';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { type Quiz, type QuizResult, type QuizResultDetail } from '@shared/models/quiz.types';
+
+export {
+  type Question,
+  type Quiz,
+  type QuizResult,
+  type QuizResultDetail,
+} from '@shared/models/quiz.types';
+
+import {
+  Quiz,
+  QuizOption,
+  QuizResult,
+  QuizResultDetail,
+} from '@shared/models/quiz.types';
+
+interface QuizApiQuestion {
+  id: string;
+  questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+  questionText: string;
+  options?: { id: string; text: string; isCorrect: boolean }[];
+  orderIndex: number;
+}
+
+interface QuizApiResponse {
+  id: string;
+  questions: QuizApiQuestion[];
+  passThreshold?: number;
+  mandatory?: boolean;
+  maxAttempts?: number;
+}
+
+interface SubmitQuizResponse {
+  attemptId: string;
+  score: number;
+  totalPoints: number;
+  percentage: number;
+  passed: boolean;
+  timeSpent?: number;
+}
+
+type QuizWithMeta = Quiz & {
+  subject?: string;
+  timeLimitSeconds?: number | null;
+};
+
+type QuizResultWithMeta = QuizResult & {
+  attemptId?: string;
+  passed?: boolean;
+};
+
+const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
+  if (question.questionType === 'SHORT_ANSWER') return [];
+  if (question.questionType === 'TRUE_FALSE') {
+    const opts = (question.options ?? []).map(o => o.text);
+    const displayOpts = opts.length > 0 ? opts : ['True', 'False'];
+    return displayOpts.map((text) => ({ id: text.toLowerCase(), text }));
+  }
+  return (question.options ?? []).map((opt) => ({ id: opt.id, text: opt.text }));
+};
+
+const mapQuizResponse = (response: QuizApiResponse, title = 'Quiz', subject = ''): QuizWithMeta => ({
+  id: response.id,
+  title,
+  subject,
+  timeLimit: 0,
+  timeLimitSeconds: null,
+  questions: response.questions.map((q) => ({
+    id: q.id,
+    type: q.questionType,
+    text: q.questionText,
+    points: 1,
+    options: mapQuestionOptions(q),
+  })),
+});
 
 interface QuizzesState {
-  currentQuiz: Quiz | null;
-  answers: Record<string, string | string[]>;
-  loading: boolean;
-  error: string | null;
+  currentQuiz: QuizWithMeta | null;
+  currentQuestionIndex: number;
+  answers: Record<string, string>;
+  flaggedQuestions: Set<string>;
+  startedAt: Date | null;
+  timeRemaining: number | null;
   submitted: boolean;
-  result: QuizResult | null;
+  result: QuizResultWithMeta | null;
+  loading: boolean;
   resultDetail: QuizResultDetail | null;
   resultDetailLoading: boolean;
   resultDetailError: string | null;
+  error: string | null;
 }
 
 export const QuizzesStore = signalStore(
   { providedIn: 'root' },
+
   withState<QuizzesState>({
     currentQuiz: null,
+    currentQuestionIndex: 0,
     answers: {},
-    loading: false,
-    error: null,
+    flaggedQuestions: new Set<string>(),
+    startedAt: null,
+    timeRemaining: null,
     submitted: false,
     result: null,
+    loading: false,
     resultDetail: null,
     resultDetailLoading: false,
     resultDetailError: null,
+    error: null,
   }),
+
   withComputed((state) => ({
-    isAnswered: computed(() => (id: string) => !!state.answers()[id]),
+    answeredCount: computed(() => Object.keys(state.answers()).length),
+    flaggedCount: computed(() => state.flaggedQuestions().size),
+    canSubmit: computed(() => Object.keys(state.answers()).length > 0),
+    started: computed(() => state.startedAt() !== null),
+    showResults: computed(() => !!state.result()),
     score: computed(() => state.result()?.score ?? 0),
+    totalPoints: computed(() => state.result()?.totalPoints ?? 0),
+    timeSpent: computed(() => state.result()?.timeSpent ?? 0),
+
+    progress: computed(() => {
+      const total = state.currentQuiz()?.questions?.length ?? 1;
+      return Math.round((Object.keys(state.answers()).length / total) * 100);
+    }),
+
+    isLastQuestion: computed(() => {
+      const total = state.currentQuiz()?.questions?.length ?? 0;
+      return state.currentQuestionIndex() === total - 1;
+    }),
+
+    currentQuestion: computed(() => {
+      const quiz = state.currentQuiz();
+      return quiz?.questions?.[state.currentQuestionIndex()] ?? null;
+    }),
+
+    currentAnswerSelected: computed(() => {
+      const quiz = state.currentQuiz();
+      if (!quiz?.questions?.length) return null;
+      const q = quiz.questions[state.currentQuestionIndex()];
+      return q ? state.answers()[q.id] ?? null : null;
+    }),
   })),
-  withMethods((store, http = inject(HttpClient), apiBase = inject(QUIZ_API_URL)) => ({
-    loadQuiz(id: string) {
-      patchState(store, { loading: true, error: null });
-      http.get<Quiz>(`${apiBase}/quizzes/${id}`).subscribe({
-        next: (quiz) => patchState(store, { currentQuiz: quiz, loading: false }),
-        error: (err) => patchState(store, { loading: false, error: err.message }),
+
+  withMethods((store, http = inject(HttpClient), apiBase = inject(QUIZ_API_URL)) => {
+
+    const navigateTo = (index: number) => {
+      const total = store.currentQuiz()?.questions?.length ?? 0;
+      const safeIndex = Math.max(0, Math.min(index, total - 1));
+      patchState(store, { currentQuestionIndex: safeIndex });
+    };
+
+    const submitQuizInternal = () => {
+      if (store.submitted()) return;
+      const quizId = store.currentQuiz()?.id;
+      if (!quizId) return;
+      const startedAt = store.startedAt();
+      const timeSpent = startedAt
+        ? Math.floor((Date.now() - startedAt.getTime()) / 1000)
+        : 0;
+      patchState(store, { submitted: true });
+
+      http.post<SubmitQuizResponse>(
+        `${apiBase}/lessons/${quizId}/final-quiz/submit`,
+        { answers: store.answers() }
+      ).subscribe({
+        next: (res) => {
+          patchState(store, {
+            result: {
+              score: res.score,
+              totalPoints: res.totalPoints,
+              percentage: res.percentage,
+              passed: res.passed,
+              attemptId: res.attemptId,
+              timeSpent: res.timeSpent ?? timeSpent,
+            },
+          });
+        },
       });
-    },
-    setAnswer(id: string, answer: string | string[]) {
-      patchState(store, (state) => ({ answers: { ...state.answers, [id]: answer } }));
-    },
-    submitQuiz() {
-      const quiz = store.currentQuiz();
-      if (!quiz) return;
-      patchState(store, { loading: true });
-      http.post<QuizResult>(`${apiBase}/quizzes/${quiz.id}/submit`, { answers: store.answers() }).subscribe({
-        next: (result) => patchState(store, { result, loading: false, submitted: true }),
-        error: (err) => patchState(store, { loading: false, error: err.message }),
-      });
-    },
-    loadResultDetail(quizId: string, attemptId: string) {
-      patchState(store, { resultDetailLoading: true });
-      http.get<QuizResultDetail>(`${apiBase}/quizzes/${quizId}/attempts/${attemptId}`).subscribe({
-        next: (detail) => patchState(store, { resultDetail: detail, resultDetailLoading: false }),
-        error: (err) => patchState(store, { resultDetailError: err.message, resultDetailLoading: false }),
-      });
-    }
-  }))
+    };
+
+    return {
+      // Metoda ta (develop)
+      loadQuiz(id: string) {
+        patchState(store, { loading: true, error: null });
+        http.get<Quiz>(`${apiBase}/quizzes/${id}`).subscribe({
+          next: (quiz) => patchState(store, { currentQuiz: quiz as QuizWithMeta, loading: false }),
+          error: (err: { message?: string }) => patchState(store, { loading: false, error: err.message ?? 'Failed to load quiz' }),
+        });
+      },
+
+      // Metoda colegului (feature branch)
+      loadQuizById(id: string) {
+        patchState(store, { loading: true });
+        http.get<QuizApiResponse>(`${apiBase}/lessons/${id}/final-quiz`).subscribe({
+          next: (quiz) => {
+            patchState(store, {
+              loading: false,
+              currentQuiz: mapQuizResponse(quiz),
+              currentQuestionIndex: 0,
+              answers: {},
+              flaggedQuestions: new Set<string>(),
+              submitted: false,
+              result: null,
+            });
+          },
+          error: () => patchState(store, { loading: false }),
+        });
+      },
+
+      startQuiz(id: string) {
+        patchState(store, { loading: true });
+        http.get<QuizApiResponse>(`${apiBase}/lessons/${id}/final-quiz`).subscribe({
+          next: (quiz) => {
+            const mapped = mapQuizResponse(quiz);
+            patchState(store, {
+              loading: false,
+              currentQuiz: mapped,
+              currentQuestionIndex: 0,
+              answers: {},
+              flaggedQuestions: new Set<string>(),
+              startedAt: new Date(),
+              timeRemaining: mapped.timeLimitSeconds ?? null,
+              submitted: false,
+              result: null,
+            });
+          },
+          error: () => patchState(store, { loading: false }),
+        });
+      },
+
+      // Metoda ta (develop) — setAnswer
+      setAnswer(id: string, answer: string | string[]) {
+        patchState(store, (s) => ({ answers: { ...s.answers, [id]: Array.isArray(answer) ? answer[0] : answer } }));
+      },
+
+      // Metoda colegului — answerQuestion
+      answerQuestion(id: string, answer: string) {
+        patchState(store, (s) => ({ answers: { ...s.answers, [id]: answer } }));
+      },
+
+      flagQuestion(id: string) {
+        patchState(store, (s) => {
+          const set = new Set(s.flaggedQuestions);
+          if (set.has(id)) { set.delete(id); } else { set.add(id); }
+          return { flaggedQuestions: set };
+        });
+      },
+
+      navigateTo,
+      nextQuestion: () => navigateTo(store.currentQuestionIndex() + 1),
+      prevQuestion: () => navigateTo(store.currentQuestionIndex() - 1),
+
+      submitQuiz: submitQuizInternal,
+
+      loadFinalQuiz(lessonId: string) {
+        patchState(store, { loading: true, error: null });
+        http.get<QuizApiResponse>(`${apiBase}/lessons/${lessonId}/final-quiz`).subscribe({
+          next: (quiz) => {
+            patchState(store, {
+              loading: false,
+              currentQuiz: mapQuizResponse(quiz, 'Final Quiz'),
+              currentQuestionIndex: 0,
+              answers: {},
+              flaggedQuestions: new Set<string>(),
+              submitted: false,
+              result: null,
+            });
+          },
+          error: (err: { message?: string }) => {
+            patchState(store, { loading: false, error: err?.message ?? 'Failed to load quiz' });
+          },
+        });
+      },
+
+      tickTimer() {
+        const remaining = store.timeRemaining();
+        if (remaining === null) return;
+        const next = remaining - 1;
+        patchState(store, { timeRemaining: next });
+        if (next <= 0 && !store.submitted()) { submitQuizInternal(); }
+      },
+
+      loadResultDetail(quizId: string, attemptId: string) {
+        patchState(store, { resultDetailLoading: true, resultDetailError: null });
+        http.get<QuizResultDetail>(`${apiBase}/lessons/${quizId}/final-quiz/results/${attemptId}`).subscribe({
+          next: (data) => patchState(store, { resultDetail: data, resultDetailLoading: false }),
+          error: () => patchState(store, { resultDetailLoading: false, resultDetailError: 'Failed to load result detail' }),
+        });
+      },
+
+      clearResultDetail() {
+        patchState(store, { resultDetail: null, resultDetailLoading: false, resultDetailError: null });
+      },
+
+      resetQuiz() {
+        patchState(store, {
+          currentQuestionIndex: 0,
+          answers: {},
+          flaggedQuestions: new Set<string>(),
+          startedAt: null,
+          timeRemaining: null,
+          submitted: false,
+          result: null,
+        });
+      },
+
+      isAnswered(id: string) {
+        return !!store.answers()[id];
+      },
+
+      isFlagged(id: string) {
+        return store.flaggedQuestions().has(id);
+      },
+    };
+  })
 );
