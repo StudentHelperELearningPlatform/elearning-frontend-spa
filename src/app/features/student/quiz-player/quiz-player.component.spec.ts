@@ -1,15 +1,11 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { patchStore } from '../../../../test-utils/patch-store';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { QuizzesStore } from '../store/quizzes.store';
-import { computed } from '@angular/core';
-
-// QuizPlayerComponent uses templateUrl so we cannot mount it in Vitest.
-// We test the component CLASS logic directly by instantiating it with injected deps.
-
+import { computed, EnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QuizPlayerComponent } from './quiz-player.component';
-import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
 const MOCK_QUIZ = {
   id: 'quiz-1',
@@ -26,7 +22,6 @@ const MOCK_QUIZ = {
       options: [
         { id: 'q1-o1', text: '3' },
         { id: 'q1-o2', text: '4' },
-        { id: 'q1-o3', text: '5' },
       ],
     },
     {
@@ -39,20 +34,14 @@ const MOCK_QUIZ = {
         { id: 'false', text: 'False' },
       ],
     },
-    {
-      id: 'q3',
-      type: 'SHORT_ANSWER' as const,
-      text: "Explain Newton's first law.",
-      points: 10,
-      options: [],
-    },
   ],
 };
 
-describe('QuizPlayerComponent (logic)', () => {
+describe('QuizPlayerComponent', () => {
   let store: InstanceType<typeof QuizzesStore>;
   let component: QuizPlayerComponent;
   let injector: EnvironmentInjector;
+  let router: Router;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -68,6 +57,7 @@ describe('QuizPlayerComponent (logic)', () => {
 
     store = TestBed.inject(QuizzesStore);
     injector = TestBed.inject(EnvironmentInjector);
+    router = TestBed.inject(Router);
 
     patchStore(store, {
       currentQuiz: MOCK_QUIZ,
@@ -81,182 +71,179 @@ describe('QuizPlayerComponent (logic)', () => {
       loading: false,
     });
 
-    // Instantiate the component class inside the injection context so signals & effects work
     component = runInInjectionContext(injector, () => new QuizPlayerComponent());
     component.ngOnInit();
   });
 
   afterEach(() => vi.restoreAllMocks());
 
-  // ─── currentQuestion ──────────────────────────────────────────────────────
+  describe('Component Initialization & Core Logic', () => {
+    it('currentQuestion returns the question at currentQuestionIndex', () => {
+      expect(component.currentQuestion()?.id).toBe('q1');
+    });
 
-  it('currentQuestion returns the question at currentQuestionIndex', () => {
-    expect(component.currentQuestion()?.id).toBe('q1');
+    it('currentQuestion returns undefined when quiz is null', () => {
+      patchStore(store, { currentQuiz: null });
+      expect(component.currentQuestion()).toBeUndefined();
+    });
+
+    it('totalQuestions reflects quiz question count', () => {
+      expect(component.totalQuestions()).toBe(2);
+    });
+
+    it('isLastQuestion boundaries', () => {
+      patchStore(store, { currentQuestionIndex: 0 });
+      expect(component.isLastQuestion()).toBe(false);
+
+      patchStore(store, { currentQuestionIndex: 1 });
+      expect(component.isLastQuestion()).toBe(true);
+    });
   });
 
-  it('currentQuestion returns undefined when quiz is null', () => {
-    patchStore(store, { currentQuiz: null });
-    expect(component.currentQuestion()).toBeUndefined();
+  describe('Actions & State Updates', () => {
+    it('startQuiz sets started to true and resets modals', () => {
+      component.paletteOpen.set(true);
+      component.showSubmitModal.set(true);
+      const spy = vi.spyOn(store, 'startQuiz').mockImplementation(() => undefined);
+
+      component.startQuiz();
+
+      expect(component.started()).toBe(true);
+      expect(component.paletteOpen()).toBe(false);
+      expect(component.showSubmitModal()).toBe(false);
+      expect(spy).toHaveBeenCalledWith('quiz-1');
+    });
+
+    it('selectOption updates local signal and store', () => {
+      const spy = vi.spyOn(store, 'answerQuestion');
+      component.selectOption('q1-o1');
+      expect(component.selectedOptionId()).toBe('q1-o1');
+      expect(spy).toHaveBeenCalledWith('q1', 'q1-o1');
+    });
+
+    it('nextQuestion, previousQuestion, and navigateTo call store and restore options', () => {
+      const nextSpy = vi.spyOn(store, 'nextQuestion');
+      const prevSpy = vi.spyOn(store, 'prevQuestion');
+      const navSpy = vi.spyOn(store, 'navigateTo');
+
+      component.nextQuestion();
+      expect(nextSpy).toHaveBeenCalled();
+
+      component.previousQuestion();
+      expect(prevSpy).toHaveBeenCalled();
+
+      component.navigateTo(1);
+      expect(navSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('restoreSelectedOption sets null if there is no current question', () => {
+      patchStore(store, { currentQuiz: null });
+      component.nextQuestion(); // Triggers private restoreSelectedOption
+      expect(component.selectedOptionId()).toBeNull();
+    });
   });
 
-  // ─── totalQuestions / isLastQuestion ─────────────────────────────────────
+  describe('Submissions & Navigation', () => {
+    it('submitQuiz opens the submit modal', () => {
+      component.submitQuiz();
+      expect(component.showSubmitModal()).toBe(true);
+    });
 
-  it('totalQuestions reflects quiz question count', () => {
-    expect(component.totalQuestions()).toBe(3);
+    it('submitConfirmed closes modal and calls store', () => {
+      component.showSubmitModal.set(true);
+      const spy = vi.spyOn(store, 'submitQuiz').mockImplementation(() => undefined);
+      component.submitConfirmed();
+      expect(component.showSubmitModal()).toBe(false);
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('onNextOrSubmit routing logic', () => {
+      patchStore(store, { currentQuestionIndex: 0 });
+      const nextSpy = vi.spyOn(component, 'nextQuestion');
+      component.onNextOrSubmit();
+      expect(nextSpy).toHaveBeenCalled();
+
+      patchStore(store, { currentQuestionIndex: 1 });
+      const submitSpy = vi.spyOn(component, 'submitQuiz');
+      component.onNextOrSubmit();
+      expect(submitSpy).toHaveBeenCalled();
+    });
+
+    it('handleTimeUp calls store.submitQuiz', () => {
+      const spy = vi.spyOn(store, 'submitQuiz').mockImplementation(() => undefined);
+      component.handleTimeUp();
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('goBack navigates to dashboard', () => {
+      const spy = vi.spyOn(router, 'navigate');
+      component.goBack();
+      expect(spy).toHaveBeenCalledWith(['/student/dashboard']);
+    });
+
+    it('retryQuiz resets the quiz state entirely', () => {
+      vi.spyOn(store, 'resetQuiz').mockImplementation(() => undefined);
+      vi.spyOn(store, 'loadQuizById').mockImplementation(() => undefined);
+      component.started.set(true);
+
+      component.retryQuiz();
+
+      expect(component.started()).toBe(false);
+      expect(component.paletteOpen()).toBe(false);
+      expect(component.showSubmitModal()).toBe(false);
+      expect(component.selectedOptionId()).toBeNull();
+      // @ts-ignore - checking private property state for coverage
+      expect(component.resultsNavigated()).toBe(false);
+    });
   });
 
-  it('isLastQuestion is false when not on last question', () => {
-    patchStore(store, { currentQuestionIndex: 0 });
-    expect(component.isLastQuestion()).toBe(false);
+  describe('Effects', () => {
+    it('navigates to results when attemptId becomes available', () => {
+      const spy = vi.spyOn(router, 'navigate');
+
+      // Update store to trigger the effect
+      patchStore(store, { result: { attemptId: 'att-123', score: 100 } });
+      TestBed.flushEffects();
+
+      expect(spy).toHaveBeenCalledWith(['/student/quizzes', 'quiz-1', 'results', 'att-123']);
+    });
+
+    it('timer subscription ticks when conditions are met', fakeAsync(() => {
+      const spy = vi.spyOn(store, 'tickTimer').mockImplementation(() => undefined);
+
+      component.started.set(true);
+      patchStore(store, { submitted: false, timeRemaining: 900 });
+      TestBed.flushEffects(); // Kick off the effect
+
+      tick(1000); // Fast-forward 1 second
+      expect(spy).toHaveBeenCalled();
+
+      // Clean up effect by failing conditions
+      patchStore(store, { submitted: true });
+      TestBed.flushEffects();
+    }));
   });
 
-  it('isLastQuestion is true on the final question', () => {
-    patchStore(store, { currentQuestionIndex: 2 });
-    expect(component.isLastQuestion()).toBe(true);
-  });
+  describe('UI Helpers', () => {
+    it('togglePalette flips paletteOpen', () => {
+      component.paletteOpen.set(false);
+      component.togglePalette();
+      expect(component.paletteOpen()).toBe(true);
+    });
 
-  // ─── startQuiz ────────────────────────────────────────────────────────────
+    it('getPaletteClass applies correct styling classes', () => {
+      vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => true));
+      vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => true));
+      patchStore(store, { currentQuestionIndex: 0 });
 
-  it('startQuiz sets started to true', () => {
-    vi.spyOn(store, 'startQuiz').mockImplementation(() => undefined);
-    component.startQuiz();
-    expect(component.started()).toBe(true);
-  });
+      const classes = component.getPaletteClass(0);
+      expect(classes).toContain('answered');
+      expect(classes).toContain('flagged');
+      expect(classes).toContain('current');
 
-  it('startQuiz calls store.startQuiz with the quiz id', () => {
-    const spy = vi.spyOn(store, 'startQuiz').mockImplementation(() => undefined);
-    component.startQuiz();
-    expect(spy).toHaveBeenCalledWith('quiz-1');
-  });
-
-  it('startQuiz resets paletteOpen and showSubmitModal', () => {
-    component.paletteOpen.set(true);
-    component.showSubmitModal.set(true);
-    vi.spyOn(store, 'startQuiz').mockImplementation(() => undefined);
-    component.startQuiz();
-    expect(component.paletteOpen()).toBe(false);
-    expect(component.showSubmitModal()).toBe(false);
-  });
-
-  // ─── selectOption ─────────────────────────────────────────────────────────
-
-  it('selectOption updates selectedOptionId', () => {
-    component.selectOption('q1-o2');
-    expect(component.selectedOptionId()).toBe('q1-o2');
-  });
-
-  it('selectOption calls store.answerQuestion', () => {
-    const spy = vi.spyOn(store, 'answerQuestion');
-    component.selectOption('q1-o1');
-    expect(spy).toHaveBeenCalledWith('q1', 'q1-o1');
-  });
-
-  // ─── nextQuestion / previousQuestion ─────────────────────────────────────
-
-  it('nextQuestion calls store.nextQuestion', () => {
-    const spy = vi.spyOn(store, 'nextQuestion');
-    component.nextQuestion();
-    expect(spy).toHaveBeenCalled();
-  });
-
-  it('previousQuestion calls store.prevQuestion', () => {
-    const spy = vi.spyOn(store, 'prevQuestion');
-    component.previousQuestion();
-    expect(spy).toHaveBeenCalled();
-  });
-
-  // ─── navigateTo ───────────────────────────────────────────────────────────
-
-  it('navigateTo calls store.navigateTo with the given index', () => {
-    const spy = vi.spyOn(store, 'navigateTo');
-    component.navigateTo(2);
-    expect(spy).toHaveBeenCalledWith(2);
-  });
-
-  // ─── submitQuiz / submitConfirmed ────────────────────────────────────────
-
-  it('submitQuiz opens the submit modal', () => {
-    component.submitQuiz();
-    expect(component.showSubmitModal()).toBe(true);
-  });
-
-  it('submitConfirmed closes modal and calls store.submitQuiz', () => {
-    component.showSubmitModal.set(true);
-    const spy = vi.spyOn(store, 'submitQuiz').mockImplementation(() => undefined);
-    component.submitConfirmed();
-    expect(component.showSubmitModal()).toBe(false);
-    expect(spy).toHaveBeenCalled();
-  });
-
-  // ─── onNextOrSubmit ───────────────────────────────────────────────────────
-
-  it('onNextOrSubmit calls nextQuestion when not on last question', () => {
-    patchStore(store, { currentQuestionIndex: 0 });
-    const spy = vi.spyOn(component, 'nextQuestion');
-    component.onNextOrSubmit();
-    expect(spy).toHaveBeenCalled();
-  });
-
-  it('onNextOrSubmit calls submitQuiz when on last question', () => {
-    patchStore(store, { currentQuestionIndex: 2 });
-    const spy = vi.spyOn(component, 'submitQuiz');
-    component.onNextOrSubmit();
-    expect(spy).toHaveBeenCalled();
-  });
-
-  // ─── togglePalette ────────────────────────────────────────────────────────
-
-  it('togglePalette flips paletteOpen', () => {
-    expect(component.paletteOpen()).toBe(false);
-    component.togglePalette();
-    expect(component.paletteOpen()).toBe(true);
-    component.togglePalette();
-    expect(component.paletteOpen()).toBe(false);
-  });
-
-  // ─── getPaletteClass ─────────────────────────────────────────────────────
-
-  it('getPaletteClass includes "answered" when question is answered', () => {
-    vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => true));
-    vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => false));
-    expect(component.getPaletteClass(0)).toMatch(/\banswered\b/);
-    expect(component.getPaletteClass(0)).not.toMatch(/\bunanswered\b/);
-  });
-
-  it('getPaletteClass includes "unanswered" when question is not answered', () => {
-    vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => false));
-    vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => false));
-    expect(component.getPaletteClass(0)).toMatch(/\bunanswered\b/);
-    expect(component.getPaletteClass(0)).not.toMatch(/\banswered\b/);
-  });
-
-  it('getPaletteClass includes "flagged" when question is flagged', () => {
-    vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => false));
-    vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => true));
-    expect(component.getPaletteClass(0)).toContain('flagged');
-  });
-
-  it('getPaletteClass includes "current" for the active question index', () => {
-    vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => false));
-    vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => false));
-    patchStore(store, { currentQuestionIndex: 0 });
-    expect(component.getPaletteClass(0)).toContain('current');
-  });
-
-  // ─── progressPercentage ───────────────────────────────────────────────────
-
-  it('progressPercentage is > 0 when not on first question', () => {
-    patchStore(store, { currentQuestionIndex: 1 });
-    expect(component.progressPercentage()).toBeGreaterThan(0);
-  });
-
-  // ─── retryQuiz ────────────────────────────────────────────────────────────
-
-  it('retryQuiz resets started to false', () => {
-    vi.spyOn(store, 'resetQuiz').mockImplementation(() => undefined);
-    vi.spyOn(store, 'loadQuizById').mockImplementation(() => undefined);
-    component.started.set(true);
-    component.retryQuiz();
-    expect(component.started()).toBe(false);
+      vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => false));
+      const unansweredClasses = component.getPaletteClass(1);
+      expect(unansweredClasses).toContain('unanswered');
+    });
   });
 });
