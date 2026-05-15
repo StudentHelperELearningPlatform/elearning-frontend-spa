@@ -1,3 +1,4 @@
+// src/app/features/student/store/lessons.store.ts
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
@@ -44,8 +45,6 @@ export interface LessonLoadError {
   message: string;
 }
 
-// Seed lessons keep the catalog populated before the first API call completes,
-// so the lesson-list UI shows content immediately rather than an empty state.
 const SEED_LESSONS: Lesson[] = [
   {
     id: 'seed-1',
@@ -82,7 +81,6 @@ const SEED_LESSONS: Lesson[] = [
   },
 ];
 
-
 interface LessonsState {
   lessons: Lesson[];
   currentLesson: Lesson | null;
@@ -102,15 +100,14 @@ export const LessonsStore = signalStore(
   withComputed((state) => ({
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
-    // Since history is removed, these will be empty for now
     completedLessons: computed(() => [] as Lesson[]),
     myLessons: computed(() => state.lessons()),
   })),
 
   withMethods((
-    store, 
-    http = inject(HttpClient), 
-    apiBase = inject(CONTENT_API_URL)
+    store,
+    http = inject(HttpClient),
+    apiBase = inject(CONTENT_API_URL),
   ) => ({
 
     loadLessons(): void {
@@ -119,7 +116,7 @@ export const LessonsStore = signalStore(
         next: (response) => {
           console.log('[LessonsStore] API Response:', response);
           let data: BackendLesson[] = [];
-          
+
           if (Array.isArray(response)) {
             data = response as BackendLesson[];
           } else if (response && Array.isArray((response as Record<string, unknown>)['content'])) {
@@ -144,71 +141,72 @@ export const LessonsStore = signalStore(
     checkout(studentId: string, lessonId: string): void {
       patchState(store, { loading: true });
       http.post(`${inject(USER_PLATFORM_API_URL)}/payments/checkout`, null, {
-        params: { 
-          studentId, 
-          bundleId: lessonId, 
-          itemType: 'LESSON', 
-          itemId: lessonId 
-        }
+        params: {
+          studentId,
+          bundleId: lessonId,
+          itemType: 'LESSON',
+          itemId: lessonId,
+        },
       }).subscribe({
         next: () => {
           patchState(store, { loading: false });
         },
         error: () => {
-          patchState(store, { 
-            loading: false, 
-            error: { kind: 'unknown', message: 'Failed to initiate unlock. Please try again.' } 
+          patchState(store, {
+            loading: false,
+            error: { kind: 'unknown', message: 'Failed to initiate unlock. Please try again.' },
           });
-        }
+        },
       });
     },
 
     loadLesson(id: string): void {
       patchState(store, { loading: true, error: null, currentLesson: null });
-      http.get<unknown>(`${apiBase}/lessons/${id}`)
-        .subscribe({
-          next: (response) => {
-            console.log(`[LessonsStore] Single Lesson API Response (${id}):`, response);
-            let data = response;
-            if (response && (response as Record<string, unknown>)['lesson']) {
-              data = (response as Record<string, unknown>)['lesson'];
-            } else if (response && (response as Record<string, unknown>)['content'] && !Array.isArray((response as Record<string, unknown>)['content'])) {
-              data = (response as Record<string, unknown>)['content'];
-            }
+      http.get<unknown>(`${apiBase}/lessons/${id}`).subscribe({
+        next: (response) => {
+          console.log(`[LessonsStore] Single Lesson API Response (${id}):`, response);
+          let data = response;
+          if (response && (response as Record<string, unknown>)['lesson']) {
+            data = (response as Record<string, unknown>)['lesson'];
+          } else if (
+            response &&
+            (response as Record<string, unknown>)['content'] &&
+            !Array.isArray((response as Record<string, unknown>)['content'])
+          ) {
+            data = (response as Record<string, unknown>)['content'];
+          }
 
-            const currentLesson = mapLessonResponse(data as unknown as BackendLesson);
-            patchState(store, { currentLesson, loading: false });
-          },
-          error: (err: HttpErrorResponse) => {
-            console.error(`[LessonsStore] Failed to load lesson ${id}:`, err);
-            let kind: LessonLoadError['kind'] = 'unknown';
-            let message = 'Unknown error';
-            if (err.status === 404) {
-              kind = 'not-found';
-              message = 'Lesson not found';
-            } else if (err.status >= 500) {
-              kind = 'server';
-              message = 'Server error';
-            }
-            
-            patchState(store, { 
-              loading: false, 
-              error: { kind, message } 
-            });
-          },
-        });
+          const currentLesson = mapLessonResponse(data as unknown as BackendLesson);
+          patchState(store, { currentLesson, loading: false });
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error(`[LessonsStore] Failed to load lesson ${id}:`, err);
+          let kind: LessonLoadError['kind'] = 'unknown';
+          let message = 'Unknown error';
+          if (err.status === 404) {
+            kind = 'not-found';
+            message = 'Lesson not found';
+          } else if (err.status >= 500) {
+            kind = 'server';
+            message = 'Server error';
+          }
+          patchState(store, { loading: false, error: { kind, message } });
+        },
+      });
     },
 
     markModuleComplete(lessonId: string, moduleId: string): void {
-      http.put(`${apiBase}/lessons/${lessonId}/progress`, {
-        moduleId,
-        completedAt: new Date().toISOString(),
-      }).subscribe({
-        next: () => { /* progress saved — no state change needed */ },
-        error: (err) => {
-          console.error('Failed to save module progress', err);
-        },
-      });
+      http
+        .put(`${apiBase}/lessons/${lessonId}/progress`, {
+          moduleId,
+          completedAt: new Date().toISOString(),
+        })
+        .subscribe({
+          next: () => { /* progress saved — no state change needed */ },
+          error: (err) => {
+            console.error('Failed to save module progress', err);
+          },
+        });
     },
   }))
 );

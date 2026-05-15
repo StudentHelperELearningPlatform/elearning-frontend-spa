@@ -5,11 +5,7 @@ import { ClassManagementComponent } from './class-management/class-management.co
 import { ContentEditorComponent } from './content-editor/content-editor.component';
 import { QuizBuilderComponent } from './quiz-builder/quiz-builder.component';
 import { PathBuilderComponent } from './content-editor/path-builder/path-builder.component';
-
-// From feat/E5-05-learning-path-builder
 import { LearningPathEditorComponent } from './learning-paths/learning-path-editor/learning-path-editor.component';
-
-// From develop
 import { LessonEditorComponent } from './lesson-editor/lesson-editor.component';
 import { unsavedChangesGuard } from './lesson-editor/unsaved-changes.guard';
 import { TeacherDashboardComponent } from './dashboard/teacher-dashboard.component';
@@ -19,8 +15,8 @@ export default [
   { path: 'analytics', component: AnalyticsDashboardComponent },
   { path: 'classes', component: ClassManagementComponent },
   { path: 'content', component: ContentEditorComponent },
-  
-  // Lesson Editor Routes (from develop)
+
+  // Lesson Editor Routes (develop)
   {
     path: 'lessons/new',
     component: LessonEditorComponent,
@@ -31,15 +27,29 @@ export default [
     component: LessonEditorComponent,
     canDeactivate: [unsavedChangesGuard],
   },
-  
+
   // Builder Routes
   { path: 'path-builder', component: PathBuilderComponent },
   { path: 'quiz-builder', component: QuizBuilderComponent },
   { path: 'quiz-builder/:id', component: QuizBuilderComponent },
-  
-  // Learning Path Routes (from feat branch)
+
+  // Learning Path Routes (develop / feat/E5-05)
   { path: 'learning-paths/new', component: LearningPathEditorComponent },
   { path: 'learning-paths/:id/edit', component: LearningPathEditorComponent },
-  
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+
+  // Students Overview (S6 — Melora)
+  {
+    path: 'students',
+    loadComponent: () =>
+      import('./students-overview/teacher-students-overview.component')
+        .then((m) => m.TeacherStudentsOverviewComponent),
+  },
+  {
+    path: 'students/:studentId',
+    loadComponent: () =>
+      import('./student-detail/student-detail.component')
+        .then((m) => m.StudentDetailComponent),
+  },
+
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ] as Routes;
