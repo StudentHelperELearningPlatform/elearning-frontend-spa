@@ -10,6 +10,7 @@
       severity="secondary"
       [text]="true"
       (click)="goBack()"
+      (keydown.enter)="goBack()"
     />
     <h1 class="text-2xl font-bold text-gray-800">
       Student Detail
@@ -80,16 +81,16 @@
         >
           <ng-template pTemplate="header">
             <tr>
-              <th pSortableColumn="lessonTitle">
+              <th scope="col" pSortableColumn="lessonTitle">
                 Lesson <p-sortIcon field="lessonTitle" />
               </th>
-              <th pSortableColumn="status">
+              <th scope="col" pSortableColumn="status">
                 Status <p-sortIcon field="status" />
               </th>
-              <th pSortableColumn="score">
+              <th scope="col" pSortableColumn="score">
                 Score <p-sortIcon field="score" />
               </th>
-              <th pSortableColumn="dateCompleted">
+              <th scope="col" pSortableColumn="dateCompleted">
                 Date Completed <p-sortIcon field="dateCompleted" />
               </th>
             </tr>

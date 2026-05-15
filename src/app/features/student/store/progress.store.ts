@@ -198,11 +198,11 @@ export const ProgressStore = signalStore(
     activeStreak: computed(() => store.streak()?.currentStreak ?? 0),
 
     recentMilestones: computed(() => {
-      return [...store.milestones()]
-        .filter((m) => !!m.earnedAt)
-        .sort((a, b) => new Date(b.earnedAt!).getTime() - new Date(a.earnedAt!).getTime())
-        .slice(0, 3);
-    }),
+  return [...store.milestones()]
+    .filter((m) => m.earnedAt != null)
+    .sort((a, b) => new Date(b.earnedAt ?? '').getTime() - new Date(a.earnedAt ?? '').getTime())
+    .slice(0, 3);
+}),
 
     continueLesson: computed((): ProgressRecord | null => {
       const inProgress = store.progressRecords().filter((r) => r.status === 'IN_PROGRESS');

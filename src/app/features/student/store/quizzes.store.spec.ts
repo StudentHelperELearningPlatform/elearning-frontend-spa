@@ -342,7 +342,7 @@ describe('QuizzesStore', () => {
   // ── clearResultDetail ──────────────────────────────────────────────────────
 
   it('clearResultDetail resets resultDetail state', () => {
-    patchStore(store, { resultDetail: { questions: [] } as any, resultDetailError: 'some error' });
+    patchStore(store, { resultDetail: { questions: [] } as unknown as import('@shared/models/quiz.types').QuizResultDetail, resultDetailError: 'some error' });
     store.clearResultDetail();
 
     expect(store.resultDetail()).toBeNull();
@@ -356,7 +356,7 @@ describe('QuizzesStore', () => {
     patchStore(store, {
       answers: { 'q1': 'a' },
       submitted: true,
-      result: { score: 10 } as any,
+      result: { score: 10 } as unknown as import('@shared/models/quiz.types').QuizResult,
       currentQuestionIndex: 2,
     });
 

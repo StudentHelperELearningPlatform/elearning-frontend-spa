@@ -88,6 +88,6 @@ export class TeacherStudentsOverviewComponent implements OnInit {
   }
 
   onRowSelect(student: TeacherStudentSummary): void {
-    void this.router.navigate(['/teacher/students', student.studentId]);
-  }
+  this.router.navigate(['/teacher/students', student.studentId]);
+}
 }

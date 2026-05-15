@@ -48,19 +48,19 @@
     >
       <ng-template pTemplate="header">
         <tr>
-          <th pSortableColumn="studentName">
+          <th scope="col" pSortableColumn="studentName">
             Student Name <p-sortIcon field="studentName" />
           </th>
-          <th pSortableColumn="classesEnrolled">
+          <th scope="col" pSortableColumn="classesEnrolled">
             Classes Enrolled <p-sortIcon field="classesEnrolled" />
           </th>
-          <th pSortableColumn="totalLessonsCompleted">
+          <th scope="col" pSortableColumn="totalLessonsCompleted">
             Lessons Completed <p-sortIcon field="totalLessonsCompleted" />
           </th>
-          <th pSortableColumn="averageScore">
+          <th scope="col" pSortableColumn="averageScore">
             Avg Score <p-sortIcon field="averageScore" />
           </th>
-          <th pSortableColumn="lastActive">
+          <th scope="col" pSortableColumn="lastActive">
             Last Active <p-sortIcon field="lastActive" />
           </th>
         </tr>

@@ -84,8 +84,8 @@ export class StudentDetailComponent implements OnInit {
   }
 
   goBack(): void {
-    void this.router.navigate(['/teacher/students']);
-  }
+  this.router.navigate(['/teacher/students']);
+}
 
   statusSeverity(status: StudentDetailEntry['status']): 'success' | 'warn' | 'danger' {
     switch (status) {
