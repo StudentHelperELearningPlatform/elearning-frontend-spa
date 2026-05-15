@@ -1,4 +1,4 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
@@ -192,7 +192,7 @@ describe('QuizPlayerComponent', () => {
       expect(component.paletteOpen()).toBe(false);
       expect(component.showSubmitModal()).toBe(false);
       expect(component.selectedOptionId()).toBeNull();
-      // @ts-ignore - checking private property state for coverage
+      // @ts-expect-error - checking private property state for coverage
       expect(component.resultsNavigated()).toBe(false);
     });
   });
@@ -208,20 +208,25 @@ describe('QuizPlayerComponent', () => {
       expect(spy).toHaveBeenCalledWith(['/student/quizzes', 'quiz-1', 'results', 'att-123']);
     });
 
-    it('timer subscription ticks when conditions are met', fakeAsync(() => {
+    it('timer subscription ticks when conditions are met', () => {
+      // Opt into Vitest's native fake timers instead of Angular's fakeAsync
+      vi.useFakeTimers();
       const spy = vi.spyOn(store, 'tickTimer').mockImplementation(() => undefined);
 
       component.started.set(true);
       patchStore(store, { submitted: false, timeRemaining: 900 });
       TestBed.flushEffects(); // Kick off the effect
 
-      tick(1000); // Fast-forward 1 second
+      vi.advanceTimersByTime(1000); // Fast-forward 1 second
       expect(spy).toHaveBeenCalled();
 
       // Clean up effect by failing conditions
       patchStore(store, { submitted: true });
       TestBed.flushEffects();
-    }));
+
+      // Restore timers so subsequent tests aren't affected
+      vi.useRealTimers();
+    });
   });
 
   describe('UI Helpers', () => {
