@@ -235,15 +235,17 @@ interface MetadataForm {
                   </div>
 
                   <div
-                    class="mt-4 w-full bg-purple-50 p-4 border-2 border-purple-200 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4"
+                    class="mt-4 w-full bg-gray-50 p-4 border-2 border-black rounded-xl flex flex-col md:flex-row items-center justify-between gap-4"
                   >
-                    <div class="flex items-center gap-3">
-                      <span class="material-icons text-purple-500 text-3xl">fact_check</span>
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="w-12 h-12 bg-white border-2 border-black rounded-lg flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                      >
+                        <span class="material-icons text-[#0ABAB5] text-2xl">fact_check</span>
+                      </div>
                       <div>
-                        <p class="text-lg font-black text-purple-900 leading-tight">
-                          Module Check Quiz
-                        </p>
-                        <p class="text-sm text-purple-700 font-medium m-0">
+                        <p class="text-lg font-black text-black leading-tight">Module Check Quiz</p>
+                        <p class="text-sm text-gray-600 font-bold m-0 mt-1">
                           Add quick questions to test student focus here.
                         </p>
                       </div>
@@ -429,7 +431,7 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     }
     if (!globalThis.confirm('Publish this lesson? Students will be able to see it.')) return;
     this.store.publish(() => {
-      void this.router.navigate(['/teacher/lessons']);
+      void this.router.navigate(['/teacher/content']);
     });
   }
   protected onUnpublish(): void {
