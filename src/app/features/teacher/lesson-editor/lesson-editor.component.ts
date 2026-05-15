@@ -1,31 +1,9 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  OnDestroy,
-  OnInit,
-  computed,
-  inject,
-  signal,
-  effect,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  AbstractControl,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
-import {
-  CdkDrag,
-  CdkDragDrop,
-  CdkDragHandle,
-  CdkDropList,
-  moveItemInArray,
-} from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { EditorModule } from 'primeng/editor';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
@@ -53,248 +31,144 @@ interface MetadataForm {
   selector: 'app-lesson-editor',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    CdkDropList,
-    CdkDrag,
-    CdkDragHandle,
-    EditorModule,
-    DialogModule,
-    ToastModule,
-    ButtonComponent,
-    CardComponent,
-    MediaUploadComponent,
-    QuestionManagerComponent,
+    CommonModule, FormsModule, ReactiveFormsModule, CdkDropList, CdkDrag, CdkDragHandle,
+    EditorModule, DialogModule, ToastModule, ButtonComponent, CardComponent, 
+    MediaUploadComponent, QuestionManagerComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p-toast
-      position="top-right"
-      [style]="{ position: 'fixed', top: '20px', right: '20px', 'z-index': '99999' }"
-    >
+    <p-toast 
+      position="top-right" 
+      [style]="{ 'position': 'fixed', 'top': '20px', 'right': '20px', 'z-index': '99999' }">
     </p-toast>
 
-    <div class="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
-      <div
-        class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-      >
-        <div>
-          <h1 class="text-3xl font-black tracking-tight">
+    <div class="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6">
+      
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-5 sm:p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+        <div class="w-full lg:w-auto">
+          <h1 class="text-2xl sm:text-3xl font-black tracking-tight break-words">
             {{ store.lesson().id ? 'Edit Lesson' : 'Create Lesson' }}
           </h1>
           <p class="text-gray-600 font-medium" data-testid="status-indicator">
             @switch (store.saveState()) {
-              @case ('saving') {
-                Saving…
-              }
-              @case ('saved') {
-                Saved ✓
-              }
-              @case ('unsaved') {
-                Unsaved changes
-              }
-              @case ('error') {
-                Save failed
-              }
-              @default {
-                Ready
-              }
+              @case ('saving') { Saving… }
+              @case ('saved') { Saved ✓ }
+              @case ('unsaved') { Unsaved changes }
+              @case ('error') { Save failed }
+              @default { Ready }
             }
           </p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <app-button
-            variant="secondary"
-            icon="save"
-            (btnClick)="onSaveDraft()"
-            [disabled]="store.saveState() === 'saving'"
-          >
-            Save Draft
-          </app-button>
+        
+        <div class="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
+          <div class="w-full sm:w-auto flex flex-col">
+            <app-button variant="secondary" icon="save" (btnClick)="onSaveDraft()" [disabled]="store.saveState() === 'saving'">
+              Save Draft
+            </app-button>
+          </div>
+          
           @if (store.lesson().status === 'PUBLISHED') {
-            <app-button variant="secondary" icon="cloud_off" (btnClick)="onUnpublish()"
-              >Unpublish</app-button
-            >
+            <div class="w-full sm:w-auto flex flex-col">
+              <app-button variant="secondary" icon="cloud_off" (btnClick)="onUnpublish()">Unpublish</app-button>
+            </div>
           } @else {
-            <app-button
-              variant="primary"
-              icon="cloud_upload"
-              [disabled]="!store.canPublish()"
-              (btnClick)="onPublishClicked()"
-              >Publish</app-button
-            >
+            <div class="w-full sm:w-auto flex flex-col">
+              <app-button variant="primary" icon="cloud_upload" [disabled]="!store.canPublish()" (btnClick)="onPublishClicked()">Publish</app-button>
+            </div>
           }
         </div>
       </div>
 
       <app-card header="Lesson Details">
-        <form [formGroup]="metaForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form [formGroup]="metaForm" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <label class="flex flex-col text-sm font-bold col-span-1">
             <span class="mb-1">Title <span aria-hidden="true">*</span></span>
-            <input
-              formControlName="title"
-              class="px-3 py-2 border-2 border-black rounded-xl font-medium"
-              placeholder="e.g. Intro to Fractions"
-            />
+            <input formControlName="title" class="px-3 py-2 border-2 border-black rounded-xl font-medium" placeholder="e.g. Intro to Fractions"/>
           </label>
           <label class="flex flex-col text-sm font-bold col-span-1">
             <span class="mb-1">Subject <span aria-hidden="true">*</span></span>
-            <select
-              formControlName="subject"
-              class="px-3 py-2 border-2 border-black rounded-xl font-medium bg-white"
-            >
+            <select formControlName="subject" class="px-3 py-2 border-2 border-black rounded-xl font-medium bg-white">
               <option value="">Select subject…</option>
-              @for (s of subjectOptions; track s) {
-                <option [value]="s">{{ s }}</option>
-              }
+              @for (s of subjectOptions; track s) { <option [value]="s">{{ s }}</option> }
             </select>
           </label>
           <label class="flex flex-col text-sm font-bold col-span-1">
             <span class="mb-1">Difficulty Level <span aria-hidden="true">*</span></span>
-            <select
-              formControlName="difficulty_level"
-              class="px-3 py-2 border-2 border-black rounded-xl font-medium bg-white"
-            >
+            <select formControlName="difficulty_level" class="px-3 py-2 border-2 border-black rounded-xl font-medium bg-white">
               <option value="">Select difficulty…</option>
-              @for (d of difficultyOptions; track d) {
-                <option [value]="d">{{ d }}</option>
-              }
+              @for (d of difficultyOptions; track d) { <option [value]="d">{{ d }}</option> }
             </select>
           </label>
-          <label class="flex flex-col text-sm font-bold col-span-1 md:col-span-2">
+          <label class="flex flex-col text-sm font-bold col-span-1 lg:col-span-2">
             <span class="mb-1">Short Description (optional)</span>
-            <textarea
-              formControlName="short_description"
-              rows="3"
-              class="px-3 py-2 border-2 border-black rounded-xl font-medium"
-            ></textarea>
+            <textarea formControlName="short_description" rows="3" class="px-3 py-2 border-2 border-black rounded-xl font-medium"></textarea>
           </label>
         </form>
       </app-card>
 
       <app-card header="Modules">
-        @if (modules().length === 0) {
-          <p class="text-gray-600">No modules yet. Add one to get started.</p>
-        }
-        <ul cdkDropList (cdkDropListDropped)="onModuleDrop($event)" class="space-y-3">
+        @if (modules().length === 0) { <p class="text-gray-600">No modules yet. Add one to get started.</p> }
+        <ul cdkDropList (cdkDropListDropped)="onModuleDrop($event)" class="space-y-4">
           @for (module of modules(); track module.id; let idx = $index) {
             <li cdkDrag class="border-2 border-black rounded-2xl bg-gray-50 overflow-hidden">
-              <div class="flex items-center gap-3 p-3 bg-white border-b-2 border-black">
-                <button
-                  type="button"
-                  cdkDragHandle
-                  class="cursor-grab p-2 rounded-lg border-2 border-black bg-white hover:bg-gray-100"
-                >
+              
+              <div class="flex flex-wrap md:flex-nowrap items-center gap-2 sm:gap-3 p-3 bg-white border-b-2 border-black">
+                <button type="button" cdkDragHandle class="cursor-grab p-2 rounded-lg border-2 border-black bg-white hover:bg-gray-100 shrink-0">
                   <span class="material-icons" aria-hidden="true">drag_indicator</span>
                 </button>
-                <input
-                  type="text"
-                  [value]="module.title"
-                  (input)="onModuleTitleChange(module.id, $event)"
-                  class="flex-1 px-2 py-1 border-2 border-black rounded-lg font-bold"
-                  placeholder="Module Title"
-                />
-                <select
-                  [value]="module.type"
-                  (change)="onModuleTypeChange(module.id, $event)"
-                  class="px-2 py-1 border-2 border-black rounded-lg font-bold bg-white"
-                >
-                  @for (t of moduleTypes; track t) {
-                    <option [value]="t">{{ t }}</option>
-                  }
+                <input type="text" [value]="module.title" (input)="onModuleTitleChange(module.id, $event)" class="flex-1 min-w-[120px] px-2 py-1 border-2 border-black rounded-lg font-bold" placeholder="Module Title"/>
+                <select [value]="module.type" (change)="onModuleTypeChange(module.id, $event)" class="px-2 py-1 border-2 border-black rounded-lg font-bold bg-white shrink-0">
+                  @for (t of moduleTypes; track t) { <option [value]="t">{{ t }}</option> }
                 </select>
-                <button
-                  type="button"
-                  (click)="toggleCollapsed(module.id)"
-                  class="p-2 rounded-lg border-2 border-black bg-white hover:bg-gray-100"
-                >
-                  <span class="material-icons" aria-hidden="true">{{
-                    isCollapsed(module.id) ? 'expand_more' : 'expand_less'
-                  }}</span>
+                <button type="button" (click)="toggleCollapsed(module.id)" class="p-2 rounded-lg border-2 border-black bg-white hover:bg-gray-100 shrink-0">
+                  <span class="material-icons" aria-hidden="true">{{ isCollapsed(module.id) ? 'expand_more' : 'expand_less' }}</span>
                 </button>
-                <button
-                  type="button"
-                  (click)="confirmRemove(module.id)"
-                  class="p-2 rounded-lg border-2 border-red-700 bg-red-500 text-white hover:bg-red-600"
-                >
+                <button type="button" (click)="confirmRemove(module.id)" class="p-2 rounded-lg border-2 border-red-700 bg-red-500 text-white hover:bg-red-600 shrink-0">
                   <span class="material-icons" aria-hidden="true">delete</span>
                 </button>
               </div>
 
               @if (!isCollapsed(module.id)) {
-                <div class="p-4 space-y-3">
-                  <p-editor
-                    [ngModel]="module.content"
-                    (ngModelChange)="onModuleContentChange(module.id, $event)"
-                    (onBlur)="onModuleBlur()"
-                    [style]="{ height: '180px' }"
-                  ></p-editor>
+                <div class="p-3 sm:p-4 space-y-3">
+                  <p-editor [ngModel]="module.content" (ngModelChange)="onModuleContentChange(module.id, $event)" (onBlur)="onModuleBlur()" [style]="{ height: '180px' }"></p-editor>
+                  
                   <div class="mt-4 w-full">
                     <app-media-upload></app-media-upload>
                   </div>
-
-                  <div
-                    class="mt-4 w-full bg-gray-50 p-4 border-2 border-black rounded-xl flex flex-col md:flex-row items-center justify-between gap-4"
-                  >
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="w-12 h-12 bg-white border-2 border-black rounded-lg flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                      >
+                  
+                  <div class="mt-4 w-full bg-gray-50 p-4 border-2 border-black rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                      <div class="w-12 h-12 shrink-0 bg-white border-2 border-black rounded-lg flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                         <span class="material-icons text-[#0ABAB5] text-2xl">fact_check</span>
                       </div>
                       <div>
-                        <p class="text-lg font-black text-black leading-tight">Module Check Quiz</p>
-                        <p class="text-sm text-gray-600 font-bold m-0 mt-1">
-                          Add quick questions to test student focus here.
-                        </p>
+                        <p class="text-base sm:text-lg font-black text-black leading-tight">Module Check Quiz</p>
+                        <p class="text-xs sm:text-sm text-gray-600 font-bold m-0 mt-1">Add quick questions to test student focus.</p>
                       </div>
                     </div>
-                    <app-button
-                      variant="secondary"
-                      icon="edit"
-                      (btnClick)="openCheckQuiz(module.id)"
-                    >
-                      Manage Questions
-                    </app-button>
+                    <div class="w-full sm:w-auto flex flex-col">
+                      <app-button variant="secondary" icon="edit" (btnClick)="openCheckQuiz(module.id)">
+                        Manage Questions
+                      </app-button>
+                    </div>
                   </div>
                 </div>
               }
             </li>
           }
         </ul>
-        <div class="mt-4">
-          <app-button variant="secondary" icon="add" (btnClick)="onAddModule()"
-            >Add Module</app-button
-          >
-        </div>
+        <div class="mt-4 flex flex-col sm:inline-flex"><app-button variant="secondary" icon="add" (btnClick)="onAddModule()">Add Module</app-button></div>
       </app-card>
 
       @if (store.lesson().id) {
         <app-card header="Final Quiz Management">
-          <app-question-manager
-            quizType="final"
-            [parentId]="store.lesson().id!"
-          ></app-question-manager>
+          <app-question-manager quizType="final" [parentId]="store.lesson().id!"></app-question-manager>
         </app-card>
       }
     </div>
 
-    <p-dialog
-      header="Manage Check Quiz"
-      [visible]="!!activeCheckQuizModuleId()"
-      (visibleChange)="closeCheckQuiz()"
-      [modal]="true"
-      [style]="{ width: '90vw', maxWidth: '800px' }"
-      [draggable]="false"
-      [resizable]="false"
-    >
-      @if (activeCheckQuizModuleId()) {
-        <app-question-manager
-          quizType="check"
-          [parentId]="activeCheckQuizModuleId()!"
-        ></app-question-manager>
-      }
+    <p-dialog header="Manage Check Quiz" [visible]="!!activeCheckQuizModuleId()" (visibleChange)="closeCheckQuiz()" [modal]="true" [style]="{ width: '95vw', maxWidth: '1000px' }" [draggable]="false" [resizable]="false">
+      @if (activeCheckQuizModuleId()) { <app-question-manager quizType="check" [parentId]="activeCheckQuizModuleId()!"></app-question-manager> }
     </p-dialog>
   `,
 })
@@ -313,15 +187,11 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   protected readonly modules = computed(() => this.store.lesson().modules);
 
   protected readonly metaForm: FormGroup<{
-    title: AbstractControl<string>;
-    subject: AbstractControl<string>;
-    difficulty_level: AbstractControl<string>;
-    short_description: AbstractControl<string>;
+    title: AbstractControl<string>; subject: AbstractControl<string>;
+    difficulty_level: AbstractControl<string>; short_description: AbstractControl<string>;
   }> = this.fb.nonNullable.group({
-    title: ['', [Validators.required]],
-    subject: ['', [Validators.required]],
-    difficulty_level: ['BEGINNER', [Validators.required]],
-    short_description: [''],
+    title: ['', [Validators.required]], subject: ['', [Validators.required]],
+    difficulty_level: ['BEGINNER', [Validators.required]], short_description: [''],
   }) as never;
 
   private readonly collapsed = new Set<string>();
@@ -336,20 +206,14 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
       const lesson = this.store.lesson();
       if (!this.syncing) {
         const current = this.metaForm.value;
-        if (
-          current.title !== lesson.title ||
-          current.short_description !== lesson.short_description
-        ) {
+        if (current.title !== lesson.title || current.short_description !== lesson.short_description) {
           this.syncing = true;
-          this.metaForm.patchValue(
-            {
-              title: lesson.title || '',
-              subject: lesson.subject || '',
-              difficulty_level: lesson.difficulty_level || 'BEGINNER',
-              short_description: lesson.short_description || '',
-            },
-            { emitEvent: false },
-          );
+          this.metaForm.patchValue({
+            title: lesson.title || '',
+            subject: lesson.subject || '',
+            difficulty_level: lesson.difficulty_level || 'BEGINNER',
+            short_description: lesson.short_description || '',
+          }, { emitEvent: false });
           this.syncing = false;
         }
       }
@@ -358,40 +222,29 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
-    this.store.reset();
+    this.store.reset(); 
     if (id) this.store.loadLesson(id);
 
     this.metaForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((value) => {
       if (this.syncing) return;
       const v = value as Partial<MetadataForm>;
       this.store.updateMetadata({
-        title: v.title ?? '',
-        subject: v.subject ?? '',
-        difficulty_level: v.difficulty_level ?? 'BEGINNER',
-        short_description: v.short_description ?? '',
+        title: v.title ?? '', subject: v.subject ?? '',
+        difficulty_level: v.difficulty_level ?? 'BEGINNER', short_description: v.short_description ?? '',
       });
       this.autoSave$.next();
     });
 
-    this.autoSave$
-      .pipe(debounceTime(AUTO_SAVE_DEBOUNCE_MS), takeUntil(this.destroy$))
-      .subscribe(() => {
-        if (this.store.saveState() === 'unsaved') this.store.save();
-      });
+    this.autoSave$.pipe(debounceTime(AUTO_SAVE_DEBOUNCE_MS), takeUntil(this.destroy$))
+      .subscribe(() => { if (this.store.saveState() === 'unsaved') this.store.save(); });
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+    this.destroy$.next(); this.destroy$.complete();
   }
 
-  protected onModuleBlur(): void {
-    this.store.save();
-  }
-  protected onAddModule(): void {
-    this.store.addModule();
-    this.autoSave$.next();
-  }
+  protected onModuleBlur(): void { this.store.save(); }
+  protected onAddModule(): void { this.store.addModule(); this.autoSave$.next(); }
   protected confirmRemove(id: string): void {
     if (!globalThis.confirm('Delete this module? This cannot be undone.')) return;
     this.store.removeModule(id);
@@ -415,38 +268,31 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.autoSave$.next();
   }
   protected toggleCollapsed(id: string): void {
-    if (this.collapsed.has(id)) this.collapsed.delete(id);
-    else this.collapsed.add(id);
+    if (this.collapsed.has(id)) this.collapsed.delete(id); else this.collapsed.add(id);
   }
-  protected isCollapsed(id: string): boolean {
-    return this.collapsed.has(id);
-  }
-  protected onSaveDraft(): void {
-    this.store.save();
-  }
+  protected isCollapsed(id: string): boolean { return this.collapsed.has(id); }
+  protected onSaveDraft(): void { this.store.save(); }
+  
   protected onPublishClicked(): void {
     if (!this.store.canPublish()) {
       this.metaForm.markAllAsTouched();
       return;
     }
     if (!globalThis.confirm('Publish this lesson? Students will be able to see it.')) return;
-    this.store.publish(() => {
-      void this.router.navigate(['/teacher/content']);
-    });
+    this.store.publish();
   }
+  
   protected onUnpublish(): void {
     if (!globalThis.confirm('Unpublish this lesson?')) return;
     this.store.unpublish();
   }
+  
   protected openCheckQuiz(moduleId: string) {
     if (moduleId.startsWith('module-') || !this.store.lesson().id) {
       alert('Please save the lesson draft first before managing quiz questions for this module.');
-      this.store.save();
-      return;
+      this.store.save(); return;
     }
     this.activeCheckQuizModuleId.set(moduleId);
   }
-  protected closeCheckQuiz() {
-    this.activeCheckQuizModuleId.set(null);
-  }
+  protected closeCheckQuiz() { this.activeCheckQuizModuleId.set(null); }
 }
