@@ -2,7 +2,11 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
-import { QuestionResponse, AddQuestionRequest, UpdateQuestionRequest } from '../../../shared/models/quiz.types';
+import {
+  QuestionResponse,
+  AddQuestionRequest,
+  UpdateQuestionRequest,
+} from '../../../shared/models/quiz.types';
 import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
@@ -12,29 +16,51 @@ export class QuestionsService {
 
   // --- GET ---
   getCheckQuizQuestions(subcapitolId: string): Observable<QuestionResponse[]> {
-    return this.http.get<QuestionResponse[]>(`${this.baseUrl}/subcapitols/${subcapitolId}/check-quiz/questions`);
+    return this.http.get<QuestionResponse[]>(
+      `${this.baseUrl}/subcapitols/${subcapitolId}/check-quiz/questions`,
+    );
   }
 
   getFinalQuizQuestions(lessonId: string): Observable<QuestionResponse[]> {
-    return this.http.get<QuestionResponse[]>(`${this.baseUrl}/lessons/${lessonId}/final-quiz/questions`);
+    return this.http.get<QuestionResponse[]>(
+      `${this.baseUrl}/lessons/${lessonId}/final-quiz/questions`,
+    );
   }
 
   // --- POST (Add) ---
-  addCheckQuizQuestion(subcapitolId: string, payload: AddQuestionRequest): Observable<QuestionResponse> {
-    return this.http.post<QuestionResponse>(`${this.baseUrl}/subcapitols/${subcapitolId}/check-quiz/questions`, payload);
+  addCheckQuizQuestion(
+    subcapitolId: string,
+    payload: AddQuestionRequest,
+  ): Observable<QuestionResponse> {
+    return this.http.post<QuestionResponse>(
+      `${this.baseUrl}/subcapitols/${subcapitolId}/check-quiz/questions`,
+      payload,
+    );
   }
 
-  addFinalQuizQuestion(lessonId: string, payload: AddQuestionRequest): Observable<QuestionResponse> {
-    return this.http.post<QuestionResponse>(`${this.baseUrl}/lessons/${lessonId}/final-quiz/questions`, payload);
+  addFinalQuizQuestion(
+    lessonId: string,
+    payload: AddQuestionRequest,
+  ): Observable<QuestionResponse> {
+    return this.http.post<QuestionResponse>(
+      `${this.baseUrl}/lessons/${lessonId}/final-quiz/questions`,
+      payload,
+    );
   }
 
   // --- POST (AI Generate) ---
   generateCheckQuizQuestions(subcapitolId: string): Observable<QuestionResponse[]> {
-    return this.http.post<QuestionResponse[]>(`${this.baseUrl}/subcapitols/${subcapitolId}/check-quiz/questions/generate`, {});
+    return this.http.post<QuestionResponse[]>(
+      `${this.baseUrl}/subcapitols/${subcapitolId}/check-quiz/questions/generate`,
+      {},
+    );
   }
 
   generateFinalQuizQuestions(lessonId: string): Observable<QuestionResponse[]> {
-    return this.http.post<QuestionResponse[]>(`${this.baseUrl}/lessons/${lessonId}/final-quiz/questions/generate`, {});
+    return this.http.post<QuestionResponse[]>(
+      `${this.baseUrl}/lessons/${lessonId}/final-quiz/questions/generate`,
+      {},
+    );
   }
 
   // --- PUT / PATCH / DELETE (Standardized by Question ID) ---
