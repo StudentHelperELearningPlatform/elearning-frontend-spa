@@ -1,12 +1,13 @@
 import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import { inject } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap } from 'rxjs';
+import { pipe, switchMap, catchError, of, throwError } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
-import { MessageService } from 'primeng/api'; // <--- Injecting PrimeNG Toast Service
+import { MessageService } from 'primeng/api';
+import { CONTENT_API_URL } from '../../../core/tokens/api.token'; 
 
-import { QuestionsService } from '../services/questions.service'; // Adjust path if you placed this in core
+import { QuestionsService } from '../services/questions.service'; 
 import { QuestionResponse, AddQuestionRequest } from '../../../shared/models/quiz.types';
 
 interface QuestionsState {
@@ -29,25 +30,48 @@ export const QuestionsStore = signalStore(
   withMethods((
     store, 
     service = inject(QuestionsService), 
-    messageService = inject(MessageService) // <--- Wiring the Toast Service
+    messageService = inject(MessageService, { optional: true }),
+    http = inject(HttpClient),
+    apiBase = inject(CONTENT_API_URL)
   ) => ({
     
-    // --- LOAD QUESTIONS ---
+    // --- LOAD QUESTIONS (WITH AUTO-CREATE) ---
     loadQuestions: rxMethod<{ type: 'check' | 'final'; parentId: string }>(
       pipe(
         switchMap(({ type, parentId }) => {
           patchState(store, { isLoading: true, error: null });
-          const request$ = type === 'check' 
+          
+          const getReq$ = type === 'check' 
             ? service.getCheckQuizQuestions(parentId) 
             : service.getFinalQuizQuestions(parentId);
+
+          // The payloads needed to instantiate the quizzes if they are missing
+          const createReq$ = type === 'check'
+            ? http.post(`${apiBase}/subcapitols/${parentId}/check-quiz`, {})
+            : http.post(`${apiBase}/lessons/${parentId}/final-quiz`, {
+                passThreshold: 50,
+                mandatory: false,
+                maxAttempts: 3
+              });
             
-          return request$.pipe(
+          return getReq$.pipe(
+            catchError((err: HttpErrorResponse) => {
+              // 🪄 MAGIC INTERCEPT: If 404, the quiz entity doesn't exist yet in the database.
+              // We automatically create it, then return an empty array to the UI!
+              if (err.status === 404) {
+                return createReq$.pipe(
+                  switchMap(() => of([] as QuestionResponse[])),
+                  catchError((createErr) => throwError(() => createErr))
+                );
+              }
+              return throwError(() => err);
+            }),
             tapResponse({
               next: (questions) => patchState(store, { questions, isLoading: false }),
               error: (err: HttpErrorResponse) => {
                 const errorMessage = err.error?.error || 'Failed to load questions.';
                 patchState(store, { error: errorMessage, isLoading: false });
-                messageService.add({ severity: 'error', summary: 'Error', detail: errorMessage });
+                messageService?.add({ severity: 'error', summary: 'Error', detail: errorMessage });
               }
             })
           );
@@ -71,17 +95,16 @@ export const QuestionsStore = signalStore(
                   questions: [...state.questions, ...newQuestions], 
                   isGeneratingAI: false 
                 }));
-                messageService.add({ 
+                messageService?.add({ 
                   severity: 'success', 
                   summary: 'AI Generation', 
                   detail: `Successfully generated ${newQuestions.length} questions.` 
                 });
               },
               error: (err: HttpErrorResponse) => {
-                // Catching that specific 400 error when text blocks are missing
                 const errorMessage = err.error?.error || 'Failed to generate questions. Ensure your lesson has text content.';
                 patchState(store, { error: errorMessage, isGeneratingAI: false });
-                messageService.add({ severity: 'error', summary: 'AI Error', detail: errorMessage });
+                messageService?.add({ severity: 'error', summary: 'AI Error', detail: errorMessage });
               }
             })
           );
@@ -105,12 +128,12 @@ export const QuestionsStore = signalStore(
                   questions: [...state.questions, newQuestion],
                   isLoading: false
                 }));
-                messageService.add({ severity: 'success', summary: 'Success', detail: 'Question added successfully.' });
+                messageService?.add({ severity: 'success', summary: 'Success', detail: 'Question added successfully.' });
               },
               error: (err: HttpErrorResponse) => {
                 const errorMessage = err.error?.error || 'Failed to add question.';
                 patchState(store, { error: errorMessage, isLoading: false });
-                messageService.add({ severity: 'error', summary: 'Error', detail: errorMessage });
+                messageService?.add({ severity: 'error', summary: 'Error', detail: errorMessage });
               }
             })
           );
@@ -126,17 +149,16 @@ export const QuestionsStore = signalStore(
           return service.deleteQuestion(questionId).pipe(
             tapResponse({
               next: () => {
-                // Optimistically remove it from the UI state
                 patchState(store, (state) => ({
                   questions: state.questions.filter(q => q.id !== questionId),
                   isLoading: false
                 }));
-                messageService.add({ severity: 'success', summary: 'Deleted', detail: 'Question removed.' });
+                messageService?.add({ severity: 'success', summary: 'Deleted', detail: 'Question removed.' });
               },
               error: (err: HttpErrorResponse) => {
                 const errorMessage = err.error?.error || 'Failed to delete question.';
                 patchState(store, { error: errorMessage, isLoading: false });
-                messageService.add({ severity: 'error', summary: 'Error', detail: errorMessage });
+                messageService?.add({ severity: 'error', summary: 'Error', detail: errorMessage });
               }
             })
           );
@@ -152,19 +174,18 @@ export const QuestionsStore = signalStore(
           return service.approveQuestion(questionId).pipe(
             tapResponse({
               next: () => {
-                // Optimistically update the status in the UI
                 patchState(store, (state) => ({
                   questions: state.questions.map(q => 
                     q.id === questionId ? { ...q, status: 'APPROVED' } : q
                   ),
                   isLoading: false
                 }));
-                messageService.add({ severity: 'success', summary: 'Approved', detail: 'Question approved for students.' });
+                messageService?.add({ severity: 'success', summary: 'Approved', detail: 'Question approved for students.' });
               },
               error: (err: HttpErrorResponse) => {
                 const errorMessage = err.error?.error || 'Failed to approve question.';
                 patchState(store, { error: errorMessage, isLoading: false });
-                messageService.add({ severity: 'error', summary: 'Error', detail: errorMessage });
+                messageService?.add({ severity: 'error', summary: 'Error', detail: errorMessage });
               }
             })
           );

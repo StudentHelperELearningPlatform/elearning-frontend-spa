@@ -60,7 +60,8 @@ export interface QuizResultDetail {
 
 export interface OptionResponse {
   id: string;
-  text: string;
+  optionText: string;
+  correct: boolean;
 }
 
 export interface QuestionResponse {
@@ -74,7 +75,8 @@ export interface QuestionResponse {
 }
 
 export interface AddOptionRequest {
-  text: string;
+  optionText: string;
+  correct: boolean;
 }
 
 export interface AddQuestionRequest {
