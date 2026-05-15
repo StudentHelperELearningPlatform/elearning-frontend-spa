@@ -1,15 +1,9 @@
+// src/app/features/student/store/quizzes.store.ts
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { QUIZ_API_URL } from '@core/tokens/api.token';
-import { 
-  signalStore, 
-  withState, 
-  withMethods, 
-  withComputed, 
-  patchState 
-} from '@ngrx/signals';
+import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 
-// Re-exporting types as requested by the develop branch
 export {
   type Question,
   type Quiz,
@@ -23,7 +17,6 @@ import {
   QuizResult,
   QuizResultDetail,
 } from '@shared/models/quiz.types';
-
 
 interface QuizApiQuestion {
   id: string;
@@ -62,21 +55,12 @@ type QuizResultWithMeta = QuizResult & {
 
 const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
   if (question.questionType === 'SHORT_ANSWER') return [];
-
   if (question.questionType === 'TRUE_FALSE') {
-    // For TRUE_FALSE, we expect the options to be either provided by backend or default to True/False
     const opts = (question.options ?? []).map(o => o.text);
     const displayOpts = opts.length > 0 ? opts : ['True', 'False'];
-    return displayOpts.map((text) => ({
-      id: text.toLowerCase(),
-      text,
-    }));
+    return displayOpts.map((text) => ({ id: text.toLowerCase(), text }));
   }
-
-  return (question.options ?? []).map((opt) => ({
-    id: opt.id,
-    text: opt.text,
-  }));
+  return (question.options ?? []).map((opt) => ({ id: opt.id, text: opt.text }));
 };
 
 const mapQuizResponse = (response: QuizApiResponse, title = 'Quiz', subject = ''): QuizWithMeta => ({
@@ -89,7 +73,7 @@ const mapQuizResponse = (response: QuizApiResponse, title = 'Quiz', subject = ''
     id: q.id,
     type: q.questionType,
     text: q.questionText,
-    points: 1, // Default points if not in DTO
+    points: 1,
     options: mapQuestionOptions(q),
   })),
 });
@@ -140,6 +124,9 @@ export const QuizzesStore = signalStore(
     canSubmit: computed(() => Object.keys(state.answers()).length > 0),
     started: computed(() => state.startedAt() !== null),
     showResults: computed(() => !!state.result()),
+    score: computed(() => state.result()?.score ?? 0),
+    totalPoints: computed(() => state.result()?.totalPoints ?? 0),
+    timeSpent: computed(() => state.result()?.timeSpent ?? 0),
 
     progress: computed(() => {
       const total = state.currentQuiz()?.questions?.length ?? 1;
@@ -159,14 +146,9 @@ export const QuizzesStore = signalStore(
     currentAnswerSelected: computed(() => {
       const quiz = state.currentQuiz();
       if (!quiz?.questions?.length) return null;
-
       const q = quiz.questions[state.currentQuestionIndex()];
       return q ? state.answers()[q.id] ?? null : null;
     }),
-
-    score: computed(() => state.result()?.score ?? 0),
-    totalPoints: computed(() => state.result()?.totalPoints ?? 0),
-    timeSpent: computed(() => state.result()?.timeSpent ?? 0),
   })),
 
   withMethods((store, http = inject(HttpClient), apiBase = inject(QUIZ_API_URL)) => {
@@ -179,20 +161,14 @@ export const QuizzesStore = signalStore(
 
     const submitQuizInternal = () => {
       if (store.submitted()) return;
-
       const quizId = store.currentQuiz()?.id;
       if (!quizId) return;
-
       const startedAt = store.startedAt();
       const timeSpent = startedAt
         ? Math.floor((Date.now() - startedAt.getTime()) / 1000)
         : 0;
-
       patchState(store, { submitted: true });
 
-      // Note: Generic quiz submission is deprecated in backend. 
-      // This should ideally call submitCheckQuiz or submitFinalQuiz.
-      // We fall back to lessons final-quiz if unsure.
       http.post<SubmitQuizResponse>(
         `${apiBase}/lessons/${quizId}/final-quiz/submit`,
         { answers: store.answers() }
@@ -212,44 +188,19 @@ export const QuizzesStore = signalStore(
       });
     };
 
-    const loadResultDetailInternal = (quizId: string, attemptId: string) => {
-      patchState(store, {
-        resultDetailLoading: true,
-        resultDetailError: null,
-      });
-
-      // Try lesson results first as it's the most common
-      http.get<QuizResultDetail>(
-        `${apiBase}/lessons/${quizId}/final-quiz/results/${attemptId}`
-      ).subscribe({
-        next: (data) => {
-          patchState(store, {
-            resultDetail: data,
-            resultDetailLoading: false,
-          });
-        },
-        error: () => {
-          patchState(store, {
-            resultDetailLoading: false,
-            resultDetailError: 'Failed to load result detail',
-          });
-        },
-      });
-    };
-
-    const clearResultDetailInternal = () => {
-      patchState(store, {
-        resultDetail: null,
-        resultDetailLoading: false,
-        resultDetailError: null,
-      });
-    };
-
     return {
+      // Metoda ta (develop)
+      loadQuiz(id: string) {
+        patchState(store, { loading: true, error: null });
+        http.get<Quiz>(`${apiBase}/quizzes/${id}`).subscribe({
+          next: (quiz) => patchState(store, { currentQuiz: quiz as QuizWithMeta, loading: false }),
+          error: (err: { message?: string }) => patchState(store, { loading: false, error: err.message ?? 'Failed to load quiz' }),
+        });
+      },
+
+      // Metoda colegului (feature branch)
       loadQuizById(id: string) {
         patchState(store, { loading: true });
- 
-        // Default to loading as a final quiz for now
         http.get<QuizApiResponse>(`${apiBase}/lessons/${id}/final-quiz`).subscribe({
           next: (quiz) => {
             patchState(store, {
@@ -265,14 +216,12 @@ export const QuizzesStore = signalStore(
           error: () => patchState(store, { loading: false }),
         });
       },
- 
+
       startQuiz(id: string) {
         patchState(store, { loading: true });
- 
         http.get<QuizApiResponse>(`${apiBase}/lessons/${id}/final-quiz`).subscribe({
           next: (quiz) => {
             const mapped = mapQuizResponse(quiz);
-
             patchState(store, {
               loading: false,
               currentQuiz: mapped,
@@ -289,20 +238,20 @@ export const QuizzesStore = signalStore(
         });
       },
 
+      // Metoda ta (develop) — setAnswer
+      setAnswer(id: string, answer: string | string[]) {
+        patchState(store, (s) => ({ answers: { ...s.answers, [id]: Array.isArray(answer) ? answer[0] : answer } }));
+      },
+
+      // Metoda colegului — answerQuestion
       answerQuestion(id: string, answer: string) {
-        patchState(store, (s) => ({
-          answers: { ...s.answers, [id]: answer },
-        }));
+        patchState(store, (s) => ({ answers: { ...s.answers, [id]: answer } }));
       },
 
       flagQuestion(id: string) {
         patchState(store, (s) => {
           const set = new Set(s.flaggedQuestions);
-          if (set.has(id)) {
-            set.delete(id);
-          } else {
-            set.add(id);
-          }
+          if (set.has(id)) { set.delete(id); } else { set.add(id); }
           return { flaggedQuestions: set };
         });
       },
@@ -312,33 +261,6 @@ export const QuizzesStore = signalStore(
       prevQuestion: () => navigateTo(store.currentQuestionIndex() - 1),
 
       submitQuiz: submitQuizInternal,
-
-      submitCheckQuiz(subcapitolId: string) {
-        if (store.submitted()) return;
-        patchState(store, { submitted: true, error: null });
-
-        http.post<SubmitQuizResponse>(
-          `${apiBase}/subcapitols/${subcapitolId}/check-quiz/submit`,
-          { answers: store.answers() }
-        ).subscribe({
-          next: (res) => {
-            patchState(store, {
-              result: {
-                score: res.score,
-                totalPoints: res.totalPoints,
-                percentage: res.percentage,
-                passed: res.passed,
-                attemptId: res.attemptId,
-                timeSpent: 0,
-              },
-            });
-          },
-          error: (err) => {
-            console.error('[QuizzesStore] Failed to submit check quiz:', err);
-            patchState(store, { error: err.message || 'Failed to submit quiz' });
-          }
-        });
-      },
 
       loadFinalQuiz(lessonId: string) {
         patchState(store, { loading: true, error: null });
@@ -354,12 +276,8 @@ export const QuizzesStore = signalStore(
               result: null,
             });
           },
-          error: (err) => {
-            console.error('[QuizzesStore] Failed to load final quiz:', err);
-            patchState(store, { 
-              loading: false, 
-              error: (err as { message?: string })?.message || 'Failed to load quiz' 
-            });
+          error: (err: { message?: string }) => {
+            patchState(store, { loading: false, error: err?.message ?? 'Failed to load quiz' });
           },
         });
       },
@@ -367,17 +285,22 @@ export const QuizzesStore = signalStore(
       tickTimer() {
         const remaining = store.timeRemaining();
         if (remaining === null) return;
-
         const next = remaining - 1;
         patchState(store, { timeRemaining: next });
-
-        if (next <= 0 && !store.submitted()) {
-          submitQuizInternal();
-        }
+        if (next <= 0 && !store.submitted()) { submitQuizInternal(); }
       },
 
-      loadResultDetail: loadResultDetailInternal,
-      clearResultDetail: clearResultDetailInternal,
+      loadResultDetail(quizId: string, attemptId: string) {
+        patchState(store, { resultDetailLoading: true, resultDetailError: null });
+        http.get<QuizResultDetail>(`${apiBase}/lessons/${quizId}/final-quiz/results/${attemptId}`).subscribe({
+          next: (data) => patchState(store, { resultDetail: data, resultDetailLoading: false }),
+          error: () => patchState(store, { resultDetailLoading: false, resultDetailError: 'Failed to load result detail' }),
+        });
+      },
+
+      clearResultDetail() {
+        patchState(store, { resultDetail: null, resultDetailLoading: false, resultDetailError: null });
+      },
 
       resetQuiz() {
         patchState(store, {
