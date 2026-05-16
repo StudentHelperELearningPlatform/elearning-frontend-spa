@@ -106,7 +106,9 @@ describe('LessonListComponent', () => {
   });
 
   it('renders all lesson cards with correct statuses on browser tab', () => {
-    store.publishedLessons = signal(MOCK_LESSONS as unknown as Lesson[]) as any;
+    store.publishedLessons = signal(
+      MOCK_LESSONS as unknown as Lesson[],
+    ) as unknown as typeof store.publishedLessons;
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
@@ -136,7 +138,9 @@ describe('LessonListComponent', () => {
   // ─── Buttons & Navigation ────────────────────────────────────────────────
 
   it('Start Lesson button has correct routerLink', async () => {
-    store.publishedLessons = signal(MOCK_LESSONS as unknown as Lesson[]) as any;
+    store.publishedLessons = signal(
+      MOCK_LESSONS as unknown as Lesson[],
+    ) as unknown as typeof store.publishedLessons;
     fixture.detectChanges();
 
     const spy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
@@ -150,7 +154,9 @@ describe('LessonListComponent', () => {
   });
 
   it('Continue button has correct routerLink', async () => {
-    store.publishedLessons = signal(MOCK_LESSONS as unknown as Lesson[]) as any;
+    store.publishedLessons = signal(
+      MOCK_LESSONS as unknown as Lesson[],
+    ) as unknown as typeof store.publishedLessons;
     fixture.detectChanges();
 
     const spy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
@@ -164,7 +170,9 @@ describe('LessonListComponent', () => {
   });
 
   it('Go to Lesson button has correct routerLink', async () => {
-    store.publishedLessons = signal(MOCK_LESSONS as unknown as Lesson[]) as any;
+    store.publishedLessons = signal(
+      MOCK_LESSONS as unknown as Lesson[],
+    ) as unknown as typeof store.publishedLessons;
     fixture.detectChanges();
 
     const spy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
@@ -178,7 +186,9 @@ describe('LessonListComponent', () => {
   });
 
   it('Review button has correct routerLink', async () => {
-    store.publishedLessons = signal(MOCK_LESSONS as unknown as Lesson[]) as any;
+    store.publishedLessons = signal(
+      MOCK_LESSONS as unknown as Lesson[],
+    ) as unknown as typeof store.publishedLessons;
     fixture.detectChanges();
 
     const spy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
@@ -199,37 +209,47 @@ describe('LessonListComponent', () => {
     expect(fixture.debugElement.query(By.css('.animate-pulse'))).toBeTruthy();
   });
 
-  it('switches to My Lessons tab and shows empty state', () => {
-    store.myLessons = signal([] as any) as any;
+  it('switches to My Lessons tab and shows empty state', async () => {
+    patchStore(store, { lessons: [] }); // Golește starea store-ului
     component.activeTab.set('my-lessons');
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No active lessons');
   });
 
   it('switches to My Lessons tab and renders list', () => {
-    store.myLessons = signal([MOCK_LESSONS[1]] as unknown as Lesson[]) as any;
+    store.myLessons = signal([
+      MOCK_LESSONS[1],
+    ] as unknown as Lesson[]) as unknown as typeof store.myLessons;
     component.activeTab.set('my-lessons');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('In Progress Lesson');
   });
 
-  it('switches to History tab and shows empty state', () => {
-    store.completedLessons = signal([] as any) as any;
+  it('switches to History tab and shows empty state', async () => {
+    patchStore(store, { lessons: [] });
     component.activeTab.set('history');
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No history yet');
   });
 
   it('switches to History tab and renders list', () => {
-    store.completedLessons = signal([MOCK_LESSONS[3]] as unknown as Lesson[]) as any;
+    store.completedLessons = signal([
+      MOCK_LESSONS[3],
+    ] as unknown as Lesson[]) as unknown as typeof store.completedLessons;
     component.activeTab.set('history');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Completed Lesson');
   });
 
-  it('shows empty state on browser tab when there are no published lessons', () => {
-    store.publishedLessons = signal([] as any) as any;
+  it('shows empty state on browser tab when there are no published lessons', async () => {
+    patchStore(store, { lessons: [] });
     component.activeTab.set('browser');
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No lessons found');
   });

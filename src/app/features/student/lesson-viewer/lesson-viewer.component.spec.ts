@@ -141,27 +141,32 @@ describe('LessonViewerComponent', () => {
     expect(text).toContain('Intro to Fractions');
   });
 
-  it('shows not-found empty state when error kind is not-found', () => {
+  it('shows not-found empty state when error kind is not-found', async () => {
     patchStore(store, { error: { kind: 'not-found', message: 'Missing' } as unknown as Error });
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Lesson not found');
   });
 
-  it('shows generic error state and allows retry', () => {
+  it('shows generic error state and allows retry', async () => {
     patchStore(store, { error: { message: 'Network failure' } as unknown as Error });
     fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
-    // Instead of asserting native fallback text, we assert the bindings on the custom element itself.
     const errorStateElement = fixture.debugElement.query(By.directive(ErrorStateComponent));
-    expect(errorStateElement.componentInstance.title()).toBe('Could not load lesson');
+    expect(errorStateElement.nativeElement.textContent).toContain('Could not load lesson');
 
     const reloadSpy = vi.spyOn(component, 'reloadLesson');
     errorStateElement.triggerEventHandler('retryClick', null);
     expect(reloadSpy).toHaveBeenCalled();
   });
 
-  it('shows empty state when no module is available but data is loaded', () => {
+  it('shows empty state when no module is available but data is loaded', async () => {
     patchStore(store, { currentLesson: { ...MOCK_LESSON, modules: [] } });
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Select a Module');
   });
