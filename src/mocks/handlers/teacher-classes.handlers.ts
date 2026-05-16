@@ -43,8 +43,13 @@ function parseJsonBody(req: MockRequest): Record<string, unknown> {
   return (req.body as Record<string, unknown>) ?? {};
 }
 
-function getParam(params: Params | undefined, key: keyof Params): string {
-  return (params?.[key] ?? '') as string;
+function getParam(
+  params: Params | undefined,
+  key: keyof Params,
+): string {
+  const value = params?.[key];
+
+  return typeof value === 'string' ? value : '';
 }
 
 /**

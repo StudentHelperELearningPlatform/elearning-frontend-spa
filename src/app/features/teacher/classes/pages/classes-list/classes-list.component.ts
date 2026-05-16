@@ -19,7 +19,6 @@ export class ClassesListComponent implements OnInit {
 
   onDelete(classId: string): void {
     console.log('delete', classId);
-    // this.store.deleteClass(classId);
   }
 
   onCreateClass(): void {
