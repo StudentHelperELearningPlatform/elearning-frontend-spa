@@ -60,6 +60,8 @@ describe('QuestionsStore', () => {
     vi.clearAllMocks();
   });
 
+  // --- LOAD QUESTIONS ---
+
   it('should load check questions successfully', () => {
     const mockQs = [{ id: 'q1', questionText: 'Q1' } as QuestionResponse];
     mockService.getCheckQuizQuestions.mockReturnValue(of(mockQs));
@@ -67,6 +69,17 @@ describe('QuestionsStore', () => {
     store.loadQuestions({ type: 'check', parentId: 'p1' });
 
     expect(mockService.getCheckQuizQuestions).toHaveBeenCalledWith('p1');
+    expect(store.questions()).toEqual(mockQs);
+    expect(store.isLoading()).toBe(false);
+  });
+
+  it('should load final questions successfully', () => {
+    const mockQs = [{ id: 'q2', questionText: 'Q2' } as QuestionResponse];
+    mockService.getFinalQuizQuestions.mockReturnValue(of(mockQs));
+
+    store.loadQuestions({ type: 'final', parentId: 'p1' });
+
+    expect(mockService.getFinalQuizQuestions).toHaveBeenCalledWith('p1');
     expect(store.questions()).toEqual(mockQs);
     expect(store.isLoading()).toBe(false);
   });
@@ -86,7 +99,41 @@ describe('QuestionsStore', () => {
     expect(store.isLoading()).toBe(false);
   });
 
-  it('should handle error during loadQuestions', () => {
+  it('should handle 404 and auto-create final quiz via HTTP intercept with correct payload', () => {
+    mockService.getFinalQuizQuestions.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 })),
+    );
+
+    store.loadQuestions({ type: 'final', parentId: 'p2' });
+
+    const req = httpMock.expectOne('http://api/lessons/p2/final-quiz');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ passThreshold: 50, mandatory: false, maxAttempts: 3 });
+    req.flush({});
+
+    expect(store.questions()).toEqual([]);
+    expect(store.isLoading()).toBe(false);
+  });
+
+  it('should handle error if auto-creation fails during a 404 response', () => {
+    mockService.getCheckQuizQuestions.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 })),
+    );
+
+    store.loadQuestions({ type: 'check', parentId: 'p1' });
+
+    const req = httpMock.expectOne('http://api/subcapitols/p1/check-quiz');
+    // Simulate failure during creation POST
+    req.flush({ error: 'Failed to create quiz' }, { status: 500, statusText: 'Server Error' });
+
+    expect(store.error()).toBe('Failed to create quiz');
+    expect(store.isLoading()).toBe(false);
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: 'Error', detail: 'Failed to create quiz' }),
+    );
+  });
+
+  it('should handle non-404 error during loadQuestions', () => {
     mockService.getFinalQuizQuestions.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 500, error: { error: 'Server Error' } })),
     );
@@ -100,7 +147,9 @@ describe('QuestionsStore', () => {
     );
   });
 
-  it('should generate AI questions', () => {
+  // --- GENERATE AI ---
+
+  it('should generate final AI questions', () => {
     const mockQs = [{ id: 'q1', questionText: 'Gen Q' } as QuestionResponse];
     mockService.generateFinalQuizQuestions.mockReturnValue(of(mockQs));
 
@@ -114,7 +163,36 @@ describe('QuestionsStore', () => {
     );
   });
 
-  it('should add question', () => {
+  it('should generate check AI questions', () => {
+    const mockQs = [{ id: 'q2', questionText: 'Gen Check' } as QuestionResponse];
+    mockService.generateCheckQuizQuestions.mockReturnValue(of(mockQs));
+
+    store.generateAI({ type: 'check', parentId: 'p1' });
+
+    expect(mockService.generateCheckQuizQuestions).toHaveBeenCalledWith('p1');
+    expect(store.questions()).toEqual(mockQs);
+    expect(store.isGeneratingAI()).toBe(false);
+  });
+
+  it('should handle error during generateAI', () => {
+    mockService.generateFinalQuizQuestions.mockReturnValue(
+      throwError(
+        () => new HttpErrorResponse({ status: 500, error: { error: 'AI generation failed' } }),
+      ),
+    );
+
+    store.generateAI({ type: 'final', parentId: 'p1' });
+
+    expect(store.error()).toBe('AI generation failed');
+    expect(store.isGeneratingAI()).toBe(false);
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error', detail: 'AI generation failed' }),
+    );
+  });
+
+  // --- ADD QUESTION ---
+
+  it('should add check question', () => {
     const payload = { questionText: 'New Q' } as AddQuestionRequest;
     const mockQ = { id: 'q1', questionText: 'New Q' } as QuestionResponse;
     mockService.addCheckQuizQuestion.mockReturnValue(of(mockQ));
@@ -125,36 +203,37 @@ describe('QuestionsStore', () => {
     expect(store.questions()).toContain(mockQ);
   });
 
-  it('should delete question', () => {
-    // Seed initial state using the actual service and store mechanism
-    mockService.getCheckQuizQuestions.mockReturnValue(of([{ id: 'q1' } as QuestionResponse]));
-    store.loadQuestions({ type: 'check', parentId: 'p1' });
+  it('should add final question', () => {
+    const payload = { questionText: 'New Final Q' } as AddQuestionRequest;
+    const mockQ = { id: 'q2', questionText: 'New Final Q' } as QuestionResponse;
+    mockService.addFinalQuizQuestion.mockReturnValue(of(mockQ));
 
-    // Test the deletion
-    mockService.deleteQuestion.mockReturnValue(of(null));
-    store.deleteQuestion('q1');
+    store.addQuestion({ type: 'final', parentId: 'p1', payload });
 
-    expect(mockService.deleteQuestion).toHaveBeenCalledWith('q1');
-    expect(store.questions().length).toBe(0);
+    expect(mockService.addFinalQuizQuestion).toHaveBeenCalledWith('p1', payload);
+    expect(store.questions()).toContain(mockQ);
   });
 
-  it('should approve question', () => {
-    // Seed initial state
-    mockService.getCheckQuizQuestions.mockReturnValue(
-      of([{ id: 'q1', status: 'PENDING' } as QuestionResponse]),
+  it('should handle error during addQuestion', () => {
+    const payload = { questionText: 'New Q' } as AddQuestionRequest;
+    mockService.addCheckQuizQuestion.mockReturnValue(
+      throwError(
+        () => new HttpErrorResponse({ status: 400, error: { error: 'Add question failed' } }),
+      ),
     );
-    store.loadQuestions({ type: 'check', parentId: 'p1' });
 
-    // Test approval
-    mockService.approveQuestion.mockReturnValue(of(null));
-    store.approveQuestion('q1');
+    store.addQuestion({ type: 'check', parentId: 'p1', payload });
 
-    expect(mockService.approveQuestion).toHaveBeenCalledWith('q1');
-    expect(store.questions()[0].status).toBe('APPROVED');
+    expect(store.error()).toBe('Add question failed');
+    expect(store.isLoading()).toBe(false);
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error', detail: 'Add question failed' }),
+    );
   });
+
+  // --- UPDATE QUESTION ---
 
   it('should update question via api put', () => {
-    // Seed initial state
     mockService.getCheckQuizQuestions.mockReturnValue(
       of([{ id: 'q1', questionText: 'Old' } as QuestionResponse]),
     );
@@ -163,7 +242,6 @@ describe('QuestionsStore', () => {
     const payload = { questionText: 'New' } as AddQuestionRequest;
     const updated = { id: 'q1', questionText: 'New' } as QuestionResponse;
 
-    // Test update
     store.updateQuestion({ id: 'q1', payload });
 
     const req = httpMock.expectOne('http://api/questions/q1');
@@ -171,5 +249,84 @@ describe('QuestionsStore', () => {
     req.flush(updated);
 
     expect(store.questions()[0].questionText).toBe('New');
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'success' }),
+    );
+  });
+
+  it('should handle error during updateQuestion', () => {
+    const payload = { questionText: 'New' } as AddQuestionRequest;
+    store.updateQuestion({ id: 'q1', payload });
+
+    const req = httpMock.expectOne('http://api/questions/q1');
+    req.flush({ error: 'Update failed' }, { status: 400, statusText: 'Bad Request' });
+
+    expect(store.error()).toBe('Update failed');
+    expect(store.isLoading()).toBe(false);
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error', detail: 'Update failed' }),
+    );
+  });
+
+  // --- DELETE QUESTION ---
+
+  it('should delete question', () => {
+    mockService.getCheckQuizQuestions.mockReturnValue(of([{ id: 'q1' } as QuestionResponse]));
+    store.loadQuestions({ type: 'check', parentId: 'p1' });
+
+    mockService.deleteQuestion.mockReturnValue(of(null));
+    store.deleteQuestion('q1');
+
+    expect(mockService.deleteQuestion).toHaveBeenCalledWith('q1');
+    expect(store.questions().length).toBe(0);
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'success' }),
+    );
+  });
+
+  it('should handle error during deleteQuestion', () => {
+    mockService.deleteQuestion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500, error: { error: 'Delete failed' } })),
+    );
+
+    store.deleteQuestion('q1');
+
+    expect(store.error()).toBe('Delete failed');
+    expect(store.isLoading()).toBe(false);
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error', detail: 'Delete failed' }),
+    );
+  });
+
+  // --- APPROVE QUESTION ---
+
+  it('should approve question', () => {
+    mockService.getCheckQuizQuestions.mockReturnValue(
+      of([{ id: 'q1', status: 'PENDING' } as QuestionResponse]),
+    );
+    store.loadQuestions({ type: 'check', parentId: 'p1' });
+
+    mockService.approveQuestion.mockReturnValue(of(null));
+    store.approveQuestion('q1');
+
+    expect(mockService.approveQuestion).toHaveBeenCalledWith('q1');
+    expect(store.questions()[0].status).toBe('APPROVED');
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'success' }),
+    );
+  });
+
+  it('should handle error during approveQuestion', () => {
+    mockService.approveQuestion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500, error: { error: 'Approve failed' } })),
+    );
+
+    store.approveQuestion('q1');
+
+    expect(store.error()).toBe('Approve failed');
+    expect(store.isLoading()).toBe(false);
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error', detail: 'Approve failed' }),
+    );
   });
 });
