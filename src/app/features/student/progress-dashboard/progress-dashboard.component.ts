@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { ProgressStore } from '../store/progress.store';
+import { ProgressStore } from '../state/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';

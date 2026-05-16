@@ -335,4 +335,74 @@ describe('ContentStore', () => {
 
     expect(store.publishedLessonsCount()).toBe(1);
   });
+
+  // ── Missing Coverage Tests ────────────────────────────────────────────────
+  it('loadContent sets loading to true and then false', () => {
+    vi.useFakeTimers();
+    store.loadContent();
+    expect(store.loading()).toBe(true);
+    vi.advanceTimersByTime(300);
+    expect(store.loading()).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('createLesson adds a lesson', () => {
+    store.createLesson({ title: 'New Lesson', subject: 'Math', status: 'DRAFT' });
+    expect(store.lessons().length).toBe(1);
+    expect(store.lessons()[0].title).toBe('New Lesson');
+  });
+
+  it('updateLesson updates an existing lesson', () => {
+    patchStore(store, { lessons: MOCK_LESSONS });
+    store.updateLesson('l1', { title: 'Updated Title' });
+    const lesson = store.lessons().find((l) => l.id === 'l1');
+    expect(lesson?.title).toBe('Updated Title');
+  });
+
+  it('deleteLesson removes an existing lesson', () => {
+    patchStore(store, { lessons: MOCK_LESSONS });
+    store.deleteLesson('l1');
+    expect(store.lessons().find((l) => l.id === 'l1')).toBeUndefined();
+  });
+
+  it('createQuiz adds a quiz', () => {
+    store.createQuiz({ title: 'New Quiz', subject: 'Math', status: 'DRAFT' });
+    expect(store.quizzes().length).toBe(1);
+    expect(store.quizzes()[0].title).toBe('New Quiz');
+  });
+
+  it('updateQuiz updates an existing quiz', () => {
+    patchStore(store, { quizzes: MOCK_QUIZZES });
+    store.updateQuiz('q1', { title: 'Updated Quiz Title' });
+    const quiz = store.quizzes().find((q) => q.id === 'q1');
+    expect(quiz?.title).toBe('Updated Quiz Title');
+  });
+
+  it('deleteQuiz removes an existing quiz', () => {
+    patchStore(store, { quizzes: MOCK_QUIZZES });
+    store.deleteQuiz('q1');
+    expect(store.quizzes().find((q) => q.id === 'q1')).toBeUndefined();
+  });
+
+  it('reset clears the state', () => {
+    patchStore(store, { lessons: MOCK_LESSONS, quizzes: MOCK_QUIZZES });
+    store.reset();
+    expect(store.lessons()).toEqual([]);
+    expect(store.quizzes()).toEqual([]);
+  });
+
+  it('archivedLessons returns count of ARCHIVED lessons', () => {
+    patchStore(store, { lessons: MOCK_LESSONS });
+    expect(store.archivedLessons().length).toBe(1);
+  });
+
+  it('publishedQuizzes returns published quizzes', () => {
+    patchStore(store, { quizzes: MOCK_QUIZZES });
+    expect(store.publishedQuizzes().length).toBe(1);
+  });
+
+  it('draftQuizzes returns draft quizzes', () => {
+    patchStore(store, { quizzes: [{ ...MOCK_QUIZZES[0], status: 'DRAFT' }] });
+    expect(store.draftQuizzes().length).toBe(1);
+  });
 });

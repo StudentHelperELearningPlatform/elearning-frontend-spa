@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { ContentStore, RecentActivityItem } from '../store/content.store';
+import { ContentStore, RecentActivityItem } from '../state/content.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { CardComponent } from '../../../shared/components/card/card.component';

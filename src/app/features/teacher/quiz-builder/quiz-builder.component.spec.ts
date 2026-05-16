@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { QuizBuilderComponent } from './quiz-builder.component';
-import { ContentStore } from '../store/content.store';
+import { ContentStore } from '../state/content.store';
 import { NotificationService } from '../../../core/services/notification.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { signal } from '@angular/core';

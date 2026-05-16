@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { TeacherStudentsOverviewComponent } from './teacher-students-overview.component';
-import { ProgressStore } from '../../student/store/progress.store';
+import { ProgressStore } from '../../student/state/progress.store';
 
 interface TeacherStudentSummary {
   studentId: string;
