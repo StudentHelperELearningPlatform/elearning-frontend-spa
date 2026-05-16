@@ -15,10 +15,10 @@ import {
   providedIn: 'root',
 })
 export class TeacherClassService {
-  private http = inject(HttpClient);
-  private apiUrl = inject(USER_PLATFORM_API_URL);
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = inject(USER_PLATFORM_API_URL);
 
-  private baseUrl = `${this.apiUrl}/teachers/classes`;
+  private readonly baseUrl = `${this.apiUrl}/teachers/classes`;
 
   getClasses(): Observable<TeacherClass[]> {
     return this.http.get<TeacherClass[]>(this.baseUrl);
@@ -51,60 +51,42 @@ export class TeacherClassService {
   }
 
   deleteClass(classId: string): Observable<void> {
-    return this.http.delete<void>(
-      `${this.baseUrl}/${classId}`,
-    );
+    return this.http.delete<void>(`${this.baseUrl}/${classId}`);
   }
 
-  addStudent(
-    classId: string,
-    studentId: string,
-  ): Observable<void> {
+  addStudent(classId: string, studentId: string): Observable<void> {
     return this.http.post<void>(
       `${this.baseUrl}/${classId}/students/${studentId}`,
       {},
     );
   }
 
-  removeStudent(
-    classId: string,
-    studentId: string,
-  ): Observable<void> {
+  removeStudent(classId: string, studentId: string): Observable<void> {
     return this.http.delete<void>(
       `${this.baseUrl}/${classId}/students/${studentId}`,
     );
   }
 
-  addLesson(
-    classId: string,
-    lessonId: string,
-  ): Observable<void> {
+  addLesson(classId: string, lessonId: string): Observable<void> {
     return this.http.post<void>(
       `${this.baseUrl}/${classId}/lessons/${lessonId}`,
       {},
     );
   }
 
-  removeLesson(
-    classId: string,
-    lessonId: string,
-  ): Observable<void> {
+  removeLesson(classId: string, lessonId: string): Observable<void> {
     return this.http.delete<void>(
       `${this.baseUrl}/${classId}/lessons/${lessonId}`,
     );
   }
 
-  getStudents(
-    classId: string,
-  ): Observable<ClassStudent[]> {
+  getStudents(classId: string): Observable<ClassStudent[]> {
     return this.http.get<ClassStudent[]>(
       `${this.baseUrl}/${classId}/students`,
     );
   }
 
-  getLessons(
-    classId: string,
-  ): Observable<ClassLesson[]> {
+  getLessons(classId: string): Observable<ClassLesson[]> {
     return this.http.get<ClassLesson[]>(
       `${this.baseUrl}/${classId}/lessons`,
     );

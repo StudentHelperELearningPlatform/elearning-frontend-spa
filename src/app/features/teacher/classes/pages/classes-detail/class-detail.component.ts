@@ -11,18 +11,17 @@ import { ClassStore } from '../../../state/class.store';
   styleUrls: ['./class-detail.component.scss'],
 })
 export class ClassDetailComponent implements OnInit {
-
-  private route = inject(ActivatedRoute);
-  store = inject(ClassStore);
+  readonly route = inject(ActivatedRoute);
+  readonly store = inject(ClassStore);
 
   classId!: string;
 
-  students = computed(() =>
-    this.store.currentClass()?.students ?? []
+  readonly students = computed(() =>
+    this.store.currentClass()?.students ?? [],
   );
 
-  lessons = computed(() =>
-    this.store.currentClass()?.lessons ?? []
+  readonly lessons = computed(() =>
+    this.store.currentClass()?.lessons ?? [],
   );
 
   ngOnInit(): void {
@@ -30,11 +29,11 @@ export class ClassDetailComponent implements OnInit {
     this.store.loadClassDetail(this.classId);
   }
 
-  removeStudent(studentId: string) {
+  removeStudent(studentId: string): void {
     this.store.removeStudent(this.classId, studentId);
   }
 
-  removeLesson(lessonId: string) {
+  removeLesson(lessonId: string): void {
     this.store.removeLesson(this.classId, lessonId);
   }
 }

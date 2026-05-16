@@ -85,8 +85,8 @@ export const getClasses = http.get(base, () => {
 /**
  * CREATE class
  */
-export const createClass = http.post(base, async (req: MockRequest) => {
-  const body = parseJsonBody(req);
+export const createClass = http.post(base, async ({ request }) => {
+  const body = (await request.json()) as Record<string, unknown>;
 
   const newClass: ClassItem = {
     id: crypto.randomUUID(),
