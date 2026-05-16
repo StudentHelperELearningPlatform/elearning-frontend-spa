@@ -28,6 +28,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
   ],
   template: `
     <div class="h-[calc(100vh-80px)] flex flex-col md:flex-row bg-gray-50 overflow-hidden">
+      <!-- Sidebar / Modules List -->
       <div
         class="w-full md:w-80 bg-white border-r-4 border-black flex flex-col h-full z-10 shadow-[4px_0px_0px_0px_rgba(0,0,0,1)]"
       >
@@ -125,6 +126,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
       </div>
 
       <div class="flex-1 flex flex-col h-full overflow-hidden bg-white relative">
+        <!-- Decorative Background Pattern -->
         <div
           class="absolute inset-0 opacity-5 pointer-events-none"
           style="background-image: radial-gradient(#000 2px, transparent 2px); background-size: 30px 30px;"
@@ -150,7 +152,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
                 [description]="
                   'We could not find the lesson you are looking for. It may have been removed.'
                 "
-                [icon]="'search_off'"
+                icon="search_off"
               ></app-empty-state>
             </div>
           } @else if (store.error()) {
@@ -264,6 +266,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
           }
         }
 
+        <!-- Bottom Navigation Bar -->
         @if (hasAccess()) {
           <div
             class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)]"
