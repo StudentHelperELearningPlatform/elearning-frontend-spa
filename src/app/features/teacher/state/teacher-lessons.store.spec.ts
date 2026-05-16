@@ -10,7 +10,7 @@ const mkLesson = (id: string, overrides: Partial<TeacherLesson> = {}): TeacherLe
   title: `Lesson ${id}`,
   subject: 'Math',
   difficulty_level: 'Easy',
-  status: 'DRAFT' as TeacherLessonStatus,
+  status: 'DRAFT',
   estimated_duration_minutes: 15,
   created_at: new Date().toISOString(),
   ...overrides,

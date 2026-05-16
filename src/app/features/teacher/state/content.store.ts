@@ -7,12 +7,13 @@ import {
 } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
+
 import {
   CONTENT_API_URL,
   USER_PLATFORM_API_URL,
 } from '@core/tokens/api.token';
+
 import { Question } from '@shared/models/quiz.types';
 
 export type { Question };
@@ -66,6 +67,13 @@ const initialState: ContentState = {
 
 interface RawProfile {
   classes?: TeacherClassSummary[];
+  recentActivity?: {
+    id?: string;
+    type?: 'created' | 'updated' | 'published' | 'archived' | 'deleted';
+    contentTitle?: string;
+    contentType?: 'lesson' | 'quiz';
+    timestamp?: unknown;
+  }[];
 }
 
 interface RawLesson {
@@ -74,14 +82,20 @@ interface RawLesson {
   subject?: string;
   status?: ContentStatus;
   updatedAt?: unknown;
+  lastModified?: unknown;
 }
 
 function safeDate(value: unknown): Date {
   if (!value) return new Date();
-  if (value instanceof Date) return value;
+
+  if (value instanceof Date) {
+    return value;
+  }
+
   if (typeof value === 'string' || typeof value === 'number') {
     return new Date(value);
   }
+
   return new Date();
 }
 
@@ -94,25 +108,35 @@ export const ContentStore = signalStore(
     publishedLessons: computed(() =>
       state.lessons().filter((l) => l.status === 'PUBLISHED'),
     ),
+
     draftLessons: computed(() =>
       state.lessons().filter((l) => l.status === 'DRAFT'),
     ),
+
     archivedLessons: computed(() =>
       state.lessons().filter((l) => l.status === 'ARCHIVED'),
     ),
+
     publishedQuizzes: computed(() =>
       state.quizzes().filter((q) => q.status === 'PUBLISHED'),
     ),
+
     draftQuizzes: computed(() =>
       state.quizzes().filter((q) => q.status === 'DRAFT'),
     ),
+
     publishedLessonsCount: computed(
-      () => state.lessons().filter((l) => l.status === 'PUBLISHED').length,
+      () =>
+        state.lessons().filter((l) => l.status === 'PUBLISHED').length,
     ),
+
     draftLessonsCount: computed(
-      () => state.lessons().filter((l) => l.status === 'DRAFT').length,
+      () =>
+        state.lessons().filter((l) => l.status === 'DRAFT').length,
     ),
+
     totalLessonsCount: computed(() => state.lessons().length),
+
     totalQuizzesCount: computed(() => state.quizzes().length),
   })),
 
@@ -124,37 +148,72 @@ export const ContentStore = signalStore(
   ) => ({
 
     loadDashboard() {
-      patchState(store, { loading: true, error: null });
+      patchState(store, {
+        loading: true,
+        error: null,
+      });
 
       forkJoin({
-        lessons: http.get<RawLesson[]>(`${contentApi}/lessons`)
-          .pipe(catchError(() => of([] as RawLesson[]))),
+        lessons: http.get<RawLesson[]>(
+          `${contentApi}/lessons`,
+        ),
 
         profile: http.get<RawProfile | null>(
           `${userApi}/teachers/me/profile`,
-        ).pipe(catchError(() => of(null))),
+        ),
       }).subscribe({
+
         next: ({ lessons, profile }) => {
 
-          const mappedLessons: ContentItem[] = lessons.map((l) => ({
-            id: l.id ?? '',
-            title: l.title ?? '',
-            subject: l.subject ?? '',
-            status: l.status ?? 'DRAFT',
-            lastModified: safeDate(l.updatedAt),
-          }));
+          const mappedLessons: ContentItem[] =
+            (lessons ?? []).map((l) => ({
+              id: l.id ?? '',
+              title: l.title ?? '',
+              subject: l.subject ?? '',
+              status: l.status ?? 'DRAFT',
+
+              // suportă și updatedAt și lastModified
+              lastModified: safeDate(
+                l.updatedAt ?? l.lastModified,
+              ),
+            }));
+
+          const mappedActivity: RecentActivityItem[] =
+            (profile?.recentActivity ?? []).map((a) => ({
+              id: a.id ?? '',
+              type: a.type ?? 'updated',
+              contentTitle: a.contentTitle ?? '',
+              contentType: a.contentType ?? 'lesson',
+              timestamp: safeDate(a.timestamp),
+            }));
 
           patchState(store, {
             lessons: mappedLessons,
+
+            recentActivity:
+              mappedActivity.length > 0
+                ? mappedActivity
+                : mappedLessons.map((lesson) => ({
+                    id: lesson.id,
+                    type: 'updated',
+                    contentTitle: lesson.title,
+                    contentType: 'lesson',
+                    timestamp: lesson.lastModified,
+                  })),
+
             classes: profile?.classes ?? [],
+
             loading: false,
             error: null,
           });
         },
 
         error: (err: unknown) => {
+
           const message =
-            err instanceof Error ? err.message : 'Failed to load dashboard';
+            err instanceof Error
+              ? err.message
+              : 'Failed to load dashboard';
 
           patchState(store, {
             loading: false,
@@ -166,10 +225,15 @@ export const ContentStore = signalStore(
 
     loadContent() {
       patchState(store, { loading: true });
-      setTimeout(() => patchState(store, { loading: false }), 300);
+
+      setTimeout(() => {
+        patchState(store, { loading: false });
+      }, 300);
     },
 
-    createLesson(lesson: Omit<ContentItem, 'id' | 'lastModified'>) {
+    createLesson(
+      lesson: Omit<ContentItem, 'id' | 'lastModified'>,
+    ) {
       patchState(store, (state) => ({
         lessons: [
           ...state.lessons,
@@ -182,10 +246,19 @@ export const ContentStore = signalStore(
       }));
     },
 
-    updateLesson(id: string, updates: Partial<Omit<ContentItem, 'id' | 'lastModified'>>) {
+    updateLesson(
+      id: string,
+      updates: Partial<Omit<ContentItem, 'id' | 'lastModified'>>,
+    ) {
       patchState(store, (state) => ({
         lessons: state.lessons.map((l) =>
-          l.id === id ? { ...l, ...updates, lastModified: new Date() } : l,
+          l.id === id
+            ? {
+                ...l,
+                ...updates,
+                lastModified: new Date(),
+              }
+            : l,
         ),
       }));
     },
@@ -196,7 +269,9 @@ export const ContentStore = signalStore(
       }));
     },
 
-    createQuiz(quiz: Omit<ContentItem, 'id' | 'lastModified'>) {
+    createQuiz(
+      quiz: Omit<ContentItem, 'id' | 'lastModified'>,
+    ) {
       patchState(store, (state) => ({
         quizzes: [
           ...state.quizzes,
@@ -209,10 +284,19 @@ export const ContentStore = signalStore(
       }));
     },
 
-    updateQuiz(id: string, updates: Partial<Omit<ContentItem, 'id' | 'lastModified'>>) {
+    updateQuiz(
+      id: string,
+      updates: Partial<Omit<ContentItem, 'id' | 'lastModified'>>,
+    ) {
       patchState(store, (state) => ({
         quizzes: state.quizzes.map((q) =>
-          q.id === id ? { ...q, ...updates, lastModified: new Date() } : q,
+          q.id === id
+            ? {
+                ...q,
+                ...updates,
+                lastModified: new Date(),
+              }
+            : q,
         ),
       }));
     },
