@@ -7,7 +7,7 @@ import {
   FormArray,
   FormsModule,
 } from '@angular/forms';
-import { ContentStore, Question } from '../store/content.store';
+import { ContentStore, Question } from '../state/content.store';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';

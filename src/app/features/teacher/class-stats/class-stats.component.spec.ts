@@ -4,7 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { ClassStatsComponent } from './class-stats.component';
-import { TeacherProgressStore } from '../store/progress.store';
+import { TeacherProgressStore } from '../state/progress.store';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { USER_PLATFORM_API_URL } from '../../../core/tokens/api.token';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';

@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { TableModule } from 'primeng/table';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
-import { TeacherProgressStore } from '../store/progress.store';
+import { TeacherProgressStore } from '../state/progress.store';
 
 @Component({
   selector: 'app-class-stats',

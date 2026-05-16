@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { environment } from '../../environments/environment';
-import { ClassStatsSummary, StudentProgressRow, StudentDetail, LessonBreakdown } from '../../app/features/teacher/store/progress.store';
+import { ClassStatsSummary, StudentProgressRow, StudentDetail, LessonBreakdown } from '../../app/features/teacher/state/progress.store';
 
 const now = Date.now();
 const dayMs = 24 * 60 * 60 * 1000;
