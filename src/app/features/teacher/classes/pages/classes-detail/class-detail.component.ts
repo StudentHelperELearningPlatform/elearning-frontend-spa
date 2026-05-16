@@ -1,25 +1,40 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, inject, OnInit, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ClassStore } from '../../../state/class.store';
 
 @Component({
   selector: 'app-class-detail',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
   templateUrl: './class-detail.component.html',
+  styleUrls: ['./class-detail.component.scss'],
 })
 export class ClassDetailComponent implements OnInit {
-  private route = inject(ActivatedRoute);
-  private store = inject(ClassStore);
 
-  students = this.store.students;
+  private route = inject(ActivatedRoute);
+  store = inject(ClassStore);
 
   classId!: string;
 
-  ngOnInit() {
+  students = computed(() =>
+    this.store.currentClass()?.students ?? []
+  );
+
+  lessons = computed(() =>
+    this.store.currentClass()?.lessons ?? []
+  );
+
+  ngOnInit(): void {
     this.classId = this.route.snapshot.params['classId'];
-    this.store.loadStudents();
+    this.store.loadClassDetail(this.classId);
   }
 
-  remove(id: string) {
-    this.store.removeStudent(id);
+  removeStudent(studentId: string) {
+    this.store.removeStudent(this.classId, studentId);
+  }
+
+  removeLesson(lessonId: string) {
+    this.store.removeLesson(this.classId, lessonId);
   }
 }

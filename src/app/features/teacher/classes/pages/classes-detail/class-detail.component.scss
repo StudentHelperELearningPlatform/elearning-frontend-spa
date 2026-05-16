@@ -1,0 +1,23 @@
+.detail-page {
+  padding: 24px;
+}
+
+.section {
+  margin-top: 32px;
+}
+
+.card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 12px;
+  margin-top: 12px;
+
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+button {
+  cursor: pointer;
+}

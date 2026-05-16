@@ -5,4 +5,6 @@ export interface TeacherClass {
   studentCount: number;
   lessonCount: number;
   createdAt: string;
+   code?: string;
+   averageGrade?: number;
 }

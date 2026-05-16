@@ -93,7 +93,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
                           </div>
                           <div>
                             <p class="font-bold text-black">{{ cls.name }}</p>
-                            <p class="text-xs text-gray-500 font-bold">{{ cls.code }}</p>
+                            <p class="text-xs text-gray-500 font-bold">{{ cls.name }}</p>
                           </div>
                         </div>
                       </td>
@@ -101,9 +101,9 @@ import { CardComponent } from '../../../shared/components/card/card.component';
                       <td class="p-4">
                         <div class="flex items-center space-x-2">
                           <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300 w-24">
-                            <div class="h-full bg-[#0ABAB5]" [style.width.%]="cls.averageGrade"></div>
+                            <div class="h-full bg-[#0ABAB5]" [style.width.%]="cls.studentCount"></div>
                           </div>
-                          <span class="text-sm font-bold text-gray-600">{{ cls.averageGrade }}%</span>
+                          <span class="text-sm font-bold text-gray-600">{{ cls.studentCount }}%</span>
                         </div>
                       </td>
                       <td class="p-4 text-right">

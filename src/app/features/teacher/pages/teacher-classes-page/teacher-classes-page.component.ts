@@ -1,14 +1,19 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { ClassStore } from '../../state/class.store';
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+import { ClassesListComponent } from '../../classes/pages/classes-list/classes-list.component';
 
 @Component({
   selector: 'app-teacher-classes-page',
-  templateUrl: './teacher-classes-page.component.html',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ClassesListComponent,
+  ],
+  templateUrl:
+    './teacher-classes-page.component.html',
+  styleUrls: [
+    './teacher-classes-page.component.scss',
+  ],
 })
-export class TeacherClassesPageComponent implements OnInit {
-  store = inject(ClassStore);
-
-  ngOnInit() {
-    this.store.loadClasses();
-  }
-}
+export class TeacherClassesPageComponent {}

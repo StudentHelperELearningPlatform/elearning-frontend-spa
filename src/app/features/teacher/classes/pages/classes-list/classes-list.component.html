@@ -1,38 +1,76 @@
-<div class="page">
-  <h1>My Classes</h1>
+<div class="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
 
-  <button (click)="store.loadClasses()">Refresh</button>
+  <!-- HEADER -->
+  <div class="flex justify-between items-center bg-white p-6 rounded-3xl border-4 border-black shadow">
+    <div>
+      <h1 class="text-3xl font-black">My Classes</h1>
+      <p class="text-gray-600">Manage your classes</p>
+    </div>
 
-  <div *ngIf="loading()">Loading...</div>
+    <button
+      (click)="onCreateClass()"
+      class="px-4 py-2 bg-[#0ABAB5] text-white font-black rounded-xl border-2 border-black"
+    >
+      Create Class
+    </button>
+  </div>
 
-  <table *ngIf="!loading()">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Code</th>
-        <th>Students</th>
-        <th>Avg Grade</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
+  <!-- REFRESH -->
+  <button
+    (click)="store.loadClasses()"
+    class="px-3 py-2 border-2 border-black rounded-xl bg-white font-bold"
+  >
+    Refresh
+  </button>
 
-    <tbody>
-      <tr *ngFor="let c of classes()">
-        <td>{{ c.name }}</td>
-        <td>{{ c.code }}</td>
-        <td>{{ c.studentCount }}</td>
-        <td>{{ c.averageGrade }}</td>
+  <!-- LOADING -->
+  @if (store.loading()) {
+    <div class="text-gray-500 font-bold">Loading...</div>
+  }
 
-        <td>
-          <button [routerLink]="['/teacher/classes', c.id]">
+  <!-- GRID CARDS -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+    @for (c of store.classes(); track c.id) {
+      <div class="p-5 bg-white border-4 border-black rounded-2xl shadow">
+
+        <h3 class="text-xl font-black">{{ c.name }}</h3>
+
+        <p class="text-sm text-gray-600 mt-2">
+          Students: {{ c.studentCount }}
+        </p>
+
+        <p class="text-sm text-gray-600">
+          Lessons: {{ c.lessonCount }}
+        </p>
+
+        <p class="text-xs text-gray-500 mt-2">
+          {{ c.createdAt | date }}
+        </p>
+
+        <div class="flex gap-2 mt-4">
+
+          <button
+            [routerLink]="['/teacher/classes', c.id]"
+            class="px-3 py-1 border-2 border-black rounded-lg font-bold"
+          >
             View
           </button>
 
-          <button (click)="onDelete(c.id)">
+          <button class="px-3 py-1 border-2 border-black rounded-lg">
+            Edit
+          </button>
+
+          <button
+            (click)="onDelete(c.id)"
+            class="px-3 py-1 border-2 border-red-500 text-red-600 rounded-lg font-bold"
+          >
             Delete
           </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+
+        </div>
+      </div>
+    }
+
+  </div>
 </div>

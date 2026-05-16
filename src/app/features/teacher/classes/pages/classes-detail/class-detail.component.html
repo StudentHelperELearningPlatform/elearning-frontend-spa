@@ -1,8 +1,61 @@
-<h2>Class Detail</h2>
+<div class="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
 
-<div *ngFor="let s of students()">
-  <div>
-    {{ s.name }} - {{ s.email }} - Grade: {{ s.grade }}
-    <button (click)="remove(s.id)">Remove</button>
+  <!-- HEADER -->
+  <div class="bg-white p-6 rounded-3xl border-4 border-black shadow">
+    <h1 class="text-3xl font-black">
+      {{ store.currentClass()?.name }}
+    </h1>
+    <p class="text-gray-600">Class details</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- STUDENTS -->
+    <div class="bg-white p-6 rounded-3xl border-4 border-black">
+
+      <h2 class="text-xl font-black mb-4">Students</h2>
+
+      @for (s of students(); track s.id) {
+        <div class="flex justify-between items-center p-3 border-b">
+
+          <div>
+            <p class="font-bold">{{ s.name }}</p>
+            <p class="text-sm text-gray-600">{{ s.email }}</p>
+          </div>
+
+          <button
+            (click)="removeStudent(s.id)"
+            class="text-red-600 font-bold"
+          >
+            Remove
+          </button>
+
+        </div>
+      }
+
+    </div>
+
+    <!-- LESSONS -->
+    <div class="bg-white p-6 rounded-3xl border-4 border-black">
+
+      <h2 class="text-xl font-black mb-4">Lessons</h2>
+
+      @for (l of lessons(); track l.id) {
+        <div class="flex justify-between items-center p-3 border-b">
+
+          <p class="font-bold">{{ l.title }}</p>
+
+          <button
+            (click)="removeLesson(l.id)"
+            class="text-red-600 font-bold"
+          >
+            Remove
+          </button>
+
+        </div>
+      }
+
+    </div>
+
   </div>
 </div>

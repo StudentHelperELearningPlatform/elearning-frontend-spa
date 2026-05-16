@@ -1,15 +1,5 @@
-<h2>Classes</h2>
+<div class="teacher-classes-page">
 
-<button (click)="store.loadClasses()">Reload</button>
+  <app-classes-list></app-classes-list>
 
-<div *ngIf="store.loading()">Loading...</div>
-
-<div *ngIf="store.error()">
-  {{ store.error() }}
 </div>
-
-<ul>
-  <li *ngFor="let c of store.classes()">
-    {{ c.name }} - {{ c.studentCount }} students
-  </li>
-</ul>

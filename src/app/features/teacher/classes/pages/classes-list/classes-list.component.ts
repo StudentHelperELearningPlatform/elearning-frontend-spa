@@ -1,22 +1,36 @@
 import { Component, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { ClassStore } from '../../../state/class.store';
 
 @Component({
   selector: 'app-classes-list',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
   templateUrl: './classes-list.component.html',
   styleUrls: ['./classes-list.component.scss'],
 })
 export class ClassesListComponent implements OnInit {
-  private store = inject(ClassStore);
 
-  classes = this.store.classes;
-  loading = this.store.loading;
+  store = inject(ClassStore);
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.store.loadClasses();
   }
 
-  onDelete(id: string) {
-    this.store.removeStudent(id); // (temporar, până ai delete class endpoint)
+  onDelete(classId: string) {
+    console.log('delete', classId);
+    // this.store.deleteClass(classId);
+  }
+
+  onCreateClass() {
+    const name = prompt('Class name');
+
+    if (!name) return;
+
+    this.store.createClass({
+      name,
+      description: ''
+    });
   }
 }

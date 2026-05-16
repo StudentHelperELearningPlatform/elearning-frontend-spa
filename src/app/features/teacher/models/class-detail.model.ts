@@ -4,6 +4,7 @@ export interface ClassStudent {
   id: string;
   name: string;
   email: string;
+   grade?: number;
 }
 
 export interface ClassLesson {

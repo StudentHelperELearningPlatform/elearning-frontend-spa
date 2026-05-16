@@ -1,41 +1,25 @@
-import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
+import {
+  patchState,
+  signalStore,
+  withComputed,
+  withMethods,
+  withState,
+} from '@ngrx/signals';
 import { HttpClient } from '@angular/common/http';
-import { catchError, forkJoin, of } from 'rxjs';
-import { CONTENT_API_URL } from '@core/tokens/api.token';
 
-/* ================= MODELS ================= */
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
-export interface ClassItem {
-  id: string;
-  name: string;
-  description?: string;
-  studentCount: number;
-  lessonCount: number;
-  createdAt: string;
-}
-
-export interface Student {
-  id: string;
-  name: string;
-  email: string;
-}
-
-export interface Lesson {
-  id: string;
-  title: string;
-}
-
-export interface ClassDetail extends ClassItem {
-  students: Student[];
-  lessons: Lesson[];
-}
-
-/* ================= STATE ================= */
+import { TeacherClass } from '../models/class.model';
+import {
+  TeacherClassDetail,
+  ClassStudent,
+  ClassLesson,
+} from '../models/class-detail.model';
 
 interface ClassState {
-  classes: ClassItem[];
-  currentClass: ClassDetail | null;
+  classes: TeacherClass[];
+  currentClass: TeacherClassDetail | null;
   loading: boolean;
   error: string | null;
 }
@@ -43,151 +27,226 @@ interface ClassState {
 const initialState: ClassState = {
   classes: [],
   currentClass: null,
+
   loading: false,
   error: null,
 };
-
-/* ================= STORE ================= */
 
 export const ClassStore = signalStore(
   { providedIn: 'root' },
 
   withState(initialState),
 
-  withComputed((state) => ({
-    totalClasses: computed(() => state.classes().length),
+  withComputed((store) => ({
+    totalClasses: computed(() => store.classes().length),
+
+    totalStudents: computed(() =>
+      store.classes().reduce(
+        (sum, current) => sum + current.studentCount,
+        0,
+      ),
+    ),
   })),
 
-  withMethods((store, http = inject(HttpClient), api = inject(CONTENT_API_URL)) => ({
+  withMethods((
+    store,
+    http = inject(HttpClient),
+    userApi = inject(USER_PLATFORM_API_URL),
+  ) => ({
 
-    /* ================= LOAD ALL CLASSES ================= */
     loadClasses() {
-      patchState(store, { loading: true, error: null });
+      patchState(store, {
+        loading: true,
+        error: null,
+      });
 
-      http.get<ClassItem[]>(`${api}/teachers/classes`)
-        .pipe(
-          catchError(() => of([]))
-        )
+      http
+        .get<TeacherClass[]>(`${userApi}/teachers/classes`)
         .subscribe({
-          next: (data) => {
+          next: (classes) => {
             patchState(store, {
-              classes: data,
+              classes,
               loading: false,
             });
           },
-          error: (err) => {
+
+          error: (err: Error) => {
             patchState(store, {
               loading: false,
-              error: err?.message ?? 'Failed to load classes',
+              error: err.message,
             });
           },
         });
     },
 
-    /* ================= CREATE CLASS ================= */
-    createClass(payload: { name: string; description?: string }) {
-      return http.post<ClassItem>(`${api}/teachers/classes`, payload)
+    loadClassDetail(classId: string) {
+      patchState(store, {
+        loading: true,
+        error: null,
+      });
+
+      http
+        .get<TeacherClassDetail>(
+          `${userApi}/teachers/classes/${classId}`,
+        )
+        .subscribe({
+          next: (classDetail) => {
+            patchState(store, {
+              currentClass: classDetail,
+              loading: false,
+            });
+          },
+
+          error: (err: Error) => {
+            patchState(store, {
+              loading: false,
+              error: err.message,
+            });
+          },
+        });
+    },
+
+    createClass(payload: {
+      name: string;
+      description?: string;
+    }) {
+      patchState(store, {
+        loading: true,
+        error: null,
+      });
+
+      http
+        .post<TeacherClass>(
+          `${userApi}/teachers/classes`,
+          payload,
+        )
         .subscribe({
           next: (newClass) => {
-            patchState(store, (state) => ({
-              classes: [...state.classes, newClass],
-            }));
-          },
-        });
-    },
-
-    /* ================= LOAD CLASS DETAIL ================= */
-    loadClassDetail(classId: string) {
-      patchState(store, { loading: true });
-
-      forkJoin({
-        class: http.get<ClassItem>(`${api}/teachers/classes/${classId}`),
-        students: http.get<Student[]>(`${api}/teachers/classes/${classId}/students`),
-        lessons: http.get<Lesson[]>(`${api}/teachers/classes/${classId}/lessons`),
-      })
-        .pipe(
-          catchError(() =>
-            of({ class: null, students: [], lessons: [] })
-          )
-        )
-        .subscribe({
-          next: (res: any) => {
-            if (!res.class) {
-              patchState(store, { loading: false });
-              return;
-            }
-
             patchState(store, {
-              currentClass: {
-                ...res.class,
-                students: res.students ?? [],
-                lessons: res.lessons ?? [],
-              },
+              classes: [...store.classes(), newClass],
               loading: false,
+            });
+          },
+
+          error: (err: Error) => {
+            patchState(store, {
+              loading: false,
+              error: err.message,
             });
           },
         });
     },
 
-    /* ================= DELETE CLASS ================= */
-    deleteClass(classId: string) {
-      http.delete(`${api}/teachers/classes/${classId}`)
-        .subscribe({
-          next: () => {
-            patchState(store, (state) => ({
-              classes: state.classes.filter(c => c.id !== classId),
-            }));
-          },
-        });
-    },
+    updateClass(
+  classId: string,
+  payload: {
+    name?: string;
+    description?: string;
+  },
+) {
+  patchState(store, {
+    loading: true,
+    error: null,
+  });
 
-    /* ================= STUDENTS ================= */
+  http
+    .put<TeacherClass>(
+      `${userApi}/teachers/classes/${classId}`,
+      payload,
+    )
+    .subscribe({
+      next: (updatedClass) => {
+        patchState(store, {
+          classes: store.classes().map((c) =>
+            c.id === classId ? updatedClass : c,
+          ),
+
+          currentClass:
+            store.currentClass()?.id === classId
+              ? {
+                  ...store.currentClass()!,
+                  ...updatedClass,
+                }
+              : store.currentClass(),
+
+          loading: false,
+        });
+      },
+
+      error: (err: Error) => {
+        patchState(store, {
+          loading: false,
+          error: err.message,
+        });
+      },
+    });
+},
+
+
+   deleteClass(classId: string) {
+  patchState(store, {
+    classes: store
+      .classes()
+      .filter((c) => c.id !== classId),
+  });
+
+  http
+    .delete(
+      `${userApi}/teachers/classes/${classId}`,
+    )
+    .subscribe();
+},
+
     addStudent(classId: string, studentId: string) {
-      http.post(
-        `${api}/teachers/classes/${classId}/students/${studentId}`,
-        {}
-      ).subscribe({
-        next: () => {
-          this.loadClassDetail(classId);
-        },
-      });
+      http
+        .post(
+          `${userApi}/teachers/classes/${classId}/students/${studentId}`,
+          {},
+        )
+        .subscribe();
     },
 
     removeStudent(classId: string, studentId: string) {
-      http.delete(
-        `${api}/teachers/classes/${classId}/students/${studentId}`
-      ).subscribe({
-        next: () => {
-          this.loadClassDetail(classId);
-        },
-      });
-    },
+  const current = store.currentClass();
 
-    /* ================= LESSONS ================= */
+  if (!current) return;
+
+  patchState(store, {
+    currentClass: {
+      ...current,
+      students: current.students.filter(s => s.id !== studentId),
+    },
+  });
+
+  http.delete(
+    `${userApi}/teachers/classes/${classId}/students/${studentId}`,
+  ).subscribe();
+},
+
     addLesson(classId: string, lessonId: string) {
-      http.post(
-        `${api}/teachers/classes/${classId}/lessons/${lessonId}`,
-        {}
-      ).subscribe({
-        next: () => {
-          this.loadClassDetail(classId);
-        },
-      });
+      http
+        .post(
+          `${userApi}/teachers/classes/${classId}/lessons/${lessonId}`,
+          {},
+        )
+        .subscribe();
     },
 
     removeLesson(classId: string, lessonId: string) {
-      http.delete(
-        `${api}/teachers/classes/${classId}/lessons/${lessonId}`
-      ).subscribe({
-        next: () => {
-          this.loadClassDetail(classId);
-        },
-      });
-    },
+  const current = store.currentClass();
 
-    /* ================= RESET ================= */
-    reset() {
-      patchState(store, initialState);
+  if (!current) return;
+
+  patchState(store, {
+    currentClass: {
+      ...current,
+      lessons: current.lessons.filter(l => l.id !== lessonId),
     },
-  }))
+  });
+
+  http.delete(
+    `${userApi}/teachers/classes/${classId}/lessons/${lessonId}`,
+  ).subscribe();
+   }
+  })),
 );

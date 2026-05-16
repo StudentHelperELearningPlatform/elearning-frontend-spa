@@ -20,10 +20,6 @@ import {
 interface ClassState {
   classes: TeacherClass[];
   currentClass: TeacherClassDetail | null;
-
-  students: ClassStudent[];
-  lessons: ClassLesson[];
-
   loading: boolean;
   error: string | null;
 }
@@ -31,9 +27,6 @@ interface ClassState {
 const initialState: ClassState = {
   classes: [],
   currentClass: null,
-
-  students: [],
-  lessons: [],
 
   loading: false,
   error: null,
@@ -100,8 +93,6 @@ export const ClassStore = signalStore(
           next: (classDetail) => {
             patchState(store, {
               currentClass: classDetail,
-              students: classDetail.students ?? [],
-              lessons: classDetail.lessons ?? [],
               loading: false,
             });
           },
@@ -146,6 +137,66 @@ export const ClassStore = signalStore(
         });
     },
 
+    updateClass(
+  classId: string,
+  payload: {
+    name?: string;
+    description?: string;
+  },
+) {
+  patchState(store, {
+    loading: true,
+    error: null,
+  });
+
+  http
+    .put<TeacherClass>(
+      `${userApi}/teachers/classes/${classId}`,
+      payload,
+    )
+    .subscribe({
+      next: (updatedClass) => {
+        patchState(store, {
+          classes: store.classes().map((c) =>
+            c.id === classId ? updatedClass : c,
+          ),
+
+          currentClass:
+            store.currentClass()?.id === classId
+              ? {
+                  ...store.currentClass()!,
+                  ...updatedClass,
+                }
+              : store.currentClass(),
+
+          loading: false,
+        });
+      },
+
+      error: (err: Error) => {
+        patchState(store, {
+          loading: false,
+          error: err.message,
+        });
+      },
+    });
+},
+
+
+   deleteClass(classId: string) {
+  patchState(store, {
+    classes: store
+      .classes()
+      .filter((c) => c.id !== classId),
+  });
+
+  http
+    .delete(
+      `${userApi}/teachers/classes/${classId}`,
+    )
+    .subscribe();
+},
+
     addStudent(classId: string, studentId: string) {
       http
         .post(
@@ -156,18 +207,21 @@ export const ClassStore = signalStore(
     },
 
     removeStudent(classId: string, studentId: string) {
-      patchState(store, {
-        students: store
-          .students()
-          .filter((student) => student.id !== studentId),
-      });
+  const current = store.currentClass();
 
-      http
-        .delete(
-          `${userApi}/teachers/classes/${classId}/students/${studentId}`,
-        )
-        .subscribe();
+  if (!current) return;
+
+  patchState(store, {
+    currentClass: {
+      ...current,
+      students: current.students.filter(s => s.id !== studentId),
     },
+  });
+
+  http.delete(
+    `${userApi}/teachers/classes/${classId}/students/${studentId}`,
+  ).subscribe();
+},
 
     addLesson(classId: string, lessonId: string) {
       http
@@ -179,18 +233,20 @@ export const ClassStore = signalStore(
     },
 
     removeLesson(classId: string, lessonId: string) {
+  const current = store.currentClass();
 
-      patchState(store, {
-        lessons: store
-          .lessons()
-          .filter((lesson) => lesson.id !== lessonId),
-      });
+  if (!current) return;
 
-      http
-        .delete(
-          `${userApi}/teachers/classes/${classId}/lessons/${lessonId}`,
-        )
-        .subscribe();
+  patchState(store, {
+    currentClass: {
+      ...current,
+      lessons: current.lessons.filter(l => l.id !== lessonId),
     },
+  });
+
+  http.delete(
+    `${userApi}/teachers/classes/${classId}/lessons/${lessonId}`,
+  ).subscribe();
+   }
   })),
 );

@@ -14,10 +14,13 @@ import { LessonEditorComponent } from './lesson-editor/lesson-editor.component';
 import { unsavedChangesGuard } from './lesson-editor/unsaved-changes.guard';
 import { TeacherDashboardComponent } from './dashboard/teacher-dashboard.component';
 
+import { TeacherClassesPageComponent } from './pages/teacher-classes-page/teacher-classes-page.component';
+import { TeacherClassDetailPageComponent } from './pages/teacher-class-detail-page/teacher-class-detail-page.component';
+
 export default [
   { path: 'dashboard', component: TeacherDashboardComponent },
   { path: 'analytics', component: AnalyticsDashboardComponent },
-  { path: 'classes', component: ClassManagementComponent },
+  //{ path: 'classes', component: ClassManagementComponent },
   { path: 'content', component: ContentEditorComponent },
   
   // Lesson Editor Routes (from develop)
@@ -42,8 +45,8 @@ export default [
   { path: 'learning-paths/:id/edit', component: LearningPathEditorComponent },
   
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  //{ path: 'classes', component: TeacherClassesPageComponent,},
-  //{ path: 'classes/:classId', component: TeacherClassDetailPageComponent,}
+  { path: 'classes', component: TeacherClassesPageComponent,},
+  { path: 'classes/:classId', component: TeacherClassDetailPageComponent,}
   //{ path: 'classes', component: ClassesListComponent },
   //{ path: 'classes/:classId', component: ClassDetailComponent }
 ] as Routes;
