@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { signal } from '@angular/core';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { StudentDetailComponent } from './student-detail.component';
-import { ProgressStore, StudentDetailEntry } from '../../student/state/progress.store';
+import { ProgressStore, StudentDetailEntry } from '../../student/store/progress.store';
 
 const mockEntries: StudentDetailEntry[] = [
   {

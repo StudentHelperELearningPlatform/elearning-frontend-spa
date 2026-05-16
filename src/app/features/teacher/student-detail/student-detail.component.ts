@@ -8,7 +8,7 @@ import { ButtonModule } from 'primeng/button';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { MessageService } from 'primeng/api';
 
-import { ProgressStore, StudentDetailEntry } from '../../student/state/progress.store';
+import { ProgressStore, StudentDetailEntry } from '../../student/store/progress.store';
 
 interface GroupedByClass {
   className: string;

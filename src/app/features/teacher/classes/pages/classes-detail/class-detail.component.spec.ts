@@ -8,12 +8,12 @@ import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
 describe('ClassDetailComponent', () => {
   let injector: EnvironmentInjector;
-  let mockClassStore: any;
+  let mockClassStore: Record<string, unknown>;
 
   beforeEach(() => {
     mockClassStore = {
       currentClass: signal({
-        students: [{ id: 's1', firstName: 'John' }],
+        students: [{ id: 's1', name: 'John Doe', email: '' }],
         lessons: [{ id: 'l1', title: 'Math 101' }]
       }),
       loadClassDetail: vi.fn(),
@@ -59,12 +59,12 @@ describe('ClassDetailComponent', () => {
 
   it('should compute students correctly', () => {
     const comp = make();
-    expect(comp.students()).toEqual([{ id: 's1', firstName: 'John' }] as any);
+    expect(comp.students()).toEqual([{ id: 's1', name: 'John Doe', email: '' }]);
   });
 
   it('should compute lessons correctly', () => {
     const comp = make();
-    expect(comp.lessons()).toEqual([{ id: 'l1', title: 'Math 101' }] as any);
+    expect(comp.lessons()).toEqual([{ id: 'l1', title: 'Math 101' }]);
   });
   
   it('should return empty arrays for students and lessons if currentClass is null', () => {

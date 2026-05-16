@@ -2,8 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';
 import { teacherClassesHandlers } from './teacher-classes.handlers';
 
+import { environment } from '../../environments/environment';
+
 const getTargetUrl = (path: string) => {
-  return `http://localhost${path}`;
+  const base = environment.userPlatformApiUrl || 'http://localhost';
+  return `${base}${path}`;
 };
 
 describe('teacherClassesHandlers', () => {
@@ -13,9 +16,9 @@ describe('teacherClassesHandlers', () => {
   afterEach(() => server.resetHandlers());
   afterAll(() => server.close());
 
-  describe('GET /api/v1/teachers/classes', () => {
+  describe('GET /teachers/classes', () => {
     it('should return classes list', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes');
+      const url = getTargetUrl('/teachers/classes');
       const response = await fetch(url);
       
       expect(response.status).toBe(200);
@@ -27,9 +30,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('POST /api/v1/teachers/classes', () => {
+  describe('POST /teachers/classes', () => {
     it('should create a new class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes');
+      const url = getTargetUrl('/teachers/classes');
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -45,7 +48,7 @@ describe('teacherClassesHandlers', () => {
     });
     
     it('should create a new class with default values if not provided', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes');
+      const url = getTargetUrl('/teachers/classes');
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,9 +63,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('GET /api/v1/teachers/classes/:classId', () => {
+  describe('GET /teachers/classes/:classId', () => {
     it('should return class detail', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1');
+      const url = getTargetUrl('/teachers/classes/1');
       const response = await fetch(url);
       
       expect(response.status).toBe(200);
@@ -74,9 +77,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('PUT /api/v1/teachers/classes/:classId', () => {
+  describe('PUT /teachers/classes/:classId', () => {
     it('should update class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1');
+      const url = getTargetUrl('/teachers/classes/1');
       const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -90,9 +93,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('DELETE /api/v1/teachers/classes/:classId', () => {
+  describe('DELETE /teachers/classes/:classId', () => {
     it('should delete class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1');
+      const url = getTargetUrl('/teachers/classes/1');
       const response = await fetch(url, { method: 'DELETE' });
       
       expect(response.status).toBe(200);
@@ -102,9 +105,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('GET /api/v1/teachers/classes/:classId/students', () => {
+  describe('GET /teachers/classes/:classId/students', () => {
     it('should return students for a class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1/students');
+      const url = getTargetUrl('/teachers/classes/1/students');
       const response = await fetch(url);
       
       expect(response.status).toBe(200);
@@ -114,7 +117,7 @@ describe('teacherClassesHandlers', () => {
     });
     
     it('should return empty array for non-existent class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/999/students');
+      const url = getTargetUrl('/teachers/classes/999/students');
       const response = await fetch(url);
       
       expect(response.status).toBe(200);
@@ -124,9 +127,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('POST /api/v1/teachers/classes/:classId/students/:studentId', () => {
+  describe('POST /teachers/classes/:classId/students/:studentId', () => {
     it('should add student to a class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1/students/s3');
+      const url = getTargetUrl('/teachers/classes/1/students/s3');
       const response = await fetch(url, { method: 'POST' });
       
       expect(response.status).toBe(200);
@@ -136,9 +139,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('DELETE /api/v1/teachers/classes/:classId/students/:studentId', () => {
+  describe('DELETE /teachers/classes/:classId/students/:studentId', () => {
     it('should remove student from a class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1/students/s1');
+      const url = getTargetUrl('/teachers/classes/1/students/s1');
       const response = await fetch(url, { method: 'DELETE' });
       
       expect(response.status).toBe(200);
@@ -148,9 +151,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('GET /api/v1/teachers/classes/:classId/lessons', () => {
+  describe('GET /teachers/classes/:classId/lessons', () => {
     it('should return lessons for a class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1/lessons');
+      const url = getTargetUrl('/teachers/classes/1/lessons');
       const response = await fetch(url);
       
       expect(response.status).toBe(200);
@@ -160,7 +163,7 @@ describe('teacherClassesHandlers', () => {
     });
     
     it('should return empty array for non-existent class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/999/lessons');
+      const url = getTargetUrl('/teachers/classes/999/lessons');
       const response = await fetch(url);
       
       expect(response.status).toBe(200);
@@ -170,9 +173,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('POST /api/v1/teachers/classes/:classId/lessons/:lessonId', () => {
+  describe('POST /teachers/classes/:classId/lessons/:lessonId', () => {
     it('should add lesson to a class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1/lessons/l3');
+      const url = getTargetUrl('/teachers/classes/1/lessons/l3');
       const response = await fetch(url, { method: 'POST' });
       
       expect(response.status).toBe(200);
@@ -182,9 +185,9 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('DELETE /api/v1/teachers/classes/:classId/lessons/:lessonId', () => {
+  describe('DELETE /teachers/classes/:classId/lessons/:lessonId', () => {
     it('should remove lesson from a class', async () => {
-      const url = getTargetUrl('/api/v1/teachers/classes/1/lessons/l1');
+      const url = getTargetUrl('/teachers/classes/1/lessons/l1');
       const response = await fetch(url, { method: 'DELETE' });
       
       expect(response.status).toBe(200);

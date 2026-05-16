@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw';
 
-const base = '/api/v1/teachers/classes';
+import { environment } from '../../environments/environment';
+
+const base = `${environment.userPlatformApiUrl}/teachers/classes`;
 
 /**
  * TYPES

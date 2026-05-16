@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ProgressDashboardComponent } from './progress-dashboard.component';
-import { ProgressStore } from '../state/progress.store';
+import { ProgressStore } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { ElementRef, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';

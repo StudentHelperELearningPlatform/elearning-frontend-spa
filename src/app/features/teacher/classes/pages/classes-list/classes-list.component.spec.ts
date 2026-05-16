@@ -7,7 +7,7 @@ import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 
 describe('ClassesListComponent', () => {
   let injector: EnvironmentInjector;
-  let mockClassStore: any;
+  let mockClassStore: Record<string, unknown>;
 
   beforeEach(() => {
     mockClassStore = {
@@ -44,7 +44,7 @@ describe('ClassesListComponent', () => {
   });
 
   it('should handle onDelete (currently just logs)', () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const comp = make();
     comp.onDelete('c1');
     expect(console.log).toHaveBeenCalledWith('delete', 'c1');

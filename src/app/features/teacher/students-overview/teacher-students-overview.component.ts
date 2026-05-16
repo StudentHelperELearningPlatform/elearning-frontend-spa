@@ -18,7 +18,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
-import { ProgressStore } from '../../student/state/progress.store';
+import { ProgressStore } from '../../student/store/progress.store';
 
 // Tipul local pentru teacher — câmpurile reale din backend S6
 interface TeacherStudentSummary {

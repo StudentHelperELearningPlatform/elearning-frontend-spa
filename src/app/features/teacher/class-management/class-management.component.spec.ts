@@ -7,7 +7,7 @@ import { signal } from '@angular/core';
 describe('ClassManagementComponent', () => {
   let component: ClassManagementComponent;
   let fixture: ComponentFixture<ClassManagementComponent>;
-  let mockClassStore: any;
+  let mockClassStore: Record<string, unknown>;
 
   beforeEach(async () => {
     mockClassStore = {

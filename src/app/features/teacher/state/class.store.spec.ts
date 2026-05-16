@@ -7,7 +7,7 @@ import { TeacherClass } from '../models/class.model';
 import { TeacherClassDetail } from '../models/class-detail.model';
 
 describe('ClassStore', () => {
-  let store: any;
+  let store: InstanceType<typeof ClassStore>;
   let httpTestingController: HttpTestingController;
   const mockApiUrl = 'http://mock-api';
 
@@ -35,13 +35,13 @@ describe('ClassStore', () => {
     ];
 
     store.loadClasses();
-    expect(store.loading()).toBeTrue();
+    expect(store.loading()).toBe(true);
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
     expect(req.request.method).toBe('GET');
     req.flush(mockClasses);
 
-    expect(store.loading()).toBeFalse();
+    expect(store.loading()).toBe(false);
     expect(store.classes()).toEqual(mockClasses);
     expect(store.totalClasses()).toBe(1);
     expect(store.totalStudents()).toBe(10);
@@ -52,7 +52,7 @@ describe('ClassStore', () => {
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
-    expect(store.loading()).toBeFalse();
+    expect(store.loading()).toBe(false);
     expect(store.error()).toContain('Http failure response');
   });
 
@@ -67,13 +67,13 @@ describe('ClassStore', () => {
     };
 
     store.loadClassDetail('1');
-    expect(store.loading()).toBeTrue();
+    expect(store.loading()).toBe(true);
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
     expect(req.request.method).toBe('GET');
     req.flush(mockClassDetail);
 
-    expect(store.loading()).toBeFalse();
+    expect(store.loading()).toBe(false);
     expect(store.currentClass()).toEqual(mockClassDetail);
   });
 
@@ -82,7 +82,7 @@ describe('ClassStore', () => {
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
-    expect(store.loading()).toBeFalse();
+    expect(store.loading()).toBe(false);
     expect(store.error()).toContain('Http failure response');
   });
 
@@ -91,14 +91,14 @@ describe('ClassStore', () => {
     const payload = { name: 'Science', description: 'Science Class' };
 
     store.createClass(payload);
-    expect(store.loading()).toBeTrue();
+    expect(store.loading()).toBe(true);
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(payload);
     req.flush(mockNewClass);
 
-    expect(store.loading()).toBeFalse();
+    expect(store.loading()).toBe(false);
     expect(store.classes()).toContain(mockNewClass);
   });
   
@@ -107,31 +107,29 @@ describe('ClassStore', () => {
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
-    expect(store.loading()).toBeFalse();
+    expect(store.loading()).toBe(false);
     expect(store.error()).toContain('Http failure response');
   });
 
   it('should update class', () => {
     const initialClass: TeacherClass = { id: '1', name: 'Old Math', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     
-    // Set initial state
-    TestBed.runInInjectionContext(() => {
-      store.classes = () => [initialClass];
-    });
+    store.loadClasses();
+    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`).flush([initialClass]);
 
     const mockUpdatedClass: TeacherClass = { ...initialClass, name: 'New Math' };
     const payload = { name: 'New Math' };
 
     store.updateClass('1', payload);
-    expect(store.loading()).toBeTrue();
+    expect(store.loading()).toBe(true);
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual(payload);
     req.flush(mockUpdatedClass);
 
-    expect(store.loading()).toBeFalse();
-    expect(store.classes().find((c: any) => c.id === '1')?.name).toBe('New Math');
+    expect(store.loading()).toBe(false);
+    expect(store.classes().find((c: TeacherClass) => c.id === '1')?.name).toBe('New Math');
   });
   
   it('should handle error when updating class', () => {
@@ -139,7 +137,7 @@ describe('ClassStore', () => {
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
-    expect(store.loading()).toBeFalse();
+    expect(store.loading()).toBe(false);
     expect(store.error()).toContain('Http failure response');
   });
 
