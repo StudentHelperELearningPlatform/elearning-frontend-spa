@@ -136,8 +136,8 @@ import { TeacherProgressStore } from '../store/progress.store';
 })
 export class ClassStatsComponent implements OnInit {
   store = inject(TeacherProgressStore);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   classId: string | null = null;
 

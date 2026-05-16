@@ -321,7 +321,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   private router = inject(Router);
 
   currentModuleIndex = signal(0);
-  private lessonId = signal<string | null>(null);
+  private readonly lessonId = signal<string | null>(null);
 
   hasAccess = computed(() => true);
 

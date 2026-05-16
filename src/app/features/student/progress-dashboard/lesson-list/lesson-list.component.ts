@@ -226,7 +226,7 @@ export class LessonListComponent implements OnInit {
   authStore = inject(AuthStore);
   activeTab = signal<'browser' | 'my-lessons' | 'history'>('browser');
 
-  private lessonStatusMap = signal<Record<string, string>>({});
+  private readonly lessonStatusMap = signal<Record<string, string>>({});
 
   ngOnInit() {
     this.lessonsStore.loadLessons();
