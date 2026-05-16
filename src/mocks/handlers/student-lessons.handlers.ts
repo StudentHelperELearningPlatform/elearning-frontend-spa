@@ -185,9 +185,6 @@ export const studentLessonsHandlers = [
     return HttpResponse.json(lesson);
   }),
 
-  // Note: GET .../final-quiz/attempts has been removed from here because
-  // it was perfectly duplicated in quizzes.handlers.ts where it belongs.
-
   http.put(`${environment.lessonApiUrl}/api/v1/lessons/:id/progress`, () => {
     return HttpResponse.json({ message: 'Progress saved' });
   }),

@@ -42,6 +42,7 @@ describe('QuizPlayerComponent', () => {
   let component: QuizPlayerComponent;
   let injector: EnvironmentInjector;
   let router: Router;
+  let route: ActivatedRoute;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -58,6 +59,7 @@ describe('QuizPlayerComponent', () => {
     store = TestBed.inject(QuizzesStore);
     injector = TestBed.inject(EnvironmentInjector);
     router = TestBed.inject(Router);
+    route = TestBed.inject(ActivatedRoute);
 
     patchStore(store, {
       currentQuiz: MOCK_QUIZ,
@@ -78,6 +80,12 @@ describe('QuizPlayerComponent', () => {
   afterEach(() => vi.restoreAllMocks());
 
   describe('Component Initialization & Core Logic', () => {
+    it('ngOnInit defaults to quiz "1" if route param is null', () => {
+      route.snapshot.paramMap.get = () => null;
+      component.ngOnInit();
+      expect(component.quizId()).toBe('1');
+    });
+
     it('currentQuestion returns the question at currentQuestionIndex', () => {
       expect(component.currentQuestion()?.id).toBe('q1');
     });
@@ -89,6 +97,14 @@ describe('QuizPlayerComponent', () => {
 
     it('totalQuestions reflects quiz question count', () => {
       expect(component.totalQuestions()).toBe(2);
+
+      patchStore(store, {
+        currentQuiz: {
+          ...MOCK_QUIZ,
+          questions: undefined as unknown as typeof MOCK_QUIZ.questions,
+        },
+      });
+      expect(component.totalQuestions()).toBe(0);
     });
 
     it('isLastQuestion boundaries', () => {
@@ -97,6 +113,19 @@ describe('QuizPlayerComponent', () => {
 
       patchStore(store, { currentQuestionIndex: 1 });
       expect(component.isLastQuestion()).toBe(true);
+    });
+
+    it('calculates progressPercentage correctly', () => {
+      patchStore(store, { currentQuestionIndex: 0 });
+      expect(component.progressPercentage()).toBe(50); // 1/2 * 100
+
+      patchStore(store, { currentQuestionIndex: 1 });
+      expect(component.progressPercentage()).toBe(100); // 2/2 * 100
+    });
+
+    it('progressPercentage handles empty questions fallback', () => {
+      patchStore(store, { currentQuiz: { ...MOCK_QUIZ, questions: [] } });
+      expect(component.progressPercentage()).toBe(100); // fallback is total=1, current=1 => 100
     });
   });
 
@@ -121,6 +150,13 @@ describe('QuizPlayerComponent', () => {
       expect(spy).toHaveBeenCalledWith('q1', 'q1-o1');
     });
 
+    it('selectOption does nothing if currentQuestion is undefined', () => {
+      const spy = vi.spyOn(store, 'answerQuestion');
+      patchStore(store, { currentQuiz: null });
+      component.selectOption('q1-o1');
+      expect(spy).not.toHaveBeenCalled();
+    });
+
     it('nextQuestion, previousQuestion, and navigateTo call store and restore options', () => {
       const nextSpy = vi.spyOn(store, 'nextQuestion');
       const prevSpy = vi.spyOn(store, 'prevQuestion');
@@ -134,6 +170,13 @@ describe('QuizPlayerComponent', () => {
 
       component.navigateTo(1);
       expect(navSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('restoreSelectedOption sets the correct answer if it exists in store', () => {
+      patchStore(store, { answers: { q1: 'q1-o2' } });
+      component.nextQuestion(); // triggers restoreSelectedOption internally
+      component.previousQuestion(); // go back to q1
+      expect(component.selectedOptionId()).toBe('q1-o2');
     });
 
     it('restoreSelectedOption sets null if there is no current question', () => {
@@ -192,40 +235,56 @@ describe('QuizPlayerComponent', () => {
       expect(component.paletteOpen()).toBe(false);
       expect(component.showSubmitModal()).toBe(false);
       expect(component.selectedOptionId()).toBeNull();
-      // @ts-expect-error - checking private property state for coverage
+      // @ts-expect-error accessing private property for coverage check
       expect(component.resultsNavigated()).toBe(false);
     });
   });
 
-  describe('Effects', () => {
+  describe('Effects Execution Branches', () => {
     it('navigates to results when attemptId becomes available', () => {
       const spy = vi.spyOn(router, 'navigate');
-
-      // Update store to trigger the effect
       patchStore(store, { result: { attemptId: 'att-123', score: 100 } });
       TestBed.flushEffects();
-
       expect(spy).toHaveBeenCalledWith(['/student/quizzes', 'quiz-1', 'results', 'att-123']);
     });
 
-    it('timer subscription ticks when conditions are met', () => {
-      // Opt into Vitest's native fake timers instead of Angular's fakeAsync
+    it('does not navigate to results if already navigated', () => {
+      const spy = vi.spyOn(router, 'navigate');
+      patchStore(store, { result: { attemptId: 'att-123', score: 100 } });
+      // @ts-expect-error bypass private
+      component.resultsNavigated.set(true);
+      TestBed.flushEffects();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('timer subscription ticks when conditions are met and unsubscribes when done', () => {
       vi.useFakeTimers();
       const spy = vi.spyOn(store, 'tickTimer').mockImplementation(() => undefined);
 
+      // Condition 1: started, not submitted, has time remaining -> should run timer
       component.started.set(true);
       patchStore(store, { submitted: false, timeRemaining: 900 });
-      TestBed.flushEffects(); // Kick off the effect
+      TestBed.flushEffects();
 
-      vi.advanceTimersByTime(1000); // Fast-forward 1 second
+      vi.advanceTimersByTime(1000);
       expect(spy).toHaveBeenCalled();
 
-      // Clean up effect by failing conditions
+      // @ts-expect-error verifying private sub exists
+      expect(component.timerSubscription).not.toBeNull();
+
+      // Condition 2: test teardown branch (when submitted becomes true)
       patchStore(store, { submitted: true });
       TestBed.flushEffects();
 
-      // Restore timers so subsequent tests aren't affected
+      // @ts-expect-error verifying private sub is cleared
+      expect(component.timerSubscription).toBeNull();
       vi.useRealTimers();
+    });
+
+    it('effect sets selectedOptionId to null if question id is missing', () => {
+      patchStore(store, { currentQuiz: null });
+      TestBed.flushEffects();
+      expect(component.selectedOptionId()).toBeNull();
     });
   });
 
@@ -236,7 +295,7 @@ describe('QuizPlayerComponent', () => {
       expect(component.paletteOpen()).toBe(true);
     });
 
-    it('getPaletteClass applies correct styling classes', () => {
+    it('getPaletteClass applies correct styling classes for active and flagged', () => {
       vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => true));
       vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => true));
       patchStore(store, { currentQuestionIndex: 0 });
@@ -245,10 +304,25 @@ describe('QuizPlayerComponent', () => {
       expect(classes).toContain('answered');
       expect(classes).toContain('flagged');
       expect(classes).toContain('current');
+    });
 
+    it('getPaletteClass applies correct styling classes for unanswered and not current', () => {
       vi.spyOn(store, 'isAnswered').mockReturnValue(computed(() => false));
-      const unansweredClasses = component.getPaletteClass(1);
-      expect(unansweredClasses).toContain('unanswered');
+      vi.spyOn(store, 'isFlagged').mockReturnValue(computed(() => false));
+      patchStore(store, { currentQuestionIndex: 1 });
+
+      const classes = component.getPaletteClass(0);
+      expect(classes).toContain('unanswered');
+      expect(classes).toContain('border-gray-400');
+      expect(classes).not.toContain('flagged');
+    });
+
+    it('getPaletteClass handles undefined question safely', () => {
+      const classes = component.getPaletteClass(99); // out of bounds index
+      expect(classes).toContain('unanswered');
+      // Verificam ca nu primeste clasa bg-culoare specifica pt answered, in loc sa cautam
+      // strict dupavantul "answered" care e continut si in "unanswered"
+      expect(classes).not.toContain('bg-[#0ABAB5]/20');
     });
   });
 });
