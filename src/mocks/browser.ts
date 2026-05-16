@@ -17,4 +17,6 @@ export const worker = setupWorker(
   ...studentLessonsHandlers,
   ...teacherLessonEditorHandlers,
   ...teacherHandlers,
+  // INT-03: MSW mocks for newly wired teacher progress endpoints must be disabled in this PR
+  // ...teacherProgressHandlers,
 );

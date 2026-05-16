@@ -1,4 +1,5 @@
 // src/app/features/teacher/teacher.routes.ts
+// src/app/features/teacher/teacher.routes.ts
 import { Routes } from '@angular/router';
 import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-dashboard.component';
 import { ContentEditorComponent } from './content-editor/content-editor.component';

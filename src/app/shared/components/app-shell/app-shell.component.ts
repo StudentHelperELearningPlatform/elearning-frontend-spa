@@ -8,10 +8,10 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
   standalone: true,
   imports: [RouterOutlet, HeaderComponent, SidebarComponent],
   template: `
-    <div class="min-h-screen bg-gray-50 flex flex-col">
-      <app-header />
+    <div class="h-screen bg-gray-50 flex flex-col overflow-hidden">
+      <app-header class="shrink-0" />
       <div class="flex flex-1 overflow-hidden">
-        <app-sidebar />
+        <app-sidebar class="h-full shrink-0" />
         <main class="flex-1 overflow-y-auto p-6">
           <router-outlet />
         </main>

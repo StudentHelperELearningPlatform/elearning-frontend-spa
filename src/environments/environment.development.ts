@@ -1,9 +1,10 @@
 // src/environments/environment.development.ts
+// NOT FINAL
 export const environment = {
   production: false,
-  quizApiUrl: 'http://localhost:8082',
-  lessonApiUrl: 'http://localhost:8082',
-  userPlatformApiUrl: 'http://localhost:8082',
+  quizApiUrl: 'https://e-learning-backend-team1-api-gateway.onrender.com',
+  lessonApiUrl: 'https://e-learning-backend-team1-api-gateway.onrender.com',
+  userPlatformApiUrl: 'https://e-learning-backend-team1-api-gateway.onrender.com',
   keycloak: {
     url: 'https://keycloak-26-0-7-vb34.onrender.com/',
     realm: 'elearning',

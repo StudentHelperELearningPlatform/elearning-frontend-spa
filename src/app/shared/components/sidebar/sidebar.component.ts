@@ -6,10 +6,11 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  host: { style: 'display: block' },
+  // FIX: Added class: 'h-full' to the host element
+  host: { style: 'display: block', class: 'h-full' },
   imports: [CommonModule, RouterModule],
   template: `
-    <aside class="w-72 bg-white border-r-4 border-black h-[calc(100vh-84px)] sticky top-[84px] hidden md:block overflow-y-auto p-6">
+    <aside class="w-72 bg-white border-r-4 border-black h-full hidden md:block overflow-y-auto p-6">
       <nav class="space-y-4">
         @if (authStore.isStudent()) {
           <a routerLink="/student/dashboard" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
@@ -19,14 +20,6 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
           <a routerLink="/student/lessons" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">library_books</span>
             <span>Lessons</span>
-          </a>
-          <a routerLink="/student/lesson-viewer" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
-            <span class="material-icons text-3xl">menu_book</span>
-            <span>Lesson Viewer</span>
-          </a>
-          <a routerLink="/student/quiz-player" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
-            <span class="material-icons text-3xl">quiz</span>
-            <span>Quiz Player</span>
           </a>
           <a routerLink="/student/milestones" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">emoji_events</span>
