@@ -58,6 +58,7 @@ const blockToModule = (block: BackendBlock, subTitle: string): Module => ({
   type: normaliseModuleType(block.blockType),
   content: block.content || '',
   mediaUrl: block.mediaUrl || block.mediaId || undefined,
+  orderIndex: block.orderIndex,
 });
 
 /**
@@ -69,6 +70,7 @@ export const mapLessonResponse = (backend: BackendLesson): Lesson => {
   const subcapitols = (backend.subcapitols || []).map((sub) => ({
     id: sub.id,
     title: sub.title || 'Untitled Subcapitol',
+    orderIndex: sub.orderIndex,
     blocks: (sub.blocks || []).map((block) => ({
       ...blockToModule(block, sub.title),
       blockType: block.blockType

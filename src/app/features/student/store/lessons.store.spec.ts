@@ -178,5 +178,105 @@ describe('LessonsStore', () => {
       
       consoleSpy.mockRestore();
     });
+
+    it('should track completed module id locally (S6-final-quiz-ui)', () => {
+      vi.spyOn(http, 'put').mockReturnValue(of({}));
+      store.markModuleComplete('lesson-1', 'module-A');
+      expect(store.completedModuleIds().has('module-A')).toBe(true);
+    });
+  });
+
+  // ─── S6-final-quiz-ui: allModulesComplete signal ──────────────────────────
+  describe('S6-final-quiz-ui: allModulesComplete', () => {
+    it('returns false when no lesson is loaded', () => {
+      expect(store.allModulesComplete()).toBe(false);
+    });
+
+    it('returns false when some modules are not yet complete', () => {
+      patchStore(store, {
+        currentLesson: { ...mockLesson, modules: [
+          { id: 'm1', title: 'A', type: 'text', content: '' },
+          { id: 'm2', title: 'B', type: 'text', content: '' },
+        ]},
+        completedModuleIds: new Set(['m1']),
+      });
+      expect(store.allModulesComplete()).toBe(false);
+    });
+
+    it('returns true when all modules are complete', () => {
+      patchStore(store, {
+        currentLesson: { ...mockLesson, modules: [
+          { id: 'm1', title: 'A', type: 'text', content: '' },
+          { id: 'm2', title: 'B', type: 'text', content: '' },
+        ]},
+        completedModuleIds: new Set(['m1', 'm2']),
+      });
+      expect(store.allModulesComplete()).toBe(true);
+    });
+  });
+
+  // ─── S6-final-quiz-ui: lessonCardStatus ───────────────────────────────────
+  describe('S6-final-quiz-ui: lessonCardStatus', () => {
+    const twoModuleLesson = {
+      ...mockLesson,
+      modules: [
+        { id: 'm1', title: 'A', type: 'text' as const, content: '' },
+        { id: 'm2', title: 'B', type: 'text' as const, content: '' },
+      ],
+    };
+
+    it('not-started when no modules done and no attempts', () => {
+      patchStore(store, { currentLesson: twoModuleLesson, completedModuleIds: new Set(), finalQuizAttempts: [] });
+      expect(store.lessonCardStatus()).toBe('not-started');
+    });
+
+    it('in-progress when some but not all modules done', () => {
+      patchStore(store, { currentLesson: twoModuleLesson, completedModuleIds: new Set(['m1']), finalQuizAttempts: [] });
+      expect(store.lessonCardStatus()).toBe('in-progress');
+    });
+
+    it('quiz-ready when all modules done but no quiz attempt', () => {
+      patchStore(store, { currentLesson: twoModuleLesson, completedModuleIds: new Set(['m1', 'm2']), finalQuizAttempts: [] });
+      expect(store.lessonCardStatus()).toBe('quiz-ready');
+    });
+
+    it('quiz-submitted when at least one attempt exists', () => {
+      const attempt = { attemptId: 'a1', score: 8, totalPoints: 10, percentage: 80, passed: true, submittedAt: '' };
+      patchStore(store, { currentLesson: twoModuleLesson, completedModuleIds: new Set(['m1', 'm2']), finalQuizAttempts: [attempt] });
+      expect(store.lessonCardStatus()).toBe('quiz-submitted');
+    });
+  });
+
+  // ─── S6-final-quiz-ui: loadFinalQuizAttempts ──────────────────────────────
+  describe('S6-final-quiz-ui: loadFinalQuizAttempts', () => {
+    it('calls GET /api/v1/lessons/:id/final-quiz/attempts', () => {
+      const spy = vi.spyOn(http, 'get').mockReturnValue(of([]));
+      store.loadFinalQuizAttempts('lesson-42');
+      expect(spy).toHaveBeenCalledWith('/api/v1/lessons/lesson-42/final-quiz/attempts');
+    });
+
+    it('sets finalQuizAttempts on success', () => {
+      const attempt = { attemptId: 'a1', score: 7, totalPoints: 10, percentage: 70, passed: true, submittedAt: '' };
+      vi.spyOn(http, 'get').mockReturnValue(of([attempt]));
+      store.loadFinalQuizAttempts('lesson-42');
+      expect(store.finalQuizAttempts()?.length).toBe(1);
+      expect(store.finalQuizAttempts()?.[0].attemptId).toBe('a1');
+    });
+
+    it('sets finalQuizAttempts to [] on HTTP error', () => {
+      vi.spyOn(http, 'get').mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 404, statusText: 'Not Found' }))
+      );
+      store.loadFinalQuizAttempts('lesson-missing');
+      expect(store.finalQuizAttempts()).toEqual([]);
+    });
+
+    it('lastQuizAttempt returns the last attempt', () => {
+      const a1 = { attemptId: 'a1', score: 5, totalPoints: 10, percentage: 50, passed: false, submittedAt: '' };
+      const a2 = { attemptId: 'a2', score: 9, totalPoints: 10, percentage: 90, passed: true, submittedAt: '' };
+      patchStore(store, { finalQuizAttempts: [a1, a2] });
+      expect(store.lastQuizAttempt()?.attemptId).toBe('a2');
+    });
   });
 });
+

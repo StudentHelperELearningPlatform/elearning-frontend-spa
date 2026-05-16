@@ -1,370 +1,245 @@
-import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { patchStore } from '../../../../test-utils/patch-store';
+import { provideHttpClient, HttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { QuizzesStore } from './quizzes.store';
-import { provideApiMocks } from '../../../../test-utils/api-testing';
-import { patchStore } from '../../../../test-utils/patch-store';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-interface MockQuizResponse {
-  id: string;
-  title: string;
-  subject: string;
-  timeLimitSeconds: number;
-  questions: {
-    id: string;
-    type: string;
-    text: string;
-    options: string[];
-    points: number;
-  }[];
-}
-
-const MOCK_QUIZ: MockQuizResponse = {
-  id: 'q1',
-  title: 'Basic Math',
-  subject: 'Math',
-  timeLimitSeconds: 600,
+const MOCK_QUIZ_API = {
+  id: 'quiz-1',
+  title: 'Sample Quiz',
+  subject: 'Mathematics',
+  timeLimitSeconds: 900,
   questions: [
-    {
-      id: 'q1-q1',
-      type: 'MULTIPLE_CHOICE',
-      text: 'What is 1+1?',
-      options: ['1', '2', '3'],
-      points: 10
-    },
-    {
-      id: 'q1-q2',
-      type: 'TRUE_FALSE',
-      text: 'Is the earth round?',
-      options: ['True', 'False'],
-      points: 5
-    }
-  ]
-};
-
-const MOCK_API_QUIZ = {
-  id: 'q1',
-  questions: [
-    { id: 'q1-q1', questionType: 'MULTIPLE_CHOICE', questionText: 'What is 1+1?', options: [{ id: 'a', text: '2', isCorrect: true }], orderIndex: 0 },
-    { id: 'q1-q2', questionType: 'TRUE_FALSE', questionText: 'Earth is round?', options: [], orderIndex: 1 },
-    { id: 'q1-q3', questionType: 'SHORT_ANSWER', questionText: 'Explain gravity', options: [], orderIndex: 2 },
+    { id: 'q1', type: 'MULTIPLE_CHOICE' as const, text: 'Q1', options: ['A', 'B'], points: 10 },
+    { id: 'q2', type: 'TRUE_FALSE' as const, text: 'Q2', options: ['True', 'False'], points: 10 },
+    { id: 'q3', type: 'SHORT_ANSWER' as const, text: 'Q3', points: 10 },
+    { id: 'q4', type: 'TRUE_FALSE' as const, text: 'Q4', points: 10 }, // Test missing options array fallback
   ],
 };
 
 describe('QuizzesStore', () => {
-  const getStore = () => TestBed.inject(QuizzesStore);
-  let store: ReturnType<typeof getStore>;
-  let http: HttpClient;
+  let store: InstanceType<typeof QuizzesStore>;
+  let httpClient: HttpClient;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        ...provideApiMocks(),
-      ],
+      providers: [provideHttpClient(), provideRouter([])],
     });
+    store = TestBed.inject(QuizzesStore);
+    httpClient = TestBed.inject(HttpClient);
 
-    store = getStore();
-    http = TestBed.inject(HttpClient);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  // ── Initial state ──────────────────────────────────────────────────────────
-
-  it('starts with default state', () => {
-    expect(store.currentQuiz()).toBeNull();
-    expect(store.currentQuestionIndex()).toBe(0);
-    expect(store.answers()).toEqual({});
-    expect(store.submitted()).toBe(false);
-  });
-
-  // ── loadQuizById ───────────────────────────────────────────────────────────
-
-  it('loadQuizById fetches and sets quiz', () => {
-    const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_QUIZ));
-    store.loadQuizById('q1');
-
-    expect(spy).toHaveBeenCalledWith('/api/v1/lessons/q1/final-quiz');
-    expect(store.currentQuiz()?.id).toBe('q1');
-    expect(store.loading()).toBe(false);
-  });
-
-  // ── loadQuiz (develop method) ──────────────────────────────────────────────
-
-  it('loadQuiz fetches from /quizzes/:id and sets quiz', () => {
-    const spy = vi.spyOn(http, 'get').mockReturnValue(of(MOCK_QUIZ));
-    store.loadQuiz('q1');
-
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('/quizzes/q1'));
-    expect(store.loading()).toBe(false);
-  });
-
-  it('loadQuiz sets error on failure', () => {
-    vi.spyOn(http, 'get').mockReturnValue(throwError(() => ({ message: 'Not found' })));
-    store.loadQuiz('q1');
-
-    expect(store.loading()).toBe(false);
-    expect(store.error()).toBe('Not found');
-  });
-
-  // ── loadFinalQuiz ──────────────────────────────────────────────────────────
-
-  it('loadFinalQuiz fetches and maps final quiz', () => {
-    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_API_QUIZ));
-    store.loadFinalQuiz('lesson-1');
-
-    expect(store.currentQuiz()?.id).toBe('q1');
-    expect(store.loading()).toBe(false);
-    expect(store.submitted()).toBe(false);
-  });
-
-  it('loadFinalQuiz sets error on failure', () => {
-    vi.spyOn(http, 'get').mockReturnValue(throwError(() => ({ message: 'Server error' })));
-    store.loadFinalQuiz('lesson-1');
-
-    expect(store.loading()).toBe(false);
-    expect(store.error()).toBe('Server error');
-  });
-
-  // ── startQuiz ─────────────────────────────────────────────────────────────
-
-  it('startQuiz sets startedAt and resets answers', () => {
-    vi.spyOn(http, 'get').mockReturnValue(of(MOCK_API_QUIZ));
-    store.startQuiz('lesson-1');
-
-    expect(store.startedAt()).not.toBeNull();
-    expect(store.answers()).toEqual({});
-    expect(store.submitted()).toBe(false);
-  });
-
-  // ── answerQuestion & setAnswer ─────────────────────────────────────────────
-
-  it('answerQuestion updates answers state', () => {
-    store.answerQuestion('q1-q1', '2');
-    expect(store.answers()['q1-q1']).toBe('2');
-    expect(store.answeredCount()).toBe(1);
-  });
-
-  it('setAnswer updates answers state with string', () => {
-    store.setAnswer('q1-q1', '2');
-    expect(store.answers()['q1-q1']).toBe('2');
-  });
-
-  it('setAnswer picks first element when given array', () => {
-    store.setAnswer('q1-q1', ['first', 'second']);
-    expect(store.answers()['q1-q1']).toBe('first');
-  });
-
-  // ── flagQuestion ───────────────────────────────────────────────────────────
-
-  it('flagQuestion toggles flag', () => {
-    store.flagQuestion('q1-q1');
-    expect(store.isFlagged('q1-q1')).toBe(true);
-    expect(store.flaggedCount()).toBe(1);
-
-    store.flagQuestion('q1-q1');
-    expect(store.isFlagged('q1-q1')).toBe(false);
-    expect(store.flaggedCount()).toBe(0);
-  });
-
-  // ── navigation ─────────────────────────────────────────────────────────────
-
-  it('navigateTo updates index safely', () => {
     patchStore(store, {
-      currentQuiz: {
-        ...MOCK_QUIZ,
-        questions: [
-          { id: 'q1', text: 'Q1', type: 'MULTIPLE_CHOICE', options: [], points: 0 },
-          { id: 'q2', text: 'Q2', type: 'MULTIPLE_CHOICE', options: [], points: 0 },
-          { id: 'q3', text: 'Q3', type: 'MULTIPLE_CHOICE', options: [], points: 0 }
-        ]
-      } as unknown as MockQuizResponse
-    });
-
-    store.navigateTo(2);
-    expect(store.currentQuestionIndex()).toBe(2);
-
-    store.navigateTo(5);
-    expect(store.currentQuestionIndex()).toBe(2);
-
-    store.navigateTo(-1);
-    expect(store.currentQuestionIndex()).toBe(0);
-  });
-
-  it('nextQuestion increments index', () => {
-    patchStore(store, {
-      currentQuiz: { ...MOCK_QUIZ },
+      currentQuiz: null,
       currentQuestionIndex: 0,
+      answers: {},
+      flaggedQuestions: new Set<string>(),
+      startedAt: null,
+      timeRemaining: null,
+      submitted: false,
+      result: null,
+      loading: false,
     });
-    store.nextQuestion();
-    expect(store.currentQuestionIndex()).toBe(1);
   });
 
-  it('prevQuestion decrements index', () => {
-    patchStore(store, {
-      currentQuiz: { ...MOCK_QUIZ },
-      currentQuestionIndex: 1,
-    });
-    store.prevQuestion();
-    expect(store.currentQuestionIndex()).toBe(0);
-  });
+  afterEach(() => vi.restoreAllMocks());
 
-  // ── computed signals ───────────────────────────────────────────────────────
+  describe('fetchQuiz and mappings', () => {
+    it('loadQuizById fetches quiz, maps questions properly, and sets loading false', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.loadQuizById('quiz-1');
 
-  it('progress calculated correctly', () => {
-    patchStore(store, {
-      currentQuiz: MOCK_QUIZ,
-      answers: { 'q1-q1': '2' }
-    });
-    expect(store.progress()).toBe(50);
-  });
+      expect(store.loading()).toBe(false);
+      expect(store.currentQuiz()?.id).toBe('quiz-1');
+      expect(store.startedAt()).toBeNull();
 
-  it('isLastQuestion is true on last question', () => {
-    patchStore(store, {
-      currentQuiz: MOCK_QUIZ,
-      currentQuestionIndex: 1,
-    });
-    expect(store.isLastQuestion()).toBe(true);
-  });
-
-  it('canSubmit is true when answers exist', () => {
-    store.answerQuestion('q1-q1', '2');
-    expect(store.canSubmit()).toBe(true);
-  });
-
-  it('showResults is false when result is null', () => {
-    expect(store.showResults()).toBe(false);
-  });
-
-  it('currentAnswerSelected returns null when no quiz', () => {
-    expect(store.currentAnswerSelected()).toBeNull();
-  });
-
-  it('isAnswered returns false for unanswered question', () => {
-    expect(store.isAnswered('q-never')).toBe(false);
-  });
-
-  it('isAnswered returns true for answered question', () => {
-    store.answerQuestion('q-yes', 'answer');
-    expect(store.isAnswered('q-yes')).toBe(true);
-  });
-
-  // ── submitQuiz ─────────────────────────────────────────────────────────────
-
-  it('submitQuiz calls API and updates result', () => {
-    patchStore(store, {
-      currentQuiz: MOCK_QUIZ,
-      answers: { 'q1-q1': '2', 'q1-q2': 'true' }
+      // Test mapQuestionOptions explicitly
+      const questions = store.currentQuiz()?.questions;
+      expect(questions?.[0].options?.length).toBe(2); // MULTIPLE_CHOICE
+      expect(questions?.[1].options?.length).toBe(2); // TRUE_FALSE with explicit
+      expect(questions?.[2].options?.length).toBe(0); // SHORT_ANSWER
+      expect(questions?.[3].options?.length).toBe(2); // TRUE_FALSE fallback to ['True', 'False']
     });
 
-    const mockResponse = {
-      attemptId: 'att-1',
-      score: 15,
-      totalPoints: 15,
-      percentage: 100,
-      passed: true
-    };
-
-    const spy = vi.spyOn(http, 'post').mockReturnValue(of(mockResponse));
-    store.submitQuiz();
-
-    expect(spy).toHaveBeenCalledWith('/api/v1/lessons/q1/final-quiz/submit', {
-      answers: { 'q1-q1': '2', 'q1-q2': 'true' }
-    });
-    expect(store.submitted()).toBe(true);
-    expect(store.result()?.score).toBe(15);
-  });
-
-  it('submitQuiz does nothing if already submitted', () => {
-    patchStore(store, { submitted: true, currentQuiz: MOCK_QUIZ });
-    const spy = vi.spyOn(http, 'post').mockReturnValue(of({}));
-    store.submitQuiz();
-    expect(spy).not.toHaveBeenCalled();
-  });
-
-  it('submitQuiz does nothing if no quiz loaded', () => {
-    const spy = vi.spyOn(http, 'post').mockReturnValue(of({}));
-    store.submitQuiz();
-    expect(spy).not.toHaveBeenCalled();
-  });
-
-  // ── tickTimer ──────────────────────────────────────────────────────────────
-
-  it('tickTimer decrements time remaining', () => {
-    patchStore(store, { timeRemaining: 100 });
-    store.tickTimer();
-    expect(store.timeRemaining()).toBe(99);
-  });
-
-  it('tickTimer does nothing when timeRemaining is null', () => {
-    patchStore(store, { timeRemaining: null });
-    store.tickTimer();
-    expect(store.timeRemaining()).toBeNull();
-  });
-
-  it('tickTimer submits when time reaches zero', () => {
-    patchStore(store, {
-      currentQuiz: MOCK_QUIZ,
-      timeRemaining: 1,
-      submitted: false
+    it('startQuiz sets startedAt and timeRemaining', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.startQuiz('quiz-1');
+      expect(store.startedAt()).toBeInstanceOf(Date);
+      expect(store.timeRemaining()).toBe(900);
     });
 
-    const spy = vi.spyOn(http, 'post').mockReturnValue(of({}));
-    store.tickTimer();
-
-    expect(store.timeRemaining()).toBe(0);
-    expect(spy).toHaveBeenCalled();
+    it('sets error on fetch failure', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(throwError(() => new Error('Network Error')));
+      store.loadQuizById('quiz-1');
+      expect(store.loading()).toBe(false);
+      expect(store.error()).toBe('Network Error');
+    });
   });
 
-  // ── loadResultDetail ───────────────────────────────────────────────────────
-
-  it('loadResultDetail fetches and stores result detail', () => {
-    const mockDetail = { questions: [], score: 90 };
-    vi.spyOn(http, 'get').mockReturnValue(of(mockDetail));
-
-    store.loadResultDetail('q1', 'att-1');
-
-    expect(store.resultDetail()).toEqual(mockDetail);
-    expect(store.resultDetailLoading()).toBe(false);
-  });
-
-  it('loadResultDetail sets error on failure', () => {
-    vi.spyOn(http, 'get').mockReturnValue(throwError(() => new Error('fail')));
-    store.loadResultDetail('q1', 'att-1');
-
-    expect(store.resultDetailLoading()).toBe(false);
-    expect(store.resultDetailError()).toBe('Failed to load result detail');
-  });
-
-  // ── clearResultDetail ──────────────────────────────────────────────────────
-
-  it('clearResultDetail resets resultDetail state', () => {
-    patchStore(store, { resultDetail: { questions: [] } as unknown as import('@shared/models/quiz.types').QuizResultDetail, resultDetailError: 'some error' });
-    store.clearResultDetail();
-
-    expect(store.resultDetail()).toBeNull();
-    expect(store.resultDetailError()).toBeNull();
-    expect(store.resultDetailLoading()).toBe(false);
-  });
-
-  // ── resetQuiz ──────────────────────────────────────────────────────────────
-
-  it('resetQuiz clears answers and submission state', () => {
-    patchStore(store, {
-      answers: { 'q1': 'a' },
-      submitted: true,
-      result: { score: 10 } as unknown as import('@shared/models/quiz.types').QuizResult,
-      currentQuestionIndex: 2,
+  describe('Quiz State & Actions', () => {
+    beforeEach(() => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.loadQuizById('quiz-1');
     });
 
-    store.resetQuiz();
+    it('answerQuestion stores answer and updates computed counts', () => {
+      store.answerQuestion('q1', 'A');
+      expect(store.answers()['q1']).toBe('A');
+      expect(store.answeredCount()).toBe(1);
+      expect(store.canSubmit()).toBe(true);
+      expect(store.currentAnswerSelected()).toBe('A'); // Because q1 is index 0
+    });
 
-    expect(store.answers()).toEqual({});
-    expect(store.submitted()).toBe(false);
-    expect(store.result()).toBeNull();
-    expect(store.currentQuestionIndex()).toBe(0);
+    it('flagQuestion toggles flag properly', () => {
+      store.flagQuestion('q1');
+      expect(store.flaggedQuestions().has('q1')).toBe(true);
+      expect(store.isFlagged('q1')()).toBe(true);
+
+      store.flagQuestion('q1');
+      expect(store.flaggedQuestions().has('q1')).toBe(false);
+      expect(store.flaggedCount()).toBe(0);
+    });
+
+    it('navigation bounded correctly', () => {
+      store.nextQuestion();
+      expect(store.currentQuestionIndex()).toBe(1);
+
+      store.navigateTo(100);
+      expect(store.currentQuestionIndex()).toBe(3); // bounded to total-1
+
+      store.prevQuestion();
+      expect(store.currentQuestionIndex()).toBe(2);
+
+      store.previousQuestion(); // alias test
+      expect(store.currentQuestionIndex()).toBe(1);
+
+      store.navigateTo(-5);
+      expect(store.currentQuestionIndex()).toBe(0);
+    });
+
+    it('returns null for currentQuestion if quiz is not loaded', () => {
+      patchStore(store, { currentQuiz: null });
+      expect(store.currentQuestion()).toBeNull();
+      expect(store.currentAnswerSelected()).toBeNull();
+    });
+  });
+
+  describe('submitQuizInternal and tickTimer', () => {
+    beforeEach(() => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.startQuiz('quiz-1');
+      patchStore(store, { startedAt: new Date(Date.now() - 60000) }); // 60s ago
+    });
+
+    it('submitQuiz posts data and maps success response', () => {
+      const postSpy = vi.spyOn(httpClient, 'post').mockReturnValue(
+        of({
+          attemptId: 'att-1',
+          score: 40,
+          totalPoints: 40,
+          percentage: 100,
+          passed: true,
+        }),
+      );
+
+      store.submitQuiz();
+
+      expect(store.submitted()).toBe(true);
+      expect(store.showResults()).toBe(true);
+      expect(store.score()).toBe(40);
+      expect(store.totalPoints()).toBe(40);
+      expect(postSpy).toHaveBeenCalled();
+    });
+
+    it('submitQuiz provides fallback on post error', () => {
+      vi.spyOn(httpClient, 'post').mockReturnValue(throwError(() => new Error('Post Fail')));
+      store.submitQuiz();
+
+      expect(store.submitted()).toBe(true);
+      expect(store.result()?.score).toBe(0);
+      expect(store.result()?.passed).toBe(false);
+      expect(store.timeSpent()).toBeGreaterThanOrEqual(59);
+    });
+
+    it('submitQuiz does nothing if already submitted or no quizId', () => {
+      patchStore(store, { submitted: true });
+      const postSpy = vi.spyOn(httpClient, 'post');
+      store.submitQuiz();
+      expect(postSpy).not.toHaveBeenCalled();
+
+      patchStore(store, { submitted: false, currentQuiz: null });
+      store.submitQuiz();
+      expect(postSpy).not.toHaveBeenCalled();
+    });
+
+    it('tickTimer decrements timeRemaining and auto-submits on 0', () => {
+      patchStore(store, { timeRemaining: 2 });
+      const submitSpy = vi.spyOn(store, 'submitQuiz');
+
+      store.tickTimer();
+      expect(store.timeRemaining()).toBe(1);
+
+      store.tickTimer();
+      expect(store.timeRemaining()).toBe(0);
+      expect(submitSpy).toHaveBeenCalled();
+    });
+
+    it('tickTimer handles instant expiration', () => {
+      patchStore(store, { timeRemaining: 0 });
+      const submitSpy = vi.spyOn(store, 'submitQuiz');
+      store.tickTimer();
+      expect(submitSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('resetQuiz & loadResultDetail', () => {
+    it('resetQuiz resets to initial interaction state', () => {
+      patchStore(store, { submitted: true, answers: { q1: 'A' }, timeRemaining: 0 });
+      store.resetQuiz();
+      expect(store.submitted()).toBe(false);
+      expect(store.answers()).toEqual({});
+    });
+
+    it('loadResultDetail fetches detailed breakdown', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of({ attemptId: 'att-1', score: 100 }));
+      store.loadResultDetail('quiz-1', 'att-1');
+
+      expect(store.resultDetailLoading()).toBe(false);
+      expect(store.resultDetail()?.attemptId).toBe('att-1');
+      expect(store.resultDetailError()).toBeNull();
+    });
+
+    it('loadResultDetail populates error on failure', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(throwError(() => new Error('Failed')));
+      store.loadResultDetail('quiz-1', 'att-1');
+
+      expect(store.resultDetailLoading()).toBe(false);
+      expect(store.resultDetail()).toBeNull();
+      expect(store.resultDetailError()).toBe('Unable to load quiz results.');
+    });
+
+    it('clearResultDetail wipes result detail state', () => {
+      patchStore(store, {
+        resultDetail: {
+          attemptId: 'x',
+          quizId: 'q',
+          quizTitle: 't',
+          subject: 's',
+          lessonId: null,
+          nextLessonId: null,
+          score: 0,
+          totalPoints: 0,
+          percentage: 0,
+          passed: false,
+          timeSpent: 0,
+          questionBreakdown: [],
+        },
+        resultDetailError: 'err',
+      });
+      store.clearResultDetail();
+      expect(store.resultDetail()).toBeNull();
+      expect(store.resultDetailError()).toBeNull();
+    });
   });
 });

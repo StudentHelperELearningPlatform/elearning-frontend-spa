@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { ContentStore } from '../store/content.store';
 import { ClassStore } from '../store/class.store';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -8,7 +9,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
 @Component({
   selector: 'app-analytics-dashboard',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, CardComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent, CardComponent],
   template: `
     <div class="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
       
@@ -107,7 +108,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
                         </div>
                       </td>
                       <td class="p-4 text-right">
-                        <button class="px-4 py-2 bg-white text-black font-bold rounded-xl border-2 border-black hover:bg-black hover:text-white transition-colors text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px]">
+                        <button [routerLink]="['/teacher/classes', cls.id, 'stats']" class="px-4 py-2 bg-white text-black font-bold rounded-xl border-2 border-black hover:bg-black hover:text-white transition-colors text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px]">
                           View
                         </button>
                       </td>

@@ -21,14 +21,6 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
             <span class="material-icons text-3xl">library_books</span>
             <span>Lessons</span>
           </a>
-          <a routerLink="/student/lesson-viewer" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
-            <span class="material-icons text-3xl">menu_book</span>
-            <span>Lesson Viewer</span>
-          </a>
-          <a routerLink="/student/quiz-player" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
-            <span class="material-icons text-3xl">quiz</span>
-            <span>Quiz Player</span>
-          </a>
           <a routerLink="/student/milestones" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">emoji_events</span>
             <span>Achievements</span>
