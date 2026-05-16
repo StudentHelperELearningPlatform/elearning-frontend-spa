@@ -3,20 +3,54 @@ import { http, HttpResponse } from 'msw';
 const base = '/api/v1/teachers/classes';
 
 /**
- * SAFE HELPERS
+ * TYPES
  */
-function parseJsonBody(req: any) {
-  return req.body ?? {};
+interface Params {
+  classId?: string;
+  studentId?: string;
+  lessonId?: string;
 }
 
-function getParam(params: any, key: string) {
-  return params?.[key];
+interface Student {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface Lesson {
+  id: string;
+  title: string;
+}
+
+interface ClassItem {
+  id: string;
+  name: string;
+  description: string;
+  studentCount: number;
+  lessonCount: number;
+  createdAt: string;
+}
+
+interface MockRequest {
+  params?: Params;
+  body?: unknown;
+}
+
+/**
+ * HELPERS
+ */
+function parseJsonBody(req: MockRequest): Record<string, unknown> {
+  return (req.body as Record<string, unknown>) ?? {};
+}
+
+function getParam(params: Params | undefined, key: keyof Params): string {
+  return (params?.[key] ?? '') as string;
 }
 
 /**
  * MOCK DB
  */
-let classes = [
+let classes: ClassItem[] = [
   {
     id: '1',
     name: 'Math 101',
@@ -27,14 +61,14 @@ let classes = [
   },
 ];
 
-let studentsByClass: Record<string, any[]> = {
+const studentsByClass: Record<string, Student[]> = {
   '1': [
     { id: 's1', name: 'Alice', email: 'a@mail.com' },
     { id: 's2', name: 'Bob', email: 'b@mail.com' },
   ],
 };
 
-let lessonsByClass: Record<string, any[]> = {
+const lessonsByClass: Record<string, Lesson[]> = {
   '1': [
     { id: 'l1', title: 'Intro' },
     { id: 'l2', title: 'Algebra' },
@@ -42,22 +76,22 @@ let lessonsByClass: Record<string, any[]> = {
 };
 
 /**
- * 1. GET classes
+ * GET classes
  */
 export const getClasses = http.get(base, () => {
   return HttpResponse.json(classes);
 });
 
 /**
- * 2. POST create class
+ * CREATE class
  */
-export const createClass = http.post(base, async (req) => {
+export const createClass = http.post(base, async (req: MockRequest) => {
   const body = parseJsonBody(req);
 
-  const newClass = {
+  const newClass: ClassItem = {
     id: crypto.randomUUID(),
-    name: body?.name ?? 'Untitled',
-    description: body?.description ?? '',
+    name: (body['name'] as string) ?? 'Untitled',
+    description: (body['description'] as string) ?? '',
     studentCount: 0,
     lessonCount: 0,
     createdAt: new Date().toISOString(),
@@ -69,9 +103,9 @@ export const createClass = http.post(base, async (req) => {
 });
 
 /**
- * 3. GET class detail
+ * CLASS DETAIL
  */
-export const getClassDetail = http.get(`${base}/:classId`, (req: any) => {
+export const getClassDetail = http.get(`${base}/:classId`, (req: MockRequest) => {
   const classId = getParam(req.params, 'classId');
 
   const found = classes.find((c) => c.id === classId);
@@ -84,9 +118,9 @@ export const getClassDetail = http.get(`${base}/:classId`, (req: any) => {
 });
 
 /**
- * 4. PUT update class
+ * UPDATE class
  */
-export const updateClass = http.put(`${base}/:classId`, async (req: any) => {
+export const updateClass = http.put(`${base}/:classId`, async (req: MockRequest) => {
   const classId = getParam(req.params, 'classId');
   const body = parseJsonBody(req);
 
@@ -98,9 +132,9 @@ export const updateClass = http.put(`${base}/:classId`, async (req: any) => {
 });
 
 /**
- * 5. DELETE class
+ * DELETE class
  */
-export const deleteClass = http.delete(`${base}/:classId`, (req: any) => {
+export const deleteClass = http.delete(`${base}/:classId`, (req: MockRequest) => {
   const classId = getParam(req.params, 'classId');
 
   classes = classes.filter((c) => c.id !== classId);
@@ -109,25 +143,30 @@ export const deleteClass = http.delete(`${base}/:classId`, (req: any) => {
 });
 
 /**
- * 6. GET students
+ * GET students
  */
-export const getStudents = http.get(`${base}/:classId/students`, (req: any) => {
+export const getStudents = http.get(`${base}/:classId/students`, (req: MockRequest) => {
   const classId = getParam(req.params, 'classId');
+
   return HttpResponse.json(studentsByClass[classId] ?? []);
 });
 
 /**
- * 7. POST add student
+ * ADD student
  */
 export const addStudent = http.post(
   `${base}/:classId/students/:studentId`,
-  (req: any) => {
+  (req: MockRequest) => {
     const classId = getParam(req.params, 'classId');
     const studentId = getParam(req.params, 'studentId');
 
     studentsByClass[classId] = [
       ...(studentsByClass[classId] ?? []),
-      { id: studentId, name: 'New Student', email: 'test@mail.com' },
+      {
+        id: studentId,
+        name: 'New Student',
+        email: 'test@mail.com',
+      },
     ];
 
     return HttpResponse.json({ success: true });
@@ -135,11 +174,11 @@ export const addStudent = http.post(
 );
 
 /**
- * 8. DELETE student
+ * REMOVE student
  */
 export const removeStudent = http.delete(
   `${base}/:classId/students/:studentId`,
-  (req: any) => {
+  (req: MockRequest) => {
     const classId = getParam(req.params, 'classId');
     const studentId = getParam(req.params, 'studentId');
 
@@ -151,25 +190,29 @@ export const removeStudent = http.delete(
 );
 
 /**
- * 9. GET lessons
+ * GET lessons
  */
-export const getLessons = http.get(`${base}/:classId/lessons`, (req: any) => {
+export const getLessons = http.get(`${base}/:classId/lessons`, (req: MockRequest) => {
   const classId = getParam(req.params, 'classId');
+
   return HttpResponse.json(lessonsByClass[classId] ?? []);
 });
 
 /**
- * 10. POST add lesson
+ * ADD lesson
  */
 export const addLesson = http.post(
   `${base}/:classId/lessons/:lessonId`,
-  (req: any) => {
+  (req: MockRequest) => {
     const classId = getParam(req.params, 'classId');
     const lessonId = getParam(req.params, 'lessonId');
 
     lessonsByClass[classId] = [
       ...(lessonsByClass[classId] ?? []),
-      { id: lessonId, title: 'New Lesson' },
+      {
+        id: lessonId,
+        title: 'New Lesson',
+      },
     ];
 
     return HttpResponse.json({ success: true });
@@ -177,11 +220,11 @@ export const addLesson = http.post(
 );
 
 /**
- * 11. DELETE lesson
+ * REMOVE lesson
  */
 export const removeLesson = http.delete(
   `${base}/:classId/lessons/:lessonId`,
-  (req: any) => {
+  (req: MockRequest) => {
     const classId = getParam(req.params, 'classId');
     const lessonId = getParam(req.params, 'lessonId');
 
@@ -192,6 +235,9 @@ export const removeLesson = http.delete(
   },
 );
 
+/**
+ * EXPORT
+ */
 export const teacherClassesHandlers = [
   getClasses,
   createClass,

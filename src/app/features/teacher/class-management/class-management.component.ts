@@ -44,13 +44,18 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
             }
           } @else {
             @for (cls of store.classes(); track cls.id) {
-              <div
-                class="p-4 border-4 rounded-2xl cursor-pointer"
-                [ngClass]="selectedClass()?.id === cls.id
-                  ? 'border-black bg-[#0ABAB5] text-white'
-                  : 'border-gray-300 bg-white'"
-                (click)="selectClass(cls)"
-              >
+            <div
+           class="p-4 border-4 rounded-2xl cursor-pointer"
+           [ngClass]="selectedClass()?.id === cls.id
+           ? 'border-black bg-[#0ABAB5] text-white'
+           : 'border-gray-300 bg-white'"
+           role="button"
+          tabindex="0"
+          (click)="selectClass(cls)"
+          (keydown.enter)="selectClass(cls)"
+          (keydown.space)="selectClass(cls)"
+            >
+           >
                 <p class="font-black">{{ cls.name }}</p>
 
                 <p class="text-sm mt-2">

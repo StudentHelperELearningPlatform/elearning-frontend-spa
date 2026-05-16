@@ -13,8 +13,6 @@ import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { TeacherClass } from '../models/class.model';
 import {
   TeacherClassDetail,
-  ClassStudent,
-  ClassLesson,
 } from '../models/class-detail.model';
 
 interface ClassState {
