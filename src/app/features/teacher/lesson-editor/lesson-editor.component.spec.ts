@@ -3,7 +3,10 @@ import { provideHttpClient, HttpClient } from '@angular/common/http';
 import { provideRouter, ActivatedRoute } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { of } from 'rxjs';
-import { LessonEditorComponent } from './lesson-editor.component';
+import { MessageService } from 'primeng/api';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { LessonEditorComponent, AUTO_SAVE_DEBOUNCE_MS } from './lesson-editor.component';
 import { LessonEditorStore } from '../state/lesson-editor.store';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
 
@@ -25,6 +28,7 @@ describe('LessonEditorComponent', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => null } } },
         },
+        MessageService,
       ],
     }).compileComponents();
 
@@ -37,7 +41,8 @@ describe('LessonEditorComponent', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    store.reset();
+    vi.useRealTimers(); // Ensure timer mocking doesn't leak to other tests
+    store?.reset();
   });
 
   // ── CanDeactivate ────────────────────────────────────────────────────────
@@ -53,26 +58,31 @@ describe('LessonEditorComponent', () => {
 
   // ── Auto-save tick logic ─────────────────────────────────────────────────
   it('auto-save tick does not call save when nothing is dirty', () => {
+    vi.useFakeTimers();
     store.reset();
-    const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({ id: 'x' }));
-    const putSpy = vi.spyOn(http, 'put').mockReturnValue(of({ id: 'x' }));
-    component.autoSaveTick();
-    expect(postSpy).not.toHaveBeenCalled();
-    expect(putSpy).not.toHaveBeenCalled();
+
+    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+
+    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
+    expect(saveSpy).not.toHaveBeenCalled();
   });
 
   it('auto-save tick saves when the store is dirty', () => {
-    const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({ id: 'new-1' }));
-    store.updateMetadata({ title: 'Changed' });
-    component.autoSaveTick();
-    expect(postSpy).toHaveBeenCalled();
+    vi.useFakeTimers();
+    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+
+    // Trigger a change to simulate user typing, prompting autoSave$.next()
+    component['metaForm'].patchValue({ title: 'Changed' });
+
+    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
+    expect(saveSpy).toHaveBeenCalled();
   });
 
   // ── Validation ───────────────────────────────────────────────────────────
   it('publish without title/subject/grade/modules is rejected (canPublish=false)', () => {
-    const patchSpy = vi.spyOn(http, 'patch').mockReturnValue(of({ id: 'x' }));
+    const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({ id: 'x' }));
     store.reset();
     component['onPublishClicked']();
-    expect(patchSpy).not.toHaveBeenCalled();
+    expect(postSpy).not.toHaveBeenCalled();
   });
 });

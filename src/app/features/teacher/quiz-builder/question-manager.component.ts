@@ -4,6 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { QuestionsStore } from '../state/questions.store';
 import { AddQuestionRequest } from '../../../shared/models/quiz.types';
 
+export interface EditableQuestion {
+  id: string;
+  questionText: string;
+  correctAnswer: string;
+  options: { optionText: string; correct?: boolean }[];
+}
+
 @Component({
   selector: 'app-question-manager',
   standalone: true,
@@ -282,12 +289,12 @@ export class QuestionManagerComponent implements OnInit {
     this.isAdding.set(true);
   }
 
-  startEditing(question: any) {
+  startEditing(question: EditableQuestion) {
     this.isAdding.set(false);
     this.editingId.set(question.id);
     this.newQuestionText.set(question.questionText);
 
-    const mappedOptions = question.options.map((o: any) => ({
+    const mappedOptions = question.options.map((o) => ({
       text: o.optionText,
       isCorrect: o.correct || o.optionText === question.correctAnswer,
     }));

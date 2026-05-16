@@ -24,7 +24,6 @@ import {
   CdkDragDrop,
   CdkDragHandle,
   CdkDropList,
-  moveItemInArray,
   CdkDragPreview,
 } from '@angular/cdk/drag-drop';
 import { EditorModule } from 'primeng/editor';

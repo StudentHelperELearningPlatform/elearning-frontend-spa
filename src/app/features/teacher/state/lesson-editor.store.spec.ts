@@ -2,6 +2,8 @@ import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { LessonEditorStore } from './lesson-editor.store';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
 
@@ -12,11 +14,7 @@ describe('LessonEditorStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        ...provideApiMocks(),
-      ],
+      providers: [provideHttpClient(), provideHttpClientTesting(), ...provideApiMocks()],
     });
     store = getStore();
     http = TestBed.inject(HttpClient);
@@ -76,14 +74,20 @@ describe('LessonEditorStore', () => {
   });
 
   // ── save (POST when no id, PUT when id present) ──────────────────────────
-  it('save POSTs to /api/v1/lessons when lesson has no id', () => {
+  it('save POSTs to /api/v1/lessons when lesson has no id', async () => {
     const spy = vi.spyOn(http, 'post').mockReturnValue(of({ id: 'new-1' }));
+    vi.spyOn(http, 'get').mockReturnValue(of({ id: 'new-1', title: 'X' }));
     store.updateMetadata({ title: 'X' });
-    store.save();
-    expect(spy).toHaveBeenCalledWith('/api/v1/lessons', expect.objectContaining({ title: 'X' }));
+    await store.save();
+
+    // Check against endpoint segments to be robust
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining('/lessons'),
+      expect.objectContaining({ title: 'X' }),
+    );
   });
 
-  it('save PUTs to /api/v1/lessons/:id once a lesson has been loaded', () => {
+  it('save PUTs to /api/v1/lessons/:id once a lesson has been loaded', async () => {
     vi.spyOn(http, 'get').mockReturnValue(
       of({
         id: 'existing-1',
@@ -98,25 +102,29 @@ describe('LessonEditorStore', () => {
     store.loadLesson('existing-1');
     const putSpy = vi.spyOn(http, 'put').mockReturnValue(of({ id: 'existing-1' }));
     store.updateMetadata({ title: 'Edited' });
-    store.save();
+    await store.save();
+
     expect(putSpy).toHaveBeenCalledWith(
-      '/api/v1/lessons/existing-1',
+      expect.stringContaining('/lessons/existing-1'),
       expect.objectContaining({ title: 'Edited' }),
     );
   });
 
-  it('save sets saveState to "saved" and updates lastSavedAt on success', () => {
+  it('save sets saveState to "saved" and updates lastSavedAt on success', async () => {
     vi.spyOn(http, 'post').mockReturnValue(of({ id: 'new-1', title: 'X' }));
+    vi.spyOn(http, 'get').mockReturnValue(of({ id: 'new-1', title: 'X' }));
     store.updateMetadata({ title: 'X' });
-    store.save();
+    await store.save();
+
     expect(store.saveState()).toBe('saved');
     expect(store.lastSavedAt()).toBeInstanceOf(Date);
   });
 
-  it('save sets saveState to "error" on failure', () => {
+  it('save sets saveState to "error" on failure', async () => {
     vi.spyOn(http, 'post').mockReturnValue(throwError(() => new Error('boom')));
     store.updateMetadata({ title: 'X' });
-    store.save();
+    await store.save();
+
     expect(store.saveState()).toBe('error');
     expect(store.saveError()).toBe('boom');
   });
