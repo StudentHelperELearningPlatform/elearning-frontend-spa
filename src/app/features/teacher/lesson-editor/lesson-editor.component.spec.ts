@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, HttpClient } from '@angular/common/http';
 import { provideRouter, ActivatedRoute, Router } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
@@ -354,5 +354,55 @@ describe('LessonEditorComponent', () => {
 
     await Promise.resolve();
     expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  // ── S6-lesson-save: auto-save toolbar message ───────────────────────────
+  it('autoSaveFailed flips true when an auto-save attempt errors', async () => {
+    // Simulate the auto-save tick path: mark the flag the way the
+    // debounce subscriber does, then let the store land in 'error'.
+    component['autoSaveInFlight'] = true;
+    vi.spyOn(http, 'post').mockReturnValue(throwError(() => new Error('boom')));
+    vi.spyOn(http, 'get').mockReturnValue(of({}));
+
+    store.updateMetadata({ title: 'X' });
+    await store.save();
+    fixture.detectChanges();
+
+    expect(store.saveState()).toBe('error');
+    expect(component['autoSaveFailed']()).toBe(true);
+    expect(component['autoSaveInFlight']).toBe(false);
+  });
+
+  it('autoSaveFailed stays false when a manual save errors', async () => {
+    component['autoSaveInFlight'] = false; // manual save path
+    vi.spyOn(http, 'post').mockReturnValue(throwError(() => new Error('boom')));
+    vi.spyOn(http, 'get').mockReturnValue(of({}));
+
+    store.updateMetadata({ title: 'X' });
+    await store.save();
+    fixture.detectChanges();
+
+    expect(store.saveState()).toBe('error');
+    expect(component['autoSaveFailed']()).toBe(false);
+  });
+
+  it('autoSaveFailed clears on successful manual save', async () => {
+    component['autoSaveFailed'].set(true);
+    vi.spyOn(store, 'save').mockImplementation(async (onComplete) => {
+      onComplete?.({
+        id: 'lesson-1',
+        title: 'X',
+        subject: 'Math',
+        difficulty_level: 'BEGINNER',
+        estimated_duration_minutes: 10,
+        short_description: '',
+        status: 'DRAFT',
+        modules: [],
+      });
+    });
+    store.reset({ id: 'lesson-1' });
+    component['onSaveDraft']();
+    await Promise.resolve();
+    expect(component['autoSaveFailed']()).toBe(false);
   });
 });
