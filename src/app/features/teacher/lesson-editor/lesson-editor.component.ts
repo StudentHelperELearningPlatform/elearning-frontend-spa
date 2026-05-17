@@ -117,7 +117,11 @@ interface MetadataForm {
                 Unsaved changes
               }
               @case ('error') {
-                Save failed
+                @if (autoSaveFailed()) {
+                  Auto-save failed — manual save required
+                } @else {
+                  Save failed
+                }
               }
               @default {
                 Ready
@@ -134,7 +138,7 @@ interface MetadataForm {
               (btnClick)="onSaveDraft()"
               [disabled]="store.saveState() === 'saving'"
             >
-              Save Draft
+              {{ saveButtonLabel() }}
             </app-button>
           </div>
 
@@ -385,6 +389,11 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   protected readonly difficultyOptions = DIFFICULTIES;
   protected readonly moduleTypes = MODULE_TYPES;
   protected readonly modules = computed(() => this.store.lesson().modules);
+  protected readonly isEditRoute = signal<boolean>(false);
+  protected readonly saveButtonLabel = computed(() =>
+    this.isEditRoute() || !!this.store.lesson().id ? 'Save Edit' : 'Save Draft',
+  );
+  protected readonly autoSaveFailed = signal<boolean>(false);
 
   protected readonly metaForm: FormGroup<{
     title: AbstractControl<string>;
@@ -400,6 +409,7 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
 
   private readonly collapsed = new Set<string>();
   private syncing = false;
+  private autoSaveInFlight = false;
 
   hasUnsavedChanges(): boolean {
     return this.store.isDirty();
@@ -428,11 +438,25 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
         }
       }
     });
+
+    // When an auto-save tick lands the store in 'error', surface a specific
+    // toolbar message so the teacher knows the silent retry failed and they
+    // need to click Save manually.
+    effect(() => {
+      const state = this.store.saveState();
+      if (state === 'error' && this.autoSaveInFlight) {
+        this.autoSaveFailed.set(true);
+        this.autoSaveInFlight = false;
+      } else if (state === 'saved' || state === 'saving') {
+        this.autoSaveFailed.set(false);
+      }
+    });
   }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     this.store.reset();
+    this.isEditRoute.set(!!id);
     if (id) this.store.loadLesson(id);
 
     this.metaForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((value) => {
@@ -450,7 +474,13 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.autoSave$
       .pipe(debounceTime(AUTO_SAVE_DEBOUNCE_MS), takeUntil(this.destroy$))
       .subscribe(() => {
-        if (this.store.saveState() === 'unsaved') this.store.save();
+        if (this.store.saveState() === 'unsaved') {
+          this.autoSaveInFlight = true;
+          this.store.save(() => {
+            this.autoSaveInFlight = false;
+            this.autoSaveFailed.set(false);
+          });
+        }
       });
   }
 
@@ -496,7 +526,14 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     return this.collapsed.has(id);
   }
   protected onSaveDraft(): void {
-    this.store.save();
+    const wasNewLesson = !this.store.lesson().id;
+    this.autoSaveFailed.set(false);
+    this.store.save((saved) => {
+      if (wasNewLesson && saved.id) {
+        this.isEditRoute.set(true);
+        this.router.navigate(['/teacher/lessons', saved.id, 'edit'], { replaceUrl: true });
+      }
+    });
   }
 
   protected onPublishClicked(): void {

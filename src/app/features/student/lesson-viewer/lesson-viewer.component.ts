@@ -2,6 +2,7 @@ import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LessonsStore, Subcapitol, Module } from '../store/lessons.store';
+import { ProgressStore } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
@@ -201,6 +202,126 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
                   ></app-module-content>
                 </div>
               </app-card>
+
+              <!-- S6-stats-01: per-lesson stats panel -->
+              <section
+                class="mb-10 bg-white rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-hidden"
+                aria-labelledby="lesson-stats-heading"
+                data-testid="lesson-stats-panel"
+              >
+                <button
+                  type="button"
+                  class="w-full flex items-center justify-between px-6 py-4 bg-[#0ABAB5]/10 border-b-4 border-black"
+                  [attr.aria-expanded]="statsExpanded()"
+                  aria-controls="lesson-stats-body"
+                  (click)="toggleStatsPanel()"
+                >
+                  <span class="flex items-center gap-3">
+                    <span class="material-icons text-[#0ABAB5]" aria-hidden="true">insights</span>
+                    <h2 id="lesson-stats-heading" class="text-xl font-black text-black">
+                      Your stats for this lesson
+                    </h2>
+                  </span>
+                  <span class="material-icons" aria-hidden="true">
+                    {{ statsExpanded() ? 'expand_less' : 'expand_more' }}
+                  </span>
+                </button>
+
+                @if (statsExpanded()) {
+                  <div id="lesson-stats-body" class="p-6 space-y-4">
+                    @if (progressStore.myLessonStatsLoading()) {
+                      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        @for (i of [1, 2, 3, 4]; track i) {
+                          <div class="h-20 rounded-xl border-2 border-gray-200 bg-gray-100 animate-pulse"></div>
+                        }
+                      </div>
+                    } @else if (progressStore.myLessonStatsError()) {
+                      <p class="text-sm text-red-700 font-medium" role="alert">
+                        Could not load your stats: {{ progressStore.myLessonStatsError() }}
+                      </p>
+                    } @else if (myStats(); as stats) {
+                      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="rounded-xl border-2 border-black p-3 bg-gray-50">
+                          <p class="text-xs font-bold text-gray-500 uppercase">Completion</p>
+                          <p class="text-2xl font-black text-[#0ABAB5]">
+                            {{ stats.completionPercentage ?? 0 }}%
+                          </p>
+                        </div>
+                        <div class="rounded-xl border-2 border-black p-3 bg-gray-50">
+                          <p class="text-xs font-bold text-gray-500 uppercase">Modules</p>
+                          <p class="text-2xl font-black text-black">
+                            {{ stats.completedModules ?? 0 }}/{{ stats.totalModules ?? 0 }}
+                          </p>
+                        </div>
+                        <div class="rounded-xl border-2 border-black p-3 bg-gray-50">
+                          <p class="text-xs font-bold text-gray-500 uppercase">Quiz score</p>
+                          <p class="text-2xl font-black text-black">
+                            @if (stats.quizScore !== null && stats.quizScore !== undefined) {
+                              {{ stats.quizScore }}%
+                            } @else {
+                              <span class="text-gray-400 text-base">Not taken</span>
+                            }
+                          </p>
+                        </div>
+                        <div class="rounded-xl border-2 border-black p-3 bg-gray-50">
+                          <p class="text-xs font-bold text-gray-500 uppercase">Time spent</p>
+                          <p class="text-2xl font-black text-black">
+                            @if (stats.timeSpentMinutes !== null && stats.timeSpentMinutes !== undefined) {
+                              {{ stats.timeSpentMinutes }}m
+                            } @else {
+                              <span class="text-gray-400 text-base">—</span>
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      @if (stats.lastAccessedAt) {
+                        <p class="text-xs text-gray-500 font-medium">
+                          Last accessed {{ stats.lastAccessedAt | date: 'mediumDate' }}
+                        </p>
+                      }
+
+                      @if (stats.classAverageScore !== null && stats.classAverageScore !== undefined && stats.quizScore !== null && stats.quizScore !== undefined) {
+                        <div class="mt-4">
+                          <p class="text-xs font-bold text-gray-500 uppercase mb-2">
+                            Your score vs class average
+                          </p>
+                          <div class="space-y-2">
+                            <div>
+                              <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>You</span>
+                                <span>{{ stats.quizScore }}%</span>
+                              </div>
+                              <div class="h-3 bg-gray-100 border-2 border-black rounded-full overflow-hidden">
+                                <div
+                                  class="h-full bg-[#0ABAB5] rounded-full"
+                                  [style.width.%]="stats.quizScore"
+                                ></div>
+                              </div>
+                            </div>
+                            <div>
+                              <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Class average</span>
+                                <span>{{ stats.classAverageScore }}%</span>
+                              </div>
+                              <div class="h-3 bg-gray-100 border-2 border-black rounded-full overflow-hidden">
+                                <div
+                                  class="h-full bg-gray-400 rounded-full"
+                                  [style.width.%]="stats.classAverageScore"
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    } @else {
+                      <p class="text-sm text-gray-600 font-medium">
+                        You haven't started this lesson yet.
+                      </p>
+                    }
+                  </div>
+                }
+              </section>
             </div>
           } @else {
             <div class="h-full flex items-center justify-center">
@@ -319,14 +440,21 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
 })
 export class LessonViewerComponent implements OnInit, OnDestroy {
   store = inject(LessonsStore);
+  progressStore = inject(ProgressStore);
   authStore = inject(AuthStore);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
   currentModuleIndex = signal(0);
   private readonly lessonId = signal<string | null>(null);
+  protected readonly statsExpanded = signal(true);
+  protected readonly myStats = this.progressStore.myLessonStats;
 
   hasAccess = computed(() => true);
+
+  toggleStatsPanel(): void {
+    this.statsExpanded.update((v) => !v);
+  }
 
   ngOnInit() {
     this.reloadLesson();
@@ -350,6 +478,8 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
       this.lessonId.set(id);
       this.store.loadLesson(id);
       this.store.loadFinalQuizAttempts(id);
+      // S6-stats-01: pull per-lesson stats for this student
+      this.progressStore.loadMyLessonStats({ lessonId: id });
     }
   }
 

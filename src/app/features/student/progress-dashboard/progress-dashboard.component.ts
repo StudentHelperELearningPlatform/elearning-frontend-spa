@@ -28,6 +28,9 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   authStore = inject(AuthStore);
   router = inject(Router);
 
+  // S6-stats-01: expose live dashboard signal for the aggregate stats card
+  protected readonly myDashboard = this.progressStore.dashboard;
+
   @ViewChild('radarContainer') radarContainer!: ElementRef<HTMLDivElement>;
 
   private resizeObserver: ResizeObserver | null = null;
@@ -77,6 +80,8 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     // MOISA's /students/{id}/dashboard endpoint expects a student ID.
     const studentId = this.authStore.user()?.id ?? '1';
     this.progressStore.loadDashboard(studentId);
+    // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
+    this.progressStore.loadMyDashboard();
 
     effect(() => {
       const skills = this.progressStore.skillLevels().map(s => ({
