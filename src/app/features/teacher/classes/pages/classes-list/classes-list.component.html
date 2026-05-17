@@ -8,12 +8,65 @@
     </div>
 
     <button
-      (click)="onCreateClass()"
+      (click)="openCreate()"
       class="px-4 py-2 bg-[#0ABAB5] text-white font-black rounded-xl border-2 border-black"
     >
       Create Class
     </button>
   </div>
+
+  <!-- CREATE FORM -->
+  @if (createMode()) {
+    <form
+      (ngSubmit)="submitCreate()"
+      class="bg-white p-6 rounded-3xl border-4 border-black shadow space-y-4"
+    >
+      <h2 class="text-xl font-black">New Class</h2>
+
+      <label class="block">
+        <span class="text-sm font-black uppercase tracking-wide text-gray-600">Class name *</span>
+        <input
+          name="newClassName"
+          [(ngModel)]="newClassName"
+          required
+          placeholder="e.g. Algebra II Spring 2026"
+          class="mt-1 w-full px-4 py-3 border-4 border-black rounded-xl font-bold focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/30"
+        />
+      </label>
+
+      <label class="block">
+        <span class="text-sm font-black uppercase tracking-wide text-gray-600">Description</span>
+        <textarea
+          name="newClassDescription"
+          [(ngModel)]="newClassDescription"
+          rows="3"
+          placeholder="What is this class about?"
+          class="mt-1 w-full px-4 py-3 border-4 border-black rounded-xl font-bold focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/30"
+        ></textarea>
+      </label>
+
+      @if (store.error()) {
+        <p class="text-red-600 font-bold text-sm">{{ store.error() }}</p>
+      }
+
+      <div class="flex justify-end gap-3">
+        <button
+          type="button"
+          (click)="cancelCreate()"
+          class="px-4 py-2 border-2 border-black rounded-xl font-bold"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          [disabled]="!newClassName.trim() || store.loading()"
+          class="px-4 py-2 bg-[#0ABAB5] text-white font-black rounded-xl border-2 border-black disabled:opacity-50"
+        >
+          Create
+        </button>
+      </div>
+    </form>
+  }
 
   <!-- REFRESH -->
   <button
@@ -36,6 +89,10 @@
 
         <h3 class="text-xl font-black">{{ c.name }}</h3>
 
+        @if (c.description) {
+          <p class="text-sm text-gray-700 mt-2 line-clamp-2">{{ c.description }}</p>
+        }
+
         <p class="text-sm text-gray-600 mt-2">
           Students: {{ c.studentCount }}
         </p>
@@ -55,10 +112,6 @@
             class="px-3 py-1 border-2 border-black rounded-lg font-bold"
           >
             View
-          </button>
-
-          <button class="px-3 py-1 border-2 border-black rounded-lg">
-            Edit
           </button>
 
           <button

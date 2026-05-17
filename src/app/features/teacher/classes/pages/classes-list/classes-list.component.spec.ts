@@ -12,15 +12,15 @@ describe('ClassesListComponent', () => {
   beforeEach(() => {
     mockClassStore = {
       loading: signal(false),
+      error: signal(null),
       classes: signal([]),
       loadClasses: vi.fn(),
       createClass: vi.fn(),
+      deleteClass: vi.fn(),
     };
 
     TestBed.configureTestingModule({
-      providers: [
-        { provide: ClassStore, useValue: mockClassStore }
-      ]
+      providers: [{ provide: ClassStore, useValue: mockClassStore }],
     });
     injector = TestBed.inject(EnvironmentInjector);
   });
@@ -43,40 +43,65 @@ describe('ClassesListComponent', () => {
     expect(mockClassStore.loadClasses).toHaveBeenCalled();
   });
 
-  it('should handle onDelete (currently just logs)', () => {
-    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  it('should delete after confirmation', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const comp = make();
     comp.onDelete('c1');
-    expect(console.log).toHaveBeenCalledWith('delete', 'c1');
+    expect(mockClassStore.deleteClass).toHaveBeenCalledWith('c1');
   });
 
-  it('should create class if prompt returns a name', () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('New Class Name');
+  it('should not delete when confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
     const comp = make();
-    comp.onCreateClass();
-    
-    expect(window.prompt).toHaveBeenCalledWith('Class name');
+    comp.onDelete('c1');
+    expect(mockClassStore.deleteClass).not.toHaveBeenCalled();
+  });
+
+  it('openCreate resets fields and shows the form', () => {
+    const comp = make();
+    comp.newClassName = 'leftover';
+    comp.newClassDescription = 'leftover description';
+    comp.openCreate();
+    expect(comp.newClassName).toBe('');
+    expect(comp.newClassDescription).toBe('');
+    expect(comp.createMode()).toBe(true);
+  });
+
+  it('cancelCreate hides the form', () => {
+    const comp = make();
+    comp.openCreate();
+    comp.cancelCreate();
+    expect(comp.createMode()).toBe(false);
+  });
+
+  it('submitCreate calls createClass with name and trimmed description', () => {
+    const comp = make();
+    comp.newClassName = '  Algebra II  ';
+    comp.newClassDescription = '  Polynomials and friends  ';
+    comp.submitCreate();
     expect(mockClassStore.createClass).toHaveBeenCalledWith({
-      name: 'New Class Name',
-      description: ''
+      name: 'Algebra II',
+      description: 'Polynomials and friends',
+    });
+    expect(comp.createMode()).toBe(false);
+  });
+
+  it('submitCreate sends undefined description when blank', () => {
+    const comp = make();
+    comp.newClassName = 'Quick Class';
+    comp.newClassDescription = '   ';
+    comp.submitCreate();
+    expect(mockClassStore.createClass).toHaveBeenCalledWith({
+      name: 'Quick Class',
+      description: undefined,
     });
   });
 
-  it('should not create class if prompt returns null', () => {
-    vi.spyOn(window, 'prompt').mockReturnValue(null);
+  it('submitCreate does nothing when name is blank', () => {
     const comp = make();
-    comp.onCreateClass();
-    
-    expect(window.prompt).toHaveBeenCalledWith('Class name');
-    expect(mockClassStore.createClass).not.toHaveBeenCalled();
-  });
-  
-  it('should not create class if prompt returns empty string', () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('');
-    const comp = make();
-    comp.onCreateClass();
-    
-    expect(window.prompt).toHaveBeenCalledWith('Class name');
+    comp.newClassName = '   ';
+    comp.newClassDescription = 'desc';
+    comp.submitCreate();
     expect(mockClassStore.createClass).not.toHaveBeenCalled();
   });
 });

@@ -11,26 +11,47 @@
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
     <!-- STUDENTS -->
-    <div class="bg-white p-6 rounded-3xl border-4 border-black">
+    <div class="bg-white p-6 rounded-3xl border-4 border-black space-y-4">
 
-      <h2 class="text-xl font-black mb-4">Students</h2>
+      <h2 class="text-xl font-black mb-2">Students</h2>
 
-      @for (s of students(); track s.id) {
-        <div class="flex justify-between items-center p-3 border-b">
+      <!-- INVITE FORM -->
+      <form (ngSubmit)="inviteStudent()" class="flex flex-col sm:flex-row gap-2">
+        <input
+          name="inviteStudentId"
+          [(ngModel)]="inviteStudentId"
+          placeholder="Student ID or email"
+          class="flex-1 px-3 py-2 border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-4 focus:ring-[#0ABAB5]/30"
+        />
+        <button
+          type="submit"
+          [disabled]="!inviteStudentId.trim()"
+          class="px-4 py-2 bg-[#0ABAB5] text-white font-black rounded-xl border-2 border-black disabled:opacity-50"
+        >
+          Invite
+        </button>
+      </form>
 
-          <div>
-            <p class="font-bold">{{ s.name }}</p>
-            <p class="text-sm text-gray-600">{{ s.email }}</p>
+      @if (students().length === 0) {
+        <p class="text-gray-500 font-bold text-center py-4">No students yet. Invite one above.</p>
+      } @else {
+        @for (s of students(); track s.id) {
+          <div class="flex justify-between items-center p-3 border-b">
+
+            <div>
+              <p class="font-bold">{{ s.name }}</p>
+              <p class="text-sm text-gray-600">{{ s.email }}</p>
+            </div>
+
+            <button
+              (click)="removeStudent(s.id)"
+              class="text-red-600 font-bold"
+            >
+              Remove
+            </button>
+
           </div>
-
-          <button
-            (click)="removeStudent(s.id)"
-            class="text-red-600 font-bold"
-          >
-            Remove
-          </button>
-
-        </div>
+        }
       }
 
     </div>
@@ -40,19 +61,23 @@
 
       <h2 class="text-xl font-black mb-4">Lessons</h2>
 
-      @for (l of lessons(); track l.id) {
-        <div class="flex justify-between items-center p-3 border-b">
+      @if (lessons().length === 0) {
+        <p class="text-gray-500 font-bold text-center py-4">No lessons assigned yet.</p>
+      } @else {
+        @for (l of lessons(); track l.id) {
+          <div class="flex justify-between items-center p-3 border-b">
 
-          <p class="font-bold">{{ l.title }}</p>
+            <p class="font-bold">{{ l.title }}</p>
 
-          <button
-            (click)="removeLesson(l.id)"
-            class="text-red-600 font-bold"
-          >
-            Remove
-          </button>
+            <button
+              (click)="removeLesson(l.id)"
+              class="text-red-600 font-bold"
+            >
+              Remove
+            </button>
 
-        </div>
+          </div>
+        }
       }
 
     </div>

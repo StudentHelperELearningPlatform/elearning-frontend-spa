@@ -1,33 +1,50 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ClassStore } from '../../../state/class.store';
 
 @Component({
   selector: 'app-classes-list',
-  standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './classes-list.component.html',
   styleUrls: ['./classes-list.component.scss'],
 })
 export class ClassesListComponent implements OnInit {
   readonly store = inject(ClassStore);
 
+  readonly createMode = signal(false);
+  newClassName = '';
+  newClassDescription = '';
+
   ngOnInit(): void {
     this.store.loadClasses();
   }
 
   onDelete(classId: string): void {
-    console.log('delete', classId);
+    if (confirm('Delete this class? This cannot be undone.')) {
+      this.store.deleteClass(classId);
+    }
   }
 
-  onCreateClass(): void {
-    const name = prompt('Class name');
+  openCreate(): void {
+    this.newClassName = '';
+    this.newClassDescription = '';
+    this.createMode.set(true);
+  }
+
+  cancelCreate(): void {
+    this.createMode.set(false);
+  }
+
+  submitCreate(): void {
+    const name = this.newClassName.trim();
     if (!name) return;
 
     this.store.createClass({
       name,
-      description: '',
+      description: this.newClassDescription.trim() || undefined,
     });
+    this.createMode.set(false);
   }
 }

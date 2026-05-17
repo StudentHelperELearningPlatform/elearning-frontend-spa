@@ -76,11 +76,13 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnInit() {
-    // Use the authenticated student's own ID, not a placeholder classId.
-    // MOISA's /students/{id}/dashboard endpoint expects a student ID.
-    const studentId = this.authStore.user()?.id ?? '1';
-    this.progressStore.loadDashboard(studentId);
-    // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
+    // Only load the per-student dashboard when an authenticated student is known.
+    // The previous `?? '1'` fallback caused the test account to fetch the wrong student's data.
+    const studentId = this.authStore.user()?.id;
+    if (studentId) {
+      this.progressStore.loadDashboard(studentId);
+    }
+    // S6-stats-01: token-based aggregate stats are always safe to call.
     this.progressStore.loadMyDashboard();
 
     effect(() => {

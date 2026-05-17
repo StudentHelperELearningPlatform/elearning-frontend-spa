@@ -19,6 +19,7 @@ describe('ClassDetailComponent', () => {
       loadClassDetail: vi.fn(),
       removeStudent: vi.fn(),
       removeLesson: vi.fn(),
+      addStudent: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -86,5 +87,22 @@ describe('ClassDetailComponent', () => {
     comp.ngOnInit();
     comp.removeLesson('l1');
     expect(mockClassStore.removeLesson).toHaveBeenCalledWith('c1', 'l1');
+  });
+
+  it('inviteStudent calls store.addStudent with trimmed id and clears the input', () => {
+    const comp = make();
+    comp.ngOnInit();
+    comp.inviteStudentId = '  s2  ';
+    comp.inviteStudent();
+    expect(mockClassStore.addStudent).toHaveBeenCalledWith('c1', 's2');
+    expect(comp.inviteStudentId).toBe('');
+  });
+
+  it('inviteStudent does nothing when input is blank', () => {
+    const comp = make();
+    comp.ngOnInit();
+    comp.inviteStudentId = '   ';
+    comp.inviteStudent();
+    expect(mockClassStore.addStudent).not.toHaveBeenCalled();
   });
 });

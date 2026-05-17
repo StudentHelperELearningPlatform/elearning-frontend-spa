@@ -1,10 +1,10 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-module-content',
-  standalone: true,
   imports: [CommonModule, SkeletonComponent],
   template: `
     @if (loading()) {
@@ -15,13 +15,19 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
         <app-skeleton height="1rem" width="80%" />
       </div>
     } @else {
-      <div class="prose prose-lg max-w-none prose-headings:font-black prose-headings:text-black prose-p:text-gray-800 prose-a:text-[#0ABAB5] prose-a:font-bold prose-strong:text-black">
-        <div [innerHTML]="content()"></div>
+      <div class="prose prose-lg max-w-none prose-headings:font-black prose-headings:text-black prose-p:text-gray-800 prose-a:text-[#0ABAB5] prose-a:font-bold prose-strong:text-black overflow-visible">
+        <div [innerHTML]="safeContent()"></div>
       </div>
     }
-  `
+  `,
 })
 export class ModuleContentComponent {
   content = input<string>('');
   loading = input<boolean>(false);
+
+  private sanitizer = inject(DomSanitizer);
+
+  safeContent = computed((): SafeHtml =>
+    this.sanitizer.bypassSecurityTrustHtml(this.content() ?? ''),
+  );
 }

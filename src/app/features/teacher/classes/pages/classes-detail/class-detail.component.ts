@@ -1,12 +1,12 @@
-import { Component, inject, OnInit, computed } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ClassStore } from '../../../state/class.store';
 
 @Component({
   selector: 'app-class-detail',
-  standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './class-detail.component.html',
   styleUrls: ['./class-detail.component.scss'],
 })
@@ -15,14 +15,11 @@ export class ClassDetailComponent implements OnInit {
   readonly store = inject(ClassStore);
 
   classId!: string;
+  inviteStudentId = '';
 
-  readonly students = computed(() =>
-    this.store.currentClass()?.students ?? [],
-  );
+  readonly students = computed(() => this.store.currentClass()?.students ?? []);
 
-  readonly lessons = computed(() =>
-    this.store.currentClass()?.lessons ?? [],
-  );
+  readonly lessons = computed(() => this.store.currentClass()?.lessons ?? []);
 
   ngOnInit(): void {
     this.classId = this.route.snapshot.params['classId'];
@@ -35,5 +32,12 @@ export class ClassDetailComponent implements OnInit {
 
   removeLesson(lessonId: string): void {
     this.store.removeLesson(this.classId, lessonId);
+  }
+
+  inviteStudent(): void {
+    const studentId = this.inviteStudentId.trim();
+    if (!studentId) return;
+    this.store.addStudent(this.classId, studentId);
+    this.inviteStudentId = '';
   }
 }
