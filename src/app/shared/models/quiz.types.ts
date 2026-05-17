@@ -12,6 +12,7 @@ export interface Question {
   type: string;
   points: number;
   options: QuizOption[];
+  correctAnswer?: string;
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
 }
 

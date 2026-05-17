@@ -198,12 +198,20 @@ describe('QuizBuilderComponent', () => {
 
     component.saveQuiz();
 
-    expect(mockContentStore.createQuiz).toHaveBeenCalledWith({
-      title: 'New Quiz',
-      subject: 'Science',
-      status: 'DRAFT',
-      questions: [{ text: 'Q1', type: 'multiple-choice', difficulty: 'EASY' }],
-    });
+    expect(mockContentStore.createQuiz).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'New Quiz',
+        subject: 'Science',
+        status: 'DRAFT',
+        questions: [
+          expect.objectContaining({
+            text: 'Q1',
+            type: 'MULTIPLE_CHOICE',
+            difficulty: 'EASY',
+          }),
+        ],
+      })
+    );
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/teacher/content']);
   });
 
@@ -224,5 +232,105 @@ describe('QuizBuilderComponent', () => {
       }),
     );
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/teacher/content']);
+  });
+
+  describe('Form options and question management', () => {
+    it('should add option to a question', () => {
+      fixture.detectChanges();
+      component.addQuestion({ type: 'multiple-choice' });
+      expect(component.getOptions(0).length).toBe(3); // default MCQ has 3 options
+
+      component.addOption(0);
+      expect(component.getOptions(0).length).toBe(4);
+      expect(component.getOptions(0).at(3).get('text')?.value).toBe('');
+    });
+
+    it('should remove options and shift or reset correct answer index', () => {
+      fixture.detectChanges();
+      component.addQuestion({
+        type: 'multiple-choice',
+        options: [
+          { text: 'Opt 0' },
+          { text: 'Opt 1' },
+          { text: 'Opt 2' },
+        ],
+        correctAnswer: 'Opt 2' // correct index is 2
+      });
+
+      expect(component.questions.at(0).get('correctAnswer')?.value).toBe('2');
+
+      // Remove index 1, correct answer index should shift down to 1
+      component.removeOption(0, 1);
+      expect(component.getOptions(0).length).toBe(2);
+      expect(component.questions.at(0).get('correctAnswer')?.value).toBe('1');
+
+      // Now set correct answer to 1 and remove index 1, correct answer should reset to 0
+      component.setCorrectAnswer(0, '1');
+      component.removeOption(0, 1);
+      expect(component.questions.at(0).get('correctAnswer')?.value).toBe('0');
+    });
+
+    it('should handle onTypeChange correctly', () => {
+      fixture.detectChanges();
+      component.addQuestion({ type: 'multiple-choice' });
+
+      // Change to true-false
+      component.questions.at(0).get('type')?.setValue('true-false');
+      component.onTypeChange(0);
+      expect(component.getOptions(0).length).toBe(2);
+      expect(component.getOptions(0).at(0).get('text')?.value).toBe('True');
+      expect(component.getOptions(0).at(1).get('text')?.value).toBe('False');
+      expect(component.questions.at(0).get('correctAnswer')?.value).toBe('0');
+
+      // Change back to multiple-choice
+      component.questions.at(0).get('type')?.setValue('multiple-choice');
+      component.onTypeChange(0);
+      expect(component.getOptions(0).length).toBe(3);
+      expect(component.getOptions(0).at(0).get('text')?.value).toBe('Option 1');
+      expect(component.questions.at(0).get('correctAnswer')?.value).toBe('0');
+    });
+
+    it('should support setCorrectAnswer helper', () => {
+      fixture.detectChanges();
+      component.addQuestion({ type: 'multiple-choice' });
+      component.setCorrectAnswer(0, '2');
+      expect(component.questions.at(0).get('correctAnswer')?.value).toBe('2');
+    });
+
+    it('should initialize addQuestion with predefined options and resolve correct answer index', () => {
+      fixture.detectChanges();
+      component.addQuestion({
+        text: 'Predefined Multiple Choice',
+        type: 'MULTIPLE_CHOICE',
+        options: [
+          { text: 'Red' },
+          { text: 'Green' },
+          { text: 'Blue' },
+        ],
+        correctAnswer: 'Green'
+      });
+
+      expect(component.questions.length).toBe(1);
+      expect(component.getOptions(0).length).toBe(3);
+      expect(component.getOptions(0).at(0).get('text')?.value).toBe('Red');
+      expect(component.getOptions(0).at(1).get('text')?.value).toBe('Green');
+      expect(component.getOptions(0).at(2).get('text')?.value).toBe('Blue');
+      expect(component.questions.at(0).get('correctAnswer')?.value).toBe('1');
+    });
+
+    it('should initialize addQuestion with true-false type and resolve correctAnswer', () => {
+      fixture.detectChanges();
+      
+      // True/False with FALSE answer
+      component.addQuestion({
+        text: 'Is the sky green?',
+        type: 'TRUE_FALSE',
+        correctAnswer: 'False'
+      });
+
+      expect(component.questions.length).toBe(1);
+      expect(component.getOptions(0).length).toBe(2);
+      expect(component.questions.at(0).get('correctAnswer')?.value).toBe('1');
+    });
   });
 });
