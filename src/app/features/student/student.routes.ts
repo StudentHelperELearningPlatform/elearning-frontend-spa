@@ -12,6 +12,7 @@ import { SkillDetailComponent } from './skill-detail/skill-detail.component';
 
 export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
+  { path: 'profile', loadComponent: () => import('./profile/student-profile.component').then((m) => m.StudentProfileComponent) },
   { path: 'lessons', component: LessonListComponent },
   { path: 'milestones', component: MilestonesComponent },
   { path: 'learning-path', redirectTo: 'learning-paths/path-1', pathMatch: 'full' },

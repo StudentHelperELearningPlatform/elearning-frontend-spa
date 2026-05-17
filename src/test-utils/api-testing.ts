@@ -6,5 +6,5 @@ export const provideApiMocks = () => [
   { provide: LEARNING_PATH_API_URL, useValue: '/api/v1' },
   { provide: QUIZ_API_URL, useValue: '/api/v1' },
   { provide: USER_PLATFORM_API_URL, useValue: '/api/v1' },
-  { provide: AUTH_API_URL, useValue: '/api/auth' },
+  { provide: AUTH_API_URL, useValue: '/api/v1/auth' },
 ];

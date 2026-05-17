@@ -19,6 +19,7 @@ export default [
   { path: 'analytics', component: AnalyticsDashboardComponent },
   { path: 'classes', component: ClassManagementComponent },
   { path: 'content', component: ContentEditorComponent },
+  { path: 'profile', loadComponent: () => import('./profile/teacher-profile.component').then((m) => m.TeacherProfileComponent) },
   
   // Lesson Editor Routes (from develop)
   {

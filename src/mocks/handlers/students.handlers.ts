@@ -265,7 +265,27 @@ const dashboardData = {
 
 const milestonesData = dashboardData.milestones;
 
+let studentProfile = {
+  name: 'Alex Student',
+  bio: 'Learning new skills every day!',
+  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=student@test.com',
+  contactInfo: {
+    email: 'student@test.com',
+    phone: '+1 987 654 3210'
+  },
+  enrolledLessonsCount: 48
+};
+
 export const studentsHandlers = [
+  http.get('/api/v1/students/me/profile', () => {
+    return HttpResponse.json(studentProfile);
+  }),
+
+  http.put('/api/v1/students/me/profile', async ({ request }) => {
+    const body = await request.json() as typeof studentProfile;
+    studentProfile = { ...studentProfile, ...body };
+    return HttpResponse.json(studentProfile);
+  }),
 
   // Mocks retained until endpoints are confirmed live on staging
   // Task: INT-02 (Learning Path & Progress)
@@ -289,7 +309,7 @@ export const studentsHandlers = [
   // PUT Module Progress
   http.put(`${environment.userPlatformApiUrl}/lessons/:lessonId/progress`, async ({ request, params }) => {
     const body = await request.json() as { moduleId: string | number; completedAt: string };
-    
+
     return HttpResponse.json({
       message: 'Progress recorded successfully',
       progressPercent: 33,

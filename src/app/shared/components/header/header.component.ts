@@ -67,7 +67,14 @@ export class HeaderComponent {
   private router = inject(Router);
 
   navigateToProfile() {
-    this.router.navigate(['/profile']);
+    const role = (this.authStore.role() || '').toLowerCase();
+    if (role === 'student') {
+      this.router.navigate(['/student/profile']);
+    } else if (role === 'teacher' || role === 'professor') {
+      this.router.navigate(['/teacher/profile']);
+    } else {
+      this.router.navigate(['/']); // fallback
+    }
   }
 
   logout() {
