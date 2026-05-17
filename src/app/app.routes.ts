@@ -67,19 +67,6 @@ export const routes: Routes = [
     loadChildren: () => import('./features/admin/admin.routes'),
   },
 
-  {
-    path: 'profile',
-    canActivate: [authGuard], // Everyone logged in can see their own profile
-    loadComponent: () =>
-      import('./shared/components/app-shell/app-shell.component').then((m) => m.AppShellComponent),
-    children: [
-      {
-        path: '',
-        loadComponent: () =>
-          import('./features/profile/components/profile.component').then((m) => m.ProfileComponent),
-      },
-    ],
-  },
 
   // Unauthorized page
   {

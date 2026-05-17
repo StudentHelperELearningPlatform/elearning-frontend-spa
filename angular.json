@@ -30,7 +30,8 @@
             "styles": ["node_modules/primeicons/primeicons.css", "src/styles.css", "src/styles/styles.scss"],
             "stylePreprocessorOptions": {
               "includePaths": ["src/styles"]
-            }
+            },
+            "allowedCommonJsDependencies": ["quill"]
           },
           "configurations": {
             "production": {

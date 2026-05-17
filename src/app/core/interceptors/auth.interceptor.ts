@@ -7,7 +7,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = injector.get(AuthService);
 
   // Skip interceptor for public endpoints
-  if (req.url.includes('/api/auth/') || req.url.includes('/api/v1/users')) {
+  if (req.url.includes('/api/v1/auth/') || req.url.includes('/api/auth/') || req.url.includes('/api/v1/users')) {
     return next(req);
   }
 

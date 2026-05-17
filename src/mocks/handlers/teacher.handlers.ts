@@ -63,11 +63,11 @@ const quizzes = [
 ];
 
 const recentActivity = [
-  { id: 'act-1', type: 'updated',   contentTitle: 'Adding Fractions',     contentType: 'lesson', timestamp: new Date(now - 1 * 60 * 60 * 1000).toISOString() },
-  { id: 'act-2', type: 'published', contentTitle: 'Fractions Quiz',       contentType: 'quiz',   timestamp: new Date(now - 4 * 60 * 60 * 1000).toISOString() },
-  { id: 'act-3', type: 'created',   contentTitle: 'Geometry: Triangles',  contentType: 'lesson', timestamp: new Date(now - 1 * dayMs).toISOString() },
-  { id: 'act-4', type: 'updated',   contentTitle: 'Solar System',         contentType: 'lesson', timestamp: new Date(now - 2 * dayMs).toISOString() },
-  { id: 'act-5', type: 'archived',  contentTitle: 'Old Map Reading',      contentType: 'lesson', timestamp: new Date(now - 3 * dayMs).toISOString() },
+  { id: 'act-1', type: 'updated', contentTitle: 'Adding Fractions', contentType: 'lesson', timestamp: new Date(now - 1 * 60 * 60 * 1000).toISOString() },
+  { id: 'act-2', type: 'published', contentTitle: 'Fractions Quiz', contentType: 'quiz', timestamp: new Date(now - 4 * 60 * 60 * 1000).toISOString() },
+  { id: 'act-3', type: 'created', contentTitle: 'Geometry: Triangles', contentType: 'lesson', timestamp: new Date(now - 1 * dayMs).toISOString() },
+  { id: 'act-4', type: 'updated', contentTitle: 'Solar System', contentType: 'lesson', timestamp: new Date(now - 2 * dayMs).toISOString() },
+  { id: 'act-5', type: 'archived', contentTitle: 'Old Map Reading', contentType: 'lesson', timestamp: new Date(now - 3 * dayMs).toISOString() },
 ];
 
 const teacherClasses = [
@@ -77,7 +77,29 @@ const teacherClasses = [
   { id: 'cls-4', name: 'History 8 - Period D', studentCount: 26, averageProgress: 72 },
 ];
 
+let teacherProfile = {
+  name: 'Teacher Name',
+  bio: 'Experienced educator with a passion for teaching.',
+  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=teacher@test.com',
+  contactInfo: {
+    email: 'teacher@test.com',
+    phone: '+1 234 567 8900'
+  },
+  subjectsTaught: ['Math', 'Science']
+};
+
+
 export const teacherHandlers = [
+  http.get('/api/v1/teachers/me/profile', () => {
+    return HttpResponse.json(teacherProfile);
+  }),
+
+  http.put('/api/v1/teachers/me/profile', async ({ request }) => {
+    const body = await request.json() as typeof teacherProfile;
+    teacherProfile = { ...teacherProfile, ...body };
+    return HttpResponse.json(teacherProfile);
+  }),
+
   http.get('/api/v1/teacher/:teacherId/dashboard', ({ params }) => {
     void params['teacherId'];
     return HttpResponse.json({

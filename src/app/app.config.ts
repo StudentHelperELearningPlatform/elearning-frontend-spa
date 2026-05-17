@@ -119,7 +119,7 @@ export const appConfig: ApplicationConfig = {
     { provide: LEARNING_PATH_API_URL, useValue: environment.lessonApiUrl + '/api/v1' },
     { provide: QUIZ_API_URL, useValue: environment.quizApiUrl + '/api/v1' },
     { provide: USER_PLATFORM_API_URL, useValue: environment.userPlatformApiUrl + '/api/v1' },
-    { provide: AUTH_API_URL, useValue: environment.lessonApiUrl + '/api/auth' },
+    { provide: AUTH_API_URL, useValue: environment.lessonApiUrl + '/api/v1/auth' },
     {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
       useValue: [

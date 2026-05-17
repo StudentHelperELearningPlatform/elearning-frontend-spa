@@ -110,7 +110,7 @@ describe('AuthService', () => {
         password: 'password123',
         role: undefined,
       };
-      const req = httpMock.expectOne(req => req.url.includes('/api/auth/register'));
+      const req = httpMock.expectOne(req => req.url.includes('/api/v1/auth/register'));
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual(moisaPayload);
       req.flush({});
@@ -125,7 +125,7 @@ describe('AuthService', () => {
 
       service.checkEmailAvailability(email).subscribe();
 
-      const req = httpMock.expectOne(req => req.url.includes('/api/auth/check-email'));
+      const req = httpMock.expectOne(req => req.url.includes('/api/v1/auth/check-email'));
       expect(req.request.method).toBe('GET');
       expect(req.request.url).toContain('email=' + encodeURIComponent(email));
       req.flush({ available: true });
