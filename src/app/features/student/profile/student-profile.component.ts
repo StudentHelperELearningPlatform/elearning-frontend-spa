@@ -11,6 +11,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { FormFieldComponent } from '../../../shared/components/form-field/form-field.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+import { getInitials, handleFileSelect, parseFullName } from '../../../shared/utils/profile.utils';
 
 @Component({
   selector: 'app-student-profile',
@@ -225,17 +226,14 @@ export class StudentProfileComponent implements OnInit {
   saveProfile() {
     if (this.form.invalid) return;
 
-    const values = this.form.value;
-    const nameParts = (values.name || '').trim().split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
+    const { firstName, lastName } = parseFullName(this.form.value.name);
 
     const payload: RawStudentProfileUpdate = {
       firstName,
       lastName,
-      school: values.school || undefined,
-      gradeLevel: values.gradeLevel || undefined,
-      bio: values.bio || undefined,
+      school: this.form.value.school || undefined,
+      gradeLevel: this.form.value.gradeLevel || undefined,
+      bio: this.form.value.bio || undefined,
     };
 
     if (this.pendingAvatarBase64) {
@@ -253,23 +251,12 @@ export class StudentProfileComponent implements OnInit {
   }
 
   onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        this.pendingAvatarBase64 = e.target?.result as string;
-        this.messageService.add({ severity: 'info', summary: 'Image selected', detail: 'Save profile to upload the avatar.' });
-      };
-      reader.readAsDataURL(file);
-    }
+    handleFileSelect(event, this.messageService, (base64) => {
+      this.pendingAvatarBase64 = base64;
+    });
   }
 
   getInitials(name?: string): string {
-    if (!name) return 'UN';
-    const parts = name.trim().split(' ');
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.substring(0, 2).toUpperCase();
+    return getInitials(name);
   }
 }

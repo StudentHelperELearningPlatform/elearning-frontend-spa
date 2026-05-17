@@ -5,6 +5,7 @@ import { AuthStore } from '@features/auth/store/auth.store'; // Ensure User is i
 import { AvatarComponent } from '../avatar/avatar.component';
 import { ButtonComponent } from '../button/button.component';
 import { NotificationBellComponent } from '@features/shared/notifications/notification-bell.component';
+import { getInitials } from '../../utils/profile.utils';
 
 @Component({
   selector: 'app-header',
@@ -85,10 +86,7 @@ export class HeaderComponent {
   }
 
   getInitials(name?: string): string {
-    if (!name) return 'U';
-    const parts = name.trim().split(' ');
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.substring(0, 2).toUpperCase();
+    const initials = getInitials(name);
+    return initials === 'UN' ? 'U' : initials;
   }
 }
