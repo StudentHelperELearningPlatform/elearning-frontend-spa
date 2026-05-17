@@ -17,6 +17,17 @@ export interface TeacherLesson {
   created_at: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mapTeacherLesson = (raw: any): TeacherLesson => ({
+  id: raw.id?.toString() ?? '',
+  title: raw.title ?? '',
+  subject: raw.subject ?? '',
+  difficulty_level: raw.difficulty_level ?? raw.difficultyLevel ?? 'BEGINNER',
+  status: raw.status ?? 'DRAFT',
+  estimated_duration_minutes: raw.estimated_duration_minutes ?? raw.estimatedDurationMinutes ?? 0,
+  created_at: raw.created_at ?? raw.createdAt ?? raw.updatedAt ?? raw.lastModified ?? new Date().toISOString(),
+});
+
 export interface TeacherLessonFilters {
   search: string;
   status: TeacherLessonStatus | '';
@@ -89,10 +100,31 @@ export const TeacherLessonsStore = signalStore(
         .get<unknown>(`${apiBase}/lessons`, { params: buildParams() })
         .subscribe({
           next: (res: unknown) => {
-            // Handle both array response and paginated { items, total } response
+            // Handle both array response and paginated { items, total } or Spring Boot { content, totalElements } response
             const response = res as Record<string, unknown>;
-            const items: TeacherLesson[] = Array.isArray(response) ? response : (response['items'] as TeacherLesson[] ?? []);
-            const total: number = Array.isArray(response) ? response.length : (response['total'] as number ?? (response['items'] as unknown[])?.length ?? 0);
+            
+            let items: TeacherLesson[] = [];
+            let total = 0;
+
+            if (Array.isArray(response)) {
+              items = response.map(mapTeacherLesson);
+              total = response.length;
+            } else {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const rawItems = (response['items'] ?? response['content'] ?? []) as any[];
+              items = rawItems.map(mapTeacherLesson);
+              
+              if (typeof response['totalElements'] === 'number') {
+                total = response['totalElements'];
+              } else if (typeof response['total'] === 'number') {
+                total = response['total'];
+              } else if (response['page'] && typeof (response['page'] as Record<string, unknown>)['totalElements'] === 'number') {
+                total = (response['page'] as Record<string, unknown>)['totalElements'] as number;
+              } else {
+                total = items.length;
+              }
+            }
+            
             patchState(store, { items, total, loading: false });
           },
           error: (err: unknown) => {
