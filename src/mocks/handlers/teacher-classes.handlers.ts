@@ -7,6 +7,7 @@ const base = `${environment.userPlatformApiUrl}/teachers/classes`;
 /**
  * TYPES
  */
+export type ResolverParams = Record<string, string | readonly string[] | undefined>;
 interface Student {
   id: string;
   name: string;
@@ -85,7 +86,7 @@ export const createClass = http.post(base, async ({ request }) => {
 /**
  * CLASS DETAIL
  */
-export const getClassDetailResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+export const getClassDetailResolver = ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   const found = classes.find((c) => c.id === classId);
@@ -101,7 +102,7 @@ export const getClassDetail = http.get(`${base}/:classId`, getClassDetailResolve
 /**
  * UPDATE class
  */
-export const updateClassResolver = async ({ request, params }: { request: Request; params?: Record<string, string | readonly string[] | undefined> }) => {
+export const updateClassResolver = async ({ request, params }: { request: Request; params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
   
   let body: Record<string, unknown> = {};
@@ -136,7 +137,7 @@ export const updateClass = http.put(`${base}/:classId`, updateClassResolver);
 /**
  * DELETE class
  */
-export const deleteClassResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+export const deleteClassResolver = ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   classes = classes.filter((c) => c.id !== classId);
@@ -148,7 +149,7 @@ export const deleteClass = http.delete(`${base}/:classId`, deleteClassResolver);
 /**
  * GET students
  */
-export const getStudentsResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+export const getStudentsResolver = ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   return HttpResponse.json(studentsByClass[classId] ?? []);
@@ -158,7 +159,7 @@ export const getStudents = http.get(`${base}/:classId/students`, getStudentsReso
 /**
  * ADD student
  */
-export const addStudentResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+export const addStudentResolver = ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
   const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
 
@@ -181,7 +182,7 @@ export const addStudent = http.post(
 /**
  * REMOVE student
  */
-export const removeStudentResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+export const removeStudentResolver = ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
   const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
 
@@ -198,7 +199,7 @@ export const removeStudent = http.delete(
 /**
  * GET lessons
  */
-export const getLessonsResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+export const getLessonsResolver = ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   return HttpResponse.json(lessonsByClass[classId] ?? []);
@@ -208,7 +209,7 @@ export const getLessons = http.get(`${base}/:classId/lessons`, getLessonsResolve
 /**
  * ADD lesson
  */
-export const addLessonResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+export const addLessonResolver = ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
   const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
 
@@ -230,7 +231,7 @@ export const addLesson = http.post(
 /**
  * REMOVE lesson
  */
-export const removeLessonResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+export const removeLessonResolver = ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
   const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
 

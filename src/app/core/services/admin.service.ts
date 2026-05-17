@@ -105,9 +105,10 @@ export class AdminService {
   }
 
   deleteContactMessage(messageId: string): Observable<void> {
-    void messageId; // Reference to satisfy strict unused-vars lint rules
     return new Observable<void>(observer => {
-      observer.next();
+      if (messageId) {
+        observer.next();
+      }
       observer.complete();
     });
   }

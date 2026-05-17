@@ -900,15 +900,15 @@ export class AdminDashboardComponent implements OnInit {
     // 1. Try standard keys
     const detected = extractorKeys
       .map((key) => u[key])
-      .find((val) => typeof val === 'string' && uuidRegex.test(val as string));
-    if (detected !== undefined) return detected as string;
+      .find((val): val is string => typeof val === 'string' && uuidRegex.test(val));
+    if (detected !== undefined) return detected;
 
     // 2. Try all dynamic keys (fallback)
     const allKeys = Object.keys(u) as (keyof AdminUserRaw)[];
     const custom = allKeys
       .map((key) => u[key])
-      .find((val) => typeof val === 'string' && uuidRegex.test(val as string));
-    return (custom as string) ?? '';
+      .find((val): val is string => typeof val === 'string' && uuidRegex.test(val));
+    return custom ?? '';
   }
 
   // Loaders calling actual service HTTP endpoints
