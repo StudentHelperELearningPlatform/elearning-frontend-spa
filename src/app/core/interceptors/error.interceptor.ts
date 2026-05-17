@@ -23,8 +23,15 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       // problem. Let individual components/stores handle 403s gracefully instead
       // of blowing up the entire session with a redirect.
 
-      const errorMessage = error.error?.message || error.statusText;
-      notificationService.error(errorMessage);
+      // HttpClient surfaces 2xx responses with non-JSON / empty bodies as
+      // errors (statusText "OK"). The network call succeeded — don't pop a
+      // misleading "Error: OK" toast. Let the caller's catchError still see
+      // the parse failure via the rethrow below.
+      const isSuccessfulStatus = error.status >= 200 && error.status < 300;
+      if (!isSuccessfulStatus) {
+        const errorMessage = error.error?.message || error.statusText;
+        notificationService.error(errorMessage);
+      }
       return throwError(() => error);
     }),
   );
