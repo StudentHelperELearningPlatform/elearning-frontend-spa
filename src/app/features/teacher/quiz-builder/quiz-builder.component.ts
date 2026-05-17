@@ -21,6 +21,19 @@ interface GeneratedQuestion {
   selected: boolean;
 }
 
+interface FormOption {
+  text?: string;
+}
+
+interface FormQuestion {
+  id?: string;
+  text?: string;
+  type?: string;
+  difficulty?: string;
+  correctAnswer?: string;
+  options?: FormOption[];
+}
+
 @Component({
   selector: 'app-quiz-builder',
   standalone: true,
@@ -571,11 +584,12 @@ export class QuizBuilderComponent implements OnInit {
   saveQuiz() {
     if (this.quizForm.valid) {
       const formValue = this.quizForm.value;
-      const questionsData = (formValue.questions || []).map((q: any) => {
+      const questionsData = (formValue.questions || []).map((qVal) => {
+        const q = qVal as FormQuestion;
         const typeNormalized = q.type === 'true-false' ? 'TRUE_FALSE' : 'MULTIPLE_CHOICE';
         
         // Map FormArray options back to raw QuizOption shape
-        const options = (q.options || []).map((o: any, idx: number) => ({
+        const options = (q.options || []).map((o, idx: number) => ({
           id: `${q.id || crypto.randomUUID()}-o${idx + 1}`,
           text: o.text || '',
         }));
@@ -589,9 +603,9 @@ export class QuizBuilderComponent implements OnInit {
 
         return {
           id: q.id || crypto.randomUUID(),
-          text: q.text,
-          type: typeNormalized,
-          difficulty: q.difficulty || 'MEDIUM',
+          text: q.text || '',
+          type: typeNormalized as 'MULTIPLE_CHOICE' | 'TRUE_FALSE',
+          difficulty: (q.difficulty || 'MEDIUM') as 'EASY' | 'MEDIUM' | 'HARD',
           points: 10,
           options,
           correctAnswer,
