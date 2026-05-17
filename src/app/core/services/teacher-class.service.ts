@@ -65,7 +65,7 @@ export class TeacherClassService {
     description?: string;
   }): Observable<TeacherClass> {
     const payload = {
-      nane: data.name,
+      name: data.name,
       bio: data.description ?? '',
     };
     return this.http.post<TeacherClassRaw>(this.baseUrl, payload).pipe(
@@ -90,7 +90,7 @@ export class TeacherClassService {
   ): Observable<TeacherClass> {
     const payload: Record<string, unknown> = {};
     if (data.name !== undefined) {
-      payload['nane'] = data.name;
+      payload['name'] = data.name;
     }
     if (data.description !== undefined) {
       payload['bio'] = data.description;

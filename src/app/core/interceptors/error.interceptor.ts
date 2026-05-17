@@ -29,7 +29,45 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       // the parse failure via the rethrow below.
       const isSuccessfulStatus = error.status >= 200 && error.status < 300;
       if (!isSuccessfulStatus) {
-        const errorMessage = error.error?.message || error.statusText;
+        let errorMessage = 'An unexpected error occurred';
+
+        if (error.error) {
+          if (typeof error.error === 'string') {
+            if (!error.error.trim().startsWith('<!DOCTYPE')) {
+              errorMessage = error.error;
+            }
+          } else if (typeof error.error === 'object') {
+            errorMessage =
+              error.error.message ||
+              error.error.error ||
+              error.error.detail ||
+              error.error.title ||
+              errorMessage;
+          }
+        }
+
+        if (errorMessage === 'An unexpected error occurred') {
+          if (error.statusText && error.statusText !== 'OK') {
+            errorMessage = error.statusText;
+          } else {
+            const statusMap: Record<number, string> = {
+              400: 'Bad Request',
+              401: 'Unauthorized',
+              403: 'Forbidden (Access Denied)',
+              404: 'Not Found',
+              405: 'Method Not Allowed',
+              408: 'Request Timeout',
+              409: 'Conflict',
+              422: 'Unprocessable Entity',
+              500: 'Internal Server Error',
+              502: 'Bad Gateway',
+              503: 'Service Unavailable',
+              504: 'Gateway Timeout',
+            };
+            errorMessage = statusMap[error.status] || `Error: ${error.status}`;
+          }
+        }
+
         notificationService.error(errorMessage);
       }
       return throwError(() => error);

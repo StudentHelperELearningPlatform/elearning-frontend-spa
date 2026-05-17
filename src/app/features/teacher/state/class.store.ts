@@ -14,6 +14,11 @@ import { TeacherClass } from '../models/class.model';
 import {
   TeacherClassDetail,
 } from '../models/class-detail.model';
+import {
+  mapClass,
+  mapClassDetail,
+  TeacherClassRaw,
+} from '@core/services/teacher-class.service';
 
 interface ClassState {
   classes: TeacherClass[];
@@ -59,11 +64,11 @@ export const ClassStore = signalStore(
       });
 
       http
-        .get<TeacherClass[]>(`${userApi}/teachers/classes`)
+        .get<TeacherClassRaw[]>(`${userApi}/teachers/classes`)
         .subscribe({
-          next: (classes) => {
+          next: (rawClasses) => {
             patchState(store, {
-              classes,
+              classes: rawClasses.map(mapClass),
               loading: false,
             });
           },
@@ -84,13 +89,13 @@ export const ClassStore = signalStore(
       });
 
       http
-        .get<TeacherClassDetail>(
+        .get<TeacherClassRaw>(
           `${userApi}/teachers/classes/${classId}`,
         )
         .subscribe({
-          next: (classDetail) => {
+          next: (rawDetail) => {
             patchState(store, {
-              currentClass: classDetail,
+              currentClass: mapClassDetail(rawDetail),
               loading: false,
             });
           },
@@ -113,13 +118,19 @@ export const ClassStore = signalStore(
         error: null,
       });
 
+      const body = {
+        name: payload.name,
+        bio: payload.description ?? '',
+      };
+
       http
-        .post<TeacherClass>(
+        .post<TeacherClassRaw>(
           `${userApi}/teachers/classes`,
-          payload,
+          body,
         )
         .subscribe({
-          next: (newClass) => {
+          next: (rawClass) => {
+            const newClass = mapClass(rawClass);
             patchState(store, {
               classes: [...store.classes(), newClass],
               loading: false,
@@ -136,49 +147,58 @@ export const ClassStore = signalStore(
     },
 
     updateClass(
-  classId: string,
-  payload: {
-    name?: string;
-    description?: string;
-  },
-) {
-  patchState(store, {
-    loading: true,
-    error: null,
-  });
-
-  http
-    .put<TeacherClass>(
-      `${userApi}/teachers/classes/${classId}`,
-      payload,
-    )
-    .subscribe({
-      next: (updatedClass) => {
-        patchState(store, {
-          classes: store.classes().map((c) =>
-            c.id === classId ? updatedClass : c,
-          ),
-
-          currentClass:
-            store.currentClass()?.id === classId
-              ? {
-                  ...store.currentClass()!,
-                  ...updatedClass,
-                }
-              : store.currentClass(),
-
-          loading: false,
-        });
+      classId: string,
+      payload: {
+        name?: string;
+        description?: string;
       },
+    ) {
+      patchState(store, {
+        loading: true,
+        error: null,
+      });
 
-      error: (err: Error) => {
-        patchState(store, {
-          loading: false,
-          error: err.message,
+      const body: Record<string, unknown> = {};
+      if (payload.name !== undefined) {
+        body['name'] = payload.name;
+      }
+      if (payload.description !== undefined) {
+        body['bio'] = payload.description;
+      }
+
+      http
+        .put<TeacherClassRaw>(
+          `${userApi}/teachers/classes/${classId}`,
+          body,
+        )
+        .subscribe({
+          next: (rawClass) => {
+            const updatedClass = mapClass(rawClass);
+            patchState(store, {
+              classes: store.classes().map((c) =>
+                c.id === classId ? updatedClass : c,
+              ),
+
+              currentClass:
+                store.currentClass()?.id === classId
+                  ? {
+                      ...store.currentClass()!,
+                      ...updatedClass,
+                    }
+                  : store.currentClass(),
+
+              loading: false,
+            });
+          },
+
+          error: (err: Error) => {
+            patchState(store, {
+              loading: false,
+              error: err.message,
+            });
+          },
         });
-      },
-    });
-},
+    },
 
 
    deleteClass(classId: string) {
