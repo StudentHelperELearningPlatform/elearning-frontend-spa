@@ -198,12 +198,20 @@ describe('QuizBuilderComponent', () => {
 
     component.saveQuiz();
 
-    expect(mockContentStore.createQuiz).toHaveBeenCalledWith({
-      title: 'New Quiz',
-      subject: 'Science',
-      status: 'DRAFT',
-      questions: [{ text: 'Q1', type: 'multiple-choice', difficulty: 'EASY' }],
-    });
+    expect(mockContentStore.createQuiz).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'New Quiz',
+        subject: 'Science',
+        status: 'DRAFT',
+        questions: [
+          expect.objectContaining({
+            text: 'Q1',
+            type: 'MULTIPLE_CHOICE',
+            difficulty: 'EASY',
+          }),
+        ],
+      })
+    );
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/teacher/content']);
   });
 

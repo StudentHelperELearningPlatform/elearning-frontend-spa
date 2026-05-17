@@ -128,6 +128,7 @@ interface GeneratedQuestion {
                           <select
                             [id]="'type-' + i"
                             formControlName="type"
+                            (change)="onTypeChange(i)"
                             class="w-full px-3 py-2 border-2 border-black rounded-lg font-bold bg-white"
                           >
                             <option value="multiple-choice">Multiple Choice</option>
@@ -150,6 +151,80 @@ interface GeneratedQuestion {
                             <option value="HARD">Hard</option>
                           </select>
                         </div>
+                      </div>
+
+                      <!-- Options & Answers Section -->
+                      <div class="ml-12 mt-4 pt-4 border-t-2 border-dashed border-gray-200 space-y-4">
+                        <span class="block text-xs font-black uppercase tracking-wider text-black">
+                          Options & Correct Answer <span class="text-[#0ABAB5]">*</span>
+                        </span>
+
+                        @if (question.get('type')?.value === 'true-false') {
+                          <div class="flex gap-6 mt-2">
+                            <label class="flex items-center gap-2 cursor-pointer font-bold">
+                              <input
+                                type="radio"
+                                [name]="'correct-' + i"
+                                value="0"
+                                [checked]="question.get('correctAnswer')?.value === '0'"
+                                (change)="setCorrectAnswer(i, '0')"
+                                class="w-5 h-5 text-[#0ABAB5] border-2 border-black focus:ring-[#0ABAB5]"
+                              />
+                              True
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-bold">
+                              <input
+                                type="radio"
+                                [name]="'correct-' + i"
+                                value="1"
+                                [checked]="question.get('correctAnswer')?.value === '1'"
+                                (change)="setCorrectAnswer(i, '1')"
+                                class="w-5 h-5 text-[#0ABAB5] border-2 border-black focus:ring-[#0ABAB5]"
+                              />
+                              False
+                            </label>
+                          </div>
+                        } @else {
+                          <div formArrayName="options" class="space-y-3">
+                            @for (opt of getOptions(i).controls; track opt; let j = $index) {
+                              <div [formGroupName]="j" class="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  [name]="'correct-' + i"
+                                  [value]="j.toString()"
+                                  [checked]="question.get('correctAnswer')?.value === j.toString()"
+                                  (change)="setCorrectAnswer(i, j.toString())"
+                                  class="w-5 h-5 text-[#0ABAB5] border-2 border-black focus:ring-[#0ABAB5] cursor-pointer shrink-0"
+                                  title="Mark as correct answer"
+                                />
+                                <input
+                                  formControlName="text"
+                                  class="flex-1 min-w-[100px] px-3 py-2 border-2 border-black rounded-lg font-bold text-sm focus:bg-[#0ABAB5]/5 focus:outline-none"
+                                  [placeholder]="'Option ' + (j + 1)"
+                                />
+                                @if (getOptions(i).length > 2) {
+                                  <button
+                                    type="button"
+                                    (click)="removeOption(i, j)"
+                                    class="w-10 h-10 shrink-0 flex items-center justify-center text-white bg-black border-2 border-black rounded-lg hover:bg-gray-800 transition-all"
+                                  >
+                                    <span class="material-icons text-[20px]">close</span>
+                                  </button>
+                                }
+                              </div>
+                            }
+                          </div>
+
+                          @if (getOptions(i).length < 6) {
+                            <button
+                              type="button"
+                              (click)="addOption(i)"
+                              class="mt-3 text-xs font-black text-black hover:text-[#0ABAB5] flex items-center uppercase tracking-wide transition-colors"
+                            >
+                              <span class="material-icons text-lg mr-1">add_circle</span> Add Option
+                            </button>
+                          }
+                        }
                       </div>
                     </div>
                   </div>
@@ -340,12 +415,100 @@ export class QuizBuilderComponent implements OnInit {
     return this.quizForm.get('questions') as FormArray;
   }
 
+  getOptions(index: number): FormArray {
+    return this.questions.at(index).get('options') as FormArray;
+  }
+
+  addOption(questionIndex: number) {
+    const optionsArray = this.getOptions(questionIndex);
+    optionsArray.push(this.fb.group({ text: ['', Validators.required] }));
+  }
+
+  removeOption(questionIndex: number, optionIndex: number) {
+    const questionGroup = this.questions.at(questionIndex);
+    const optionsArray = this.getOptions(questionIndex);
+    
+    optionsArray.removeAt(optionIndex);
+
+    // If the removed option was checked as the correct answer, reset the selected correctAnswer index
+    const correctAnswerVal = questionGroup.get('correctAnswer')?.value;
+    if (correctAnswerVal === optionIndex.toString()) {
+      questionGroup.get('correctAnswer')?.setValue('0');
+    } else {
+      const currentIdx = parseInt(correctAnswerVal || '0', 10);
+      if (currentIdx > optionIndex) {
+        questionGroup.get('correctAnswer')?.setValue((currentIdx - 1).toString());
+      }
+    }
+  }
+
+  onTypeChange(index: number) {
+    const question = this.questions.at(index);
+    const type = question.get('type')?.value;
+    const optionsArray = this.getOptions(index);
+
+    // Clear existing options
+    while (optionsArray.length !== 0) {
+      optionsArray.removeAt(0);
+    }
+
+    if (type === 'true-false') {
+      optionsArray.push(this.fb.group({ text: ['True'] }));
+      optionsArray.push(this.fb.group({ text: ['False'] }));
+      question.get('correctAnswer')?.setValue('0'); // default to True
+    } else {
+      optionsArray.push(this.fb.group({ text: ['Option 1', Validators.required] }));
+      optionsArray.push(this.fb.group({ text: ['Option 2', Validators.required] }));
+      optionsArray.push(this.fb.group({ text: ['Option 3', Validators.required] }));
+      question.get('correctAnswer')?.setValue('0'); // default to Option 1
+    }
+  }
+
+  setCorrectAnswer(questionIndex: number, value: string) {
+    this.questions.at(questionIndex).get('correctAnswer')?.setValue(value);
+  }
+
   addQuestion(data?: Partial<Question>) {
+    const optionsArray = this.fb.array([]) as FormArray;
+    
+    // Normalize types to handle lowercase/uppercase from backend or specs
+    const type = data?.type === 'TRUE_FALSE' ? 'true-false' : (data?.type === 'MULTIPLE_CHOICE' ? 'multiple-choice' : (data?.type || 'multiple-choice'));
+    
+    let selectedIndexStr = '0';
+
+    if (data?.options && data.options.length > 0) {
+      data.options.forEach((opt, idx) => {
+        optionsArray.push(
+          this.fb.group({
+            text: [opt.text || '', Validators.required],
+          })
+        );
+        if (data.correctAnswer && opt.text === data.correctAnswer) {
+          selectedIndexStr = idx.toString();
+        }
+      });
+    } else {
+      // Default options if not provided
+      if (type === 'true-false') {
+        optionsArray.push(this.fb.group({ text: ['True'] }));
+        optionsArray.push(this.fb.group({ text: ['False'] }));
+        selectedIndexStr = data?.correctAnswer === 'False' ? '1' : '0';
+      } else {
+        optionsArray.push(this.fb.group({ text: ['Option 1', Validators.required] }));
+        optionsArray.push(this.fb.group({ text: ['Option 2', Validators.required] }));
+        optionsArray.push(this.fb.group({ text: ['Option 3', Validators.required] }));
+        selectedIndexStr = '0';
+      }
+    }
+
     this.questions.push(
       this.fb.group({
+        id: [data?.id || crypto.randomUUID()],
         text: [data?.text || '', Validators.required],
-        type: [data?.type || 'multiple-choice'],
+        type: [type],
         difficulty: [data?.difficulty || 'MEDIUM'],
+        correctAnswer: [selectedIndexStr, Validators.required],
+        options: optionsArray,
       }),
     );
   }
@@ -408,11 +571,38 @@ export class QuizBuilderComponent implements OnInit {
   saveQuiz() {
     if (this.quizForm.valid) {
       const formValue = this.quizForm.value;
+      const questionsData = (formValue.questions || []).map((q: any) => {
+        const typeNormalized = q.type === 'true-false' ? 'TRUE_FALSE' : 'MULTIPLE_CHOICE';
+        
+        // Map FormArray options back to raw QuizOption shape
+        const options = (q.options || []).map((o: any, idx: number) => ({
+          id: `${q.id || crypto.randomUUID()}-o${idx + 1}`,
+          text: o.text || '',
+        }));
+
+        // Resolve correct answer text from selected index
+        let correctAnswer = '';
+        const selectedIndex = parseInt(q.correctAnswer || '0', 10);
+        if (!isNaN(selectedIndex) && options[selectedIndex]) {
+          correctAnswer = options[selectedIndex].text;
+        }
+
+        return {
+          id: q.id || crypto.randomUUID(),
+          text: q.text,
+          type: typeNormalized,
+          difficulty: q.difficulty || 'MEDIUM',
+          points: 10,
+          options,
+          correctAnswer,
+        };
+      });
+
       const quizData = {
         title: formValue.title ?? '',
         subject: formValue.subject ?? '',
         status: (formValue.status as 'PUBLISHED' | 'DRAFT') ?? 'DRAFT',
-        questions: (formValue.questions as Question[]) || [],
+        questions: questionsData,
       };
 
       if (this.isEdit && this.quizId) {
