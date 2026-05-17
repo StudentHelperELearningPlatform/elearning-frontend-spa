@@ -13,13 +13,7 @@ import { ModalComponent } from '../../../shared/components/modal/modal.component
 @Component({
   selector: 'app-quiz-player',
   standalone: true,
-  imports: [
-    CommonModule,
-    QuestionCardComponent,
-    TimerComponent,
-    ButtonComponent,
-    ModalComponent,
-  ],
+  imports: [CommonModule, QuestionCardComponent, TimerComponent, ButtonComponent, ModalComponent],
   templateUrl: './quiz-player.component.html',
 })
 export class QuizPlayerComponent implements OnInit {
@@ -85,12 +79,7 @@ export class QuizPlayerComponent implements OnInit {
       const attemptId = this.store.result()?.attemptId;
       if (!attemptId || this.resultsNavigated()) return;
       this.resultsNavigated.set(true);
-      this.router.navigate([
-        '/student/quizzes',
-        this.quizId(),
-        'results',
-        attemptId,
-      ]);
+      this.router.navigate(['/student/quizzes', this.quizId(), 'results', attemptId]);
     });
   }
 
@@ -190,8 +179,8 @@ export class QuizPlayerComponent implements OnInit {
 
     const question = this.store.currentQuiz()?.questions[index];
     const isCurrent = this.store.currentQuestionIndex() === index;
-    const isAnswered = question ? this.store.isAnswered(question.id) : false;
-    const isFlagged = question ? this.store.isFlagged(question.id) : false;
+    const isAnswered = question ? this.store.isAnswered(question.id)() : false;
+    const isFlagged = question ? this.store.isFlagged(question.id)() : false;
 
     if (isAnswered) {
       classes.push('answered', 'bg-[#0ABAB5]/20');
@@ -216,4 +205,3 @@ export class QuizPlayerComponent implements OnInit {
     this.router.navigate(['/student/dashboard']);
   }
 }
-

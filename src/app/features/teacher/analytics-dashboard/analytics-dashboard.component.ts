@@ -1,14 +1,15 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ContentStore } from '../store/content.store';
-import { ClassStore } from '../store/class.store';
+import { RouterModule } from '@angular/router';
+import { ContentStore } from '../state/content.store';
+import { ClassStore } from '../state/class.store';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
 
 @Component({
   selector: 'app-analytics-dashboard',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, CardComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent, CardComponent],
   template: `
     <div class="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
       
@@ -93,7 +94,7 @@ import { CardComponent } from '../../../shared/components/card/card.component';
                           </div>
                           <div>
                             <p class="font-bold text-black">{{ cls.name }}</p>
-                            <p class="text-xs text-gray-500 font-bold">{{ cls.code }}</p>
+                            <p class="text-xs text-gray-500 font-bold">{{ cls.name }}</p>
                           </div>
                         </div>
                       </td>
@@ -101,13 +102,13 @@ import { CardComponent } from '../../../shared/components/card/card.component';
                       <td class="p-4">
                         <div class="flex items-center space-x-2">
                           <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300 w-24">
-                            <div class="h-full bg-[#0ABAB5]" [style.width.%]="cls.averageGrade"></div>
+                            <div class="h-full bg-[#0ABAB5]" [style.width.%]="cls.studentCount"></div>
                           </div>
-                          <span class="text-sm font-bold text-gray-600">{{ cls.averageGrade }}%</span>
+                          <span class="text-sm font-bold text-gray-600">{{ cls.studentCount }}%</span>
                         </div>
                       </td>
                       <td class="p-4 text-right">
-                        <button class="px-4 py-2 bg-white text-black font-bold rounded-xl border-2 border-black hover:bg-black hover:text-white transition-colors text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px]">
+                        <button [routerLink]="['/teacher/classes', cls.id, 'stats']" class="px-4 py-2 bg-white text-black font-bold rounded-xl border-2 border-black hover:bg-black hover:text-white transition-colors text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px]">
                           View
                         </button>
                       </td>

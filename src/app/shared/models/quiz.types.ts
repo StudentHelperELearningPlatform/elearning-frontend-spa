@@ -57,3 +57,38 @@ export interface QuizResultDetail {
   timeSpent: number;
   questionBreakdown: QuestionResultBreakdown[];
 }
+
+export interface OptionResponse {
+  id: string;
+  optionText: string;
+  correct: boolean;
+}
+
+export interface QuestionResponse {
+  id: string;
+  questionText: string;
+  questionType: string;
+  correctAnswer: string;
+  status: 'APPROVED' | 'PENDING' | 'REJECTED';
+  orderIndex: number;
+  options: OptionResponse[];
+}
+
+export interface AddOptionRequest {
+  optionText: string;
+  correct: boolean;
+}
+
+export interface AddQuestionRequest {
+  questionText: string;
+  questionType: string;
+  correctAnswer: string;
+  options: AddOptionRequest[];
+}
+
+export interface UpdateQuestionRequest {
+  questionText?: string;
+  questionType?: string;
+  correctAnswer?: string;
+  options?: AddOptionRequest[];
+}

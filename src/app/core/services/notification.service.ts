@@ -1,18 +1,23 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { MessageService } from 'primeng/api';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  // Ensure the class name matches your imports exactly
-  success(message: string) {
-    console.log('Success:', message);
+  private readonly messageService = inject(MessageService, { optional: true });
+
+  success(message: string, summary = 'Success') {
+    this.messageService?.add({ severity: 'success', summary, detail: message, life: 3000 });
   }
-  error(message: string) {
-    console.error('Error:', message);
+
+  error(message: string, summary = 'Error') {
+    this.messageService?.add({ severity: 'error', summary, detail: message, life: 4000 });
   }
-  info(message: string) {
-    console.info('Info:', message);
+
+  info(message: string, summary = 'Info') {
+    this.messageService?.add({ severity: 'info', summary, detail: message, life: 3000 });
   }
-  warning(message: string) {
-    console.warn('Warning:', message);
+
+  warning(message: string, summary = 'Warning') {
+    this.messageService?.add({ severity: 'warn', summary, detail: message, life: 3500 });
   }
 }
