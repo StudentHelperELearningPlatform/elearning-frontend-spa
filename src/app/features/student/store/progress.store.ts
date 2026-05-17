@@ -62,6 +62,26 @@ export interface LessonStats {
   completionRate: number;
 }
 
+export interface MyLessonStats {
+  lessonId: string;
+  completionPercentage: number;
+  completedModules: number;
+  totalModules: number;
+  quizScore: number | null;
+  timeSpentMinutes: number | null;
+  lastAccessedAt: string | null;
+  classAverageScore?: number | null;
+}
+
+export interface HistoryEntry {
+  lessonId: string;
+  lessonTitle: string;
+  subject?: string;
+  status: 'not_started' | 'in_progress' | 'completed';
+  score: number | null;
+  dateCompleted: string | null;
+}
+
 export interface StudentDetailEntry {
   className: string;
   lessonTitle: string;
@@ -91,6 +111,16 @@ export interface ProgressState {
   lessonStats: LessonStats | null;
   lessonStatsLoading: boolean;
   lessonStatsError: string | null;
+
+  // S6-stats-01: per-lesson stats for the signed-in student
+  myLessonStats: MyLessonStats | null;
+  myLessonStatsLoading: boolean;
+  myLessonStatsError: string | null;
+
+  // S6-stats-01: full completion history for the signed-in student
+  myHistory: HistoryEntry[];
+  myHistoryLoading: boolean;
+  myHistoryError: string | null;
 
   // Mark complete
   markCompleteLoading: boolean;
@@ -132,6 +162,14 @@ const initialState: ProgressState = {
   lessonStats: null,
   lessonStatsLoading: false,
   lessonStatsError: null,
+
+  myLessonStats: null,
+  myLessonStatsLoading: false,
+  myLessonStatsError: null,
+
+  myHistory: [],
+  myHistoryLoading: false,
+  myHistoryError: null,
 
   markCompleteLoading: false,
   markCompleteError: null,
@@ -323,6 +361,45 @@ export const ProgressStore = signalStore(
           )
         )
       )
+    ),
+
+    // ── S6-stats-01: student-side stats ─────────────────────────────────────
+    loadMyLessonStats: rxMethod<{ lessonId: string }>(
+      pipe(
+        tap(() => patchState(store, { myLessonStatsLoading: true, myLessonStatsError: null })),
+        switchMap(({ lessonId }) =>
+          http.get<MyLessonStats>(`${apiBase}/progress/me/lessons/${lessonId}/stats`).pipe(
+            tapResponse({
+              next: (stats) =>
+                patchState(store, { myLessonStats: stats, myLessonStatsLoading: false }),
+              error: (err: { message?: string }) =>
+                patchState(store, {
+                  myLessonStatsLoading: false,
+                  myLessonStatsError: err?.message ?? 'Failed to load lesson stats',
+                }),
+            }),
+          ),
+        ),
+      ),
+    ),
+
+    loadMyHistory: rxMethod<void>(
+      pipe(
+        tap(() => patchState(store, { myHistoryLoading: true, myHistoryError: null })),
+        switchMap(() =>
+          http.get<HistoryEntry[]>(`${apiBase}/progress/me/history`).pipe(
+            tapResponse({
+              next: (history) =>
+                patchState(store, { myHistory: history ?? [], myHistoryLoading: false }),
+              error: (err: { message?: string }) =>
+                patchState(store, {
+                  myHistoryLoading: false,
+                  myHistoryError: err?.message ?? 'Failed to load history',
+                }),
+            }),
+          ),
+        ),
+      ),
     ),
   }))
 );

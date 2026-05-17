@@ -14,6 +14,11 @@ export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
   { path: 'lessons', component: LessonListComponent },
   { path: 'milestones', component: MilestonesComponent },
+  {
+    path: 'history',
+    loadComponent: () =>
+      import('./history/history.component').then((m) => m.HistoryComponent),
+  },
   { path: 'learning-path', redirectTo: 'learning-paths/path-1', pathMatch: 'full' },
   { path: 'learning-paths/:id', component: LearningPathComponent },
   {

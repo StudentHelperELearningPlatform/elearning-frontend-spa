@@ -6,6 +6,8 @@ import { ProgressStore } from './progress.store';
 import type {
   DashboardData,
   LessonStats,
+  MyLessonStats,
+  HistoryEntry,
   StudentSummary,
   StudentDetailEntry,
   StudentHistory,
@@ -301,6 +303,87 @@ describe('ProgressStore', () => {
       req.flush('Not found', { status: 404, statusText: 'Not Found' });
       expect(store.selectedStudentLoading()).toBe(false);
       expect(store.selectedStudentError()).toBeTruthy();
+    });
+  });
+
+  // ── S6-stats-01: loadMyLessonStats ────────────────────────────────────────
+
+  describe('loadMyLessonStats()', () => {
+    const mockMyStats: MyLessonStats = {
+      lessonId: 'lesson-7',
+      completionPercentage: 60,
+      completedModules: 3,
+      totalModules: 5,
+      quizScore: 88,
+      timeSpentMinutes: 24,
+      lastAccessedAt: '2026-05-10T08:00:00Z',
+      classAverageScore: 76,
+    };
+
+    it('fetches per-lesson stats for the signed-in student', () => {
+      store.loadMyLessonStats({ lessonId: 'lesson-7' });
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/lessons/lesson-7/stats'),
+      );
+      req.flush(mockMyStats);
+      expect(store.myLessonStats()).toEqual(mockMyStats);
+      expect(store.myLessonStatsLoading()).toBe(false);
+    });
+
+    it('sets myLessonStatsError on failure', () => {
+      store.loadMyLessonStats({ lessonId: 'lesson-7' });
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/lessons/lesson-7/stats'),
+      );
+      req.flush('boom', { status: 500, statusText: 'Server Error' });
+      expect(store.myLessonStatsLoading()).toBe(false);
+      expect(store.myLessonStatsError()).toBeTruthy();
+    });
+  });
+
+  // ── S6-stats-01: loadMyHistory ────────────────────────────────────────────
+
+  describe('loadMyHistory()', () => {
+    const mockHistoryRows: HistoryEntry[] = [
+      {
+        lessonId: 'lesson-a',
+        lessonTitle: 'Algebra',
+        subject: 'Math',
+        status: 'completed',
+        score: 91,
+        dateCompleted: '2026-05-05T10:00:00Z',
+      },
+      {
+        lessonId: 'lesson-b',
+        lessonTitle: 'Cells',
+        subject: 'Biology',
+        status: 'completed',
+        score: 72,
+        dateCompleted: '2026-04-30T10:00:00Z',
+      },
+    ];
+
+    it('populates myHistory on success', () => {
+      store.loadMyHistory();
+      const req = http.expectOne((r) => r.url.includes('/progress/me/history'));
+      req.flush(mockHistoryRows);
+      expect(store.myHistory()).toEqual(mockHistoryRows);
+      expect(store.myHistoryLoading()).toBe(false);
+    });
+
+    it('coerces a null response into an empty array', () => {
+      store.loadMyHistory();
+      const req = http.expectOne((r) => r.url.includes('/progress/me/history'));
+      req.flush(null);
+      expect(store.myHistory()).toEqual([]);
+    });
+
+    it('sets myHistoryError on failure', () => {
+      store.loadMyHistory();
+      const req = http.expectOne((r) => r.url.includes('/progress/me/history'));
+      req.flush('nope', { status: 500, statusText: 'Server Error' });
+      expect(store.myHistoryLoading()).toBe(false);
+      expect(store.myHistoryError()).toBeTruthy();
     });
   });
 

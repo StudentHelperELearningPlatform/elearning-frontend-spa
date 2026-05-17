@@ -15,6 +15,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     activeStreak: WritableSignal<number>;
     skillLevels: WritableSignal<unknown[]>;
     loadDashboard: ReturnType<typeof vi.fn>;
+    loadMyDashboard: ReturnType<typeof vi.fn>;
     loading: WritableSignal<boolean>;
     error: WritableSignal<string | null>;
     recentMilestones: WritableSignal<unknown[]>;
@@ -23,6 +24,9 @@ describe('ProgressDashboardComponent (Logic)', () => {
     progressRecords: WritableSignal<unknown[]>;
     overallProgressPercent: WritableSignal<number>;
     continueLesson: WritableSignal<unknown>;
+    dashboard: WritableSignal<unknown>;
+    dashboardLoading: WritableSignal<boolean>;
+    dashboardError: WritableSignal<string | null>;
   };
   let authStoreStub: ReturnType<typeof createAuthStoreStub>;
   let routerMock: {
@@ -42,6 +46,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       activeStreak: signal(5),
       skillLevels: signal([]),
       loadDashboard: vi.fn(),
+      loadMyDashboard: vi.fn(),
       loading: signal(false),
       error: signal(null),
       recentMilestones: signal([]),
@@ -50,6 +55,9 @@ describe('ProgressDashboardComponent (Logic)', () => {
       progressRecords: signal([]),
       overallProgressPercent: signal(50),
       continueLesson: signal(null),
+      dashboard: signal(null),
+      dashboardLoading: signal(false),
+      dashboardError: signal(null),
     };
 
     authStoreStub = createAuthStoreStub({
@@ -85,6 +93,13 @@ describe('ProgressDashboardComponent (Logic)', () => {
       component.ngOnInit();
     });
     expect(progressStoreMock.loadDashboard).toHaveBeenCalledWith('123');
+  });
+
+  it('should also pull aggregate stats from loadMyDashboard on init', () => {
+    TestBed.runInInjectionContext(() => {
+      component.ngOnInit();
+    });
+    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
   });
 
   it('should use fallback studentId "1" if user is not set', () => {
