@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { identityHeaderInterceptor } from '../../app.config';
 import { KeycloakService } from 'keycloak-angular';
 
@@ -13,6 +13,7 @@ describe('identityHeaderInterceptor', () => {
   };
 
   const setupTestBed = (token: string | null | undefined, shouldThrowError = false) => {
+    TestBed.resetTestingModule();
     mockKeycloakService = {
       getKeycloakInstance: () => {
         if (shouldThrowError) {

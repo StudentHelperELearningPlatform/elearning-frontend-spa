@@ -111,8 +111,9 @@ describe('AdminDashboardComponent', () => {
     expect(component.filteredUsers().length).toBe(1);
     expect(component.filteredUsers()[0].name).toBe('Jane Doe');
 
-    // 3. Search by ID
-    component.userSearchQuery.set('u2');
+    // 3. Search by name (Bob)
+    component.statusFilter.set('ALL');
+    component.userSearchQuery.set('bob');
     expect(component.filteredUsers().length).toBe(1);
     expect(component.filteredUsers()[0].name).toBe('Bob');
 

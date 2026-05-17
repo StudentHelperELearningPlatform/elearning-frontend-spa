@@ -55,7 +55,7 @@ export class TeacherClassService {
   private readonly baseUrl = `${this.apiUrl}/teachers/classes`;
 
   getClasses(): Observable<TeacherClass[]> {
-    return this.http.get<unknown[]>(this.baseUrl).pipe(
+    return this.http.get<TeacherClassRaw[]>(this.baseUrl).pipe(
       map((list) => list.map(mapClass))
     );
   }
@@ -68,13 +68,13 @@ export class TeacherClassService {
       nane: data.name,
       bio: data.description ?? '',
     };
-    return this.http.post<unknown>(this.baseUrl, payload).pipe(
+    return this.http.post<TeacherClassRaw>(this.baseUrl, payload).pipe(
       map(mapClass)
     );
   }
 
   getClassDetail(classId: string): Observable<TeacherClassDetail> {
-    return this.http.get<unknown>(
+    return this.http.get<TeacherClassRaw>(
       `${this.baseUrl}/${classId}`,
     ).pipe(
       map(mapClassDetail)
@@ -95,7 +95,7 @@ export class TeacherClassService {
     if (data.description !== undefined) {
       payload['bio'] = data.description;
     }
-    return this.http.put<unknown>(
+    return this.http.put<TeacherClassRaw>(
       `${this.baseUrl}/${classId}`,
       payload,
     ).pipe(
