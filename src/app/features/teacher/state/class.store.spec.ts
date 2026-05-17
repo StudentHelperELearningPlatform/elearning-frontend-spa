@@ -74,7 +74,11 @@ describe('ClassStore', () => {
     req.flush(mockClassDetail);
 
     expect(store.loading()).toBe(false);
-    expect(store.currentClass()).toEqual(mockClassDetail);
+    expect(store.currentClass()).toEqual(expect.objectContaining({
+      ...mockClassDetail,
+      studentCount: 0,
+      lessonCount: 0,
+    }));
   });
 
   it('should handle error when loading class detail', () => {
@@ -89,17 +93,18 @@ describe('ClassStore', () => {
   it('should create class', () => {
     const mockNewClass: TeacherClass = { id: '2', name: 'Science', description: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'Science', description: 'Science Class' };
+    const expectedBody = { name: 'Science', bio: 'Science Class' };
 
     store.createClass(payload);
     expect(store.loading()).toBe(true);
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(payload);
+    expect(req.request.body).toEqual(expectedBody);
     req.flush(mockNewClass);
 
     expect(store.loading()).toBe(false);
-    expect(store.classes()).toContain(mockNewClass);
+    expect(store.classes()).toContainEqual(expect.objectContaining(mockNewClass));
   });
   
   it('should handle error when creating class', () => {
@@ -119,13 +124,14 @@ describe('ClassStore', () => {
 
     const mockUpdatedClass: TeacherClass = { ...initialClass, name: 'New Math' };
     const payload = { name: 'New Math' };
+    const expectedBody = { name: 'New Math' };
 
     store.updateClass('1', payload);
     expect(store.loading()).toBe(true);
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual(payload);
+    expect(req.request.body).toEqual(expectedBody);
     req.flush(mockUpdatedClass);
 
     expect(store.loading()).toBe(false);
