@@ -7,7 +7,8 @@ import {
 } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import {
   CONTENT_API_URL,
@@ -154,19 +155,32 @@ export const ContentStore = signalStore(
       });
 
       forkJoin({
-        lessons: http.get<RawLesson[]>(
+        lessons: http.get<unknown>(
           `${contentApi}/lessons`,
         ),
 
         profile: http.get<RawProfile | null>(
           `${userApi}/teachers/me/profile`,
+        ).pipe(
+          catchError((err) => {
+            console.error('Failed to load profile in dashboard', err);
+            return of(null);
+          })
         ),
       }).subscribe({
 
         next: ({ lessons, profile }) => {
+          const lessonsResponse = lessons as Record<string, unknown>;
+          let lessonsArray: RawLesson[] = [];
+          
+          if (Array.isArray(lessonsResponse)) {
+            lessonsArray = lessonsResponse;
+          } else if (lessonsResponse) {
+            lessonsArray = (lessonsResponse['items'] ?? lessonsResponse['content'] ?? []) as RawLesson[];
+          }
 
           const mappedLessons: ContentItem[] =
-            (lessons ?? []).map((l) => ({
+            lessonsArray.map((l) => ({
               id: l.id ?? '',
               title: l.title ?? '',
               subject: l.subject ?? '',
