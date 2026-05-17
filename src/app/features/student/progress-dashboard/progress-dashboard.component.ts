@@ -88,13 +88,14 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnInit() {
-    // Use the authenticated student's own ID — guard against '1' placeholder
-    // that would call the wrong account for unauthenticated/test states.
-    const studentId = this.authStore.user()?.id;
-    if (studentId) {
-      this.progressStore.loadDashboard(studentId);
-    }
-    // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
+    // Single source of truth: /progress/me/dashboard. It's token-based (no
+    // path param required), returns the full DashboardData payload, and the
+    // store populates every UI-facing slot from that response.
+    //
+    // The legacy /students/{id}/dashboard call was removed: it required a
+    // Keycloak UUID the backend wouldn't accept and was returning 4xx —
+    // surfacing as misleading "Error: OK" toasts because the gateway's
+    // error body was unparseable JSON.
     this.progressStore.loadMyDashboard();
   }
 

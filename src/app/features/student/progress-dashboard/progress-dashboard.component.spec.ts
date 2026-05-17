@@ -88,28 +88,29 @@ describe('ProgressDashboardComponent (Logic)', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should call progressStore.loadDashboard on init', () => {
-    TestBed.runInInjectionContext(() => {
-      component.ngOnInit();
-    });
-    expect(progressStoreMock.loadDashboard).toHaveBeenCalledWith('123');
-  });
-
-  it('should also pull aggregate stats from loadMyDashboard on init', () => {
+  it('should call progressStore.loadMyDashboard on init', () => {
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });
     expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
   });
 
-  it('should skip loadDashboard when user is not yet loaded', () => {
-    (authStoreStub.user as WritableSignal<{ id: string, name: string } | null>).set(null);
+  it('should NOT call the legacy loadDashboard(studentId) endpoint', () => {
+    // The /students/{id}/dashboard path is unwired — everything must come
+    // from the token-based /progress/me/dashboard endpoint.
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });
     expect(progressStoreMock.loadDashboard).not.toHaveBeenCalled();
-    // loadMyDashboard is token-based and always safe
+  });
+
+  it('should still hit loadMyDashboard when the user signal is not yet populated', () => {
+    (authStoreStub.user as WritableSignal<{ id: string, name: string } | null>).set(null);
+    TestBed.runInInjectionContext(() => {
+      component.ngOnInit();
+    });
     expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
+    expect(progressStoreMock.loadDashboard).not.toHaveBeenCalled();
   });
 
   describe('greeting', () => {

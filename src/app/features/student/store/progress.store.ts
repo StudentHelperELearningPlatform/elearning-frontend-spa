@@ -281,12 +281,41 @@ export const ProgressStore = signalStore(
 
     loadMyDashboard: rxMethod<void>(
       pipe(
-        tap(() => patchState(store, { dashboardLoading: true, dashboardError: null })),
+        tap(() =>
+          patchState(store, {
+            dashboardLoading: true,
+            dashboardError: null,
+            loading: true,
+            error: null,
+          }),
+        ),
         switchMap(() =>
           http.get<DashboardData>(`${apiBase}/progress/me/dashboard`).pipe(
             tapResponse({
-              next: (dashboard) => patchState(store, { dashboard, dashboardLoading: false }),
-              error: (err: { message?: string }) => patchState(store, { dashboardLoading: false, dashboardError: err?.message ?? 'Failed to load dashboard' }),
+              // /progress/me/dashboard returns the full DashboardData payload —
+              // mirror it into the legacy state slots so the dashboard UI
+              // (which still reads student/skillLevels/streak/etc.) renders
+              // without depending on the broken /students/{id}/dashboard path.
+              next: (dashboard) =>
+                patchState(store, {
+                  dashboard,
+                  dashboardLoading: false,
+                  loading: false,
+                  student: dashboard.student ?? null,
+                  skillLevels: dashboard.skillLevels ?? [],
+                  streak: dashboard.streak ?? null,
+                  progressRecords: dashboard.progressRecords ?? [],
+                  recentActivity: dashboard.recentActivity ?? [],
+                  milestones: dashboard.milestones ?? [],
+                  upcomingQuizzes: dashboard.upcomingQuizzes ?? [],
+                }),
+              error: (err: { message?: string }) =>
+                patchState(store, {
+                  dashboardLoading: false,
+                  loading: false,
+                  dashboardError: err?.message ?? 'Failed to load dashboard',
+                  error: err?.message ?? 'Failed to load dashboard',
+                }),
             })
           )
         )

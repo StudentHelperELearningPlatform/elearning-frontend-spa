@@ -172,6 +172,66 @@ describe('ProgressStore', () => {
       expect(store.dashboardLoading()).toBe(false);
       expect(store.dashboardError()).toBeTruthy();
     });
+
+    it('should populate the legacy state slots (student, skillLevels, streak, …) from the response', () => {
+      // The progress-dashboard UI binds to these legacy slots. Since the
+      // /students/{id}/dashboard endpoint was retired, loadMyDashboard must
+      // be the single source that fills them.
+      const richDashboard: DashboardData = {
+        ...mockDashboard,
+        student: {
+          id: 'stu-7',
+          firstName: 'River',
+          totalLessons: 10,
+          completedLessons: 7,
+        },
+        skillLevels: [
+          { subject: 'Math', level: 80 },
+          { subject: 'Bio', level: 60 },
+        ],
+        streak: {
+          currentStreak: 5,
+          longestStreak: 9,
+          lastActivityDate: '2026-05-16T00:00:00Z',
+        },
+        progressRecords: [
+          {
+            id: 'P1',
+            lessonId: 'L1',
+            lessonTitle: 'Intro',
+            subject: 'Math',
+            status: 'IN_PROGRESS',
+            lastAccessedAt: '2026-05-15T10:00:00Z',
+            completedModules: 2,
+            totalModules: 4,
+          },
+        ],
+        milestones: [
+          {
+            id: 'M1',
+            title: 'First lesson',
+            description: 'Completed your first lesson',
+            category: 'learning',
+            icon: 'star',
+            earnedAt: '2026-05-01T00:00:00Z',
+          },
+        ],
+      };
+
+      store.loadMyDashboard();
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/dashboard'),
+      );
+      req.flush(richDashboard);
+
+      expect(store.student()).toEqual(richDashboard.student);
+      expect(store.skillLevels()).toEqual(richDashboard.skillLevels);
+      expect(store.streak()).toEqual(richDashboard.streak);
+      expect(store.progressRecords()).toEqual(richDashboard.progressRecords);
+      expect(store.milestones()).toEqual(richDashboard.milestones);
+      expect(store.loading()).toBe(false);
+      expect(store.error()).toBeNull();
+    });
   });
 
   // ── loadDashboard (Legacy) ─────────────────────────────────────────────────
