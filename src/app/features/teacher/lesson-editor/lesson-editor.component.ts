@@ -134,7 +134,7 @@ interface MetadataForm {
               (btnClick)="onSaveDraft()"
               [disabled]="store.saveState() === 'saving'"
             >
-              Save Draft
+              {{ saveButtonLabel() }}
             </app-button>
           </div>
 
@@ -385,6 +385,10 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   protected readonly difficultyOptions = DIFFICULTIES;
   protected readonly moduleTypes = MODULE_TYPES;
   protected readonly modules = computed(() => this.store.lesson().modules);
+  protected readonly isEditRoute = signal<boolean>(false);
+  protected readonly saveButtonLabel = computed(() =>
+    this.isEditRoute() || !!this.store.lesson().id ? 'Save Edit' : 'Save Draft',
+  );
 
   protected readonly metaForm: FormGroup<{
     title: AbstractControl<string>;
@@ -433,6 +437,7 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     this.store.reset();
+    this.isEditRoute.set(!!id);
     if (id) this.store.loadLesson(id);
 
     this.metaForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((value) => {
@@ -496,7 +501,13 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     return this.collapsed.has(id);
   }
   protected onSaveDraft(): void {
-    this.store.save();
+    const wasNewLesson = !this.store.lesson().id;
+    this.store.save((saved) => {
+      if (wasNewLesson && saved.id) {
+        this.isEditRoute.set(true);
+        this.router.navigate(['/teacher/lessons', saved.id, 'edit'], { replaceUrl: true });
+      }
+    });
   }
 
   protected onPublishClicked(): void {
