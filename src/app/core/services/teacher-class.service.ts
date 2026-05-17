@@ -12,8 +12,23 @@ import {
   ClassLesson,
 } from '@features/teacher/models/class-detail.model';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const mapClass = (c: any): TeacherClass => ({
+export interface TeacherClassRaw {
+  id?: string;
+  name?: string;
+  nane?: string;
+  description?: string;
+  bio?: string;
+  studentCount?: number;
+  lessonCount?: number;
+  createdAt?: string;
+  code?: string;
+  averageGrade?: number;
+  students?: ClassStudent[];
+  lessons?: ClassLesson[];
+  [key: string]: unknown;
+}
+
+export const mapClass = (c: TeacherClassRaw): TeacherClass => ({
   id: c.id ?? '',
   name: c.name ?? c.nane ?? '',
   description: c.description ?? c.bio ?? '',
@@ -24,8 +39,7 @@ export const mapClass = (c: any): TeacherClass => ({
   averageGrade: c.averageGrade,
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const mapClassDetail = (c: any): TeacherClassDetail => ({
+export const mapClassDetail = (c: TeacherClassRaw): TeacherClassDetail => ({
   ...mapClass(c),
   students: c.students ?? [],
   lessons: c.lessons ?? [],

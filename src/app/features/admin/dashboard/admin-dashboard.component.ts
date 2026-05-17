@@ -11,7 +11,7 @@ interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'STUDENT' | 'TEACHER' | 'PARENT' | 'ADMIN';
+  role: 'STUDENT' | 'TEACHER' | 'ADMIN';
   status: 'ACTIVE' | 'BANNED' | 'PENDING';
   avatarSeed?: string;
   raw: AdminUserRaw; // Dynamic inspection of all backend fields
@@ -944,7 +944,7 @@ export class AdminDashboardComponent implements OnInit {
                 id: finalId,
                 name: userName,
                 email: (u.email as string | undefined) || '',
-                role: ((u.role as string | undefined) || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'PARENT' | 'ADMIN',
+                role: ((u.role as string | undefined) || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'ADMIN',
                 status: (isBanned ? 'BANNED' : 'ACTIVE') as 'ACTIVE' | 'BANNED' | 'PENDING',
                 avatarSeed: (u.email as string | undefined) || finalId || 'User',
                 raw: u
@@ -973,7 +973,7 @@ export class AdminDashboardComponent implements OnInit {
                 id: finalId,
                 name: userName,
                 email: (u.email as string | undefined) || '',
-                role: ((u.role as string | undefined) || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'PARENT' | 'ADMIN',
+                role: ((u.role as string | undefined) || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'ADMIN',
                 status: 'BANNED' as const,
                 avatarSeed: (u.email as string | undefined) || finalId || 'Banned',
                 raw: u

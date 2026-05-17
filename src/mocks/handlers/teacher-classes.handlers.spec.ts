@@ -78,7 +78,7 @@ describe('teacherClassesHandlers', () => {
   });
 
   describe('PUT /teachers/classes/:classId', () => {
-    it('should update class', async () => {
+    it('should update class with standard name', async () => {
       const url = getTargetUrl('/teachers/classes/1');
       const response = await fetch(url, {
         method: 'PUT',
@@ -88,7 +88,19 @@ describe('teacherClassesHandlers', () => {
       
       expect(response.status).toBe(200);
       const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+
+    it('should update class with nane, bio, and description properties', async () => {
+      const url = getTargetUrl('/teachers/classes/1');
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nane: 'Typo Name', bio: 'Short Bio', description: 'Longer Desc' })
+      });
       
+      expect(response.status).toBe(200);
+      const data = await response.json();
       expect(data.success).toBe(true);
     });
   });

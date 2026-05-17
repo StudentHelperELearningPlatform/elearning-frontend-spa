@@ -22,7 +22,7 @@ import { GlobalErrorHandler } from '@core/services/error-handler.service';
 import { environment } from '../environments/environment';
 import { API_URL, CONTENT_API_URL, USER_PLATFORM_API_URL, QUIZ_API_URL, LEARNING_PATH_API_URL, AUTH_API_URL } from '@core/tokens/api.token';
 
-const identityHeaderInterceptor: HttpInterceptorFn = (req, next) => {
+export const identityHeaderInterceptor: HttpInterceptorFn = (req, next) => {
   // Only add headers for our own API calls
   const isApiCall =
     req.url.includes('/api/v1') ||

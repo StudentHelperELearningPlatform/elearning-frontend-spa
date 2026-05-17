@@ -15,11 +15,15 @@ describe('AdminDashboardComponent', () => {
 
   const mockUsers: AdminUserRaw[] = [
     { id: 'u1', name: 'Alice', email: 'alice@example.com', role: 'STUDENT', status: 'ACTIVE' },
-    { id: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'BANNED' }
+    { id: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'BANNED' },
+    { keycloakId: '11111111-2222-3333-4444-555555555555', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', role: 'ADMIN' },
+    { sub: '22222222-3333-4444-5555-666666666666', username: 'john_uname', email: 'john@example.com' },
+    { randomPropUuid: '33333333-4444-5555-6666-777777777777', email: 'random@example.com' }
   ];
 
   const mockBannedUsers: AdminUserRaw[] = [
-    { userId: 'u2', sub: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'BANNED' }
+    { userId: 'u2', sub: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'BANNED' },
+    { targetUserId: '44444444-5555-6666-7777-888888888888', username: 'banned_uname', email: 'banned@example.com' }
   ];
 
   const mockLessons: AdminLessonRaw[] = [
@@ -83,7 +87,7 @@ describe('AdminDashboardComponent', () => {
   it('should initialize and load all tables correctly on init', () => {
     fixture.detectChanges(); // triggers ngOnInit
 
-    expect(component.users().length).toBe(2);
+    expect(component.users().length).toBe(5);
     expect(component.lessons().length).toBe(1);
     expect(component.classes().length).toBe(1);
     expect(component.contactMessages().length).toBe(1);
@@ -97,16 +101,34 @@ describe('AdminDashboardComponent', () => {
   it('should filter users by search query and status', () => {
     fixture.detectChanges();
 
-    // Search query check
+    // 1. Search by name
     component.userSearchQuery.set('Alice');
     expect(component.filteredUsers().length).toBe(1);
     expect(component.filteredUsers()[0].name).toBe('Alice');
 
-    // Status filter check
+    // 2. Search by email
+    component.userSearchQuery.set('jane@example.com');
+    expect(component.filteredUsers().length).toBe(1);
+    expect(component.filteredUsers()[0].name).toBe('Jane Doe');
+
+    // 3. Search by ID
+    component.userSearchQuery.set('u2');
+    expect(component.filteredUsers().length).toBe(1);
+    expect(component.filteredUsers()[0].name).toBe('Bob');
+
+    // 4. Search with no match
+    component.userSearchQuery.set('NonexistentUserQuery');
+    expect(component.filteredUsers().length).toBe(0);
+
+    // 5. Status filter check with specific status
     component.userSearchQuery.set('');
     component.statusFilter.set('BANNED');
     expect(component.filteredUsers().length).toBe(1);
     expect(component.filteredUsers()[0].name).toBe('Bob');
+
+    // 6. Status filter check with ALL
+    component.statusFilter.set('ALL');
+    expect(component.filteredUsers().length).toBe(5);
   });
 
   it('should update search query correctly', () => {
@@ -116,12 +138,17 @@ describe('AdminDashboardComponent', () => {
   });
 
   it('should parse object entries properly', () => {
-    const obj = { age: 30, city: 'Cluj', avatarSeed: 'x', raw: {} };
+    const obj = { age: 30, city: 'Cluj', avatarSeed: 'x', raw: {}, nestedObj: { custom: 123 } };
     const entries = component.getObjectEntries(obj);
     expect(entries).toEqual([
       { key: 'age', value: 30 },
-      { key: 'city', value: 'Cluj' }
+      { key: 'city', value: 'Cluj' },
+      { key: 'nestedObj', value: '{"custom":123}' }
     ]);
+
+    // Handle null/undefined checks
+    expect(component.getObjectEntries(null)).toEqual([]);
+    expect(component.getObjectEntries(undefined)).toEqual([]);
   });
 
   it('should handle unban action successfully if confirmed', () => {

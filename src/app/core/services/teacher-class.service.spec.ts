@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { TeacherClassService } from './teacher-class.service';
+import { TeacherClassService, mapClass, mapClassDetail, TeacherClassRaw } from './teacher-class.service';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { TeacherClass } from '@features/teacher/models/class.model';
 import { TeacherClassDetail, ClassStudent, ClassLesson } from '@features/teacher/models/class-detail.model';
@@ -26,6 +26,33 @@ describe('TeacherClassService', () => {
 
   afterEach(() => {
     httpTestingController.verify();
+  });
+
+  it('should map class with fallback values', () => {
+    const raw: TeacherClassRaw = {
+      id: undefined,
+      nane: 'Nane Fallback',
+      bio: 'Bio Fallback',
+      studentCount: undefined,
+      lessonCount: undefined,
+      createdAt: undefined
+    };
+    const mapped = mapClass(raw);
+    expect(mapped.id).toBe('');
+    expect(mapped.name).toBe('Nane Fallback');
+    expect(mapped.description).toBe('Bio Fallback');
+    expect(mapped.studentCount).toBe(0);
+    expect(mapped.lessonCount).toBe(0);
+    expect(mapped.createdAt).toBeDefined();
+
+    const detailRaw: TeacherClassRaw = {
+      ...raw,
+      students: undefined,
+      lessons: undefined
+    };
+    const mappedDetail = mapClassDetail(detailRaw);
+    expect(mappedDetail.students).toEqual([]);
+    expect(mappedDetail.lessons).toEqual([]);
   });
 
   it('should get classes', () => {
