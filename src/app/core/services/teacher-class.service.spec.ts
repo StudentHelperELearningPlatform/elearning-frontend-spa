@@ -45,6 +45,8 @@ describe('TeacherClassService', () => {
   it('should create class', () => {
     const mockNewClass: TeacherClass = { id: '2', name: 'Science', description: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'Science', description: 'Science Class' };
+    const expectedRequest = { nane: 'Science', bio: 'Science Class' };
+    const responsePayload = { id: '2', nane: 'Science', bio: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
 
     service.createClass(payload).subscribe((newClass) => {
       expect(newClass).toEqual(mockNewClass);
@@ -52,13 +54,13 @@ describe('TeacherClassService', () => {
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(payload);
-    req.flush(mockNewClass);
+    expect(req.request.body).toEqual(expectedRequest);
+    req.flush(responsePayload);
   });
 
   it('should get class detail', () => {
     const mockClassDetail: TeacherClassDetail = {
-      id: '1', name: 'Math', students: [], lessons: [], createdAt: '2023-01-01T00:00:00Z', studentCount: 0, lessonCount: 0
+      id: '1', name: 'Math', description: '', students: [], lessons: [], createdAt: '2023-01-01T00:00:00Z', studentCount: 0, lessonCount: 0
     };
 
     service.getClassDetail('1').subscribe((detail) => {
@@ -71,8 +73,10 @@ describe('TeacherClassService', () => {
   });
 
   it('should update class', () => {
-    const mockUpdatedClass: TeacherClass = { id: '1', name: 'New Math', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const mockUpdatedClass: TeacherClass = { id: '1', name: 'New Math', description: '', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'New Math' };
+    const expectedRequest = { nane: 'New Math' };
+    const responsePayload = { id: '1', nane: 'New Math', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
 
     service.updateClass('1', payload).subscribe((updatedClass) => {
       expect(updatedClass).toEqual(mockUpdatedClass);
@@ -80,8 +84,8 @@ describe('TeacherClassService', () => {
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual(payload);
-    req.flush(mockUpdatedClass);
+    expect(req.request.body).toEqual(expectedRequest);
+    req.flush(responsePayload);
   });
 
   it('should delete class', () => {

@@ -97,8 +97,8 @@ export const createClass = http.post(base, async ({ request }) => {
 
   const newClass: ClassItem = {
     id: crypto.randomUUID(),
-    name: (body['name'] as string) ?? 'Untitled',
-    description: (body['description'] as string) ?? '',
+    name: (body['nane'] as string | undefined) ?? (body['name'] as string | undefined) ?? 'Untitled',
+    description: (body['bio'] as string | undefined) ?? (body['description'] as string | undefined) ?? '',
     studentCount: 0,
     lessonCount: 0,
     createdAt: new Date().toISOString(),
@@ -131,8 +131,22 @@ export const updateClass = http.put(`${base}/:classId`, async (req: MockRequest)
   const classId = getParam(req.params, 'classId');
   const body = parseJsonBody(req);
 
+  const mappedUpdate: Partial<ClassItem> = {};
+  if (body['nane'] !== undefined) {
+    mappedUpdate.name = body['nane'] as string;
+  }
+  if (body['name'] !== undefined) {
+    mappedUpdate.name = body['name'] as string;
+  }
+  if (body['bio'] !== undefined) {
+    mappedUpdate.description = body['bio'] as string;
+  }
+  if (body['description'] !== undefined) {
+    mappedUpdate.description = body['description'] as string;
+  }
+
   classes = classes.map((c) =>
-    c.id === classId ? { ...c, ...body } : c,
+    c.id === classId ? { ...c, ...mappedUpdate } : c,
   );
 
   return HttpResponse.json({ success: true });

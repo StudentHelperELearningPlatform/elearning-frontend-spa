@@ -13,6 +13,43 @@ export interface ContactMessage {
   read: boolean;
 }
 
+export interface AdminUserRaw {
+  id?: string;
+  userId?: string;
+  keycloakId?: string;
+  sub?: string;
+  targetUserId?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  email?: string;
+  role?: string;
+  status?: string;
+  banned?: boolean;
+  [key: string]: unknown;
+}
+
+export interface AdminLessonRaw {
+  id?: string;
+  title?: string;
+  subject?: string;
+  grade?: number;
+  author?: string;
+  teacherName?: string;
+  status?: string;
+}
+
+export interface AdminClassRaw {
+  id?: string;
+  name?: string;
+  teacher?: string;
+  teacherName?: string;
+  studentsCount?: number;
+  studentCount?: number;
+  subject?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
@@ -20,12 +57,12 @@ export class AdminService {
   private readonly contentApi = inject(CONTENT_API_URL);     // Contains '/api/v1' already!
 
   // Manage Users (Moisa Admin Controller & User Controller)
-  getUsers(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiBase}/users`);
+  getUsers(): Observable<AdminUserRaw[]> {
+    return this.http.get<AdminUserRaw[]>(`${this.apiBase}/users`);
   }
 
-  getBannedUsers(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiBase}/admin/users/banned`);
+  getBannedUsers(): Observable<AdminUserRaw[]> {
+    return this.http.get<AdminUserRaw[]>(`${this.apiBase}/admin/users/banned`);
   }
 
   deleteUser(userId: string): Observable<void> {
@@ -41,8 +78,8 @@ export class AdminService {
   }
 
   // Manage Lessons
-  getLessons(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.contentApi}/lessons`);
+  getLessons(): Observable<AdminLessonRaw[]> {
+    return this.http.get<AdminLessonRaw[]>(`${this.contentApi}/lessons`);
   }
 
   deleteLesson(lessonId: string): Observable<void> {
@@ -50,8 +87,8 @@ export class AdminService {
   }
 
   // Manage Classes
-  getClasses(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiBase}/teachers/classes`);
+  getClasses(): Observable<AdminClassRaw[]> {
+    return this.http.get<AdminClassRaw[]>(`${this.apiBase}/teachers/classes`);
   }
 
   deleteClass(classId: string): Observable<void> {
@@ -64,10 +101,10 @@ export class AdminService {
   }
 
   markContactMessageRead(messageId: string, read: boolean): Observable<void> {
-    return this.http.put<void>(`${this.apiBase}/notifications/${messageId}/read`, {});
+    return this.http.put<void>(`${this.apiBase}/notifications/${messageId}/read`, { read });
   }
 
-  deleteContactMessage(messageId: string): Observable<void> {
+  deleteContactMessage(_messageId: string): Observable<void> {
     return new Observable<void>(observer => {
       observer.next();
       observer.complete();

@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AdminService, ContactMessage } from '../../../core/services/admin.service';
+import { AdminService, ContactMessage, AdminUserRaw, AdminLessonRaw, AdminClassRaw } from '../../../core/services/admin.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -14,7 +14,7 @@ interface AdminUser {
   role: 'STUDENT' | 'TEACHER' | 'PARENT' | 'ADMIN';
   status: 'ACTIVE' | 'BANNED' | 'PENDING';
   avatarSeed?: string;
-  raw: any; // Dynamic inspection of all backend fields
+  raw: AdminUserRaw; // Dynamic inspection of all backend fields
 }
 
 interface AdminLesson {
@@ -251,7 +251,7 @@ interface AdminClass {
               } @else {
                 <div class="divide-y-2 divide-gray-100">
                   @for (msg of unreadMessages().slice(0, 3); track msg.id) {
-                    <div (click)="selectAndOpenMessage(msg)" class="p-6 hover:bg-gray-50 transition-colors cursor-pointer flex gap-4 items-start">
+                    <div (click)="selectAndOpenMessage(msg)" (keydown.enter)="selectAndOpenMessage(msg)" role="button" tabindex="0" class="p-6 hover:bg-gray-50 transition-colors cursor-pointer flex gap-4 items-start">
                       <div class="w-10 h-10 rounded-xl border-2 border-black bg-red-100 flex items-center justify-center shrink-0">
                         <span class="material-icons text-red-500 text-sm">markunread</span>
                       </div>
@@ -701,6 +701,9 @@ interface AdminClass {
                 @for (msg of contactMessages(); track msg.id) {
                   <div 
                     (click)="selectMessage(msg)"
+                    (keydown.enter)="selectMessage(msg)"
+                    role="button"
+                    tabindex="0"
                     [ngClass]="{
                       'bg-[#0ABAB5]/5 border-l-4 border-l-[#0ABAB5]': selectedMessage()?.id === msg.id,
                       'bg-white': selectedMessage()?.id !== msg.id,
@@ -879,13 +882,13 @@ export class AdminDashboardComponent implements OnInit {
     this.userSearchQuery.set(value);
   }
 
-  getObjectEntries(obj: any): { key: string; value: any }[] {
+  getObjectEntries(obj: Record<string, unknown> | null | undefined): { key: string; value: string | number | boolean | null | undefined }[] {
     if (!obj) return [];
     return Object.entries(obj)
       .filter(([key]) => key !== 'raw' && key !== 'avatarSeed')
       .map(([key, value]) => ({
         key,
-        value: typeof value === 'object' ? JSON.stringify(value) : value
+        value: typeof value === 'object' && value !== null ? JSON.stringify(value) : (value as string | number | boolean | null | undefined)
       }));
   }
 
@@ -900,7 +903,7 @@ export class AdminDashboardComponent implements OnInit {
         const bannedList = bannedData || [];
         const bannedIds = new Set<string>();
         
-        bannedList.forEach((u: any) => {
+        bannedList.forEach((u: AdminUserRaw) => {
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
           let detectedUuid = '';
           for (const key of ['userId', 'keycloakId', 'sub', 'targetUserId', 'id']) {
@@ -909,14 +912,14 @@ export class AdminDashboardComponent implements OnInit {
               break;
             }
           }
-          const finalId = detectedUuid || u.userId || u.id || '';
+          const finalId = detectedUuid || (u.userId as string | undefined) || (u.id as string | undefined) || '';
           if (finalId) bannedIds.add(finalId);
         });
 
         // Fetch all users list (GET /api/v1/users)
         this.adminService.getUsers().subscribe({
           next: (allUsersData) => {
-            const mappedUsersList = (allUsersData || []).map((u: any) => {
+            const mappedUsersList = (allUsersData || []).map((u: AdminUserRaw) => {
               const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
               let detectedUuid = '';
               for (const key of ['userId', 'keycloakId', 'sub', 'targetUserId', 'id']) {
@@ -933,17 +936,17 @@ export class AdminDashboardComponent implements OnInit {
                   }
                 }
               }
-              const finalId = detectedUuid || u.userId || u.id || '';
+              const finalId = detectedUuid || (u.userId as string | undefined) || (u.id as string | undefined) || '';
               const isBanned = bannedIds.has(finalId) || u.status === 'BANNED' || u.banned === true;
-              const userName = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.email || 'User';
+              const userName = (u.name as string | undefined) || `${(u.firstName as string | undefined) || ''} ${(u.lastName as string | undefined) || ''}`.trim() || (u.username as string | undefined) || (u.email as string | undefined) || 'User';
 
               return {
                 id: finalId,
                 name: userName,
-                email: u.email || '',
-                role: (u.role || 'STUDENT').toUpperCase() as any,
-                status: (isBanned ? 'BANNED' : 'ACTIVE') as any,
-                avatarSeed: u.email || finalId || 'User',
+                email: (u.email as string | undefined) || '',
+                role: ((u.role as string | undefined) || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'PARENT' | 'ADMIN',
+                status: (isBanned ? 'BANNED' : 'ACTIVE') as 'ACTIVE' | 'BANNED' | 'PENDING',
+                avatarSeed: (u.email as string | undefined) || finalId || 'User',
                 raw: u
               };
             });
@@ -954,7 +957,7 @@ export class AdminDashboardComponent implements OnInit {
           error: (err) => {
             console.warn('GET /users failed (backend team might still be working on it), falling back to banned users list:', err);
             // Fallback to displaying banned users only
-            const mappedBanned = bannedList.map((u: any) => {
+            const mappedBanned = bannedList.map((u: AdminUserRaw) => {
               const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
               let detectedUuid = '';
               for (const key of ['userId', 'keycloakId', 'sub', 'targetUserId', 'id']) {
@@ -963,16 +966,16 @@ export class AdminDashboardComponent implements OnInit {
                   break;
                 }
               }
-              const finalId = detectedUuid || u.userId || u.id || '';
-              const userName = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.email || 'Banned User';
+              const finalId = detectedUuid || (u.userId as string | undefined) || (u.id as string | undefined) || '';
+              const userName = (u.name as string | undefined) || `${(u.firstName as string | undefined) || ''} ${(u.lastName as string | undefined) || ''}`.trim() || (u.username as string | undefined) || (u.email as string | undefined) || 'Banned User';
               
               return {
                 id: finalId,
                 name: userName,
-                email: u.email || '',
-                role: (u.role || 'STUDENT').toUpperCase() as any,
+                email: (u.email as string | undefined) || '',
+                role: ((u.role as string | undefined) || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'PARENT' | 'ADMIN',
                 status: 'BANNED' as const,
-                avatarSeed: u.email || finalId || 'Banned',
+                avatarSeed: (u.email as string | undefined) || finalId || 'Banned',
                 raw: u
               };
             });
@@ -997,13 +1000,13 @@ export class AdminDashboardComponent implements OnInit {
     this.lessonsError.set(null);
     this.adminService.getLessons().subscribe({
       next: (data) => {
-        const mappedLessons = (data || []).map((l: any) => ({
+        const mappedLessons = (data || []).map((l: AdminLessonRaw) => ({
           id: l.id || '',
           title: l.title || 'Untitled Lesson',
           subject: l.subject || 'General',
           grade: l.grade || 10,
           author: l.author || l.teacherName || 'Unknown Teacher',
-          status: (l.status || 'PUBLISHED').toUpperCase()
+          status: (l.status || 'PUBLISHED').toUpperCase() as 'PUBLISHED' | 'DRAFT'
         }));
         this.lessons.set(mappedLessons);
         this.lessonsLoading.set(false);
@@ -1023,7 +1026,7 @@ export class AdminDashboardComponent implements OnInit {
     this.classesError.set(null);
     this.adminService.getClasses().subscribe({
       next: (data) => {
-        const mappedClasses = (data || []).map((c: any) => ({
+        const mappedClasses = (data || []).map((c: AdminClassRaw) => ({
           id: c.id || '',
           name: c.name || 'Unnamed Class',
           teacher: c.teacher || c.teacherName || 'Unknown Teacher',
@@ -1048,7 +1051,7 @@ export class AdminDashboardComponent implements OnInit {
     this.inboxError.set(null);
     this.adminService.getContactMessages().subscribe({
       next: (messages) => {
-        const mappedMessages = (messages || []).map((m: any) => ({
+        const mappedMessages = (messages || []).map((m: ContactMessage) => ({
           id: m.id || '',
           senderName: m.senderName || 'Anonymous',
           senderEmail: m.senderEmail || '',
