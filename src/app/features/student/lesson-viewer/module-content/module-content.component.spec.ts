@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { ModuleContentComponent } from './module-content.component';
 
 // ModuleContentComponent has content = input.required<string>().
@@ -65,5 +66,29 @@ describe('ModuleContentComponent', () => {
 
   it('handles arbitrary HTML in content without throwing', () => {
     expect(() => make('<h2>Title</h2><ul><li>Item</li></ul>').content()).not.toThrow();
+  });
+
+  // ─── safeContent (DomSanitizer.bypassSecurityTrustHtml) ──────────────────
+
+  it('safeContent runs the HTML through DomSanitizer.bypassSecurityTrustHtml', () => {
+    const sanitizer = TestBed.inject(DomSanitizer);
+    const spy = vi.spyOn(sanitizer, 'bypassSecurityTrustHtml');
+    const comp = make('<p>Hello <strong>world</strong></p>');
+    comp.safeContent();
+    expect(spy).toHaveBeenCalledWith('<p>Hello <strong>world</strong></p>');
+  });
+
+  it('safeContent coerces null/undefined content to an empty string', () => {
+    const sanitizer = TestBed.inject(DomSanitizer);
+    const spy = vi.spyOn(sanitizer, 'bypassSecurityTrustHtml');
+    const comp = runInInjectionContext(injector, () => new ModuleContentComponent());
+    comp.content = (() => undefined as unknown as string) as typeof comp.content;
+    comp.safeContent();
+    expect(spy).toHaveBeenCalledWith('');
+  });
+
+  it('safeContent returns a SafeHtml value', () => {
+    const result = make('<em>safe</em>').safeContent();
+    expect(result).toBeDefined();
   });
 });
