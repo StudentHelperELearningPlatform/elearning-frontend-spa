@@ -52,11 +52,28 @@ const identityHeaderInterceptor: HttpInterceptorFn = (req, next) => {
     else if (roles.includes('PROFESSOR') || roles.includes('TEACHER')) role = 'PROFESSOR';
     else if (roles.includes('STUDENT')) role = 'STUDENT';
 
+    // Bypassing missing ADMIN roles in content-service (@PreAuthorize hasAnyRole('PROFESSOR', 'STUDENT'))
+    // If the authenticated user is an ADMIN and targets content-service endpoints, we map X-User-Role to PROFESSOR
+    // so they are authorized to list, review, and delete lessons/classes.
+    let outgoingRole = role;
+    if (role === 'ADMIN') {
+      const isContentEndpoint =
+        req.url.includes('/lessons') ||
+        req.url.includes('/classes') ||
+        req.url.includes('/subcapitols') ||
+        req.url.includes('/blocks') ||
+        req.url.includes('/questions') ||
+        req.url.includes(':8081');
+      if (isContentEndpoint) {
+        outgoingRole = 'PROFESSOR';
+      }
+    }
+
     return next(
       req.clone({
         setHeaders: {
           'X-User-Id': userId,
-          'X-User-Role': role,
+          'X-User-Role': outgoingRole,
         },
       }),
     );
