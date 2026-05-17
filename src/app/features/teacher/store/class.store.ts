@@ -1,10 +1,13 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
-import { computed } from '@angular/core';
+import { computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { MANAGEMENT_API_URL } from '@core/tokens/api.token';
 
 export interface ClassItem {
   id: string;
   name: string;
   code: string;
+  description?: string;
   studentCount: number;
   averageGrade: number;
 }
@@ -18,6 +21,11 @@ export interface Student {
   lastActive: Date;
 }
 
+export interface CreateClassPayload {
+  name: string;
+  description?: string;
+}
+
 interface ClassState {
   classes: ClassItem[];
   currentClass: ClassItem | null;
@@ -29,45 +37,78 @@ interface ClassState {
 export const ClassStore = signalStore(
   { providedIn: 'root' },
   withState<ClassState>({
-    classes: [
-      { id: '1', name: 'Math 101', code: 'MATH101', studentCount: 24, averageGrade: 85 },
-      { id: '2', name: 'Science 202', code: 'SCI202', studentCount: 18, averageGrade: 92 }
-    ],
+    classes: [],
     currentClass: null,
-    students: [
-      { id: '1', name: 'Alice Smith', email: 'alice@example.com', grade: 95, progress: 80, lastActive: new Date() },
-      { id: '2', name: 'Bob Johnson', email: 'bob@example.com', grade: 78, progress: 65, lastActive: new Date() },
-      { id: '3', name: 'Charlie Brown', email: 'charlie@example.com', grade: 88, progress: 90, lastActive: new Date() }
-    ],
+    students: [],
     loading: false,
-    error: null
+    error: null,
   }),
   withComputed((state) => ({
     activeClasses: computed(() => state.classes()),
-    topStudents: computed(() => [...state.students()].sort((a, b) => b.grade - a.grade).slice(0, 5))
+    topStudents: computed(() =>
+      [...state.students()].sort((a, b) => b.grade - a.grade).slice(0, 5),
+    ),
   })),
-  withMethods((store) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(MANAGEMENT_API_URL)) => ({
     loadClasses() {
+      patchState(store, { loading: true, error: null });
+      http.get<ClassItem[]>(`${apiBase}/teachers/classes`).subscribe({
+        next: (classes) => patchState(store, { classes, loading: false }),
+        error: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to load classes';
+          patchState(store, { loading: false, error: message });
+        },
+      });
+    },
+    loadStudents(classId: string) {
       patchState(store, { loading: true });
-      setTimeout(() => {
-        patchState(store, { loading: false });
-      }, 600);
+      http.get<Student[]>(`${apiBase}/teachers/classes/${classId}/students`).subscribe({
+        next: (students) => patchState(store, { students, loading: false }),
+        error: () => patchState(store, { loading: false, students: [] }),
+      });
     },
-    loadStudents() {
-      patchState(store, { loading: true });
-      setTimeout(() => {
-        patchState(store, { loading: false });
-      }, 500);
+    createClass(payload: CreateClassPayload) {
+      patchState(store, { loading: true, error: null });
+      http.post<ClassItem>(`${apiBase}/teachers/classes`, payload).subscribe({
+        next: (created) => {
+          patchState(store, (state) => ({
+            classes: [...state.classes, created],
+            loading: false,
+          }));
+        },
+        error: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to create class';
+          patchState(store, { loading: false, error: message });
+        },
+      });
     },
-    addStudent(student: Omit<Student, 'id' | 'lastActive'>) {
-      patchState(store, (state) => ({
-        students: [...state.students, { ...student, id: Math.random().toString(), lastActive: new Date() }]
-      }));
+    addStudent(classId: string, studentId: string) {
+      patchState(store, { loading: true, error: null });
+      http
+        .post<Student>(`${apiBase}/teachers/classes/${classId}/students/${studentId}`, {})
+        .subscribe({
+          next: (student) => {
+            patchState(store, (state) => ({
+              students: [...state.students, student],
+              loading: false,
+            }));
+          },
+          error: (err: unknown) => {
+            const message = err instanceof Error ? err.message : 'Failed to add student';
+            patchState(store, { loading: false, error: message });
+          },
+        });
     },
-    removeStudent(id: string) {
-      patchState(store, (state) => ({
-        students: state.students.filter((s: Student) => s.id !== id)
-      }));
-    }
-  }))
+    removeStudent(classId: string, studentId: string) {
+      http
+        .delete(`${apiBase}/teachers/classes/${classId}/students/${studentId}`)
+        .subscribe({
+          next: () => {
+            patchState(store, (state) => ({
+              students: state.students.filter((s: Student) => s.id !== studentId),
+            }));
+          },
+        });
+    },
+  })),
 );

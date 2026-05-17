@@ -8,10 +8,10 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+import { CheckoutModalComponent } from '../payments/checkout-modal.component';
 
 @Component({
   selector: 'app-lesson-viewer',
-  standalone: true,
   imports: [
     CommonModule,
     RouterModule,
@@ -20,7 +20,8 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
     ButtonComponent,
     CardComponent,
     EmptyStateComponent,
-    BadgeComponent
+    BadgeComponent,
+    CheckoutModalComponent,
   ],
   template: `
     <div class="h-[calc(100vh-80px)] flex flex-col md:flex-row bg-gray-50 overflow-hidden">
@@ -169,7 +170,17 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
         </div>
       </div>
     </div>
-  `
+
+    <app-checkout-modal
+      [isOpen]="checkoutOpen()"
+      [itemId]="store.currentLesson()?.id ?? ''"
+      [itemTitle]="store.currentLesson()?.title ?? ''"
+      itemType="LESSON"
+      [priceCents]="999"
+      currency="RON"
+      (closed)="checkoutOpen.set(false)"
+    />
+  `,
 })
 export class LessonViewerComponent implements OnInit {
   store = inject(LessonsStore);
@@ -177,6 +188,7 @@ export class LessonViewerComponent implements OnInit {
   private router = inject(Router);
 
   currentModuleIndex = signal(0);
+  checkoutOpen = signal(false);
 
   ngOnInit() {
     const lessonId = this.route.snapshot.paramMap.get('id');
@@ -213,6 +225,10 @@ export class LessonViewerComponent implements OnInit {
   finishLesson() {
     // Navigate back or to a summary page
     this.router.navigate(['/student/lessons']);
+  }
+
+  unlockLesson() {
+    this.checkoutOpen.set(true);
   }
 
   goBack() {

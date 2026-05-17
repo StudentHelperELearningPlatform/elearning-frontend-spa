@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import Keycloak from 'keycloak-js';
 import { LessonViewerComponent } from './lesson-viewer.component';
 import { LessonsStore, Lesson } from '../store/lessons.store';
 
@@ -32,6 +33,14 @@ describe('LessonViewerComponent', () => {
   let router: Router;
 
   beforeEach(async () => {
+    const keycloakStub = {
+      authenticated: false,
+      token: null,
+      onAuthSuccess: undefined,
+      onAuthRefreshSuccess: undefined,
+      onAuthLogout: undefined,
+    } as unknown as Keycloak;
+
     await TestBed.configureTestingModule({
       imports: [LessonViewerComponent],
       providers: [
@@ -40,6 +49,7 @@ describe('LessonViewerComponent', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => '1' } } },
         },
+        { provide: Keycloak, useValue: keycloakStub },
       ],
     }).compileComponents();
 

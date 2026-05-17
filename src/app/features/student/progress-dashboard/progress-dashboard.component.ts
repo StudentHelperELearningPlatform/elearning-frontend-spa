@@ -73,8 +73,10 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnInit() {
-    const studentId = this.authStore.user()?.id ?? '1';
-    this.progressStore.loadDashboard(studentId);
+    const studentId = this.authStore.user()?.id;
+    if (studentId) {
+      this.progressStore.loadDashboard(studentId);
+    }
 
     effect(() => {
       const skills = this.progressStore.skillLevels();

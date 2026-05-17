@@ -16,6 +16,8 @@ import { routes } from './app.routes';
 import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { loadingInterceptor } from '@core/interceptors/loading.interceptor';
 import { GlobalErrorHandler } from '@core/services/error-handler.service';
+import { CONTENT_API_URL, QUIZ_API_URL, MANAGEMENT_API_URL } from '@core/tokens/api.token';
+import { MessageService } from 'primeng/api';
 import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
@@ -39,11 +41,19 @@ export const appConfig: ApplicationConfig = {
     }),
     provideHttpClient(withInterceptors([includeBearerTokenInterceptor, errorInterceptor, loadingInterceptor])),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
+    { provide: CONTENT_API_URL, useValue: environment.contentApiUrl },
+    { provide: QUIZ_API_URL, useValue: environment.quizApiUrl },
+    { provide: MANAGEMENT_API_URL, useValue: environment.managementApiUrl },
+    MessageService,
     {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
       useValue: [
         createInterceptorCondition<IncludeBearerTokenCondition>({
           urlPattern: /^(http:\/\/localhost:8080)(\/.*)?$/i,
+          bearerPrefix: 'Bearer',
+        }),
+        createInterceptorCondition<IncludeBearerTokenCondition>({
+          urlPattern: /^(http:\/\/localhost:8081)(\/.*)?$/i,
           bearerPrefix: 'Bearer',
         }),
         createInterceptorCondition<IncludeBearerTokenCondition>({

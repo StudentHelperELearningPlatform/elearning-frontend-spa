@@ -39,6 +39,11 @@ export default [
   // { path: 'quizzes', loadComponent: () => import('./quiz-history/quiz-history.component').then(m => m.QuizHistoryComponent) },
   { path: 'quizzes/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
     { path: 'quizzes/:id/results/:attemptId', component: ResultsSummaryComponent },
+  {
+    path: 'payments',
+    loadComponent: () =>
+      import('./payments/payment-history.component').then((m) => m.PaymentHistoryComponent),
+  },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
    {
     path: 'skills/:subject',
