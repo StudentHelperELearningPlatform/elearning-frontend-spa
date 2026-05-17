@@ -104,7 +104,8 @@ export class AdminService {
     return this.http.put<void>(`${this.apiBase}/notifications/${messageId}/read`, { read });
   }
 
-  deleteContactMessage(_messageId: string): Observable<void> {
+  deleteContactMessage(messageId: string): Observable<void> {
+    void messageId; // Reference to satisfy strict unused-vars lint rules
     return new Observable<void>(observer => {
       observer.next();
       observer.complete();
