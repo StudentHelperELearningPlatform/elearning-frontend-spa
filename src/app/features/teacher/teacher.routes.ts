@@ -13,6 +13,7 @@ import { LearningPathEditorComponent } from './learning-paths/learning-path-edit
 import { LessonEditorComponent } from './lesson-editor/lesson-editor.component';
 import { unsavedChangesGuard } from './lesson-editor/unsaved-changes.guard';
 import { TeacherDashboardComponent } from './dashboard/teacher-dashboard.component';
+import { LessonListComponent } from './lesson-list/lesson-list.component';
 
 import { TeacherClassesPageComponent } from './pages/teacher-classes-page/teacher-classes-page.component';
 import { TeacherClassDetailPageComponent } from './pages/teacher-class-detail-page/teacher-class-detail-page.component';
@@ -23,6 +24,7 @@ export default [
   { path: 'content', component: ContentEditorComponent },
   
   // Lesson Editor Routes (from develop)
+  { path: 'lessons', component: LessonListComponent },
   {
     path: 'lessons/new',
     component: LessonEditorComponent,
@@ -33,11 +35,13 @@ export default [
     component: LessonEditorComponent,
     canDeactivate: [unsavedChangesGuard],
   },
-  
+
   // Builder Routes
   { path: 'path-builder', component: PathBuilderComponent },
   { path: 'quiz-builder', component: QuizBuilderComponent },
   { path: 'quiz-builder/:id', component: QuizBuilderComponent },
+  { path: 'quizzes/new', component: QuizBuilderComponent },
+  { path: 'quizzes/:id', component: QuizBuilderComponent },
   
   // Learning Path Routes (from feat branch)
   { path: 'learning-paths/new', component: LearningPathEditorComponent },
