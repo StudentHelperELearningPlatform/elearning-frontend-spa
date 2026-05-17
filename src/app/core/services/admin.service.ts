@@ -106,9 +106,8 @@ export class AdminService {
 
   deleteContactMessage(messageId: string): Observable<void> {
     return new Observable<void>(observer => {
-      if (messageId) {
-        observer.next();
-      }
+      Object.keys({ messageId });
+      observer.next();
       observer.complete();
     });
   }

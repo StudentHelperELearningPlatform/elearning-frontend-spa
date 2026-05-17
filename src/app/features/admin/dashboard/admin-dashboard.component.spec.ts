@@ -306,4 +306,143 @@ describe('AdminDashboardComponent', () => {
     expect(component.inboxError()).toBe('Inbox API Error');
     expect(notificationService.error).toHaveBeenCalled();
   });
+
+  // ── Edge Case & Error Coverage tests ─────────────────────────────────────
+  it('should fallback to banned users list when getUsers fails but getBannedUsers succeeds', () => {
+    vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(of(mockBannedUsers));
+    vi.spyOn(adminService, 'getUsers').mockReturnValue(throwError(() => new Error('GET Users failed')));
+    component.loadUsers();
+
+    expect(component.usersLoading()).toBe(false);
+    expect(component.users().length).toBe(2); // mockBannedUsers has 2 items
+    expect(component.users()[0].status).toBe('BANNED');
+  });
+
+  it('should gracefully handle API failure when banning a user', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const serviceSpy = vi.spyOn(adminService, 'banUser').mockReturnValue(throwError(() => new Error('Ban failed')));
+
+    component.banUser('u1');
+    expect(serviceSpy).toHaveBeenCalledWith('u1');
+    expect(notificationService.error).toHaveBeenCalledWith('Failed to ban user: Ban failed');
+  });
+
+  it('should not proceed if ban user confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const serviceSpy = vi.spyOn(adminService, 'banUser');
+
+    component.banUser('u1');
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
+
+  it('should gracefully handle API failure when unbanning a user', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const serviceSpy = vi.spyOn(adminService, 'unbanUser').mockReturnValue(throwError(() => new Error('Unban failed')));
+
+    const adminUser = {
+      id: 'u2',
+      name: 'Bob',
+      email: 'bob@example.com',
+      role: 'TEACHER' as const,
+      status: 'BANNED' as const,
+      raw: {}
+    };
+
+    component.unbanUser(adminUser);
+    expect(serviceSpy).toHaveBeenCalledWith('u2');
+    expect(notificationService.error).toHaveBeenCalledWith('Failed to restore user: HTTP status: undefined - Unban failed');
+  });
+
+  it('should not proceed if unban user confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const serviceSpy = vi.spyOn(adminService, 'unbanUser');
+
+    const adminUser = {
+      id: 'u2',
+      name: 'Bob',
+      email: 'bob@example.com',
+      role: 'TEACHER' as const,
+      status: 'BANNED' as const,
+      raw: {}
+    };
+
+    component.unbanUser(adminUser);
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
+
+  it('should gracefully handle API failure when deleting a user', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const serviceSpy = vi.spyOn(adminService, 'deleteUser').mockReturnValue(throwError(() => new Error('Delete user failed')));
+
+    component.deleteUser('u1');
+    expect(serviceSpy).toHaveBeenCalledWith('u1');
+    expect(notificationService.error).toHaveBeenCalledWith('Failed to delete user: Delete user failed');
+  });
+
+  it('should not proceed if deleteUser confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const serviceSpy = vi.spyOn(adminService, 'deleteUser');
+
+    component.deleteUser('u1');
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
+
+  it('should gracefully handle API failure when deleting a lesson', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const serviceSpy = vi.spyOn(adminService, 'deleteLesson').mockReturnValue(throwError(() => new Error('Delete lesson failed')));
+
+    component.deleteLesson('l1');
+    expect(serviceSpy).toHaveBeenCalledWith('l1');
+    expect(notificationService.error).toHaveBeenCalledWith('Failed to delete lesson: Delete lesson failed');
+  });
+
+  it('should not proceed if deleteLesson confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const serviceSpy = vi.spyOn(adminService, 'deleteLesson');
+
+    component.deleteLesson('l1');
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
+
+  it('should gracefully handle API failure when deleting a class', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const serviceSpy = vi.spyOn(adminService, 'deleteClass').mockReturnValue(throwError(() => new Error('Delete class failed')));
+
+    component.deleteClass('c1');
+    expect(serviceSpy).toHaveBeenCalledWith('c1');
+    expect(notificationService.error).toHaveBeenCalledWith('Failed to delete class: Delete class failed');
+  });
+
+  it('should not proceed if deleteClass confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const serviceSpy = vi.spyOn(adminService, 'deleteClass');
+
+    component.deleteClass('c1');
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
+
+  it('should gracefully handle API failure when marking message read state', () => {
+    const serviceSpy = vi.spyOn(adminService, 'markContactMessageRead').mockReturnValue(throwError(() => new Error('Update state failed')));
+
+    component.markMessageReadState('m1', true);
+    expect(serviceSpy).toHaveBeenCalledWith('m1', true);
+    expect(notificationService.error).toHaveBeenCalledWith('Failed to update message status: Update state failed');
+  });
+
+  it('should gracefully handle API failure when deleting a message', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const serviceSpy = vi.spyOn(adminService, 'deleteContactMessage').mockReturnValue(throwError(() => new Error('Delete message failed')));
+
+    component.deleteMessage('m1');
+    expect(serviceSpy).toHaveBeenCalledWith('m1');
+    expect(notificationService.error).toHaveBeenCalledWith('Failed to delete message: Delete message failed');
+  });
+
+  it('should not proceed if deleteMessage confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const serviceSpy = vi.spyOn(adminService, 'deleteContactMessage');
+
+    component.deleteMessage('m1');
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
 });
