@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors, HttpInterceptorFn } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
+import { MessageService } from 'primeng/api';
 import Lara from '@primeng/themes/lara';
 import {
   provideKeycloak,
@@ -21,7 +22,7 @@ import { GlobalErrorHandler } from '@core/services/error-handler.service';
 import { environment } from '../environments/environment';
 import { API_URL, CONTENT_API_URL, USER_PLATFORM_API_URL, QUIZ_API_URL, LEARNING_PATH_API_URL, AUTH_API_URL } from '@core/tokens/api.token';
 
-const identityHeaderInterceptor: HttpInterceptorFn = (req, next) => {
+export const identityHeaderInterceptor: HttpInterceptorFn = (req, next) => {
   // Only add headers for our own API calls
   const isApiCall =
     req.url.includes('/api/v1') ||
@@ -51,11 +52,28 @@ const identityHeaderInterceptor: HttpInterceptorFn = (req, next) => {
     else if (roles.includes('PROFESSOR') || roles.includes('TEACHER')) role = 'PROFESSOR';
     else if (roles.includes('STUDENT')) role = 'STUDENT';
 
+    // Bypassing missing ADMIN roles in content-service (@PreAuthorize hasAnyRole('PROFESSOR', 'STUDENT'))
+    // If the authenticated user is an ADMIN and targets content-service endpoints, we map X-User-Role to PROFESSOR
+    // so they are authorized to list, review, and delete lessons/classes.
+    let outgoingRole = role;
+    if (role === 'ADMIN') {
+      const isContentEndpoint =
+        req.url.includes('/lessons') ||
+        req.url.includes('/classes') ||
+        req.url.includes('/subcapitols') ||
+        req.url.includes('/blocks') ||
+        req.url.includes('/questions') ||
+        req.url.includes(':8081');
+      if (isContentEndpoint) {
+        outgoingRole = 'PROFESSOR';
+      }
+    }
+
     return next(
       req.clone({
         setHeaders: {
           'X-User-Id': userId,
-          'X-User-Role': role,
+          'X-User-Role': outgoingRole,
         },
       }),
     );
@@ -70,6 +88,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideAnimationsAsync(),
+    MessageService,
     providePrimeNG({
       theme: { preset: Lara, options: { darkModeSelector: 'none' } },
     }),

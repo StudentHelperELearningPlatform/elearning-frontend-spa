@@ -72,7 +72,8 @@ export const teacherLessonEditorHandlers = [
     return HttpResponse.json(cloneLesson(created), { status: 201 });
   }),
 
-  http.patch('/api/v1/lessons/:id/publish', ({ params }) => {
+  // wired: endpoint live as of sprint 6 — backend uses POST not PATCH
+  http.post('/api/v1/lessons/:id/publish', ({ params }) => {
     const id = String(params['id']);
     const existing = editorLessonStore.lessons.get(id);
     if (!existing) return HttpResponse.json({ message: 'Not found' }, { status: 404 });
@@ -81,7 +82,8 @@ export const teacherLessonEditorHandlers = [
     return HttpResponse.json(cloneLesson(updated));
   }),
 
-  http.patch('/api/v1/lessons/:id/unpublish', ({ params }) => {
+  // wired: endpoint live as of sprint 6 — backend uses POST not PATCH
+  http.post('/api/v1/lessons/:id/unpublish', ({ params }) => {
     const id = String(params['id']);
     const existing = editorLessonStore.lessons.get(id);
     if (!existing) return HttpResponse.json({ message: 'Not found' }, { status: 404 });

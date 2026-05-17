@@ -28,6 +28,9 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   authStore = inject(AuthStore);
   router = inject(Router);
 
+  // S6-stats-01: expose live dashboard signal for the aggregate stats card
+  protected readonly myDashboard = this.progressStore.dashboard;
+
   @ViewChild('radarContainer') radarContainer!: ElementRef<HTMLDivElement>;
 
   private resizeObserver: ResizeObserver | null = null;
@@ -73,10 +76,14 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnInit() {
-    // Use the authenticated student's own ID, not a placeholder classId.
-    // MOISA's /students/{id}/dashboard endpoint expects a student ID.
-    const studentId = this.authStore.user()?.id ?? '1';
-    this.progressStore.loadDashboard(studentId);
+    // Use the authenticated student's own ID — guard against '1' placeholder
+    // that would call the wrong account for unauthenticated/test states.
+    const studentId = this.authStore.user()?.id;
+    if (studentId) {
+      this.progressStore.loadDashboard(studentId);
+    }
+    // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
+    this.progressStore.loadMyDashboard();
 
     effect(() => {
       const skills = this.progressStore.skillLevels().map(s => ({
