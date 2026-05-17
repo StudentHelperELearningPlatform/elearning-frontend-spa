@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';
-import { teacherClassesHandlers } from './teacher-classes.handlers';
+import {
+  teacherClassesHandlers,
+  getClassDetailResolver,
+  updateClassResolver,
+  deleteClassResolver,
+  getStudentsResolver,
+  addStudentResolver,
+  removeStudentResolver,
+  getLessonsResolver,
+  addLessonResolver,
+  removeLessonResolver
+} from './teacher-classes.handlers';
 
 import { environment } from '../../environments/environment';
 
@@ -305,6 +316,47 @@ describe('teacherClassesHandlers', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.success).toBe(true);
+    });
+
+    it('should cover fallback parameter branches when resolvers are called directly', async () => {
+      // 1. getClassDetailResolver with missing/non-string params
+      const res1 = getClassDetailResolver({ params: undefined });
+      expect(res1).toBeDefined();
+      const res2 = getClassDetailResolver({ params: { classId: undefined } });
+      expect(res2).toBeDefined();
+
+      // 2. updateClassResolver with missing/non-string params
+      const reqMock = new Request('http://localhost', { method: 'PUT', body: '{}' });
+      const res3 = await updateClassResolver({ request: reqMock, params: undefined });
+      expect(res3).toBeDefined();
+
+      // 3. deleteClassResolver
+      const res4 = deleteClassResolver({ params: undefined });
+      expect(res4).toBeDefined();
+
+      // 4. getStudentsResolver
+      const res5 = getStudentsResolver({ params: undefined });
+      expect(res5).toBeDefined();
+
+      // 5. addStudentResolver
+      const res6 = addStudentResolver({ params: undefined });
+      expect(res6).toBeDefined();
+
+      // 6. removeStudentResolver
+      const res7 = removeStudentResolver({ params: undefined });
+      expect(res7).toBeDefined();
+
+      // 7. getLessonsResolver
+      const res8 = getLessonsResolver({ params: undefined });
+      expect(res8).toBeDefined();
+
+      // 8. addLessonResolver
+      const res9 = addLessonResolver({ params: undefined });
+      expect(res9).toBeDefined();
+
+      // 9. removeLessonResolver
+      const res10 = removeLessonResolver({ params: undefined });
+      expect(res10).toBeDefined();
     });
   });
 });

@@ -105,11 +105,27 @@ describe('TeacherClassService', () => {
     req.flush(mockClasses);
   });
 
-  it('should create class', () => {
+  it('should create class with description', () => {
     const mockNewClass: TeacherClass = { id: '2', name: 'Science', description: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'Science', description: 'Science Class' };
     const expectedRequest = { nane: 'Science', bio: 'Science Class' };
     const responsePayload = { id: '2', nane: 'Science', bio: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+
+    service.createClass(payload).subscribe((newClass) => {
+      expect(newClass).toEqual(mockNewClass);
+    });
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(expectedRequest);
+    req.flush(responsePayload);
+  });
+
+  it('should create class with default empty description if not provided', () => {
+    const mockNewClass: TeacherClass = { id: '2', name: 'Science', description: '', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const payload = { name: 'Science' };
+    const expectedRequest = { nane: 'Science', bio: '' };
+    const responsePayload = { id: '2', nane: 'Science', bio: '', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
 
     service.createClass(payload).subscribe((newClass) => {
       expect(newClass).toEqual(mockNewClass);
@@ -135,11 +151,59 @@ describe('TeacherClassService', () => {
     req.flush(mockClassDetail);
   });
 
-  it('should update class', () => {
+  it('should update class name only', () => {
     const mockUpdatedClass: TeacherClass = { id: '1', name: 'New Math', description: '', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'New Math' };
     const expectedRequest = { nane: 'New Math' };
     const responsePayload = { id: '1', nane: 'New Math', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+
+    service.updateClass('1', payload).subscribe((updatedClass) => {
+      expect(updatedClass).toEqual(mockUpdatedClass);
+    });
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(expectedRequest);
+    req.flush(responsePayload);
+  });
+
+  it('should update class description only', () => {
+    const mockUpdatedClass: TeacherClass = { id: '1', name: 'Math', description: 'New Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const payload = { description: 'New Bio' };
+    const expectedRequest = { bio: 'New Bio' };
+    const responsePayload = { id: '1', name: 'Math', bio: 'New Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+
+    service.updateClass('1', payload).subscribe((updatedClass) => {
+      expect(updatedClass).toEqual(mockUpdatedClass);
+    });
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(expectedRequest);
+    req.flush(responsePayload);
+  });
+
+  it('should update both class name and description', () => {
+    const mockUpdatedClass: TeacherClass = { id: '1', name: 'New Math', description: 'New Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const payload = { name: 'New Math', description: 'New Bio' };
+    const expectedRequest = { nane: 'New Math', bio: 'New Bio' };
+    const responsePayload = { id: '1', nane: 'New Math', bio: 'New Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+
+    service.updateClass('1', payload).subscribe((updatedClass) => {
+      expect(updatedClass).toEqual(mockUpdatedClass);
+    });
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(expectedRequest);
+    req.flush(responsePayload);
+  });
+
+  it('should handle update class with empty object', () => {
+    const mockUpdatedClass: TeacherClass = { id: '1', name: 'Math', description: 'Old Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const payload = {};
+    const expectedRequest = {};
+    const responsePayload = { id: '1', name: 'Math', description: 'Old Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
 
     service.updateClass('1', payload).subscribe((updatedClass) => {
       expect(updatedClass).toEqual(mockUpdatedClass);

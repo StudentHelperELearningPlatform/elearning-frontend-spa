@@ -85,7 +85,7 @@ export const createClass = http.post(base, async ({ request }) => {
 /**
  * CLASS DETAIL
  */
-export const getClassDetail = http.get(`${base}/:classId`, ({ params }) => {
+export const getClassDetailResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   const found = classes.find((c) => c.id === classId);
@@ -95,12 +95,13 @@ export const getClassDetail = http.get(`${base}/:classId`, ({ params }) => {
     students: studentsByClass[classId] ?? [],
     lessons: lessonsByClass[classId] ?? [],
   });
-});
+};
+export const getClassDetail = http.get(`${base}/:classId`, getClassDetailResolver);
 
 /**
  * UPDATE class
  */
-export const updateClass = http.put(`${base}/:classId`, async ({ request, params }) => {
+export const updateClassResolver = async ({ request, params }: { request: Request; params?: Record<string, string | readonly string[] | undefined> }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
   
   let body: Record<string, unknown> = {};
@@ -129,110 +130,118 @@ export const updateClass = http.put(`${base}/:classId`, async ({ request, params
   );
 
   return HttpResponse.json({ success: true });
-});
+};
+export const updateClass = http.put(`${base}/:classId`, updateClassResolver);
 
 /**
  * DELETE class
  */
-export const deleteClass = http.delete(`${base}/:classId`, ({ params }) => {
+export const deleteClassResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   classes = classes.filter((c) => c.id !== classId);
 
   return HttpResponse.json({ success: true });
-});
+};
+export const deleteClass = http.delete(`${base}/:classId`, deleteClassResolver);
 
 /**
  * GET students
  */
-export const getStudents = http.get(`${base}/:classId/students`, ({ params }) => {
+export const getStudentsResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   return HttpResponse.json(studentsByClass[classId] ?? []);
-});
+};
+export const getStudents = http.get(`${base}/:classId/students`, getStudentsResolver);
 
 /**
  * ADD student
  */
+export const addStudentResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
+
+  studentsByClass[classId] = [
+    ...(studentsByClass[classId] ?? []),
+    {
+      id: studentId,
+      name: 'New Student',
+      email: 'test@mail.com',
+    },
+  ];
+
+  return HttpResponse.json({ success: true });
+};
 export const addStudent = http.post(
   `${base}/:classId/students/:studentId`,
-  ({ params }) => {
-    const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
-    const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
-
-    studentsByClass[classId] = [
-      ...(studentsByClass[classId] ?? []),
-      {
-        id: studentId,
-        name: 'New Student',
-        email: 'test@mail.com',
-      },
-    ];
-
-    return HttpResponse.json({ success: true });
-  },
+  addStudentResolver,
 );
 
 /**
  * REMOVE student
  */
+export const removeStudentResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
+
+  studentsByClass[classId] =
+    studentsByClass[classId]?.filter((s) => s.id !== studentId) ?? [];
+
+  return HttpResponse.json({ success: true });
+};
 export const removeStudent = http.delete(
   `${base}/:classId/students/:studentId`,
-  ({ params }) => {
-    const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
-    const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
-
-    studentsByClass[classId] =
-      studentsByClass[classId]?.filter((s) => s.id !== studentId) ?? [];
-
-    return HttpResponse.json({ success: true });
-  },
+  removeStudentResolver,
 );
 
 /**
  * GET lessons
  */
-export const getLessons = http.get(`${base}/:classId/lessons`, ({ params }) => {
+export const getLessonsResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   return HttpResponse.json(lessonsByClass[classId] ?? []);
-});
+};
+export const getLessons = http.get(`${base}/:classId/lessons`, getLessonsResolver);
 
 /**
  * ADD lesson
  */
+export const addLessonResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
+
+  lessonsByClass[classId] = [
+    ...(lessonsByClass[classId] ?? []),
+    {
+      id: lessonId,
+      title: 'New Lesson',
+    },
+  ];
+
+  return HttpResponse.json({ success: true });
+};
 export const addLesson = http.post(
   `${base}/:classId/lessons/:lessonId`,
-  ({ params }) => {
-    const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
-    const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
-
-    lessonsByClass[classId] = [
-      ...(lessonsByClass[classId] ?? []),
-      {
-        id: lessonId,
-        title: 'New Lesson',
-      },
-    ];
-
-    return HttpResponse.json({ success: true });
-  },
+  addLessonResolver,
 );
 
 /**
  * REMOVE lesson
  */
+export const removeLessonResolver = ({ params }: { params?: Record<string, string | readonly string[] | undefined> }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
+
+  lessonsByClass[classId] =
+    lessonsByClass[classId]?.filter((l) => l.id !== lessonId) ?? [];
+
+  return HttpResponse.json({ success: true });
+};
 export const removeLesson = http.delete(
   `${base}/:classId/lessons/:lessonId`,
-  ({ params }) => {
-    const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
-    const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
-
-    lessonsByClass[classId] =
-      lessonsByClass[classId]?.filter((l) => l.id !== lessonId) ?? [];
-
-    return HttpResponse.json({ success: true });
-  },
+  removeLessonResolver,
 );
 
 /**
