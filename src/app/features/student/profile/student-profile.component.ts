@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
-import { StudentProfileStore } from '../store/profile.store';
+import { StudentProfileStore, RawStudentProfileUpdate } from '../store/profile.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -225,17 +225,17 @@ export class StudentProfileComponent implements OnInit {
   saveProfile() {
     if (this.form.invalid) return;
 
-    const values = this.form.value as any;
+    const values = this.form.value;
     const nameParts = (values.name || '').trim().split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
 
-    const payload: any = {
+    const payload: RawStudentProfileUpdate = {
       firstName,
       lastName,
-      school: values.school,
-      gradeLevel: values.gradeLevel,
-      bio: values.bio,
+      school: values.school || undefined,
+      gradeLevel: values.gradeLevel || undefined,
+      bio: values.bio || undefined,
     };
 
     if (this.pendingAvatarBase64) {
@@ -257,8 +257,8 @@ export class StudentProfileComponent implements OnInit {
     if (input.files && input.files[0]) {
       const file = input.files[0];
       const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.pendingAvatarBase64 = e.target.result;
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        this.pendingAvatarBase64 = e.target?.result as string;
         this.messageService.add({ severity: 'info', summary: 'Image selected', detail: 'Save profile to upload the avatar.' });
       };
       reader.readAsDataURL(file);

@@ -20,6 +20,34 @@ export interface StudentProfile {
   enrolledClasses?: string[];
 }
 
+export interface RawStudentProfile {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  contactInfo?: {
+    email?: string;
+    phone?: string;
+  };
+  bio?: string;
+  school?: string;
+  gradeLevel?: string;
+  enrolledClasses?: string[];
+  enrolledLessonsCount?: number;
+  avatarUrl?: string;
+  profilePictureUrl?: string;
+}
+
+export interface RawStudentProfileUpdate {
+  firstName?: string;
+  lastName?: string;
+  school?: string;
+  gradeLevel?: string;
+  bio?: string;
+  profilePictureUrl?: string;
+}
+
 interface ProfileState {
   profile: StudentProfile | null;
   loading: boolean;
@@ -36,7 +64,7 @@ export const StudentProfileStore = signalStore(
     error: null,
   }),
   withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => {
-    const mapProfile = (raw: any): StudentProfile => {
+    const mapProfile = (raw: RawStudentProfile | null): StudentProfile => {
       if (!raw) return {
         name: 'Alex Student',
         bio: '',
@@ -72,20 +100,20 @@ export const StudentProfileStore = signalStore(
     return {
       loadStudentProfile() {
         patchState(store, { loading: true, error: null });
-        http.get<any>(`${apiBase}/students/me/profile`).subscribe({
+        http.get<RawStudentProfile>(`${apiBase}/students/me/profile`).subscribe({
           next: (raw) => patchState(store, { profile: mapProfile(raw), loading: false }),
-          error: (err) => patchState(store, { loading: false, error: err.message || 'Failed to load profile' }),
+          error: (err: { message?: string }) => patchState(store, { loading: false, error: err.message || 'Failed to load profile' }),
         });
       },
-      updateStudentProfile: rxMethod<any>(
+      updateStudentProfile: rxMethod<RawStudentProfileUpdate>(
         pipe(
           tap(() => patchState(store, { saving: true, error: null })),
           switchMap((payload) =>
-            http.put<any>(`${apiBase}/students/me/profile`, payload).pipe(
+            http.put<RawStudentProfile>(`${apiBase}/students/me/profile`, payload).pipe(
               tapResponse({
                 next: (raw) => {
                   const currentProfile = store.profile();
-                  const rawHasData = raw && (raw.name || raw.firstName || raw.email || raw.contactInfo);
+                  const rawHasData = !!(raw && (raw.name || raw.firstName || raw.email || raw.contactInfo));
                   
                   const updatedProfile = rawHasData
                     ? mapProfile(raw)
@@ -100,7 +128,7 @@ export const StudentProfileStore = signalStore(
 
                   patchState(store, { profile: updatedProfile, saving: false });
                 },
-                error: (err: any) => patchState(store, { saving: false, error: err.message || 'Failed to update profile' }),
+                error: (err: { message?: string }) => patchState(store, { saving: false, error: err.message || 'Failed to update profile' }),
               })
             )
           )

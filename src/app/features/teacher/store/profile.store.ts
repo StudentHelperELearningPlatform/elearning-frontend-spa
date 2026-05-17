@@ -16,8 +16,36 @@ export interface TeacherProfile {
   };
   subjectsTaught: string[];
   school?: string;
-  subjects?: Array<{ id: string; name: string; bio: string; }>;
-  classes?: Array<{ id: string; name: string; bio: string; }>;
+  subjects?: { id: string; name: string; bio: string; }[];
+  classes?: { id: string; name: string; bio: string; }[];
+}
+
+export interface RawTeacherProfile {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  contactInfo?: {
+    email?: string;
+    phone?: string;
+  };
+  bio?: string;
+  school?: string;
+  subjects?: { id: string; name: string; bio: string; }[];
+  classes?: { id: string; name: string; bio: string; }[];
+  avatarUrl?: string;
+  profilePictureUrl?: string;
+}
+
+export interface RawTeacherProfileUpdate {
+  firstName?: string;
+  lastName?: string;
+  school?: string;
+  bio?: string;
+  subjectIds?: string[];
+  classIds?: string[];
+  profilePictureUrl?: string;
 }
 
 interface ProfileState {
@@ -36,7 +64,7 @@ export const TeacherProfileStore = signalStore(
     error: null,
   }),
   withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => {
-    const mapTeacherProfile = (raw: any): TeacherProfile => {
+    const mapTeacherProfile = (raw: RawTeacherProfile | null): TeacherProfile => {
       if (!raw) return {
         name: 'Elena Dumitrescu',
         bio: '',
@@ -55,7 +83,7 @@ export const TeacherProfileStore = signalStore(
       const subjects = Array.isArray(raw.subjects) ? raw.subjects : [];
       const classes = Array.isArray(raw.classes) ? raw.classes : [];
       
-      const subjectsTaught = subjects.map((s: any) => typeof s === 'string' ? s : s.name);
+      const subjectsTaught = subjects.map((s) => s.name);
         
       const avatarUrl = raw.avatarUrl || raw.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email || 'teacher')}`;
 
@@ -74,20 +102,20 @@ export const TeacherProfileStore = signalStore(
     return {
       loadTeacherProfile() {
         patchState(store, { loading: true, error: null });
-        http.get<any>(`${apiBase}/teachers/me/profile`).subscribe({
+        http.get<RawTeacherProfile>(`${apiBase}/teachers/me/profile`).subscribe({
           next: (raw) => patchState(store, { profile: mapTeacherProfile(raw), loading: false }),
-          error: (err) => patchState(store, { loading: false, error: err.message || 'Failed to load profile' }),
+          error: (err: { message?: string }) => patchState(store, { loading: false, error: err.message || 'Failed to load profile' }),
         });
       },
-      updateTeacherProfile: rxMethod<any>(
+      updateTeacherProfile: rxMethod<RawTeacherProfileUpdate>(
         pipe(
           tap(() => patchState(store, { saving: true, error: null })),
           switchMap((payload) =>
-            http.put<any>(`${apiBase}/teachers/me/profile`, payload).pipe(
+            http.put<RawTeacherProfile>(`${apiBase}/teachers/me/profile`, payload).pipe(
               tapResponse({
                 next: (raw) => {
                   const currentProfile = store.profile();
-                  const rawHasData = raw && (raw.name || raw.firstName || raw.email || raw.contactInfo);
+                  const rawHasData = !!(raw && (raw.name || raw.firstName || raw.email || raw.contactInfo));
                   
                   const updatedProfile = rawHasData
                     ? mapTeacherProfile(raw)
@@ -102,7 +130,7 @@ export const TeacherProfileStore = signalStore(
 
                   patchState(store, { profile: updatedProfile, saving: false });
                 },
-                error: (err: any) => patchState(store, { saving: false, error: err.message || 'Failed to update profile' }),
+                error: (err: { message?: string }) => patchState(store, { saving: false, error: err.message || 'Failed to update profile' }),
               })
             )
           )

@@ -54,4 +54,45 @@ describe('authInterceptor', () => {
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
+
+  it('should skip attaching header for public endpoints', () => {
+    setup('my-test-token');
+    httpClient.get('/api/v1/auth/login').subscribe();
+    const req = httpMock.expectOne('/api/v1/auth/login');
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
+
+  it('should skip attaching header for users registration endpoint', () => {
+    setup('my-test-token');
+    httpClient.get('/api/v1/users').subscribe();
+    const req = httpMock.expectOne('/api/v1/users');
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
+
+  it('should use fallback STUDENT role if no matched role is found', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        {
+          provide: AuthService,
+          useValue: {
+            getAccessToken: () => 'my-test-token',
+            isAuthenticated: () => true,
+            currentUser: () => signal({ id: 'u1', email: 't@t.com', roles: ['GUEST'] })
+          }
+        },
+      ],
+    });
+    httpClient = TestBed.inject(HttpClient);
+    httpMock = TestBed.inject(HttpTestingController);
+
+    httpClient.get('/api/v1/test').subscribe();
+    const req = httpMock.expectOne('/api/v1/test');
+    expect(req.request.headers.get('X-User-Role')).toBe('STUDENT');
+    req.flush({});
+  });
 });

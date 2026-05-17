@@ -5,7 +5,7 @@ import { StudentProfileStore, StudentProfile } from './profile.store';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 describe('StudentProfileStore', () => {
-  let store: any;
+  let store: InstanceType<typeof StudentProfileStore>;
   let httpTestingController: HttpTestingController;
   const mockApiUrl = 'http://mock-api/api/v1';
 
@@ -68,6 +68,79 @@ describe('StudentProfileStore', () => {
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
     expect(store.loading()).toBe(false);
+    expect(store.error()).toContain('Http failure response');
+  });
+
+  it('should update student profile and map returned data', () => {
+    const rawMockProfile = {
+      firstName: 'Updated',
+      lastName: 'Student',
+      school: 'New School',
+      bio: 'New bio',
+      email: 'test@test.com',
+      phone: '123',
+      enrolledClasses: [],
+      gradeLevel: 'Clasa a X-a'
+    };
+
+    const updatePayload = {
+      firstName: 'Updated',
+      lastName: 'Student',
+      school: 'New School',
+      gradeLevel: 'Clasa a X-a',
+      bio: 'New bio'
+    };
+
+    store.updateStudentProfile(updatePayload);
+
+    expect(store.saving()).toBe(true);
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/profile`);
+    expect(req.request.method).toBe('PUT');
+    req.flush(rawMockProfile);
+
+    expect(store.saving()).toBe(false);
+    expect(store.profile()?.name).toBe('Updated Student');
+    expect(store.profile()?.school).toBe('New School');
+  });
+
+  it('should fallback map when update response has no data', () => {
+    const updatePayload = {
+      firstName: 'Fallback',
+      lastName: 'Student',
+      school: 'Fallback School',
+      gradeLevel: 'Clasa a XI-a',
+      bio: 'Fallback bio',
+      profilePictureUrl: 'http://pic'
+    };
+
+    store.updateStudentProfile(updatePayload);
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/profile`);
+    req.flush({}); // Empty response
+
+    expect(store.saving()).toBe(false);
+    expect(store.profile()?.name).toBe('Fallback Student');
+    expect(store.profile()?.school).toBe('Fallback School');
+    expect(store.profile()?.avatarUrl).toBe('http://pic');
+  });
+
+  it('should map student profile correctly when raw is null', () => {
+    store.loadStudentProfile();
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/profile`);
+    req.flush(null);
+
+    expect(store.profile()?.name).toBe('Alex Student');
+  });
+
+  it('should handle error when updating profile', () => {
+    store.updateStudentProfile({});
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/profile`);
+    req.flush('Error', { status: 500, statusText: 'Server Error' });
+
+    expect(store.saving()).toBe(false);
     expect(store.error()).toContain('Http failure response');
   });
 });
