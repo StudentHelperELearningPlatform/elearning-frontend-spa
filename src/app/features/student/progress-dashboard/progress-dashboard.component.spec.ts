@@ -102,12 +102,14 @@ describe('ProgressDashboardComponent (Logic)', () => {
     expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
   });
 
-  it('should use fallback studentId "1" if user is not set', () => {
+  it('should skip loadDashboard when user is not yet loaded', () => {
     (authStoreStub.user as WritableSignal<{ id: string, name: string } | null>).set(null);
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });
-    expect(progressStoreMock.loadDashboard).toHaveBeenCalledWith('1');
+    expect(progressStoreMock.loadDashboard).not.toHaveBeenCalled();
+    // loadMyDashboard is token-based and always safe
+    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
   });
 
   describe('greeting', () => {

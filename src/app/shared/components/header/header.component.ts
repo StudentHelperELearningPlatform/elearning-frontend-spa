@@ -4,12 +4,12 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthStore } from '@features/auth/store/auth.store'; // Ensure User is imported
 import { AvatarComponent } from '../avatar/avatar.component';
 import { ButtonComponent } from '../button/button.component';
+import { NotificationBellComponent } from '@features/shared/notifications/notification-bell.component';
 
 @Component({
   selector: 'app-header',
-  standalone: true,
   host: { style: 'display: block' },
-  imports: [CommonModule, AvatarComponent, ButtonComponent, RouterModule],
+  imports: [CommonModule, AvatarComponent, ButtonComponent, RouterModule, NotificationBellComponent],
   template: `
     <header
       class="bg-white border-b-4 border-black px-6 py-4 flex justify-between items-center sticky top-0 z-50"
@@ -27,6 +27,8 @@ import { ButtonComponent } from '../button/button.component';
 
       @if (authStore.isAuthenticated()) {
         <div class="flex items-center space-x-6">
+          <app-notification-bell />
+
           <div
             class="flex items-center space-x-4 cursor-pointer group outline-none focus:ring-4 focus:ring-[#0ABAB5] rounded-xl p-1"
             (click)="navigateToProfile()"

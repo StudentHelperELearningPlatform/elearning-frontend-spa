@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+import { QUIZ_API_URL } from '@core/tokens/api.token';
 export {
   type Question,
   type Quiz,
@@ -155,7 +156,7 @@ export const QuizzesStore = signalStore(
     totalPoints: computed(() => state.result()?.totalPoints || 0),
     timeSpent: computed(() => state.result()?.timeSpent || 0),
   })),
-  withMethods((store, http = inject(HttpClient)) => {
+  withMethods((store, http = inject(HttpClient), quizApi = inject(QUIZ_API_URL)) => {
     const navigateToIndex = (index: number) => {
       const total = store.currentQuiz()?.questions?.length ?? 0;
       if (total === 0) {
@@ -168,7 +169,7 @@ export const QuizzesStore = signalStore(
 
     const fetchQuiz = (id: string, isStart: boolean) => {
       patchState(store, { loading: true, error: null });
-      http.get<QuizApiResponse>(`/api/quizzes/${id}`).subscribe({
+      http.get<QuizApiResponse>(`${quizApi}/quizzes/${id}`).subscribe({
         next: (quiz) => {
           const mappedQuiz = mapQuizResponse(quiz);
           patchState(store, {
@@ -201,7 +202,7 @@ export const QuizzesStore = signalStore(
 
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`/api/quizzes/${quizId}/submit`, { answers }).subscribe({
+      http.post<SubmitQuizResponse>(`${quizApi}/quizzes/${quizId}/submit`, { answers }).subscribe({
         next: (submission) => {
           patchState(store, {
             result: {
@@ -295,7 +296,7 @@ export const QuizzesStore = signalStore(
       },
       loadResultDetail(quizId: string, attemptId: string) {
         patchState(store, { resultDetailLoading: true, resultDetailError: null });
-        http.get<QuizResultDetail>(`/api/quizzes/${quizId}/results/${attemptId}`).subscribe({
+        http.get<QuizResultDetail>(`${quizApi}/quizzes/${quizId}/results/${attemptId}`).subscribe({
           next: (detail) => {
             patchState(store, {
               resultDetail: detail,

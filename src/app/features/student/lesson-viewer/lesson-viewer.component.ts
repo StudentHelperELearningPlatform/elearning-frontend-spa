@@ -12,10 +12,10 @@ import { CardComponent } from '@shared/components/card/card.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
+import { CheckoutModalComponent } from '../payments/checkout-modal.component';
 
 @Component({
   selector: 'app-lesson-viewer',
-  standalone: true,
   imports: [
     CommonModule,
     RouterModule,
@@ -26,6 +26,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
     EmptyStateComponent,
     ErrorStateComponent,
     BadgeComponent,
+    CheckoutModalComponent,
   ],
   template: `
     <div class="h-[calc(100vh-80px)] flex flex-col md:flex-row bg-gray-50 overflow-hidden">
@@ -435,6 +436,13 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
           </div>
         }
       </div>
+
+      <app-checkout-modal
+        [isOpen]="checkoutOpen()"
+        [lessonId]="store.currentLesson()?.id ?? ''"
+        [lessonTitle]="store.currentLesson()?.title ?? ''"
+        (closed)="checkoutOpen.set(false)"
+      />
     </div>
   `,
 })
@@ -449,6 +457,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   private readonly lessonId = signal<string | null>(null);
   protected readonly statsExpanded = signal(true);
   protected readonly myStats = this.progressStore.myLessonStats;
+  protected readonly checkoutOpen = signal(false);
 
   hasAccess = computed(() => true);
 
@@ -465,11 +474,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   }
 
   unlockLesson() {
-    const studentId = this.authStore.user()?.id;
-    const lessonId = this.store.currentLesson()?.id;
-    if (studentId && lessonId) {
-      this.store.checkout(studentId, lessonId);
-    }
+    this.checkoutOpen.set(true);
   }
 
   reloadLesson() {
