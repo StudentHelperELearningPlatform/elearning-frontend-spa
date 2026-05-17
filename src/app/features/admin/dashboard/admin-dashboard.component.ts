@@ -6,12 +6,13 @@ import { CardComponent } from '../../../shared/components/card/card.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import { UserRole } from '../../../core/types/user.types';
 
 interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN';
+  role: UserRole;
   status: 'ACTIVE' | 'BANNED' | 'PENDING';
   avatarSeed?: string;
   raw: AdminUserRaw; // Dynamic inspection of all backend fields
@@ -892,6 +893,24 @@ export class AdminDashboardComponent implements OnInit {
       }));
   }
 
+  extractUserUuid(u: AdminUserRaw): string {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const extractorKeys: (keyof AdminUserRaw)[] = ['userId', 'keycloakId', 'sub', 'targetUserId', 'id'];
+    
+    // 1. Try standard keys
+    const detected = extractorKeys
+      .map((key) => u[key])
+      .find((val) => typeof val === 'string' && uuidRegex.test(val as string));
+    if (detected !== undefined) return detected as string;
+
+    // 2. Try all dynamic keys (fallback)
+    const allKeys = Object.keys(u) as (keyof AdminUserRaw)[];
+    const custom = allKeys
+      .map((key) => u[key])
+      .find((val) => typeof val === 'string' && uuidRegex.test(val as string));
+    return (custom as string) ?? '';
+  }
+
   // Loaders calling actual service HTTP endpoints
   loadUsers() {
     this.usersLoading.set(true);
@@ -904,13 +923,7 @@ export class AdminDashboardComponent implements OnInit {
         const bannedIds = new Set<string>();
         
         bannedList.forEach((u: AdminUserRaw) => {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const extractorKeys: (keyof AdminUserRaw)[] = ['userId', 'keycloakId', 'sub', 'targetUserId', 'id'];
-          const detectedUuid = extractorKeys
-            .map((key) => u[key])
-            .find((val): val is string => typeof val === 'string' && uuidRegex.test(val)) ?? '';
-          
-          const finalId = detectedUuid || u.userId || u.id || '';
+          const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
           if (finalId) bannedIds.add(finalId);
         });
 
@@ -918,19 +931,7 @@ export class AdminDashboardComponent implements OnInit {
         this.adminService.getUsers().subscribe({
           next: (allUsersData) => {
             const mappedUsersList = (allUsersData || []).map((u: AdminUserRaw) => {
-              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-              const extractorKeys: (keyof AdminUserRaw)[] = ['userId', 'keycloakId', 'sub', 'targetUserId', 'id'];
-              let detectedUuid = extractorKeys
-                .map((key) => u[key])
-                .find((val): val is string => typeof val === 'string' && uuidRegex.test(val)) ?? '';
-              
-              if (!detectedUuid) {
-                const allKeys = Object.keys(u) as (keyof AdminUserRaw)[];
-                detectedUuid = allKeys
-                  .map((key) => u[key])
-                  .find((val): val is string => typeof val === 'string' && uuidRegex.test(val)) ?? '';
-              }
-              const finalId = detectedUuid || u.userId || u.id || '';
+              const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
               const isBanned = bannedIds.has(finalId) || u.status === 'BANNED' || u.banned === true;
               const userName = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.email || 'User';
 
@@ -938,7 +939,7 @@ export class AdminDashboardComponent implements OnInit {
                 id: finalId,
                 name: userName,
                 email: u.email || '',
-                role: (u.role || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'ADMIN',
+                role: (u.role || 'STUDENT').toUpperCase() as UserRole,
                 status: (isBanned ? 'BANNED' : 'ACTIVE') as 'ACTIVE' | 'BANNED' | 'PENDING',
                 avatarSeed: u.email || finalId || 'User',
                 raw: u
@@ -952,20 +953,14 @@ export class AdminDashboardComponent implements OnInit {
             console.warn('GET /users failed (backend team might still be working on it), falling back to banned users list:', err);
             // Fallback to displaying banned users only
             const mappedBanned = bannedList.map((u: AdminUserRaw) => {
-              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-              const extractorKeys: (keyof AdminUserRaw)[] = ['userId', 'keycloakId', 'sub', 'targetUserId', 'id'];
-              const detectedUuid = extractorKeys
-                .map((key) => u[key])
-                .find((val): val is string => typeof val === 'string' && uuidRegex.test(val)) ?? '';
-              
-              const finalId = detectedUuid || u.userId || u.id || '';
+              const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
               const userName = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.email || 'Banned User';
               
               return {
                 id: finalId,
                 name: userName,
                 email: u.email || '',
-                role: (u.role || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'ADMIN',
+                role: (u.role || 'STUDENT').toUpperCase() as UserRole,
                 status: 'BANNED' as const,
                 avatarSeed: u.email || finalId || 'Banned',
                 raw: u
