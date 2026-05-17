@@ -75,16 +75,7 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     return this.progressStore.activeStreak() >= 7;
   }
 
-  ngOnInit() {
-    // Use the authenticated student's own ID — guard against '1' placeholder
-    // that would call the wrong account for unauthenticated/test states.
-    const studentId = this.authStore.user()?.id;
-    if (studentId) {
-      this.progressStore.loadDashboard(studentId);
-    }
-    // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
-    this.progressStore.loadMyDashboard();
-
+  constructor() {
     effect(() => {
       const skills = this.progressStore.skillLevels().map(s => ({
         subject: s.subject,
@@ -94,6 +85,17 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
         this.renderRadarChart(skills);
       }
     });
+  }
+
+  ngOnInit() {
+    // Use the authenticated student's own ID — guard against '1' placeholder
+    // that would call the wrong account for unauthenticated/test states.
+    const studentId = this.authStore.user()?.id;
+    if (studentId) {
+      this.progressStore.loadDashboard(studentId);
+    }
+    // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
+    this.progressStore.loadMyDashboard();
   }
 
   ngAfterViewInit() {
