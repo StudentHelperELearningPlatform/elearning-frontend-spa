@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { QuizzesStore } from './quizzes.store';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { QUIZ_API_URL } from '@core/tokens/api.token';
 
 const MOCK_QUIZ_API = {
   id: 'quiz-1',
@@ -25,7 +26,11 @@ describe('QuizzesStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        { provide: QUIZ_API_URL, useValue: '/api' },
+      ],
     });
     store = TestBed.inject(QuizzesStore);
     httpClient = TestBed.inject(HttpClient);

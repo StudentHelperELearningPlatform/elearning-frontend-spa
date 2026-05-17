@@ -22,11 +22,12 @@ import { PaymentStore } from './payment.store';
         role="dialog"
         aria-modal="true"
         aria-labelledby="checkout-title"
+        tabindex="-1"
         (click)="onBackdrop($event)"
+        (keydown.escape)="cancel()"
       >
         <div
           class="bg-white p-6 md:p-8 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-md w-full"
-          (click)="$event.stopPropagation()"
         >
           <div class="flex items-center gap-3 mb-4">
             <span class="material-icons text-4xl text-[#0ABAB5]" aria-hidden="true">lock</span>
@@ -74,8 +75,10 @@ export class CheckoutModalComponent {
     this.closed.emit();
   }
 
-  onBackdrop(_: MouseEvent) {
-    this.cancel();
+  onBackdrop(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      this.cancel();
+    }
   }
 
   async proceed() {

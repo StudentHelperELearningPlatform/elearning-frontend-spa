@@ -111,26 +111,14 @@ describe('LessonViewerComponent', () => {
 
   // ─── Checkout & Unlocks ──────────────────────────────────────────────────
 
-  it('unlockLesson calls store checkout with student and lesson ids', () => {
+  it('unlockLesson opens the checkout modal', () => {
     fixture.detectChanges();
-    const spy = vi.spyOn(store, 'checkout').mockImplementation(() => {
-      /* mock */
-    });
-    vi.spyOn(component.authStore, 'user').mockReturnValue({
-      id: 'student-123',
-    } as unknown as ReturnType<typeof component.authStore.user>);
-    patchStore(store, { currentLesson: { id: 'lesson-456' } as unknown as Lesson });
-
+    const checkoutOpen = (
+      component as unknown as { checkoutOpen: { (): boolean; set: (v: boolean) => void } }
+    ).checkoutOpen;
+    expect(checkoutOpen()).toBe(false);
     component.unlockLesson();
-    expect(spy).toHaveBeenCalledWith('student-123', 'lesson-456');
-  });
-
-  it('does not call checkout if student or lesson is missing', () => {
-    fixture.detectChanges();
-    const spy = vi.spyOn(store, 'checkout');
-    vi.spyOn(component.authStore, 'user').mockReturnValue(null);
-    component.unlockLesson();
-    expect(spy).not.toHaveBeenCalled();
+    expect(checkoutOpen()).toBe(true);
   });
 
   // ─── Renders & Error States ─────────────────────────────────────────────
