@@ -50,33 +50,52 @@ describe('ClassesListComponent', () => {
     expect(console.log).toHaveBeenCalledWith('delete', 'c1');
   });
 
-  it('should create class if prompt returns a name', () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('New Class Name');
+  it('should set createMode to true on onCreateClass', () => {
     const comp = make();
+    expect(comp.createMode()).toBe(false);
     comp.onCreateClass();
-    
-    expect(window.prompt).toHaveBeenCalledWith('Class name');
-    expect(mockClassStore.createClass).toHaveBeenCalledWith({
-      name: 'New Class Name',
-      description: ''
-    });
+    expect(comp.createMode()).toBe(true);
   });
 
-  it('should not create class if prompt returns null', () => {
-    vi.spyOn(window, 'prompt').mockReturnValue(null);
+  it('should create class on submitCreate if name is present', () => {
     const comp = make();
-    comp.onCreateClass();
+    comp.createMode.set(true);
+    comp.newClassName.set('New Class Name');
+    comp.newClassDescription.set('A beautiful description');
     
-    expect(window.prompt).toHaveBeenCalledWith('Class name');
-    expect(mockClassStore.createClass).not.toHaveBeenCalled();
+    comp.submitCreate();
+    
+    expect(mockClassStore.createClass).toHaveBeenCalledWith({
+      name: 'New Class Name',
+      description: 'A beautiful description'
+    });
+    expect(comp.createMode()).toBe(false);
+    expect(comp.newClassName()).toBe('');
+    expect(comp.newClassDescription()).toBe('');
   });
-  
-  it('should not create class if prompt returns empty string', () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('');
+
+  it('should not create class on submitCreate if name is empty', () => {
     const comp = make();
-    comp.onCreateClass();
+    comp.createMode.set(true);
+    comp.newClassName.set('   ');
+    comp.newClassDescription.set('No name');
     
-    expect(window.prompt).toHaveBeenCalledWith('Class name');
+    comp.submitCreate();
+    
     expect(mockClassStore.createClass).not.toHaveBeenCalled();
+    expect(comp.createMode()).toBe(true);
+  });
+
+  it('should reset signals on cancelCreate', () => {
+    const comp = make();
+    comp.createMode.set(true);
+    comp.newClassName.set('Draft Name');
+    comp.newClassDescription.set('Draft Description');
+    
+    comp.cancelCreate();
+    
+    expect(comp.createMode()).toBe(false);
+    expect(comp.newClassName()).toBe('');
+    expect(comp.newClassDescription()).toBe('');
   });
 });

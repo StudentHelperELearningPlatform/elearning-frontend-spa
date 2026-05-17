@@ -7,13 +7,62 @@
       <p class="text-gray-600">Manage your classes</p>
     </div>
 
-    <button
-      (click)="onCreateClass()"
-      class="px-4 py-2 bg-[#0ABAB5] text-white font-black rounded-xl border-2 border-black"
-    >
-      Create Class
-    </button>
+    @if (!createMode()) {
+      <button
+        (click)="onCreateClass()"
+        class="px-4 py-2 bg-[#0ABAB5] text-white font-black rounded-xl border-2 border-black cursor-pointer hover:bg-[#089692] transition-colors"
+      >
+        Create Class
+      </button>
+    }
   </div>
+
+  <!-- CREATE CLASS FORM BLOCK -->
+  @if (createMode()) {
+    <div class="bg-white p-6 rounded-3xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4">
+      <h2 class="text-xl font-black text-black">New Class</h2>
+      
+      <div class="space-y-3">
+        <label class="block">
+          <span class="text-sm font-bold mb-1 block">Class Name *</span>
+          <input
+            [ngModel]="newClassName()"
+            (ngModelChange)="newClassName.set($event)"
+            placeholder="e.g. Algebra 101"
+            class="w-full px-4 py-2 border-2 border-black rounded-xl font-medium"
+            aria-label="Class name"
+          />
+        </label>
+        
+        <label class="block">
+          <span class="text-sm font-bold mb-1 block">Description</span>
+          <textarea
+            [ngModel]="newClassDescription()"
+            (ngModelChange)="newClassDescription.set($event)"
+            placeholder="Brief description of the class"
+            rows="3"
+            class="w-full px-4 py-2 border-2 border-black rounded-xl font-medium"
+            aria-label="Class description"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="flex gap-3">
+        <button
+          (click)="submitCreate()"
+          class="px-4 py-2 bg-[#0ABAB5] text-white font-black rounded-xl border-2 border-black cursor-pointer hover:bg-[#089692] transition-colors"
+        >
+          Create
+        </button>
+        <button
+          (click)="cancelCreate()"
+          class="px-4 py-2 bg-gray-200 text-black font-black rounded-xl border-2 border-black cursor-pointer hover:bg-gray-300 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  }
 
   <!-- REFRESH -->
   <button

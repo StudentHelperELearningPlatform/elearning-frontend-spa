@@ -108,8 +108,8 @@ describe('TeacherClassService', () => {
   it('should create class with description', () => {
     const mockNewClass: TeacherClass = { id: '2', name: 'Science', description: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'Science', description: 'Science Class' };
-    const expectedRequest = { nane: 'Science', bio: 'Science Class' };
-    const responsePayload = { id: '2', nane: 'Science', bio: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const expectedRequest = { name: 'Science', bio: 'Science Class' };
+    const responsePayload = { id: '2', name: 'Science', bio: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
 
     service.createClass(payload).subscribe((newClass) => {
       expect(newClass).toEqual(mockNewClass);
@@ -124,8 +124,8 @@ describe('TeacherClassService', () => {
   it('should create class with default empty description if not provided', () => {
     const mockNewClass: TeacherClass = { id: '2', name: 'Science', description: '', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'Science' };
-    const expectedRequest = { nane: 'Science', bio: '' };
-    const responsePayload = { id: '2', nane: 'Science', bio: '', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const expectedRequest = { name: 'Science', bio: '' };
+    const responsePayload = { id: '2', name: 'Science', bio: '', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
 
     service.createClass(payload).subscribe((newClass) => {
       expect(newClass).toEqual(mockNewClass);
@@ -154,8 +154,8 @@ describe('TeacherClassService', () => {
   it('should update class name only', () => {
     const mockUpdatedClass: TeacherClass = { id: '1', name: 'New Math', description: '', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'New Math' };
-    const expectedRequest = { nane: 'New Math' };
-    const responsePayload = { id: '1', nane: 'New Math', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const expectedRequest = { name: 'New Math' };
+    const responsePayload = { id: '1', name: 'New Math', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
 
     service.updateClass('1', payload).subscribe((updatedClass) => {
       expect(updatedClass).toEqual(mockUpdatedClass);
@@ -186,8 +186,8 @@ describe('TeacherClassService', () => {
   it('should update both class name and description', () => {
     const mockUpdatedClass: TeacherClass = { id: '1', name: 'New Math', description: 'New Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'New Math', description: 'New Bio' };
-    const expectedRequest = { nane: 'New Math', bio: 'New Bio' };
-    const responsePayload = { id: '1', nane: 'New Math', bio: 'New Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
+    const expectedRequest = { name: 'New Math', bio: 'New Bio' };
+    const responsePayload = { id: '1', name: 'New Math', bio: 'New Bio', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
 
     service.updateClass('1', payload).subscribe((updatedClass) => {
       expect(updatedClass).toEqual(mockUpdatedClass);
