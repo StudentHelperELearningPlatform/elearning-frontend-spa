@@ -402,7 +402,97 @@ describe('ContentStore', () => {
   });
 
   it('draftQuizzes returns draft quizzes', () => {
+    expect(store.draftQuizzes().length).toBe(0);
     patchStore(store, { quizzes: [{ ...MOCK_QUIZZES[0], status: 'DRAFT' }] });
     expect(store.draftQuizzes().length).toBe(1);
+  });
+
+  // --- Missing Coverage Dashboard Resiliency ---
+  it('loadDashboard succeeds even if profile service fails', () => {
+    vi.spyOn(http, 'get').mockImplementation((url: string) => {
+      if (url.includes('/lessons')) {
+        return of(MOCK_RESPONSE.lessons);
+      }
+
+      if (url.includes('/profile')) {
+        return throwError(() => new Error('profile service is down'));
+      }
+
+      return of(null);
+    });
+
+    store.loadDashboard();
+
+    expect(store.lessons().length).toBe(4);
+    expect(store.recentActivity().length).toBe(4); // falls back to mapping from lessons
+    expect(store.loading()).toBe(false);
+    expect(store.error()).toBeNull();
+  });
+
+  it('loadDashboard handles different lesson response structures', () => {
+    // 1. Paginated { items }
+    vi.spyOn(http, 'get').mockImplementation((url: string) => {
+      if (url.includes('/lessons')) {
+        return of({ items: MOCK_RESPONSE.lessons });
+      }
+      return of({ recentActivity: [], classes: [] });
+    });
+    store.loadDashboard();
+    expect(store.lessons().length).toBe(4);
+
+    // 2. Paginated { content }
+    vi.spyOn(http, 'get').mockImplementation((url: string) => {
+      if (url.includes('/lessons')) {
+        return of({ content: MOCK_RESPONSE.lessons });
+      }
+      return of({ recentActivity: [], classes: [] });
+    });
+    store.loadDashboard();
+    expect(store.lessons().length).toBe(4);
+  });
+
+  it('safeDate utility converts various value types correctly', () => {
+    vi.spyOn(http, 'get').mockImplementation((url: string) => {
+      if (url.includes('/lessons')) {
+        return of([
+          {
+            id: 'l1',
+            title: 'L1',
+            updatedAt: null, // Test falsy value
+          },
+          {
+            id: 'l2',
+            title: 'L2',
+            updatedAt: new Date(2026, 4, 1), // Test Date instance
+          },
+          {
+            id: 'l3',
+            title: 'L3',
+            updatedAt: 1715904000000, // Test timestamp number
+          }
+        ]);
+      }
+      return of({ recentActivity: [], classes: [] });
+    });
+    
+    store.loadDashboard();
+    expect(store.lessons().length).toBe(3);
+    expect(store.lessons()[0].lastModified).toBeInstanceOf(Date);
+    expect(store.lessons()[1].lastModified.getFullYear()).toBe(2026);
+    expect(store.lessons()[2].lastModified.getTime()).toBe(1715904000000);
+  });
+
+  it('loadDashboard sets custom fallback error message when error is not an Error instance', () => {
+    vi.spyOn(http, 'get').mockImplementation((url: string) => {
+      if (url.includes('/lessons')) {
+        return throwError(() => 'raw string error');
+      }
+      return of(null);
+    });
+
+    store.loadDashboard();
+
+    expect(store.error()).toBe('Failed to load dashboard');
+    expect(store.loading()).toBe(false);
   });
 });
