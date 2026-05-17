@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
@@ -10,6 +11,39 @@ import {
   ClassStudent,
   ClassLesson,
 } from '@features/teacher/models/class-detail.model';
+
+export interface TeacherClassRaw {
+  id?: string;
+  name?: string;
+  nane?: string;
+  description?: string;
+  bio?: string;
+  studentCount?: number;
+  lessonCount?: number;
+  createdAt?: string;
+  code?: string;
+  averageGrade?: number;
+  students?: ClassStudent[];
+  lessons?: ClassLesson[];
+  [key: string]: unknown;
+}
+
+export const mapClass = (c: TeacherClassRaw): TeacherClass => ({
+  id: c.id ?? '',
+  name: c.name ?? c.nane ?? '',
+  description: c.description ?? c.bio ?? '',
+  studentCount: c.studentCount ?? 0,
+  lessonCount: c.lessonCount ?? 0,
+  createdAt: c.createdAt ?? new Date().toISOString(),
+  code: c.code,
+  averageGrade: c.averageGrade,
+});
+
+export const mapClassDetail = (c: TeacherClassRaw): TeacherClassDetail => ({
+  ...mapClass(c),
+  students: c.students ?? [],
+  lessons: c.lessons ?? [],
+});
 
 @Injectable({
   providedIn: 'root',
@@ -21,19 +55,29 @@ export class TeacherClassService {
   private readonly baseUrl = `${this.apiUrl}/teachers/classes`;
 
   getClasses(): Observable<TeacherClass[]> {
-    return this.http.get<TeacherClass[]>(this.baseUrl);
+    return this.http.get<TeacherClassRaw[]>(this.baseUrl).pipe(
+      map((list) => list.map(mapClass))
+    );
   }
 
   createClass(data: {
     name: string;
     description?: string;
   }): Observable<TeacherClass> {
-    return this.http.post<TeacherClass>(this.baseUrl, data);
+    const payload = {
+      nane: data.name,
+      bio: data.description ?? '',
+    };
+    return this.http.post<TeacherClassRaw>(this.baseUrl, payload).pipe(
+      map(mapClass)
+    );
   }
 
   getClassDetail(classId: string): Observable<TeacherClassDetail> {
-    return this.http.get<TeacherClassDetail>(
+    return this.http.get<TeacherClassRaw>(
       `${this.baseUrl}/${classId}`,
+    ).pipe(
+      map(mapClassDetail)
     );
   }
 
@@ -44,9 +88,18 @@ export class TeacherClassService {
       description?: string;
     },
   ): Observable<TeacherClass> {
-    return this.http.put<TeacherClass>(
+    const payload: Record<string, unknown> = {};
+    if (data.name !== undefined) {
+      payload['nane'] = data.name;
+    }
+    if (data.description !== undefined) {
+      payload['bio'] = data.description;
+    }
+    return this.http.put<TeacherClassRaw>(
       `${this.baseUrl}/${classId}`,
-      data,
+      payload,
+    ).pipe(
+      map(mapClass)
     );
   }
 

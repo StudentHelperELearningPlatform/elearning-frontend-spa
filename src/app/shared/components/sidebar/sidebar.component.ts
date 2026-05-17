@@ -51,6 +51,10 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
         }
 
         @if (authStore.isAdmin()) {
+          <a routerLink="/admin/dashboard" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">dashboard</span>
+            <span>Dashboard</span>
+          </a>
           <a routerLink="/admin/user-management" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
             <span class="material-icons text-3xl">manage_accounts</span>
             <span>User Management</span>

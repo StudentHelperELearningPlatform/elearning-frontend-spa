@@ -7,12 +7,7 @@ const base = `${environment.userPlatformApiUrl}/teachers/classes`;
 /**
  * TYPES
  */
-interface Params {
-  classId?: string;
-  studentId?: string;
-  lessonId?: string;
-}
-
+export type ResolverParams = Record<string, string | readonly string[] | undefined>;
 interface Student {
   id: string;
   name: string;
@@ -31,27 +26,6 @@ interface ClassItem {
   studentCount: number;
   lessonCount: number;
   createdAt: string;
-}
-
-interface MockRequest {
-  params?: Params;
-  body?: unknown;
-}
-
-/**
- * HELPERS
- */
-function parseJsonBody(req: MockRequest): Record<string, unknown> {
-  return (req.body as Record<string, unknown>) ?? {};
-}
-
-function getParam(
-  params: Params | undefined,
-  key: keyof Params,
-): string {
-  const value = params?.[key];
-
-  return typeof value === 'string' ? value : '';
 }
 
 /**
@@ -97,8 +71,8 @@ export const createClass = http.post(base, async ({ request }) => {
 
   const newClass: ClassItem = {
     id: crypto.randomUUID(),
-    name: (body['name'] as string) ?? 'Untitled',
-    description: (body['description'] as string) ?? '',
+    name: (body['nane'] as string | undefined) ?? (body['name'] as string | undefined) ?? 'Untitled',
+    description: (body['bio'] as string | undefined) ?? (body['description'] as string | undefined) ?? '',
     studentCount: 0,
     lessonCount: 0,
     createdAt: new Date().toISOString(),
@@ -112,8 +86,8 @@ export const createClass = http.post(base, async ({ request }) => {
 /**
  * CLASS DETAIL
  */
-export const getClassDetail = http.get(`${base}/:classId`, (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
+export const getClassDetailResolver = ({ params }: { params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   const found = classes.find((c) => c.id === classId);
 
@@ -122,124 +96,153 @@ export const getClassDetail = http.get(`${base}/:classId`, (req: MockRequest) =>
     students: studentsByClass[classId] ?? [],
     lessons: lessonsByClass[classId] ?? [],
   });
-});
+};
+export const getClassDetail = http.get(`${base}/:classId`, getClassDetailResolver);
 
 /**
  * UPDATE class
  */
-export const updateClass = http.put(`${base}/:classId`, async (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
-  const body = parseJsonBody(req);
+export const updateClassResolver = async ({ request, params }: { request: Request; params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    body = {};
+  }
+
+  const mappedUpdate: Partial<ClassItem> = {};
+  if (body['nane'] !== undefined) {
+    mappedUpdate.name = body['nane'] as string;
+  }
+  if (body['name'] !== undefined) {
+    mappedUpdate.name = body['name'] as string;
+  }
+  if (body['bio'] !== undefined) {
+    mappedUpdate.description = body['bio'] as string;
+  }
+  if (body['description'] !== undefined) {
+    mappedUpdate.description = body['description'] as string;
+  }
 
   classes = classes.map((c) =>
-    c.id === classId ? { ...c, ...body } : c,
+    c.id === classId ? { ...c, ...mappedUpdate } : c,
   );
 
   return HttpResponse.json({ success: true });
-});
+};
+export const updateClass = http.put(`${base}/:classId`, updateClassResolver);
 
 /**
  * DELETE class
  */
-export const deleteClass = http.delete(`${base}/:classId`, (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
+export const deleteClassResolver = ({ params }: { params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   classes = classes.filter((c) => c.id !== classId);
 
   return HttpResponse.json({ success: true });
-});
+};
+export const deleteClass = http.delete(`${base}/:classId`, deleteClassResolver);
 
 /**
  * GET students
  */
-export const getStudents = http.get(`${base}/:classId/students`, (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
+export const getStudentsResolver = ({ params }: { params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   return HttpResponse.json(studentsByClass[classId] ?? []);
-});
+};
+export const getStudents = http.get(`${base}/:classId/students`, getStudentsResolver);
 
 /**
  * ADD student
  */
+export const addStudentResolver = ({ params }: { params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
+
+  studentsByClass[classId] = [
+    ...(studentsByClass[classId] ?? []),
+    {
+      id: studentId,
+      name: 'New Student',
+      email: 'test@mail.com',
+    },
+  ];
+
+  return HttpResponse.json({ success: true });
+};
 export const addStudent = http.post(
   `${base}/:classId/students/:studentId`,
-  (req: MockRequest) => {
-    const classId = getParam(req.params, 'classId');
-    const studentId = getParam(req.params, 'studentId');
-
-    studentsByClass[classId] = [
-      ...(studentsByClass[classId] ?? []),
-      {
-        id: studentId,
-        name: 'New Student',
-        email: 'test@mail.com',
-      },
-    ];
-
-    return HttpResponse.json({ success: true });
-  },
+  addStudentResolver,
 );
 
 /**
  * REMOVE student
  */
+export const removeStudentResolver = ({ params }: { params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
+
+  studentsByClass[classId] =
+    studentsByClass[classId]?.filter((s) => s.id !== studentId) ?? [];
+
+  return HttpResponse.json({ success: true });
+};
 export const removeStudent = http.delete(
   `${base}/:classId/students/:studentId`,
-  (req: MockRequest) => {
-    const classId = getParam(req.params, 'classId');
-    const studentId = getParam(req.params, 'studentId');
-
-    studentsByClass[classId] =
-      studentsByClass[classId]?.filter((s) => s.id !== studentId) ?? [];
-
-    return HttpResponse.json({ success: true });
-  },
+  removeStudentResolver,
 );
 
 /**
  * GET lessons
  */
-export const getLessons = http.get(`${base}/:classId/lessons`, (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
+export const getLessonsResolver = ({ params }: { params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   return HttpResponse.json(lessonsByClass[classId] ?? []);
-});
+};
+export const getLessons = http.get(`${base}/:classId/lessons`, getLessonsResolver);
 
 /**
  * ADD lesson
  */
+export const addLessonResolver = ({ params }: { params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
+
+  lessonsByClass[classId] = [
+    ...(lessonsByClass[classId] ?? []),
+    {
+      id: lessonId,
+      title: 'New Lesson',
+    },
+  ];
+
+  return HttpResponse.json({ success: true });
+};
 export const addLesson = http.post(
   `${base}/:classId/lessons/:lessonId`,
-  (req: MockRequest) => {
-    const classId = getParam(req.params, 'classId');
-    const lessonId = getParam(req.params, 'lessonId');
-
-    lessonsByClass[classId] = [
-      ...(lessonsByClass[classId] ?? []),
-      {
-        id: lessonId,
-        title: 'New Lesson',
-      },
-    ];
-
-    return HttpResponse.json({ success: true });
-  },
+  addLessonResolver,
 );
 
 /**
  * REMOVE lesson
  */
+export const removeLessonResolver = ({ params }: { params?: ResolverParams }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
+
+  lessonsByClass[classId] =
+    lessonsByClass[classId]?.filter((l) => l.id !== lessonId) ?? [];
+
+  return HttpResponse.json({ success: true });
+};
 export const removeLesson = http.delete(
   `${base}/:classId/lessons/:lessonId`,
-  (req: MockRequest) => {
-    const classId = getParam(req.params, 'classId');
-    const lessonId = getParam(req.params, 'lessonId');
-
-    lessonsByClass[classId] =
-      lessonsByClass[classId]?.filter((l) => l.id !== lessonId) ?? [];
-
-    return HttpResponse.json({ success: true });
-  },
+  removeLessonResolver,
 );
 
 /**
