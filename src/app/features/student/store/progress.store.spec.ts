@@ -232,6 +232,43 @@ describe('ProgressStore', () => {
       expect(store.loading()).toBe(false);
       expect(store.error()).toBeNull();
     });
+
+    it('should fall back to empty arrays when the response omits collection fields', () => {
+      // Backend sometimes returns a sparse payload (missing arrays). Exercises
+      // the `?? []` fallbacks so the UI never sees `undefined.map(...)`.
+      const sparsePayload = {
+        student: null,
+        streak: null,
+      } as unknown as DashboardData;
+
+      store.loadMyDashboard();
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/dashboard'),
+      );
+      req.flush(sparsePayload);
+
+      expect(store.skillLevels()).toEqual([]);
+      expect(store.progressRecords()).toEqual([]);
+      expect(store.recentActivity()).toEqual([]);
+      expect(store.milestones()).toEqual([]);
+      expect(store.upcomingQuizzes()).toEqual([]);
+    });
+
+    it('should set a static, user-facing error string on failure (both legacy + sprint slots)', () => {
+      // The HTML template renders dashboardError() directly to the user, so
+      // we deliberately don't surface HttpErrorResponse.message ("Http failure
+      // response for …") — we want the same friendly text every time.
+      store.loadMyDashboard();
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/dashboard'),
+      );
+      req.error(new ProgressEvent('error'), { status: 500, statusText: 'Server Error' });
+
+      expect(store.dashboardLoading()).toBe(false);
+      expect(store.loading()).toBe(false);
+      expect(store.dashboardError()).toBe('Failed to load dashboard');
+      expect(store.error()).toBe('Failed to load dashboard');
+    });
   });
 
   // ── loadDashboard (Legacy) ─────────────────────────────────────────────────

@@ -309,12 +309,15 @@ export const ProgressStore = signalStore(
                   milestones: dashboard.milestones ?? [],
                   upcomingQuizzes: dashboard.upcomingQuizzes ?? [],
                 }),
-              error: (err: { message?: string }) =>
+              error: () =>
                 patchState(store, {
                   dashboardLoading: false,
                   loading: false,
-                  dashboardError: err?.message ?? 'Failed to load dashboard',
-                  error: err?.message ?? 'Failed to load dashboard',
+                  // Static, user-facing string — HttpErrorResponse.message
+                  // ("Http failure response for …") is not appropriate to
+                  // surface in the dashboard template.
+                  dashboardError: 'Failed to load dashboard',
+                  error: 'Failed to load dashboard',
                 }),
             })
           )
