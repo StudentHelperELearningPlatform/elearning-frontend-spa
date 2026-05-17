@@ -152,7 +152,9 @@ describe('errorInterceptor', () => {
 
     statusCodesToTest.forEach(({ status, expected }) => {
       httpClient.get(`/api/test-${status}`).subscribe({
-        error: () => {}
+        error: (err) => {
+          expect(err).toBeDefined();
+        }
       });
       const req = httpMock.expectOne(`/api/test-${status}`);
       req.flush(null, { status, statusText: 'OK' });
@@ -162,7 +164,9 @@ describe('errorInterceptor', () => {
 
   it('should fallback to statusText if it is not OK and no message in body', () => {
     httpClient.get('/api/test').subscribe({
-      error: () => {}
+      error: (err) => {
+        expect(err).toBeDefined();
+      }
     });
     const req = httpMock.expectOne('/api/test');
     req.flush(null, { status: 418, statusText: "I'm a teapot" });
