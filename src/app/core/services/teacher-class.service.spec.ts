@@ -29,30 +29,66 @@ describe('TeacherClassService', () => {
   });
 
   it('should map class with fallback values', () => {
-    const raw: TeacherClassRaw = {
+    // 1. Both name/nane and description/bio missing
+    const raw1: TeacherClassRaw = {
       id: undefined,
-      nane: 'Nane Fallback',
-      bio: 'Bio Fallback',
       studentCount: undefined,
       lessonCount: undefined,
       createdAt: undefined
     };
-    const mapped = mapClass(raw);
-    expect(mapped.id).toBe('');
-    expect(mapped.name).toBe('Nane Fallback');
-    expect(mapped.description).toBe('Bio Fallback');
-    expect(mapped.studentCount).toBe(0);
-    expect(mapped.lessonCount).toBe(0);
-    expect(mapped.createdAt).toBeDefined();
+    const mapped1 = mapClass(raw1);
+    expect(mapped1.id).toBe('');
+    expect(mapped1.name).toBe('');
+    expect(mapped1.description).toBe('');
+    expect(mapped1.studentCount).toBe(0);
+    expect(mapped1.lessonCount).toBe(0);
+    expect(mapped1.createdAt).toBeDefined();
 
-    const detailRaw: TeacherClassRaw = {
-      ...raw,
+    // 2. Standard name and description present
+    const raw2: TeacherClassRaw = {
+      id: 'c-1',
+      name: 'Standard Name',
+      nane: 'Nane Ignore',
+      description: 'Standard Desc',
+      bio: 'Bio Ignore',
+      studentCount: 12,
+      lessonCount: 6,
+      createdAt: '2025-05-17T00:00:00Z'
+    };
+    const mapped2 = mapClass(raw2);
+    expect(mapped2.id).toBe('c-1');
+    expect(mapped2.name).toBe('Standard Name');
+    expect(mapped2.description).toBe('Standard Desc');
+    expect(mapped2.studentCount).toBe(12);
+    expect(mapped2.lessonCount).toBe(6);
+    expect(mapped2.createdAt).toBe('2025-05-17T00:00:00Z');
+
+    // 3. Typo/fallback fields only (nane, bio)
+    const raw3: TeacherClassRaw = {
+      nane: 'Typo Name Only',
+      bio: 'Typo Bio Only'
+    };
+    const mapped3 = mapClass(raw3);
+    expect(mapped3.name).toBe('Typo Name Only');
+    expect(mapped3.description).toBe('Typo Bio Only');
+
+    // 4. Detail fallbacks (students and lessons defined)
+    const detailRaw1: TeacherClassRaw = {
+      students: [{ id: 's-1', name: 'Student 1', email: 's1@example.com' }],
+      lessons: [{ id: 'l-1', title: 'Lesson 1' }]
+    };
+    const mappedDetail1 = mapClassDetail(detailRaw1);
+    expect(mappedDetail1.students).toEqual([{ id: 's-1', name: 'Student 1', email: 's1@example.com' }]);
+    expect(mappedDetail1.lessons).toEqual([{ id: 'l-1', title: 'Lesson 1' }]);
+
+    // 5. Detail fallbacks (students and lessons missing)
+    const detailRaw2: TeacherClassRaw = {
       students: undefined,
       lessons: undefined
     };
-    const mappedDetail = mapClassDetail(detailRaw);
-    expect(mappedDetail.students).toEqual([]);
-    expect(mappedDetail.lessons).toEqual([]);
+    const mappedDetail2 = mapClassDetail(detailRaw2);
+    expect(mappedDetail2.students).toEqual([]);
+    expect(mappedDetail2.lessons).toEqual([]);
   });
 
   it('should get classes', () => {

@@ -7,12 +7,6 @@ const base = `${environment.userPlatformApiUrl}/teachers/classes`;
 /**
  * TYPES
  */
-interface Params {
-  classId?: string;
-  studentId?: string;
-  lessonId?: string;
-}
-
 interface Student {
   id: string;
   name: string;
@@ -31,27 +25,6 @@ interface ClassItem {
   studentCount: number;
   lessonCount: number;
   createdAt: string;
-}
-
-interface MockRequest {
-  params?: Params;
-  body?: unknown;
-}
-
-/**
- * HELPERS
- */
-function parseJsonBody(req: MockRequest): Record<string, unknown> {
-  return (req.body as Record<string, unknown>) ?? {};
-}
-
-function getParam(
-  params: Params | undefined,
-  key: keyof Params,
-): string {
-  const value = params?.[key];
-
-  return typeof value === 'string' ? value : '';
 }
 
 /**
@@ -112,8 +85,8 @@ export const createClass = http.post(base, async ({ request }) => {
 /**
  * CLASS DETAIL
  */
-export const getClassDetail = http.get(`${base}/:classId`, (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
+export const getClassDetail = http.get(`${base}/:classId`, ({ params }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   const found = classes.find((c) => c.id === classId);
 
@@ -127,9 +100,15 @@ export const getClassDetail = http.get(`${base}/:classId`, (req: MockRequest) =>
 /**
  * UPDATE class
  */
-export const updateClass = http.put(`${base}/:classId`, async (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
-  const body = parseJsonBody(req);
+export const updateClass = http.put(`${base}/:classId`, async ({ request, params }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+  
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    body = {};
+  }
 
   const mappedUpdate: Partial<ClassItem> = {};
   if (body['nane'] !== undefined) {
@@ -155,8 +134,8 @@ export const updateClass = http.put(`${base}/:classId`, async (req: MockRequest)
 /**
  * DELETE class
  */
-export const deleteClass = http.delete(`${base}/:classId`, (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
+export const deleteClass = http.delete(`${base}/:classId`, ({ params }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   classes = classes.filter((c) => c.id !== classId);
 
@@ -166,8 +145,8 @@ export const deleteClass = http.delete(`${base}/:classId`, (req: MockRequest) =>
 /**
  * GET students
  */
-export const getStudents = http.get(`${base}/:classId/students`, (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
+export const getStudents = http.get(`${base}/:classId/students`, ({ params }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   return HttpResponse.json(studentsByClass[classId] ?? []);
 });
@@ -177,9 +156,9 @@ export const getStudents = http.get(`${base}/:classId/students`, (req: MockReque
  */
 export const addStudent = http.post(
   `${base}/:classId/students/:studentId`,
-  (req: MockRequest) => {
-    const classId = getParam(req.params, 'classId');
-    const studentId = getParam(req.params, 'studentId');
+  ({ params }) => {
+    const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+    const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
 
     studentsByClass[classId] = [
       ...(studentsByClass[classId] ?? []),
@@ -199,9 +178,9 @@ export const addStudent = http.post(
  */
 export const removeStudent = http.delete(
   `${base}/:classId/students/:studentId`,
-  (req: MockRequest) => {
-    const classId = getParam(req.params, 'classId');
-    const studentId = getParam(req.params, 'studentId');
+  ({ params }) => {
+    const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+    const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
 
     studentsByClass[classId] =
       studentsByClass[classId]?.filter((s) => s.id !== studentId) ?? [];
@@ -213,8 +192,8 @@ export const removeStudent = http.delete(
 /**
  * GET lessons
  */
-export const getLessons = http.get(`${base}/:classId/lessons`, (req: MockRequest) => {
-  const classId = getParam(req.params, 'classId');
+export const getLessons = http.get(`${base}/:classId/lessons`, ({ params }) => {
+  const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
 
   return HttpResponse.json(lessonsByClass[classId] ?? []);
 });
@@ -224,9 +203,9 @@ export const getLessons = http.get(`${base}/:classId/lessons`, (req: MockRequest
  */
 export const addLesson = http.post(
   `${base}/:classId/lessons/:lessonId`,
-  (req: MockRequest) => {
-    const classId = getParam(req.params, 'classId');
-    const lessonId = getParam(req.params, 'lessonId');
+  ({ params }) => {
+    const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+    const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
 
     lessonsByClass[classId] = [
       ...(lessonsByClass[classId] ?? []),
@@ -245,9 +224,9 @@ export const addLesson = http.post(
  */
 export const removeLesson = http.delete(
   `${base}/:classId/lessons/:lessonId`,
-  (req: MockRequest) => {
-    const classId = getParam(req.params, 'classId');
-    const lessonId = getParam(req.params, 'lessonId');
+  ({ params }) => {
+    const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
+    const lessonId = typeof params?.['lessonId'] === 'string' ? params['lessonId'] : '';
 
     lessonsByClass[classId] =
       lessonsByClass[classId]?.filter((l) => l.id !== lessonId) ?? [];

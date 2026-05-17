@@ -814,8 +814,8 @@ interface AdminClass {
   `]
 })
 export class AdminDashboardComponent implements OnInit {
-  private adminService = inject(AdminService);
-  private notificationService = inject(NotificationService);
+  private readonly adminService = inject(AdminService);
+  private readonly notificationService = inject(NotificationService);
 
   activeTab = signal<'overview' | 'users' | 'content' | 'inbox'>('overview');
   userSearchQuery = signal<string>('');
@@ -906,13 +906,15 @@ export class AdminDashboardComponent implements OnInit {
         bannedList.forEach((u: AdminUserRaw) => {
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
           let detectedUuid = '';
-          for (const key of ['userId', 'keycloakId', 'sub', 'targetUserId', 'id']) {
-            if (u[key] && uuidRegex.test(String(u[key]))) {
-              detectedUuid = String(u[key]);
+          const extractorKeys: (keyof AdminUserRaw)[] = ['userId', 'keycloakId', 'sub', 'targetUserId', 'id'];
+          for (const key of extractorKeys) {
+            const val = u[key];
+            if (val && uuidRegex.test(String(val))) {
+              detectedUuid = String(val);
               break;
             }
           }
-          const finalId = detectedUuid || (u.userId as string | undefined) || (u.id as string | undefined) || '';
+          const finalId = detectedUuid || u.userId || u.id || '';
           if (finalId) bannedIds.add(finalId);
         });
 
@@ -922,31 +924,34 @@ export class AdminDashboardComponent implements OnInit {
             const mappedUsersList = (allUsersData || []).map((u: AdminUserRaw) => {
               const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
               let detectedUuid = '';
-              for (const key of ['userId', 'keycloakId', 'sub', 'targetUserId', 'id']) {
-                if (u[key] && uuidRegex.test(String(u[key]))) {
-                  detectedUuid = String(u[key]);
+              const extractorKeys: (keyof AdminUserRaw)[] = ['userId', 'keycloakId', 'sub', 'targetUserId', 'id'];
+              for (const key of extractorKeys) {
+                const val = u[key];
+                if (val && uuidRegex.test(String(val))) {
+                  detectedUuid = String(val);
                   break;
                 }
               }
               if (!detectedUuid) {
                 for (const key of Object.keys(u)) {
-                  if (u[key] && uuidRegex.test(String(u[key]))) {
-                    detectedUuid = String(u[key]);
+                  const val = u[key];
+                  if (val && uuidRegex.test(String(val))) {
+                    detectedUuid = String(val);
                     break;
                   }
                 }
               }
-              const finalId = detectedUuid || (u.userId as string | undefined) || (u.id as string | undefined) || '';
+              const finalId = detectedUuid || u.userId || u.id || '';
               const isBanned = bannedIds.has(finalId) || u.status === 'BANNED' || u.banned === true;
-              const userName = (u.name as string | undefined) || `${(u.firstName as string | undefined) || ''} ${(u.lastName as string | undefined) || ''}`.trim() || (u.username as string | undefined) || (u.email as string | undefined) || 'User';
+              const userName = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.email || 'User';
 
               return {
                 id: finalId,
                 name: userName,
-                email: (u.email as string | undefined) || '',
-                role: ((u.role as string | undefined) || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'ADMIN',
+                email: u.email || '',
+                role: (u.role || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'ADMIN',
                 status: (isBanned ? 'BANNED' : 'ACTIVE') as 'ACTIVE' | 'BANNED' | 'PENDING',
-                avatarSeed: (u.email as string | undefined) || finalId || 'User',
+                avatarSeed: u.email || finalId || 'User',
                 raw: u
               };
             });
@@ -960,22 +965,24 @@ export class AdminDashboardComponent implements OnInit {
             const mappedBanned = bannedList.map((u: AdminUserRaw) => {
               const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
               let detectedUuid = '';
-              for (const key of ['userId', 'keycloakId', 'sub', 'targetUserId', 'id']) {
-                if (u[key] && uuidRegex.test(String(u[key]))) {
-                  detectedUuid = String(u[key]);
+              const extractorKeys: (keyof AdminUserRaw)[] = ['userId', 'keycloakId', 'sub', 'targetUserId', 'id'];
+              for (const key of extractorKeys) {
+                const val = u[key];
+                if (val && uuidRegex.test(String(val))) {
+                  detectedUuid = String(val);
                   break;
                 }
               }
-              const finalId = detectedUuid || (u.userId as string | undefined) || (u.id as string | undefined) || '';
-              const userName = (u.name as string | undefined) || `${(u.firstName as string | undefined) || ''} ${(u.lastName as string | undefined) || ''}`.trim() || (u.username as string | undefined) || (u.email as string | undefined) || 'Banned User';
+              const finalId = detectedUuid || u.userId || u.id || '';
+              const userName = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.email || 'Banned User';
               
               return {
                 id: finalId,
                 name: userName,
-                email: (u.email as string | undefined) || '',
-                role: ((u.role as string | undefined) || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'ADMIN',
+                email: u.email || '',
+                role: (u.role || 'STUDENT').toUpperCase() as 'STUDENT' | 'TEACHER' | 'ADMIN',
                 status: 'BANNED' as const,
-                avatarSeed: (u.email as string | undefined) || finalId || 'Banned',
+                avatarSeed: u.email || finalId || 'Banned',
                 raw: u
               };
             });
@@ -1180,7 +1187,7 @@ export class AdminDashboardComponent implements OnInit {
       next: () => {
         // Sync selected message state
         const currentSelected = this.selectedMessage();
-        if (currentSelected && currentSelected.id === messageId) {
+        if (currentSelected?.id === messageId) {
           this.selectedMessage.set({ ...currentSelected, read: readState });
         }
         this.loadContactMessages(); // Refresh actual database state

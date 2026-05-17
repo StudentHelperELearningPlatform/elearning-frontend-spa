@@ -208,4 +208,103 @@ describe('teacherClassesHandlers', () => {
       expect(data.success).toBe(true);
     });
   });
+
+  describe('Edge Cases and Branch Coverage', () => {
+    it('should return default values for nonexistent class ID in GET /teachers/classes/:classId', async () => {
+      const url = getTargetUrl('/teachers/classes/999');
+      const response = await fetch(url);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.students).toEqual([]);
+      expect(data.lessons).toEqual([]);
+    });
+
+    it('should handle PUT with empty body without crashing', async () => {
+      const url = getTargetUrl('/teachers/classes/1');
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+
+    it('should handle PUT with invalid JSON or no body', async () => {
+      const url = getTargetUrl('/teachers/classes/1');
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+
+    it('should update name using body.nane and description using body.bio', async () => {
+      const url = getTargetUrl('/teachers/classes/1');
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nane: 'Nane Val', bio: 'Bio Val' })
+      });
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+
+    it('should update name using body.name and description using body.description', async () => {
+      const url = getTargetUrl('/teachers/classes/1');
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Name Val', description: 'Desc Val' })
+      });
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+
+    it('should add student to nonexistent class and initialize list', async () => {
+      const url = getTargetUrl('/teachers/classes/999/students/s99');
+      const response = await fetch(url, { method: 'POST' });
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+
+    it('should remove student from nonexistent class gracefully', async () => {
+      const url = getTargetUrl('/teachers/classes/999/students/s99');
+      const response = await fetch(url, { method: 'DELETE' });
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+
+    it('should add lesson to nonexistent class and initialize list', async () => {
+      const url = getTargetUrl('/teachers/classes/999/lessons/l99');
+      const response = await fetch(url, { method: 'POST' });
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+
+    it('should remove lesson from nonexistent class gracefully', async () => {
+      const url = getTargetUrl('/teachers/classes/999/lessons/l99');
+      const response = await fetch(url, { method: 'DELETE' });
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
+  });
 });
