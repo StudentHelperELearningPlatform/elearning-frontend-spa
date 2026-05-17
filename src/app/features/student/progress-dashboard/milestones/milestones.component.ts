@@ -101,8 +101,8 @@ import { AuthStore } from '../../../auth/store/auth.store';
   `,
 })
 export class MilestonesComponent implements OnInit {
-  store = inject(MilestonesStore);
-  private authStore = inject(AuthStore);
+  readonly store = inject(MilestonesStore);
+  private readonly authStore = inject(AuthStore);
 
   categories = ['ALL', 'learning', 'streak', 'mastery', 'social'];
   selectedCategory = signal('ALL');

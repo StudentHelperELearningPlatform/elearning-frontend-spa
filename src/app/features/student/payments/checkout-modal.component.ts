@@ -93,7 +93,7 @@ export class CheckoutModalComponent {
       bundleId: itemId,
     });
     if (session?.checkoutUrl) {
-      window.location.href = session.checkoutUrl;
+      globalThis.location.href = session.checkoutUrl;
     }
   }
 }
