@@ -3,6 +3,8 @@ import { Router, provideRouter } from '@angular/router';
 import { HeaderComponent } from './header.component';
 import { AuthStore } from '@features/auth/store/auth.store';
 import { signal } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 describe('HeaderComponent', () => {
   let component: HeaderComponent;
@@ -27,6 +29,8 @@ describe('HeaderComponent', () => {
       imports: [HeaderComponent],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        { provide: USER_PLATFORM_API_URL, useValue: 'http://mock-api/api/v1' },
         { provide: AuthStore, useValue: mockAuthStore },
       ],
     }).compileComponents();
