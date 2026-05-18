@@ -77,9 +77,15 @@ export class QuizPlayerComponent implements OnInit {
 
     effect(() => {
       const attemptId = this.store.result()?.attemptId;
+      console.log('[QuizPlayerComponent] Navigation effect. attemptId:', attemptId, 'resultsNavigated:', this.resultsNavigated());
       if (!attemptId || this.resultsNavigated()) return;
       this.resultsNavigated.set(true);
-      this.router.navigate(['/student/quizzes', this.quizId(), 'results', attemptId]);
+      const targetUrl = ['/student/quizzes', this.quizId(), 'results', attemptId];
+      console.log('[QuizPlayerComponent] Navigating to:', targetUrl);
+      this.router.navigate(targetUrl).then(
+        (success) => console.log('[QuizPlayerComponent] Router navigation result:', success),
+        (err) => console.error('[QuizPlayerComponent] Router navigation failed:', err)
+      );
     });
   }
 

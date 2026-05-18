@@ -182,7 +182,7 @@ describe('QuizzesStore', () => {
       store.submitQuiz();
       expect(postSpy).not.toHaveBeenCalled();
 
-      patchStore(store, { submitted: false, currentQuiz: null });
+      patchStore(store, { submitted: false, currentQuiz: null, lessonId: null });
       store.submitQuiz();
       expect(postSpy).not.toHaveBeenCalled();
     });
@@ -216,7 +216,7 @@ describe('QuizzesStore', () => {
     });
 
     it('loadResultDetail fetches detailed breakdown', () => {
-      vi.spyOn(httpClient, 'get').mockReturnValue(of({ attemptId: 'att-1', score: 100 }));
+      vi.spyOn(httpClient, 'get').mockReturnValue(of([{ attemptId: 'att-1', score: 100 }]));
       store.loadResultDetail('quiz-1', 'att-1');
 
       expect(store.resultDetailLoading()).toBe(false);

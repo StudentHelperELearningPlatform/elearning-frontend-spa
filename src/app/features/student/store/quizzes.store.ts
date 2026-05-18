@@ -10,7 +10,7 @@ export {
   type QuizResult,
   type QuizResultDetail,
 } from '@shared/models/quiz.types';
-import { Quiz, QuizOption, QuizResult, QuizResultDetail } from '@shared/models/quiz.types';
+import { Quiz, QuizOption, QuizResult, QuizResultDetail, QuestionResultBreakdown } from '@shared/models/quiz.types';
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
@@ -103,6 +103,7 @@ const mapQuizResponse = (response: QuizApiResponse): QuizWithMeta => ({
 });
 
 interface QuizzesState {
+  lessonId: string | null;
   currentQuiz: QuizWithMeta | null;
   currentQuestionIndex: number;
   answers: Record<string, string>;
@@ -132,6 +133,7 @@ const getInitialQuizState = (quiz: QuizWithMeta | null, isStart: boolean) => ({
 export const QuizzesStore = signalStore(
   { providedIn: 'root' },
   withState<QuizzesState>({
+    lessonId: null,
     currentQuiz: null,
     currentQuestionIndex: 0,
     answers: {},
@@ -187,12 +189,12 @@ export const QuizzesStore = signalStore(
       patchState(store, { currentQuestionIndex: boundedIndex });
     };
 
-    const fetchQuiz = (id: string, isStart: boolean) => {
-      patchState(store, { loading: true, error: null });
+    const fetchQuiz = (lessonId: string, isStart: boolean) => {
+      patchState(store, { lessonId, loading: true, error: null });
 
-      const quiz$ = http.get<QuizApiResponse>(`${quizApi}/lessons/${id}/final-quiz`);
+      const quiz$ = http.get<QuizApiResponse>(`${quizApi}/lessons/${lessonId}/final-quiz`);
 
-      const questions$ = http.get<QuizApiQuestion[]>(`${quizApi}/lessons/${id}/final-quiz/questions`).pipe(
+      const questions$ = http.get<QuizApiQuestion[]>(`${quizApi}/lessons/${lessonId}/final-quiz/questions`).pipe(
         catchError(() => of([] as QuizApiQuestion[]))
       );
 
@@ -221,7 +223,9 @@ export const QuizzesStore = signalStore(
     };
 
     const submitQuizInternal = () => {
+      console.log('[QuizzesStore] submitQuizInternal called. submitted:', store.submitted(), 'lessonId:', store.lessonId());
       if (store.submitted()) {
+        console.warn('[QuizzesStore] Quiz already submitted. Returning early.');
         return;
       }
 
@@ -234,29 +238,41 @@ export const QuizzesStore = signalStore(
         questionId,
         answer,
       }));
-      const quizId = store.currentQuiz()?.id;
-      if (!quizId) {
+      const lessonId = store.lessonId();
+      if (!lessonId) {
+        console.error('[QuizzesStore] Cannot submit quiz: lessonId is missing from store state!');
         return;
       }
 
       patchState(store, { submitted: true });
+      const url = `${quizApi}/lessons/${lessonId}/final-quiz/submit`;
+      console.log('[QuizzesStore] Posting answers to submit URL:', url, answersArray);
 
-      http.post<SubmitQuizResponse>(`${quizApi}/lessons/${quizId}/final-quiz/submit`, { answers: answersArray }).subscribe({
+      http.post<SubmitQuizResponse>(url, { answers: answersArray }).subscribe({
         next: (submission) => {
+          console.log('[QuizzesStore] Quiz submit API response received:', submission);
+          const submissionAny = submission as any;
+          const rawAttemptId = submission?.attemptId || submissionAny?.id || `attempt-fallback-${Date.now()}`;
+          console.log('[QuizzesStore] Resolved attempt ID:', rawAttemptId);
+
           patchState(store, {
             result: {
-              score: submission.score,
-              totalPoints: submission.totalPoints,
-              timeSpent: submission.timeSpent ?? timeSpent,
-              percentage: submission.percentage,
-              passed: submission.passed,
-              attemptId: submission.attemptId,
+              score: submission?.score ?? 0,
+              totalPoints: submission?.totalPoints ?? 100,
+              timeSpent: submission?.timeSpent ?? timeSpent,
+              percentage: submission?.percentage ?? 0,
+              passed: submission?.passed ?? false,
+              attemptId: rawAttemptId,
             },
           });
         },
-        error: () => {
+        error: (err) => {
+          console.error('[QuizzesStore] Failed to submit quiz via API:', err);
           const questions = store.currentQuiz()?.questions ?? [];
           const totalPoints = questions.reduce((sum, q) => sum + (q.points || 10), 0);
+          const fallbackAttemptId = `attempt-${Date.now()}`;
+          console.log('[QuizzesStore] Falling back to local failed submission state with attemptId:', fallbackAttemptId);
+
           patchState(store, {
             result: {
               score: 0,
@@ -264,7 +280,7 @@ export const QuizzesStore = signalStore(
               timeSpent,
               percentage: 0,
               passed: false,
-              attemptId: `attempt-${Date.now()}`,
+              attemptId: fallbackAttemptId,
             },
           });
         },
@@ -272,11 +288,11 @@ export const QuizzesStore = signalStore(
     };
 
     return {
-      loadQuizById(id: string) {
-        fetchQuiz(id, false);
+      loadQuizById(lessonId: string) {
+        fetchQuiz(lessonId, false);
       },
-      startQuiz(id: string) {
-        fetchQuiz(id, true);
+      startQuiz(lessonId: string) {
+        fetchQuiz(lessonId, true);
       },
       answerQuestion(questionId: string, answer: string) {
         patchState(store, (state) => ({
@@ -333,22 +349,158 @@ export const QuizzesStore = signalStore(
       resetQuiz() {
         patchState(store, getInitialQuizState(store.currentQuiz(), true));
       },
-      loadResultDetail(quizId: string, attemptId: string) {
+      loadResultDetail(lessonId: string, attemptId: string) {
+        console.log('[QuizzesStore] loadResultDetail called with lessonId:', lessonId, 'attemptId:', attemptId);
         patchState(store, { resultDetailLoading: true, resultDetailError: null });
-        http.get<QuizResultDetail>(`${quizApi}/lessons/${quizId}/final-quiz/results/${attemptId}`).subscribe({
-          next: (detail) => {
-            patchState(store, {
-              resultDetail: detail,
-              resultDetailLoading: false,
-              resultDetailError: null,
-            });
+        const url = `${quizApi}/lessons/${lessonId}/final-quiz/attempts`;
+        console.log('[QuizzesStore] Getting attempts from:', url);
+        http.get<any[]>(url).subscribe({
+          next: (response) => {
+            console.log('[QuizzesStore] loadResultDetail attempts API response:', response);
+            let attemptsArray: any[] = [];
+            if (Array.isArray(response)) {
+              attemptsArray = response;
+            } else if (response && typeof response === 'object') {
+              const obj = response as Record<string, any>;
+              if (Array.isArray(obj['attempts'])) {
+                attemptsArray = obj['attempts'];
+              } else if (Array.isArray(obj['content'])) {
+                attemptsArray = obj['content'];
+              } else if (Array.isArray(obj['attemptsList'])) {
+                attemptsArray = obj['attemptsList'];
+              }
+            }
+
+            let foundAttempt = attemptsArray.find(
+              (a) => a.attemptId === attemptId || a.id === attemptId
+            );
+
+            // Always fall back to the latest attempt (sorting by submittedAt descending)
+            // if the specific attemptId is not found, or to satisfy the "show latest attempt" requirement.
+            if (!foundAttempt && attemptsArray.length > 0) {
+              console.log('[QuizzesStore] Specific attemptId not matched. Filtering and sorting to get the latest attempt.');
+              const sortedAttempts = [...attemptsArray].sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+              foundAttempt = sortedAttempts[0];
+            }
+
+            if (foundAttempt) {
+              console.log('[QuizzesStore] Found attempt for display:', foundAttempt);
+              const currentQuiz = store.currentQuiz();
+              const questions = currentQuiz?.questions || [];
+              const calculatedTotalPoints = questions.reduce((sum, q) => sum + (q.points || 10), 0) || 100;
+              const rawScore = foundAttempt.score ?? 0;
+              const calculatedPercentage = Math.round((rawScore / calculatedTotalPoints) * 100);
+
+              const mappedBreakdown: QuestionResultBreakdown[] = (foundAttempt.results || []).map((r: any) => {
+                const q = questions.find((quest) => quest.id === r.questionId);
+                // Resolve option text from option ID for student answer
+                let studentAnswerLabel = r.submittedAnswer || '';
+                if (q?.options && q.options.length > 0) {
+                  const opt = q.options.find(o => o.id === r.submittedAnswer);
+                  if (opt) studentAnswerLabel = opt.text;
+                }
+                
+                // Resolve option text from option ID for correct answer
+                let correctAnswerLabel = r.correctAnswer || '';
+                if (q?.options && q.options.length > 0) {
+                  const opt = q.options.find(o => o.id === r.correctAnswer);
+                  if (opt) correctAnswerLabel = opt.text;
+                }
+
+                return {
+                  questionId: r.questionId,
+                  questionText: q?.text || 'Question',
+                  type: q?.type || 'MULTIPLE_CHOICE',
+                  difficulty: 'MEDIUM',
+                  studentAnswer: studentAnswerLabel,
+                  correctAnswer: correctAnswerLabel || 'Correct Answer',
+                  isCorrect: r.correct ?? false,
+                  timeSpentSeconds: 0,
+                  aiExplanation: 'AI Explanation is not available for this question.',
+                };
+              });
+
+              const detail: QuizResultDetail = {
+                attemptId: foundAttempt.attemptId || foundAttempt.id || attemptId,
+                quizId: foundAttempt.quizId || lessonId,
+                quizTitle: foundAttempt.quizTitle || currentQuiz?.title || 'Lesson Final Quiz',
+                subject: foundAttempt.subject || currentQuiz?.subject || 'General',
+                lessonId: foundAttempt.lessonId || lessonId,
+                nextLessonId: foundAttempt.nextLessonId || null,
+                score: rawScore,
+                totalPoints: calculatedTotalPoints,
+                percentage: calculatedPercentage,
+                passed: foundAttempt.passed ?? (calculatedPercentage >= 70),
+                timeSpent: foundAttempt.timeSpent ?? 0,
+                questionBreakdown: mappedBreakdown,
+              };
+
+              patchState(store, {
+                resultDetail: detail,
+                resultDetailLoading: false,
+                resultDetailError: null,
+              });
+            } else {
+              console.warn('[QuizzesStore] No matching attempt found. Falling back to local store result.');
+              const storeResult = store.result();
+              if (storeResult) {
+                patchState(store, {
+                  resultDetail: {
+                    attemptId: storeResult.attemptId || attemptId,
+                    quizId: lessonId,
+                    quizTitle: 'Lesson Final Quiz',
+                    subject: 'General',
+                    lessonId: lessonId,
+                    nextLessonId: null,
+                    score: storeResult.score,
+                    totalPoints: storeResult.totalPoints,
+                    percentage: storeResult.percentage,
+                    passed: storeResult.passed ?? false,
+                    timeSpent: storeResult.timeSpent ?? 0,
+                    questionBreakdown: [],
+                  },
+                  resultDetailLoading: false,
+                  resultDetailError: null,
+                });
+              } else {
+                patchState(store, {
+                  resultDetail: null,
+                  resultDetailLoading: false,
+                  resultDetailError: 'Unable to find quiz results for this attempt.',
+                });
+              }
+            }
           },
-          error: () => {
-            patchState(store, {
-              resultDetail: null,
-              resultDetailLoading: false,
-              resultDetailError: 'Unable to load quiz results.',
-            });
+          error: (err) => {
+            console.error('[QuizzesStore] Failed to load result details via API:', err);
+            const storeResult = store.result();
+            if (storeResult) {
+              console.log('[QuizzesStore] Found local fallback storeResult:', storeResult);
+              patchState(store, {
+                resultDetail: {
+                  attemptId: storeResult.attemptId || attemptId,
+                  quizId: lessonId,
+                  quizTitle: 'Lesson Final Quiz',
+                  subject: 'General',
+                  lessonId: lessonId,
+                  nextLessonId: null,
+                  score: storeResult.score,
+                  totalPoints: storeResult.totalPoints,
+                  percentage: storeResult.percentage,
+                  passed: storeResult.passed ?? false,
+                  timeSpent: storeResult.timeSpent ?? 0,
+                  questionBreakdown: [],
+                },
+                resultDetailLoading: false,
+                resultDetailError: null,
+              });
+            } else {
+              patchState(store, {
+                resultDetail: null,
+                resultDetailLoading: false,
+                resultDetailError: 'Unable to load quiz results.',
+              });
+            }
           },
         });
       },
