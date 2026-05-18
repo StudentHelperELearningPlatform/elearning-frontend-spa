@@ -12,8 +12,14 @@ import { SkillDetailComponent } from './skill-detail/skill-detail.component';
 
 export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
+  { path: 'profile', loadComponent: () => import('./profile/student-profile.component').then((m) => m.StudentProfileComponent) },
   { path: 'lessons', component: LessonListComponent },
   { path: 'milestones', component: MilestonesComponent },
+  {
+    path: 'history',
+    loadComponent: () =>
+      import('./history/history.component').then((m) => m.HistoryComponent),
+  },
   { path: 'learning-path', redirectTo: 'learning-paths/path-1', pathMatch: 'full' },
   { path: 'learning-paths/:id', component: LearningPathComponent },
   {
@@ -32,13 +38,16 @@ export default [
     loadComponent: () =>
       import('./lesson-viewer/lesson-viewer.component').then((m) => m.LessonViewerComponent),
   },
-  { path: 'quiz-player', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
+  // quiz-player is NOT directly accessible by URL — only via the lesson viewer's "Start Final Quiz" CTA
+  // Navigation: LessonViewerComponent.startFinalQuiz() → router.navigate(['/student/quiz-player', lessonId])
   { path: 'quiz-player/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
-  // /student/quizzes — Quiz History List (E3-03, PARASCHIV)
-  // Route stub: Paraschiv adds the QuizHistoryComponent in their PR.
-  // { path: 'quizzes', loadComponent: () => import('./quiz-history/quiz-history.component').then(m => m.QuizHistoryComponent) },
   { path: 'quizzes/:id', component: QuizPlayerComponent, canDeactivate: [quizCanDeactivate] },
-    { path: 'quizzes/:id/results/:attemptId', component: ResultsSummaryComponent },
+  { path: 'quizzes/:id/results/:attemptId', component: ResultsSummaryComponent },
+  {
+    path: 'payments',
+    loadComponent: () =>
+      import('./payments/payment-history.component').then((m) => m.PaymentHistoryComponent),
+  },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
    {
     path: 'skills/:subject',

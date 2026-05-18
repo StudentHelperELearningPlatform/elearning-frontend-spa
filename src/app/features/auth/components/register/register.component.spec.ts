@@ -1,12 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RegisterComponent } from './register.component';
-import { AuthService } from '../../../../core/services/auth.service';
+import { API_URL } from '@core/tokens/api.token';
+import { AuthService } from '@core/services/auth.service';
 import { createAuthServiceStub } from '../../../../../test-utils/auth-testing';
+import { ButtonComponent } from '@shared/components/button/button.component';
+import { CardComponent } from '@shared/components/card/card.component';
 
 describe('RegisterComponent', () => {
   let component: RegisterComponent;
@@ -14,13 +18,15 @@ describe('RegisterComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RegisterComponent, ReactiveFormsModule],
+      imports: [RegisterComponent, ReactiveFormsModule, ButtonComponent, CardComponent],
       providers: [
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: createAuthServiceStub() },
+        { provide: API_URL, useValue: '/api/v1' },
       ],
+      schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
 
     fixture = TestBed.createComponent(RegisterComponent);
@@ -86,6 +92,29 @@ describe('RegisterComponent', () => {
       component.commonForm.get('password')?.setValue('Password1');
       component.commonForm.get('confirmPassword')?.setValue('Password1');
       expect(component.commonForm.hasError('passwordMismatch')).toBeFalsy();
+    });
+  });
+
+  describe('Password visibility toggle', () => {
+    it('defaults to false for both password and confirm password', () => {
+      expect(component.showPassword()).toBe(false);
+      expect(component.showConfirmPassword()).toBe(false);
+    });
+
+    it('toggles password visibility correctly', () => {
+      component.togglePasswordVisibility();
+      expect(component.showPassword()).toBe(true);
+
+      component.togglePasswordVisibility();
+      expect(component.showPassword()).toBe(false);
+    });
+
+    it('toggles confirm password visibility correctly', () => {
+      component.toggleConfirmPasswordVisibility();
+      expect(component.showConfirmPassword()).toBe(true);
+
+      component.toggleConfirmPasswordVisibility();
+      expect(component.showConfirmPassword()).toBe(false);
     });
   });
 });

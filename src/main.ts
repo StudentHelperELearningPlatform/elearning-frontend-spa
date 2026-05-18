@@ -5,22 +5,24 @@ import { provideEchartsCore } from 'ngx-echarts';
 
 (async () => {
   if (typeof window !== 'undefined') {
-    const { environment } = await import('./environments/environment');
+// MSW disabled to allow real backend integration
+/*
+const { environment } = await import('./environments/environment');
+if (!environment.production) {
+  const { worker } = await import('./mocks/browser');
+  await worker.start({ onUnhandledRequest: 'bypass' });
+}
+*/
+}
 
-    if (!environment.production) {
-      const { worker } = await import('./mocks/browser');
-      await worker.start({ onUnhandledRequest: 'bypass' });
-    }
-  }
-
-  bootstrapApplication(App, {
-    ...appConfig,
-    providers: [
-      ...(appConfig.providers ?? []),
-      provideEchartsCore({
-        echarts: () => import('echarts')
-      })
-    ]
+bootstrapApplication(App, {
+...appConfig,
+providers: [
+  ...(appConfig.providers ?? []),
+  provideEchartsCore({
+    echarts: () => import('echarts')
   })
-  .catch((err: unknown) => console.error(err));
+]
+})
+.catch((err: unknown) => console.error(err));
 })();

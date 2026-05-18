@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { LearningPathsStore } from './learning-paths.store';
 import { LearningPath } from '@shared/models/learning-path.model';
+import { CONTENT_API_URL } from '@core/tokens/api.token';
 
 const MOCK_PATH: LearningPath = {
   id: 'path-1',
@@ -56,7 +57,11 @@ describe('LearningPathsStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        { provide: CONTENT_API_URL, useValue: '/api' },
+      ],
     });
     store = getStore();
     http = TestBed.inject(HttpClient);
@@ -94,10 +99,17 @@ describe('LearningPathsStore', () => {
     expect(store.loading()).toBe(false);
   });
 
-  it('loadPath sets error on failure', () => {
+  it('loadPath sets error on failure when error is Error instance', () => {
     vi.spyOn(http, 'get').mockReturnValue(throwError(() => new Error('Network error')));
     store.loadPath('path-1');
     expect(store.error()).toBe('Network error');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('loadPath sets fallback error message when error is not Error instance', () => {
+    vi.spyOn(http, 'get').mockReturnValue(throwError(() => 'Just a string error'));
+    store.loadPath('path-1');
+    expect(store.error()).toBe('Failed to load learning path');
     expect(store.loading()).toBe(false);
   });
 
@@ -114,7 +126,7 @@ describe('LearningPathsStore', () => {
     expect(spy).toHaveBeenCalledWith('/api/learning-paths/path-42');
   });
 
-  // ─── completedCount ────────────────────────────────────────────────────────
+  // ─── computed states ────────────────────────────────────────────────────────
 
   it('completedCount returns 0 when path is null', () => {
     expect(store.completedCount()).toBe(0);
@@ -134,8 +146,6 @@ describe('LearningPathsStore', () => {
     expect(store.completedCount()).toBe(0);
   });
 
-  // ─── totalCount ────────────────────────────────────────────────────────────
-
   it('totalCount returns 0 when path is null', () => {
     expect(store.totalCount()).toBe(0);
   });
@@ -144,8 +154,6 @@ describe('LearningPathsStore', () => {
     patchStore(store, { currentPath: MOCK_PATH });
     expect(store.totalCount()).toBe(5);
   });
-
-  // ─── progressPercent ───────────────────────────────────────────────────────
 
   it('progressPercent returns 0 when path is null', () => {
     expect(store.progressPercent()).toBe(0);
@@ -193,8 +201,6 @@ describe('LearningPathsStore', () => {
     patchStore(store, { currentPath: path });
     expect(store.progressPercent()).toBe(33); // Math.round(1/3 * 100)
   });
-
-  // ─── nextAvailableLesson ───────────────────────────────────────────────────
 
   it('nextAvailableLesson returns null when path is null', () => {
     expect(store.nextAvailableLesson()).toBeNull();

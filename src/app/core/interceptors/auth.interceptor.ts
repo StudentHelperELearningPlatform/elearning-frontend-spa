@@ -1,17 +1,27 @@
-// src/app/core/interceptors/auth.interceptor.ts
 import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
+import { inject, Injector } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  // Inject the raw service instead of the store to match the test's behavior
-  const authService = inject(AuthService);
+  const injector = inject(Injector);
+  const authService = injector.get(AuthService);
+
+  // Skip interceptor for public endpoints
+  if (req.url.includes('/api/v1/auth/') || req.url.includes('/api/auth/') || req.url.includes('/api/v1/users')) {
+    return next(req);
+  }
+
   const token = authService.getAccessToken();
 
   if (token) {
+    const user = authService.currentUser()();
+    const role = user?.roles.find(r => ['STUDENT', 'PROFESSOR', 'ADMIN'].includes(r)) || 'STUDENT';
+    
     const authReq = req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`,
+        'X-User-Id': user?.id || '',
+        'X-User-Role': role
       },
     });
     return next(authReq);

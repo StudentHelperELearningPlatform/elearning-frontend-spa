@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { interval, Subscription } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { QuizzesStore, Question } from '../store/quizzes.store';
+import { QuizzesStore } from '../store/quizzes.store';
+import { Question } from '../../../shared/models/quiz.types';
 import { QuestionCardComponent } from './question-card/question-card.component';
 import { TimerComponent } from './timer/timer.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -12,13 +13,7 @@ import { ModalComponent } from '../../../shared/components/modal/modal.component
 @Component({
   selector: 'app-quiz-player',
   standalone: true,
-  imports: [
-    CommonModule,
-    QuestionCardComponent,
-    TimerComponent,
-    ButtonComponent,
-    ModalComponent,
-  ],
+  imports: [CommonModule, QuestionCardComponent, TimerComponent, ButtonComponent, ModalComponent],
   templateUrl: './quiz-player.component.html',
 })
 export class QuizPlayerComponent implements OnInit {
@@ -84,12 +79,7 @@ export class QuizPlayerComponent implements OnInit {
       const attemptId = this.store.result()?.attemptId;
       if (!attemptId || this.resultsNavigated()) return;
       this.resultsNavigated.set(true);
-      this.router.navigate([
-        '/student/quizzes',
-        this.quizId(),
-        'results',
-        attemptId,
-      ]);
+      this.router.navigate(['/student/quizzes', this.quizId(), 'results', attemptId]);
     });
   }
 
@@ -215,4 +205,3 @@ export class QuizPlayerComponent implements OnInit {
     this.router.navigate(['/student/dashboard']);
   }
 }
-

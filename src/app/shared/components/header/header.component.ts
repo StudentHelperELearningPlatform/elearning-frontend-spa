@@ -4,12 +4,13 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthStore } from '@features/auth/store/auth.store'; // Ensure User is imported
 import { AvatarComponent } from '../avatar/avatar.component';
 import { ButtonComponent } from '../button/button.component';
+import { NotificationBellComponent } from '@features/shared/notifications/notification-bell.component';
+import { getInitials } from '../../utils/profile.utils';
 
 @Component({
   selector: 'app-header',
-  standalone: true,
   host: { style: 'display: block' },
-  imports: [CommonModule, AvatarComponent, ButtonComponent, RouterModule],
+  imports: [CommonModule, AvatarComponent, ButtonComponent, RouterModule, NotificationBellComponent],
   template: `
     <header
       class="bg-white border-b-4 border-black px-6 py-4 flex justify-between items-center sticky top-0 z-50"
@@ -27,6 +28,8 @@ import { ButtonComponent } from '../button/button.component';
 
       @if (authStore.isAuthenticated()) {
         <div class="flex items-center space-x-6">
+          <app-notification-bell />
+
           <div
             class="flex items-center space-x-4 cursor-pointer group outline-none focus:ring-4 focus:ring-[#0ABAB5] rounded-xl p-1"
             (click)="navigateToProfile()"
@@ -67,7 +70,14 @@ export class HeaderComponent {
   private router = inject(Router);
 
   navigateToProfile() {
-    this.router.navigate(['/profile']);
+    const role = (this.authStore.role() || '').toLowerCase();
+    if (role === 'student') {
+      this.router.navigate(['/student/profile']);
+    } else if (role === 'teacher' || role === 'professor') {
+      this.router.navigate(['/teacher/profile']);
+    } else {
+      this.router.navigate(['/']); // fallback
+    }
   }
 
   logout() {
@@ -76,10 +86,7 @@ export class HeaderComponent {
   }
 
   getInitials(name?: string): string {
-    if (!name) return 'U';
-    const parts = name.trim().split(' ');
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.substring(0, 2).toUpperCase();
+    const initials = getInitials(name);
+    return initials === 'UN' ? 'U' : initials;
   }
 }
