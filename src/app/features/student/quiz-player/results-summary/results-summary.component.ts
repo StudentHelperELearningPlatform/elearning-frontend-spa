@@ -174,8 +174,12 @@ export class ResultsSummaryComponent implements OnInit {
   ngOnInit() {
     const quizId = this.route.snapshot.paramMap.get('id');
     const attemptId = this.route.snapshot.paramMap.get('attemptId');
+    console.log('[ResultsSummaryComponent] ngOnInit - extracted route params:', { quizId, attemptId });
 
-    if (!quizId || !attemptId) return;
+    if (!quizId || !attemptId) {
+      console.warn('[ResultsSummaryComponent] Missing quizId or attemptId! Returning early.');
+      return;
+    }
 
     this.quizId.set(quizId);
     this.attemptId.set(attemptId);

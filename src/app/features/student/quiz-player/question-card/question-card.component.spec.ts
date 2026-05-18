@@ -91,7 +91,7 @@ describe('QuestionCardComponent', () => {
 
     firstOption.click();
 
-    expect(emitSpy).toHaveBeenCalledWith('q1-o1');
+    expect(emitSpy).toHaveBeenCalledWith('3');
   });
 
   it('emits flagged when flag button is clicked', () => {

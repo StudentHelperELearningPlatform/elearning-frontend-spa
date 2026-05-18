@@ -40,39 +40,39 @@ import { Question } from '@shared/models/quiz.types';
             @for (option of question().options; track option.id; let i = $index) {
               <button
                 type="button"
-                (click)="selectOption(option.id)"
+                (click)="selectOption(option.text)"
                 class="mc-option w-full text-left p-6 rounded-2xl border-4 transition-all duration-200 flex items-center group relative overflow-hidden"
-                [class.selected]="selectedValue() === option.id"
-                [class.border-teal-500]="selectedValue() === option.id"
-                [class.bg-teal-50]="selectedValue() === option.id"
-                [class.shadow-[4px_4px_0px_0px_#0ABAB5]]="selectedValue() === option.id"
-                [class.translate-x-[-2px]]="selectedValue() === option.id"
-                [class.translate-y-[-2px]]="selectedValue() === option.id"
-                [class.border-gray-300]="selectedValue() !== option.id"
-                [class.bg-white]="selectedValue() !== option.id"
-                [class.hover:border-black]="selectedValue() !== option.id"
-                [class.hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]]="selectedValue() !== option.id"
-                [class.hover:translate-x-[-2px]]="selectedValue() !== option.id"
-                [class.hover:translate-y-[-2px]]="selectedValue() !== option.id"
+                [class.selected]="selectedValue() === option.text"
+                [class.border-teal-500]="selectedValue() === option.text"
+                [class.bg-teal-50]="selectedValue() === option.text"
+                [class.shadow-[4px_4px_0px_0px_#0ABAB5]]="selectedValue() === option.text"
+                [class.translate-x-[-2px]]="selectedValue() === option.text"
+                [class.translate-y-[-2px]]="selectedValue() === option.text"
+                [class.border-gray-300]="selectedValue() !== option.text"
+                [class.bg-white]="selectedValue() !== option.text"
+                [class.hover:border-black]="selectedValue() !== option.text"
+                [class.hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]]="selectedValue() !== option.text"
+                [class.hover:translate-x-[-2px]]="selectedValue() !== option.text"
+                [class.hover:translate-y-[-2px]]="selectedValue() !== option.text"
               >
                 <div
                   class="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg mr-4 border-2"
-                  [class.bg-teal-500]="selectedValue() === option.id"
-                  [class.text-white]="selectedValue() === option.id"
-                  [class.border-teal-500]="selectedValue() === option.id"
-                  [class.bg-gray-100]="selectedValue() !== option.id"
-                  [class.text-gray-500]="selectedValue() !== option.id"
-                  [class.border-gray-300]="selectedValue() !== option.id"
-                  [class.group-hover:border-black]="selectedValue() !== option.id"
-                  [class.group-hover:text-black]="selectedValue() !== option.id"
+                  [class.bg-teal-500]="selectedValue() === option.text"
+                  [class.text-white]="selectedValue() === option.text"
+                  [class.border-teal-500]="selectedValue() === option.text"
+                  [class.bg-gray-100]="selectedValue() !== option.text"
+                  [class.text-gray-500]="selectedValue() !== option.text"
+                  [class.border-gray-300]="selectedValue() !== option.text"
+                  [class.group-hover:border-black]="selectedValue() !== option.text"
+                  [class.group-hover:text-black]="selectedValue() !== option.text"
                 >
                   {{ getLetter(i) }}
                 </div>
 
                 <span
                   class="font-bold text-lg"
-                  [class.text-teal-600]="selectedValue() === option.id"
-                  [class.text-black]="selectedValue() !== option.id"
+                  [class.text-teal-600]="selectedValue() === option.text"
+                  [class.text-black]="selectedValue() !== option.text"
                 >
                   {{ option.text }}
                 </span>
@@ -86,18 +86,18 @@ import { Question } from '@shared/models/quiz.types';
             <button
               type="button"
               class="tf-option rounded-2xl border-4 border-black p-6 text-2xl font-black transition-colors"
-              [class.selected]="selectedValue() === 'true'"
-              [class.bg-teal-100]="selectedValue() === 'true'"
-              (click)="selectOption('true')"
+              [class.selected]="selectedValue() === 'True' || selectedValue() === 'true'"
+              [class.bg-teal-100]="selectedValue() === 'True' || selectedValue() === 'true'"
+              (click)="selectOption('True')"
             >
               True
             </button>
             <button
               type="button"
               class="tf-option rounded-2xl border-4 border-black p-6 text-2xl font-black transition-colors"
-              [class.selected]="selectedValue() === 'false'"
-              [class.bg-teal-100]="selectedValue() === 'false'"
-              (click)="selectOption('false')"
+              [class.selected]="selectedValue() === 'False' || selectedValue() === 'false'"
+              [class.bg-teal-100]="selectedValue() === 'False' || selectedValue() === 'false'"
+              (click)="selectOption('False')"
             >
               False
             </button>
