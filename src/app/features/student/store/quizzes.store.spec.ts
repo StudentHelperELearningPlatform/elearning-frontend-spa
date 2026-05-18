@@ -80,6 +80,42 @@ describe('QuizzesStore', () => {
       expect(store.loading()).toBe(false);
       expect(store.error()).toBe('Network Error');
     });
+
+    it('maps object options and handles undefined options for MULTIPLE_CHOICE', () => {
+      const MOCK_QUIZ_OBJECT_OPTS = {
+        id: 'quiz-opts',
+        title: 'Quiz',
+        timeLimitSeconds: 600,
+        questions: [
+          {
+            id: 'q_obj',
+            type: 'MULTIPLE_CHOICE' as const,
+            text: 'Question with Object Options',
+            options: [
+              { id: 'opt-1', text: 'Option 1' },
+              { id: 'opt-2', optionText: 'Option 2' },
+            ],
+            points: 10,
+          },
+          {
+            id: 'q_undef',
+            type: 'MULTIPLE_CHOICE' as const,
+            text: 'Question with Undefined Options',
+            points: 10,
+          }
+        ]
+      };
+
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_OBJECT_OPTS));
+      store.loadQuizById('quiz-opts');
+
+      const questions = store.currentQuiz()?.questions;
+      expect(questions?.[0].options).toEqual([
+        { id: 'opt-1', text: 'Option 1' },
+        { id: 'opt-2', text: 'Option 2' },
+      ]);
+      expect(questions?.[1].options).toEqual([]);
+    });
   });
 
   describe('Quiz State & Actions', () => {
@@ -205,6 +241,14 @@ describe('QuizzesStore', () => {
       store.tickTimer();
       expect(submitSpy).toHaveBeenCalled();
     });
+
+    it('tickTimer does nothing if timeRemaining is null', () => {
+      patchStore(store, { timeRemaining: null });
+      const submitSpy = vi.spyOn(store, 'submitQuiz');
+      store.tickTimer();
+      expect(store.timeRemaining()).toBeNull();
+      expect(submitSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('resetQuiz & loadResultDetail', () => {
@@ -231,6 +275,131 @@ describe('QuizzesStore', () => {
       expect(store.resultDetailLoading()).toBe(false);
       expect(store.resultDetail()).toBeNull();
       expect(store.resultDetailError()).toBe('Unable to load quiz results.');
+    });
+
+    it('loadResultDetail handles container responses ({ attempts: [...] }, { content: [...] }, { attemptsList: [...] })', () => {
+      const mockAttempt = { attemptId: 'att-1', score: 90 };
+      
+      // Test attempts key
+      vi.spyOn(httpClient, 'get').mockReturnValue(of({ attempts: [mockAttempt] }));
+      store.loadResultDetail('quiz-1', 'att-1');
+      expect(store.resultDetail()?.attemptId).toBe('att-1');
+      
+      // Test content key
+      vi.spyOn(httpClient, 'get').mockReturnValue(of({ content: [mockAttempt] }));
+      store.loadResultDetail('quiz-1', 'att-1');
+      expect(store.resultDetail()?.attemptId).toBe('att-1');
+      
+      // Test attemptsList key
+      vi.spyOn(httpClient, 'get').mockReturnValue(of({ attemptsList: [mockAttempt] }));
+      store.loadResultDetail('quiz-1', 'att-1');
+      expect(store.resultDetail()?.attemptId).toBe('att-1');
+    });
+
+    it('loadResultDetail falls back to the latest attempt (by submittedAt descending) if specific attemptId is not found', () => {
+      const mockAttempts = [
+        { attemptId: 'att-old', score: 50, submittedAt: 1000 },
+        { attemptId: 'att-new', score: 100, submittedAt: 2000 },
+        { attemptId: 'att-mid', score: 75, submittedAt: 1500 },
+      ];
+      
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(mockAttempts));
+      store.loadResultDetail('quiz-1', 'att-non-existent');
+      
+      expect(store.resultDetail()?.attemptId).toBe('att-new');
+      expect(store.resultDetail()?.score).toBe(100);
+    });
+
+    it('loadResultDetail falls back to store.result() if attempt is not found at all', () => {
+      patchStore(store, {
+        result: {
+          score: 80,
+          totalPoints: 100,
+          timeSpent: 120,
+          percentage: 80,
+          passed: true,
+          attemptId: 'local-att',
+        }
+      });
+      
+      vi.spyOn(httpClient, 'get').mockReturnValue(of([])); // empty response
+      store.loadResultDetail('quiz-1', 'att-non-existent');
+      
+      expect(store.resultDetail()?.attemptId).toBe('local-att');
+      expect(store.resultDetail()?.score).toBe(80);
+      expect(store.resultDetailError()).toBeNull();
+    });
+
+    it('loadResultDetail sets error if attempt is not found and no local result exists', () => {
+      patchStore(store, { result: null });
+      vi.spyOn(httpClient, 'get').mockReturnValue(of([]));
+      store.loadResultDetail('quiz-1', 'att-non-existent');
+      
+      expect(store.resultDetail()).toBeNull();
+      expect(store.resultDetailError()).toBe('Unable to find quiz results for this attempt.');
+    });
+
+    it('loadResultDetail falls back to store.result() on API error if local result exists', () => {
+      patchStore(store, {
+        result: {
+          score: 95,
+          totalPoints: 100,
+          timeSpent: 90,
+          percentage: 95,
+          passed: true,
+          attemptId: 'local-att-err',
+        }
+      });
+      
+      vi.spyOn(httpClient, 'get').mockReturnValue(throwError(() => new Error('API Failure')));
+      store.loadResultDetail('quiz-1', 'att-1');
+      
+      expect(store.resultDetail()?.attemptId).toBe('local-att-err');
+      expect(store.resultDetail()?.score).toBe(95);
+      expect(store.resultDetailError()).toBeNull();
+    });
+
+    it('loadResultDetail resolves option labels for question breakdown', () => {
+      // First load a quiz into the store so currentQuiz is set
+      const QUIZ_WITH_OPTIONS = {
+        id: 'quiz-opts-resolve',
+        title: 'Quiz with Options',
+        timeLimitSeconds: 600,
+        questions: [
+          {
+            id: 'q-opt',
+            type: 'MULTIPLE_CHOICE' as const,
+            text: 'Q1',
+            options: [
+              { id: 'o-1', text: 'Option One' },
+              { id: 'o-2', text: 'Option Two' },
+            ],
+            points: 10,
+          }
+        ]
+      };
+      
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(QUIZ_WITH_OPTIONS));
+      store.loadQuizById('quiz-opts-resolve');
+      
+      const mockAttempt = {
+        attemptId: 'att-opts',
+        results: [
+          {
+            questionId: 'q-opt',
+            submittedAnswer: 'o-1',
+            correctAnswer: 'o-2',
+            correct: false,
+          }
+        ]
+      };
+      
+      vi.spyOn(httpClient, 'get').mockReturnValue(of([mockAttempt]));
+      store.loadResultDetail('quiz-opts-resolve', 'att-opts');
+      
+      const breakdown = store.resultDetail()?.questionBreakdown;
+      expect(breakdown?.[0].studentAnswer).toBe('Option One');
+      expect(breakdown?.[0].correctAnswer).toBe('Option Two');
     });
 
     it('clearResultDetail wipes result detail state', () => {

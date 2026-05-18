@@ -173,7 +173,40 @@ const calculateQuizResult = async (
   };
 };
 
-const submittedAttemptsMap = new Map<string, any[]>();
+interface MockQuestionResult {
+  questionId: string;
+  questionText: string;
+  type: string;
+  difficulty: string;
+  studentAnswer: string;
+  correctAnswer: string | null;
+  isCorrect: boolean;
+  timeSpentSeconds: number;
+  aiExplanation: string;
+}
+
+interface MockAttempt {
+  attemptId: string;
+  quizId: string;
+  quizTitle: string;
+  subject: string;
+  lessonId: string;
+  nextLessonId: string | null;
+  score: number;
+  totalPoints: number;
+  percentage: number;
+  passed: boolean;
+  timeSpent: number;
+  questionBreakdown?: MockQuestionResult[];
+  results?: {
+    questionId: string;
+    submittedAnswer?: string;
+    correctAnswer?: string;
+    correct?: boolean;
+  }[];
+}
+
+const submittedAttemptsMap = new Map<string, MockAttempt[]>();
 
 // Seed a default attempt for local dev testing
 submittedAttemptsMap.set('seed-1', [
