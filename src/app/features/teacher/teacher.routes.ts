@@ -3,7 +3,6 @@
 import { Routes } from '@angular/router';
 import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-dashboard.component';
 import { ContentEditorComponent } from './content-editor/content-editor.component';
-import { QuizBuilderComponent } from './quiz-builder/quiz-builder.component';
 import { PathBuilderComponent } from './content-editor/path-builder/path-builder.component';
 
 // From feat/E5-05-learning-path-builder
@@ -39,10 +38,7 @@ export default [
 
   // Builder Routes
   { path: 'path-builder', component: PathBuilderComponent },
-  { path: 'quiz-builder', component: QuizBuilderComponent },
-  { path: 'quiz-builder/:id', component: QuizBuilderComponent },
-  { path: 'quizzes/new', component: QuizBuilderComponent },
-  { path: 'quizzes/:id', component: QuizBuilderComponent },
+  
   
   // Learning Path Routes (from feat branch)
   { path: 'learning-paths/new', component: LearningPathEditorComponent },
