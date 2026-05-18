@@ -270,6 +270,7 @@ export const QuizzesStore = signalStore(
         questionId,
         answer,
       }));
+
       const lessonId = store.lessonId();
       if (!lessonId) {
         console.error('[QuizzesStore] Cannot submit quiz: lessonId is missing from store state!');
@@ -437,8 +438,6 @@ export const QuizzesStore = signalStore(
               (a) => a.attemptId === attemptId || a.id === attemptId
             );
 
-            // Always fall back to the latest attempt (sorting by submittedAt descending)
-            // if the specific attemptId is not found, or to satisfy the "show latest attempt" requirement.
             if (!foundAttempt && attemptsArray.length > 0) {
               console.log('[QuizzesStore] Specific attemptId not matched. Filtering and sorting to get the latest attempt.');
               const sortedAttempts = [...attemptsArray].sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
@@ -455,6 +454,7 @@ export const QuizzesStore = signalStore(
 
               const mappedBreakdown: QuestionResultBreakdown[] = (foundAttempt.results || []).map((r) => {
                 const q = questions.find((quest) => quest.id === r.questionId);
+
                 return {
                   questionId: r.questionId,
                   questionText: q?.text || 'Question',
