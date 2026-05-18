@@ -64,17 +64,14 @@ import { ErrorStateComponent } from '../../../shared/components/error-state/erro
         </app-card>
 
         <app-card class="block" header="Quick Actions">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <app-button variant="primary" icon="add_circle" routerLink="/teacher/lessons/new">
               Create Lesson
-            </app-button>
-            <app-button variant="secondary" icon="add_task" routerLink="/teacher/quizzes/new">
-              Create Quiz
             </app-button>
             <app-button variant="secondary" icon="insights" routerLink="/teacher/analytics">
               View Analytics
             </app-button>
-            <app-button variant="secondary" icon="menu_book" routerLink="/teacher/lessons">
+            <app-button variant="secondary" icon="menu_book" routerLink="/teacher/content">
               All Lessons
             </app-button>
           </div>

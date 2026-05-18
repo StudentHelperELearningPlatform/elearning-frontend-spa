@@ -7,14 +7,20 @@ import {
   ViewChild,
   ElementRef,
   effect,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { ProgressStore } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
+import { StudentProfileStore } from '../store/profile.store';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
+import { TeacherClassService } from '../../../core/services/teacher-class.service';
+import { TeacherClass } from '../../teacher/models/class.model';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import * as d3 from 'd3';
 
 @Component({
@@ -26,7 +32,12 @@ import * as d3 from 'd3';
 export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   progressStore = inject(ProgressStore);
   authStore = inject(AuthStore);
+  profileStore = inject(StudentProfileStore);
+  classService = inject(TeacherClassService);
   router = inject(Router);
+
+  enrolledClassesList = signal<TeacherClass[]>([]);
+  classesLoading = signal(false);
 
   // S6-stats-01: expose live dashboard signal for the aggregate stats card
   protected readonly myDashboard = this.progressStore.dashboard;
@@ -77,6 +88,32 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
 
   constructor() {
     effect(() => {
+      const profile = this.profileStore.profile();
+      if (profile) {
+        const classes = profile.enrolledClasses || [];
+        const firstClassId = classes[0];
+        const dashboardClassId = firstClassId || '00000000-0000-0000-0000-000000000000';
+        this.progressStore.loadMyDashboard({ classId: dashboardClassId });
+
+        if (classes.length > 0) {
+          this.classesLoading.set(true);
+          const requests = classes.map(id => 
+            this.classService.getClassDetail(id).pipe(
+              catchError(() => of(null))
+            )
+          );
+          forkJoin(requests).subscribe(results => {
+            const validClasses = results.filter((c): c is NonNullable<typeof c> => c !== null);
+            this.enrolledClassesList.set(validClasses);
+            this.classesLoading.set(false);
+          });
+        } else {
+          this.enrolledClassesList.set([]);
+        }
+      }
+    });
+
+    effect(() => {
       const skills = this.progressStore.skillLevels().map(s => ({
         subject: s.subject,
         level: s.level,
@@ -94,8 +131,11 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     if (studentId) {
       this.progressStore.loadDashboard(studentId);
     }
+    
+    this.profileStore.loadStudentProfile();
+    
     // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
-    this.progressStore.loadMyDashboard();
+    this.progressStore.loadMyDashboard({ classId: '00000000-0000-0000-0000-000000000000' });
   }
 
   ngAfterViewInit() {

@@ -120,13 +120,23 @@ const quizTemplate = {
   ],
 };
 
-// Helper extracted to remove duplication between final-quiz and check-quiz submission logic
 const calculateQuizResult = async (
   request: StrictRequest<DefaultBodyType>,
   attemptPrefix: string,
 ) => {
-  const body = (await request.json()) as { answers: Record<string, string> };
-  const submitted = body.answers ?? {};
+  const body = (await request.json()) as { answers: Record<string, string> | { questionId: string; answer: string }[] };
+  const submittedRaw = body.answers ?? {};
+
+  const submitted: Record<string, string> = {};
+  if (Array.isArray(submittedRaw)) {
+    for (const item of submittedRaw) {
+      if (item && item.questionId) {
+        submitted[item.questionId] = item.answer;
+      }
+    }
+  } else {
+    Object.assign(submitted, submittedRaw);
+  }
 
   let score = 0;
   const totalPoints = quizTemplate.questions.reduce((sum, q) => sum + q.points, 0);
@@ -180,6 +190,31 @@ export const quizzesHandlers = [
       maxAttempts: null,
     });
   }),
+
+  http.post(
+    `${environment.quizApiUrl}/api/v1/lessons/:lessonId/final-quiz`,
+    ({ params }) => {
+      return HttpResponse.json({
+        id: params['lessonId'],
+        passThreshold: 70,
+        mandatory: true,
+        maxAttempts: 3,
+      });
+    },
+  ),
+
+  http.post(
+    `${environment.quizApiUrl}/api/v1/lessons/:lessonId/final-quiz/questions`,
+    async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      return HttpResponse.json({
+        id: `q-${Date.now()}`,
+        ...body,
+        status: 'APPROVED',
+        orderIndex: 0,
+      });
+    },
+  ),
 
   // Uses the shared helper
   http.post(

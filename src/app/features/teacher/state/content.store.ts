@@ -278,20 +278,33 @@ export const ContentStore = signalStore(
     },
 
     deleteLesson(id: string) {
-      patchState(store, (state) => ({
-        lessons: state.lessons.filter((l) => l.id !== id),
-      }));
+      patchState(store, { loading: true, error: null });
+      http.delete<void>(`${contentApi}/lessons/${id}`).subscribe({
+        next: () => {
+          patchState(store, (state) => ({
+            lessons: state.lessons.filter((l) => l.id !== id),
+            loading: false,
+          }));
+        },
+        error: (err) => {
+          console.error('Failed to delete lesson', err);
+          patchState(store, {
+            loading: false,
+            error: err.message || 'Failed to delete lesson',
+          });
+        }
+      });
     },
 
     createQuiz(
-      quiz: Omit<ContentItem, 'id' | 'lastModified'>,
+      quiz: Omit<ContentItem, 'lastModified'> & { id?: string },
     ) {
       patchState(store, (state) => ({
         quizzes: [
           ...state.quizzes,
           {
             ...quiz,
-            id: crypto.randomUUID(),
+            id: quiz.id ?? crypto.randomUUID(),
             lastModified: new Date(),
           },
         ],

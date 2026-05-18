@@ -66,11 +66,11 @@ describe('AdminService', () => {
   });
 
   it('should ban a user', () => {
-    service.banUser('u1').subscribe();
+    service.banUser('u1', 'Spamming behavior').subscribe();
 
     const req = httpTestingController.expectOne(`${mockUserApiUrl}/admin/users/u1/ban`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({});
+    expect(req.request.body).toEqual({ reason: 'Spamming behavior' });
     req.flush(null);
   });
 

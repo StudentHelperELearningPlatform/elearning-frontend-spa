@@ -127,7 +127,7 @@ export const LessonsStore = signalStore(
       const lesson = state.currentLesson();
       if (!lesson) return false;
       const allModules = lesson.modules;
-      if (!allModules || allModules.length === 0) return false;
+      if (!allModules || allModules.length === 0) return true;
       const done = state.completedModuleIds();
       return allModules.every(m => done.has(m.id));
     }),

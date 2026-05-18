@@ -216,14 +216,16 @@ describe('LessonViewerComponent', () => {
     expect(component.currentModuleIndex()).toBe(1);
   });
 
-  it('completeLastModule marks the module complete', () => {
+  it('completeLastModule marks the module complete and navigates to the final quiz player', () => {
     fixture.detectChanges();
     const spy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => {
       /* mock */
     });
+    const routerSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.selectModule(2);
     component.completeLastModule();
     expect(spy).toHaveBeenCalledWith('1', 'm3');
+    expect(routerSpy).toHaveBeenCalledWith(['/student/quiz-player', '1']);
   });
 
   // ─── Navigation helpers ────────────────────────────────────────────────────

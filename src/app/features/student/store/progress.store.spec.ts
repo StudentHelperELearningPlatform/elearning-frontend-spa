@@ -153,6 +153,24 @@ describe('ProgressStore', () => {
       expect(store.dashboardLoading()).toBe(false);
     });
 
+    it('should pass classId query parameter if provided', () => {
+      store.loadMyDashboard({ classId: '3fa85f64-5717-4562-b3fc-2c963f66afa6' });
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/dashboard') && r.params.get('classId') === '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      );
+      req.flush(mockDashboard);
+      expect(store.dashboard()).toEqual(mockDashboard);
+    });
+
+    it('should fallback to placeholder UUID if no classId provided', () => {
+      store.loadMyDashboard();
+      const req = http.expectOne((r) =>
+        r.url.includes('/progress/me/dashboard') && r.params.get('classId') === '00000000-0000-0000-0000-000000000000',
+      );
+      req.flush(mockDashboard);
+      expect(store.dashboard()).toEqual(mockDashboard);
+    });
+
     it('completionRate() should compute from dashboard on success', () => {
       store.loadMyDashboard();
       const req = http.expectOne((r) =>

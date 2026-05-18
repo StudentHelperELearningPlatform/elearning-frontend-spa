@@ -148,13 +148,22 @@ describe('QuizzesStore', () => {
         }),
       );
 
+      patchStore(store, { answers: { q1: 'A' } });
+
       store.submitQuiz();
 
       expect(store.submitted()).toBe(true);
       expect(store.showResults()).toBe(true);
       expect(store.score()).toBe(40);
       expect(store.totalPoints()).toBe(40);
-      expect(postSpy).toHaveBeenCalled();
+      expect(postSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/final-quiz/submit'),
+        expect.objectContaining({
+          answers: [
+            { questionId: 'q1', answer: 'A' }
+          ]
+        })
+      );
     });
 
     it('submitQuiz provides fallback on post error', () => {

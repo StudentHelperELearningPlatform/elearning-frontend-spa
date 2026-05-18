@@ -94,4 +94,27 @@ describe('RegisterComponent', () => {
       expect(component.commonForm.hasError('passwordMismatch')).toBeFalsy();
     });
   });
+
+  describe('Password visibility toggle', () => {
+    it('defaults to false for both password and confirm password', () => {
+      expect(component.showPassword()).toBe(false);
+      expect(component.showConfirmPassword()).toBe(false);
+    });
+
+    it('toggles password visibility correctly', () => {
+      component.togglePasswordVisibility();
+      expect(component.showPassword()).toBe(true);
+
+      component.togglePasswordVisibility();
+      expect(component.showPassword()).toBe(false);
+    });
+
+    it('toggles confirm password visibility correctly', () => {
+      component.toggleConfirmPasswordVisibility();
+      expect(component.showConfirmPassword()).toBe(true);
+
+      component.toggleConfirmPasswordVisibility();
+      expect(component.showConfirmPassword()).toBe(false);
+    });
+  });
 });

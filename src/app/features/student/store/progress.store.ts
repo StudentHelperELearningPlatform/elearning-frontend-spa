@@ -279,17 +279,20 @@ export const ProgressStore = signalStore(
 
     // ── Sprint 6 live endpoints ──────────────────────────────────────────────
 
-    loadMyDashboard: rxMethod<void>(
+    loadMyDashboard: rxMethod<{ classId?: string } | void>(
       pipe(
         tap(() => patchState(store, { dashboardLoading: true, dashboardError: null })),
-        switchMap(() =>
-          http.get<DashboardData>(`${apiBase}/progress/me/dashboard`).pipe(
+        switchMap((params) => {
+          const classId = (params && typeof params === 'object' && 'classId' in params ? params.classId : null) || '00000000-0000-0000-0000-000000000000';
+          return http.get<DashboardData>(`${apiBase}/progress/me/dashboard`, {
+            params: { classId }
+          }).pipe(
             tapResponse({
               next: (dashboard) => patchState(store, { dashboard, dashboardLoading: false }),
               error: (err: { message?: string }) => patchState(store, { dashboardLoading: false, dashboardError: err?.message ?? 'Failed to load dashboard' }),
             })
-          )
-        )
+          );
+        })
       )
     ),
 

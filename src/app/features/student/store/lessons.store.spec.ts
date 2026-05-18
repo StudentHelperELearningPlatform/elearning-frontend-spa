@@ -213,6 +213,14 @@ describe('LessonsStore', () => {
       });
       expect(store.allModulesComplete()).toBe(true);
     });
+
+    it('returns true when a lesson has 0 modules', () => {
+      patchStore(store, {
+        currentLesson: { ...mockLesson, modules: [] },
+        completedModuleIds: new Set(),
+      });
+      expect(store.allModulesComplete()).toBe(true);
+    });
   });
 
   // ─── S6-final-quiz-ui: lessonCardStatus ───────────────────────────────────

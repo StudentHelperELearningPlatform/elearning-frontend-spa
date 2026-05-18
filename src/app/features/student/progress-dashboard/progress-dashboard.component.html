@@ -88,45 +88,41 @@
   <!-- Card Grid: 2 cols desktop -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-    <!-- Streak Widget -->
-    <div
-      class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4"
-      [class.ring-4]="streakHasGoldGlow"
-      [class.ring-yellow-400]="streakHasGoldGlow"
-      [class.streak-glow]="streakHasGoldGlow"
-    >
-      @if (progressStore.loading()) {
-        <app-skeleton width="4rem" height="4rem" className="rounded-full flex-shrink-0" />
-        <div class="space-y-2 flex-1">
-          <app-skeleton height="1.25rem" />
-          <app-skeleton height="1rem" className="w-2/3" />
+    <!-- My Classes Widget -->
+    <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-4">
+          <span class="material-icons text-[#0ABAB5]" aria-hidden="true">school</span>
+          <h3 class="text-lg font-black text-black">My Enrolled Classes</h3>
         </div>
-      } @else if (progressStore.activeStreak() === 0) {
-        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border-2 border-black flex-shrink-0">
-          <span class="material-icons text-gray-400 text-3xl">local_fire_department</span>
-        </div>
-        <div class="flex-1">
-          <h3 class="text-lg font-black text-black">Start your streak today!</h3>
-          <button
-            class="mt-2 px-4 py-1 bg-[#0ABAB5] text-white font-bold rounded border-2 border-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all"
-            (click)="navigateToBrowseLessons()"
-          >
-            Browse Lessons
-          </button>
-        </div>
-      } @else {
-        <div class="w-16 h-16 bg-[#0ABAB5] rounded-full flex items-center justify-center border-2 border-black flex-shrink-0">
-          <span class="material-icons text-white text-3xl">local_fire_department</span>
-        </div>
-        <div>
-          <h3 class="text-lg font-black text-black">
-            {{ progressStore.activeStreak() }} day streak 🔥
-          </h3>
-          <p class="text-sm text-gray-600 font-medium">
-            Best: {{ progressStore.streak()?.longestStreak }} days
-          </p>
-        </div>
-      }
+        
+        @if (classesLoading()) {
+          <div class="space-y-3">
+            <app-skeleton height="2.5rem" className="rounded-lg w-full" />
+            <app-skeleton height="2.5rem" className="rounded-lg w-full" />
+          </div>
+        } @else if (enrolledClassesList().length === 0) {
+          <div class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl">
+            <span class="material-icons text-gray-400 text-3xl" aria-hidden="true">sentiment_dissatisfied</span>
+            <p class="text-gray-500 font-bold mt-2 text-sm">Not enrolled in any classes yet</p>
+          </div>
+        } @else {
+          <div class="space-y-3">
+            @for (c of enrolledClassesList(); track c.id) {
+              <div class="p-3 border-2 border-black rounded-xl bg-gray-50 hover:bg-[#0ABAB5]/5 transition-colors flex items-center justify-between">
+                <div>
+                  <p class="font-black text-black text-sm">{{ c.name }}</p>
+                  <p class="text-xs text-gray-500 font-medium mt-0.5">{{ c.description || 'No description' }}</p>
+                </div>
+                <span class="inline-flex items-center gap-1 text-xs font-bold bg-[#0ABAB5]/10 text-[#0ABAB5] border border-[#0ABAB5] px-2.5 py-0.5 rounded-full flex-shrink-0">
+                  <span class="material-icons text-[12px]" aria-hidden="true">menu_book</span>
+                  {{ c.lessonCount }} lessons
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
     </div>
 
     <!-- Overall Progress Card -->

@@ -99,7 +99,12 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label for="password" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Password</label>
-                <input id="password" type="password" formControlName="password" placeholder="••••••••" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                <div class="relative">
+                  <input id="password" [type]="showPassword() ? 'text' : 'password'" formControlName="password" placeholder="••••••••" class="w-full pl-4 pr-12 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                  <button type="button" (click)="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-black">
+                    <span class="material-icons">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
                 
                 <!-- Password Strength -->
                 <div class="mt-2 flex gap-1 h-2">
@@ -111,7 +116,12 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
               </div>
               <div>
                 <label for="confirmPassword" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Confirm Password</label>
-                <input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="••••••••" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                <div class="relative">
+                  <input id="confirmPassword" [type]="showConfirmPassword() ? 'text' : 'password'" formControlName="confirmPassword" placeholder="••••••••" class="w-full pl-4 pr-12 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                  <button type="button" (click)="toggleConfirmPasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-black">
+                    <span class="material-icons">{{ showConfirmPassword() ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
                 @if (commonForm.errors?.['passwordMismatch'] && commonForm.get('confirmPassword')?.touched) {
                   <p class="text-red-500 text-xs font-bold mt-1 uppercase">Passwords do not match</p>
                 }
@@ -215,6 +225,17 @@ export class RegisterComponent {
 
   currentStep = signal<RegistrationStep>('ROLE');
   selectedRole = signal<UserRole | null>(null);
+
+  showPassword = signal(false);
+  showConfirmPassword = signal(false);
+
+  togglePasswordVisibility() {
+    this.showPassword.update(v => !v);
+  }
+
+  toggleConfirmPasswordVisibility() {
+    this.showConfirmPassword.update(v => !v);
+  }
   
   grades: (string | number)[] = ['K', ...Array.from({ length: 12 }, (_, i) => i + 1)];
   subjects = ['Math', 'Science', 'English', 'History', 'Geography'];
