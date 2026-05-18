@@ -13,6 +13,11 @@ import { CardComponent } from '../../../shared/components/card/card.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { Router, ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../core/services/notification.service';
+import { HttpClient } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
+import { QuestionsService } from '../services/questions.service';
+import { AddQuestionRequest } from '../../../shared/models/quiz.types';
+import { environment } from '../../../../environments/environment';
 
 interface GeneratedQuestion {
   text: string;
@@ -90,6 +95,21 @@ interface FormQuestion {
                     placeholder="e.g. Mathematics"
                   />
                 </div>
+                @if (!isEdit) {
+                  <div class="col-span-1 md:col-span-2">
+                    <label for="lessonId" class="block text-sm font-black uppercase tracking-tight mb-2">Associate Lesson</label>
+                    <select
+                      id="lessonId"
+                      formControlName="lessonId"
+                      class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold bg-white"
+                    >
+                      <option value="" disabled selected>-- Select a Lesson --</option>
+                      @for (lesson of store.lessons(); track lesson.id) {
+                        <option [value]="lesson.id">{{ lesson.title }} ({{ lesson.subject }})</option>
+                      }
+                    </select>
+                  </div>
+                }
               </div>
             </form>
           </app-card>
@@ -406,6 +426,8 @@ export class QuizBuilderComponent implements OnInit {
   router = inject(Router);
   route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
+  private http = inject(HttpClient);
+  private questionsService = inject(QuestionsService);
 
   isEdit = false;
   quizId: string | null = null;
@@ -414,6 +436,7 @@ export class QuizBuilderComponent implements OnInit {
     title: ['', Validators.required],
     subject: ['', Validators.required],
     status: ['DRAFT'],
+    lessonId: [''],
     questions: this.fb.array([]),
   });
 
@@ -541,6 +564,10 @@ export class QuizBuilderComponent implements OnInit {
           quiz.questions.forEach((q: Question) => this.addQuestion(q));
         }
       }
+    } else {
+      if (this.store.lessons().length === 0) {
+        this.store.loadDashboard();
+      }
     }
   }
 
@@ -584,13 +611,19 @@ export class QuizBuilderComponent implements OnInit {
   saveQuiz() {
     if (this.quizForm.valid) {
       const formValue = this.quizForm.value;
+      const lessonId = this.isEdit ? this.quizId : formValue.lessonId;
+      if (!lessonId) {
+        this.notificationService.error('Please select a lesson.');
+        return;
+      }
+
       const questionsData = (formValue.questions || []).map((qVal) => {
         const q = qVal as FormQuestion;
         const typeNormalized = q.type === 'true-false' ? 'TRUE_FALSE' : 'MULTIPLE_CHOICE';
         
         // Map FormArray options back to raw QuizOption shape
         const options = (q.options || []).map((o, idx: number) => ({
-          id: `${q.id || crypto.randomUUID()}-o${idx + 1}`,
+          id: q.id && !q.id.includes('-') ? `${q.id}-o${idx + 1}` : `${crypto.randomUUID()}-o${idx + 1}`,
           text: o.text || '',
         }));
 
@@ -612,19 +645,77 @@ export class QuizBuilderComponent implements OnInit {
         };
       });
 
-      const quizData = {
-        title: formValue.title ?? '',
-        subject: formValue.subject ?? '',
-        status: (formValue.status as 'PUBLISHED' | 'DRAFT') ?? 'DRAFT',
-        questions: questionsData,
-      };
+      const apiBase = `${environment.lessonApiUrl}/api/v1`;
+      this.http.post(`${apiBase}/lessons/${lessonId}/final-quiz`, {
+        passThreshold: 70,
+        mandatory: true,
+        maxAttempts: 3,
+      }).subscribe({
+        next: () => {
+          const addRequests = questionsData.map((question) => {
+            const payload: AddQuestionRequest = {
+              questionText: question.text,
+              questionType: question.type,
+              correctAnswer: question.correctAnswer,
+              options: question.options.map((opt) => ({
+                optionText: opt.text,
+                correct: opt.text === question.correctAnswer,
+              })),
+            };
+            return this.questionsService.addFinalQuizQuestion(lessonId, payload);
+          });
 
-      if (this.isEdit && this.quizId) {
-        this.store.updateQuiz(this.quizId, quizData);
-      } else {
-        this.store.createQuiz(quizData);
-      }
-      this.router.navigate(['/teacher/content']);
+          if (addRequests.length > 0) {
+            forkJoin(addRequests).subscribe({
+              next: () => {
+                this.notificationService.success('Quiz saved successfully in backend!');
+                const quizData = {
+                  title: formValue.title ?? '',
+                  subject: formValue.subject ?? '',
+                  status: (formValue.status as 'PUBLISHED' | 'DRAFT') ?? 'DRAFT',
+                  questions: questionsData,
+                };
+
+                if (this.isEdit && this.quizId) {
+                  this.store.updateQuiz(this.quizId, quizData);
+                } else {
+                  this.store.createQuiz({
+                    ...quizData,
+                    id: lessonId,
+                  });
+                }
+                this.router.navigate(['/teacher/content']);
+              },
+              error: (err) => {
+                console.error('Failed to save quiz questions', err);
+                this.notificationService.error('Failed to save quiz questions.');
+              }
+            });
+          } else {
+            this.notificationService.success('Quiz container saved successfully in backend!');
+            const quizData = {
+              title: formValue.title ?? '',
+              subject: formValue.subject ?? '',
+              status: (formValue.status as 'PUBLISHED' | 'DRAFT') ?? 'DRAFT',
+              questions: [],
+            };
+
+            if (this.isEdit && this.quizId) {
+              this.store.updateQuiz(this.quizId, quizData);
+            } else {
+              this.store.createQuiz({
+                ...quizData,
+                id: lessonId,
+              });
+            }
+            this.router.navigate(['/teacher/content']);
+          }
+        },
+        error: (err) => {
+          console.error('Failed to create quiz container', err);
+          this.notificationService.error('Failed to create final quiz.');
+        }
+      });
     }
   }
 }

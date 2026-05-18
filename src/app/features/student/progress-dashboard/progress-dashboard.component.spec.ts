@@ -2,11 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import { ProgressDashboardComponent } from './progress-dashboard.component';
 import { ProgressStore } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
+import { StudentProfileStore, StudentProfile } from '../store/profile.store';
+import { TeacherClassService } from '../../../core/services/teacher-class.service';
 import { ElementRef, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
 import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
+import { of } from 'rxjs';
 
 describe('ProgressDashboardComponent (Logic)', () => {
   let component: ProgressDashboardComponent;
@@ -27,6 +30,13 @@ describe('ProgressDashboardComponent (Logic)', () => {
     dashboard: WritableSignal<unknown>;
     dashboardLoading: WritableSignal<boolean>;
     dashboardError: WritableSignal<string | null>;
+  };
+  let studentProfileStoreMock: {
+    profile: WritableSignal<StudentProfile | null>;
+    loading: WritableSignal<boolean>;
+    saving: WritableSignal<boolean>;
+    error: WritableSignal<string | null>;
+    loadStudentProfile: ReturnType<typeof vi.fn>;
   };
   let authStoreStub: ReturnType<typeof createAuthStoreStub>;
   let routerMock: {
@@ -60,6 +70,21 @@ describe('ProgressDashboardComponent (Logic)', () => {
       dashboardError: signal(null),
     };
 
+    studentProfileStoreMock = {
+      profile: signal({
+        name: 'Test Student',
+        bio: 'Bio',
+        avatarUrl: '',
+        contactInfo: { email: 'test@student.com', phone: '' },
+        enrolledLessonsCount: 0,
+        enrolledClasses: ['class-1'],
+      }),
+      loading: signal(false),
+      saving: signal(false),
+      error: signal(null),
+      loadStudentProfile: vi.fn(),
+    };
+
     authStoreStub = createAuthStoreStub({
       user: { id: '123', name: 'Test User' },
       isAuthenticated: true
@@ -73,6 +98,8 @@ describe('ProgressDashboardComponent (Logic)', () => {
       providers: [
         { provide: ProgressStore, useValue: progressStoreMock },
         { provide: AuthStore, useValue: authStoreStub },
+        { provide: StudentProfileStore, useValue: studentProfileStoreMock },
+        { provide: TeacherClassService, useValue: { getClassDetail: vi.fn().mockReturnValue(of({ id: 'class-1', name: 'Mock Class', description: 'Mock Class Desc', lessonCount: 2 })) } },
         { provide: Router, useValue: routerMock },
         ...provideApiMocks(),
       ],
@@ -227,6 +254,36 @@ describe('ProgressDashboardComponent (Logic)', () => {
       expect(svg?.getAttribute('aria-label')).toBe('Skill radar chart');
       expect(el.querySelectorAll('circle').length).toBeGreaterThan(0);
       expect(el.querySelectorAll('text').length).toBe(3);
+    });
+  });
+
+  describe('Enrolled Classes Retrieval and Display', () => {
+    it('should call loadStudentProfile on init', () => {
+      TestBed.runInInjectionContext(() => {
+        component.ngOnInit();
+      });
+      expect(studentProfileStoreMock.loadStudentProfile).toHaveBeenCalled();
+    });
+
+    it('should fetch class details if student has enrolled classes', async () => {
+      studentProfileStoreMock.profile.set({
+        enrolledClasses: ['class-123'],
+      });
+      
+      // Let effects process
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      expect(component.enrolledClassesList().length).toBeGreaterThan(0);
+      expect(component.enrolledClassesList()[0].id).toBe('class-1');
+    });
+
+    it('should clean enrolledClassesList if student has no classes', async () => {
+      studentProfileStoreMock.profile.set({
+        enrolledClasses: [],
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(component.enrolledClassesList().length).toBe(0);
     });
   });
 });

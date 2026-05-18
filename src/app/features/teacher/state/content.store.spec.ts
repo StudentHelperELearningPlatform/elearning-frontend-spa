@@ -359,10 +359,27 @@ describe('ContentStore', () => {
     expect(lesson?.title).toBe('Updated Title');
   });
 
-  it('deleteLesson removes an existing lesson', () => {
+  it('deleteLesson calls delete API and removes lesson on success', () => {
     patchStore(store, { lessons: MOCK_LESSONS });
+    const spy = vi.spyOn(http, 'delete').mockReturnValue(of(undefined));
+
     store.deleteLesson('l1');
+
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('/lessons/l1'));
     expect(store.lessons().find((l) => l.id === 'l1')).toBeUndefined();
+    expect(store.loading()).toBe(false);
+  });
+
+  it('deleteLesson handles error during delete', () => {
+    patchStore(store, { lessons: MOCK_LESSONS });
+    const spy = vi.spyOn(http, 'delete').mockReturnValue(throwError(() => new Error('delete failed')));
+
+    store.deleteLesson('l1');
+
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('/lessons/l1'));
+    expect(store.lessons().find((l) => l.id === 'l1')).toBeDefined();
+    expect(store.error()).toBe('delete failed');
+    expect(store.loading()).toBe(false);
   });
 
   it('createQuiz adds a quiz', () => {

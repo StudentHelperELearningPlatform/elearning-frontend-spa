@@ -46,7 +46,7 @@ interface AdminClass {
     AvatarComponent
   ],
   template: `
-    <div class="p-6 md:p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
+    <div class="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
       
       <!-- Top Header Panel -->
       <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 md:p-8 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
@@ -106,12 +106,12 @@ interface AdminClass {
         <!-- Stat Card 1 -->
         <app-card class="block transform hover:-translate-y-1 transition-all duration-300">
           <div class="p-6 flex items-center space-x-4">
-            <div class="w-14 h-14 bg-[#0ABAB5]/10 rounded-2xl border-2 border-black flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-              <span class="material-icons text-[#0ABAB5] text-2xl font-bold">gavel</span>
+            <div class="w-14 h-14 bg-red-100 rounded-2xl border-2 border-black flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+              <span class="material-icons text-red-500 text-2xl font-bold">gavel</span>
             </div>
             <div>
               <p class="text-gray-500 font-bold text-xs uppercase tracking-wider">Banned Users</p>
-              <h3 class="text-3xl font-black text-black mt-0.5">{{ users().length }}</h3>
+              <h3 class="text-3xl font-black text-black mt-0.5">{{ bannedUsersCount() }}</h3>
             </div>
           </div>
         </app-card>
@@ -160,7 +160,7 @@ interface AdminClass {
       
       <!-- 1. OVERVIEW TAB -->
       @if (activeTab() === 'overview') {
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
           <!-- Left Column: Shortcuts & Quick Tools -->
           <div class="lg:col-span-1 space-y-6">
             <app-card class="block">
@@ -279,24 +279,27 @@ interface AdminClass {
                 </h3>
               </div>
               <div class="p-6">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                  <div class="p-4 bg-gray-50 border-2 border-black rounded-2xl">
-                    <span class="font-black text-[#0ABAB5] text-2xl">72%</span>
-                    <p class="text-xs text-gray-500 font-bold mt-1">Students</p>
+                @if (usersLoading()) {
+                  <div class="flex flex-col items-center justify-center py-6 space-y-2">
+                    <span class="material-icons animate-spin text-[#0ABAB5] text-3xl">sync</span>
+                    <p class="text-xs text-gray-400 font-bold">Calculating distribution insights...</p>
                   </div>
-                  <div class="p-4 bg-gray-50 border-2 border-black rounded-2xl">
-                    <span class="font-black text-indigo-500 text-2xl">12%</span>
-                    <p class="text-xs text-gray-500 font-bold mt-1">Teachers</p>
+                } @else {
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div class="p-4 bg-gray-50 border-2 border-black rounded-2xl">
+                      <span class="font-black text-[#0ABAB5] text-2xl">{{ userInsights().studentsPct }}%</span>
+                      <p class="text-xs text-gray-500 font-bold mt-1">Students ({{ userInsights().studentsCount }})</p>
+                    </div>
+                    <div class="p-4 bg-gray-50 border-2 border-black rounded-2xl">
+                      <span class="font-black text-indigo-500 text-2xl">{{ userInsights().teachersPct }}%</span>
+                      <p class="text-xs text-gray-500 font-bold mt-1">Teachers ({{ userInsights().teachersCount }})</p>
+                    </div>
+                    <div class="p-4 bg-gray-50 border-2 border-black rounded-2xl">
+                      <span class="font-black text-red-500 text-2xl">{{ userInsights().adminsPct }}%</span>
+                      <p class="text-xs text-gray-500 font-bold mt-1">Admins ({{ userInsights().adminsCount }})</p>
+                    </div>
                   </div>
-                  <div class="p-4 bg-gray-50 border-2 border-black rounded-2xl">
-                    <span class="font-black text-yellow-500 text-2xl">14%</span>
-                    <p class="text-xs text-gray-500 font-bold mt-1">Parents</p>
-                  </div>
-                  <div class="p-4 bg-gray-50 border-2 border-black rounded-2xl">
-                    <span class="font-black text-red-500 text-2xl">2%</span>
-                    <p class="text-xs text-gray-500 font-bold mt-1">Admins</p>
-                  </div>
-                </div>
+                }
               </div>
             </app-card>
           </div>
@@ -802,6 +805,47 @@ interface AdminClass {
           </app-card>
         </div>
       }
+
+      <!-- Ban Reason Modal Dialog -->
+      @if (userPendingBan()) {
+        <div
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-ban-title"
+        >
+          <div
+            class="bg-white p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-md w-full"
+          >
+            <h2 id="confirm-ban-title" class="text-2xl font-black mb-2 flex items-center gap-2 text-red-500">
+              <span class="material-icons">gavel</span>
+              <span>Ban User</span>
+            </h2>
+            <p class="mb-4 text-gray-700 font-bold">
+              Please provide a clear reason for banning this user. They will lose platform access immediately.
+            </p>
+            
+            <div class="mb-6">
+              <label for="ban-reason-input" class="block text-sm font-black mb-1">Reason for Ban</label>
+              <input 
+                id="ban-reason-input"
+                type="text" 
+                [value]="banReason()"
+                (input)="updateBanReason($event)"
+                placeholder="e.g., Inappropriate language, Spamming dashboard" 
+                class="w-full px-4 py-2.5 bg-white border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[#0ABAB5] text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none"
+              />
+            </div>
+
+            <div class="flex justify-end gap-3">
+              <app-button variant="secondary" (btnClick)="cancelBan()">Cancel</app-button>
+              <app-button variant="danger" icon="gavel" [disabled]="!banReason().trim()" (btnClick)="performBan()">
+                Ban User
+              </app-button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -821,6 +865,30 @@ export class AdminDashboardComponent implements OnInit {
   activeTab = signal<'overview' | 'users' | 'content' | 'inbox'>('overview');
   userSearchQuery = signal<string>('');
   statusFilter = signal<'ALL' | 'ACTIVE' | 'BANNED'>('ALL');
+  
+  userPendingBan = signal<string | null>(null);
+  banReason = signal<string>('');
+  
+  userInsights = computed(() => {
+    const list = this.users();
+    const total = list.length;
+    if (total === 0) {
+      return { studentsPct: 0, teachersPct: 0, adminsPct: 0, studentsCount: 0, teachersCount: 0, adminsCount: 0 };
+    }
+
+    const students = list.filter(u => u.role === 'STUDENT').length;
+    const teachers = list.filter(u => u.role === 'TEACHER').length;
+    const admins = list.filter(u => u.role === 'ADMIN').length;
+
+    return {
+      studentsPct: Math.round((students / total) * 100),
+      teachersPct: Math.round((teachers / total) * 100),
+      adminsPct: Math.round((admins / total) * 100),
+      studentsCount: students,
+      teachersCount: teachers,
+      adminsCount: admins
+    };
+  });
   
   // Data lists
   users = signal<AdminUser[]>([]);
@@ -847,6 +915,10 @@ export class AdminDashboardComponent implements OnInit {
 
   unreadMessages = computed(() => 
     this.contactMessages().filter(m => !m.read)
+  );
+
+  bannedUsersCount = computed(() => 
+    this.users().filter(u => u.status === 'BANNED').length
   );
 
   filteredUsers = computed(() => {
@@ -1062,18 +1134,37 @@ export class AdminDashboardComponent implements OnInit {
 
   // Administrative Actions
   banUser(userId: string) {
-    if (confirm('Are you sure you want to ban this user? They will lose access to the platform.')) {
-      this.adminService.banUser(userId).subscribe({
-        next: () => {
-          this.notificationService.success('User has been banned.');
-          this.loadUsers(); // Refresh actual database state
-        },
-        error: (err) => {
-          const errorMsg = err.error?.message || err.message || 'API Error';
-          this.notificationService.error(`Failed to ban user: ${errorMsg}`);
-        }
-      });
-    }
+    this.userPendingBan.set(userId);
+    this.banReason.set('');
+  }
+
+  cancelBan() {
+    this.userPendingBan.set(null);
+    this.banReason.set('');
+  }
+
+  updateBanReason(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.banReason.set(value);
+  }
+
+  performBan() {
+    const userId = this.userPendingBan();
+    const reason = this.banReason().trim();
+    if (!userId || !reason) return;
+
+    this.adminService.banUser(userId, reason).subscribe({
+      next: () => {
+        this.notificationService.success('User has been banned.');
+        this.userPendingBan.set(null);
+        this.banReason.set('');
+        this.loadUsers(); // Refresh actual database state
+      },
+      error: (err) => {
+        const errorMsg = err.error?.message || err.message || 'API Error';
+        this.notificationService.error(`Failed to ban user: ${errorMsg}`);
+      }
+    });
   }
 
   unbanUser(user: AdminUser) {

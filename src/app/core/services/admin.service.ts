@@ -69,8 +69,8 @@ export class AdminService {
     return this.http.delete<void>(`${this.apiBase}/admin/users/${userId}`);
   }
 
-  banUser(userId: string): Observable<void> {
-    return this.http.post<void>(`${this.apiBase}/admin/users/${userId}/ban`, {});
+  banUser(userId: string, reason: string): Observable<void> {
+    return this.http.post<void>(`${this.apiBase}/admin/users/${userId}/ban`, { reason });
   }
 
   unbanUser(userId: string): Observable<void> {

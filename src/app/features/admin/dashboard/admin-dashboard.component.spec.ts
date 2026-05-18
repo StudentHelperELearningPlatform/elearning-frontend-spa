@@ -138,6 +138,23 @@ describe('AdminDashboardComponent', () => {
     expect(component.userSearchQuery()).toBe('Jane');
   });
 
+  it('should compute user distribution insights correctly', () => {
+    fixture.detectChanges();
+    expect(component.userInsights()).toEqual({
+      studentsPct: 60,
+      teachersPct: 20,
+      adminsPct: 20,
+      studentsCount: 3,
+      teachersCount: 1,
+      adminsCount: 1
+    });
+  });
+
+  it('should compute banned users count correctly', () => {
+    fixture.detectChanges();
+    expect(component.bannedUsersCount()).toBe(1);
+  });
+
   it('should parse object entries properly', () => {
     const obj = { age: 30, city: 'Cluj', avatarSeed: 'x', raw: {}, nestedObj: { custom: 123 } };
     const entries = component.getObjectEntries(obj);
@@ -186,14 +203,37 @@ describe('AdminDashboardComponent', () => {
     expect(notificationService.error).toHaveBeenCalledWith('Cannot unban: No valid target User ID could be extracted from database entity.');
   });
 
-  it('should handle ban action successfully if confirmed', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('should set pending ban state on banUser', () => {
+    component.banUser('u1');
+    expect(component.userPendingBan()).toBe('u1');
+    expect(component.banReason()).toBe('');
+  });
+
+  it('should cancel pending ban', () => {
+    component.banUser('u1');
+    component.cancelBan();
+    expect(component.userPendingBan()).toBeNull();
+    expect(component.banReason()).toBe('');
+  });
+
+  it('should update ban reason correctly', () => {
+    const inputEvent = { target: { value: 'Spamming' } } as unknown as Event;
+    component.updateBanReason(inputEvent);
+    expect(component.banReason()).toBe('Spamming');
+  });
+
+  it('should handle ban action successfully through performBan', () => {
     const serviceSpy = vi.spyOn(adminService, 'banUser').mockReturnValue(of(undefined));
     const loadSpy = vi.spyOn(component, 'loadUsers');
 
     component.banUser('u1');
-    expect(serviceSpy).toHaveBeenCalledWith('u1');
-    expect(notificationService.success).toHaveBeenCalled();
+    component.banReason.set('Spamming');
+    component.performBan();
+
+    expect(serviceSpy).toHaveBeenCalledWith('u1', 'Spamming');
+    expect(notificationService.success).toHaveBeenCalledWith('User has been banned.');
+    expect(component.userPendingBan()).toBeNull();
+    expect(component.banReason()).toBe('');
     expect(loadSpy).toHaveBeenCalled();
   });
 
@@ -318,20 +358,21 @@ describe('AdminDashboardComponent', () => {
     expect(component.users()[0].status).toBe('BANNED');
   });
 
-  it('should gracefully handle API failure when banning a user', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('should gracefully handle API failure when performBan fails', () => {
     const serviceSpy = vi.spyOn(adminService, 'banUser').mockReturnValue(throwError(() => new Error('Ban failed')));
 
     component.banUser('u1');
-    expect(serviceSpy).toHaveBeenCalledWith('u1');
+    component.banReason.set('Spamming');
+    component.performBan();
+
+    expect(serviceSpy).toHaveBeenCalledWith('u1', 'Spamming');
     expect(notificationService.error).toHaveBeenCalledWith('Failed to ban user: Ban failed');
   });
 
-  it('should not proceed if ban user confirmation is cancelled', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+  it('should not proceed with performBan if userId or reason is empty', () => {
     const serviceSpy = vi.spyOn(adminService, 'banUser');
 
-    component.banUser('u1');
+    component.performBan();
     expect(serviceSpy).not.toHaveBeenCalled();
   });
 

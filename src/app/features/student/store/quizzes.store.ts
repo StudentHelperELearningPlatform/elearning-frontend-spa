@@ -1,6 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { QUIZ_API_URL } from '@core/tokens/api.token';
 export {
   type Question,
@@ -12,18 +14,27 @@ import { Quiz, QuizOption, QuizResult, QuizResultDetail } from '@shared/models/q
 
 type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
+interface QuizApiQuestionOption {
+  id: string;
+  text: string;
+  isCorrect?: boolean;
+  optionText?: string;
+}
+
 interface QuizApiQuestion {
   id: string;
-  type: QuestionType;
-  text: string;
-  options?: string[];
-  points: number;
+  type?: QuestionType;
+  questionType?: QuestionType;
+  text?: string;
+  questionText?: string;
+  options?: (string | QuizApiQuestionOption)[];
+  points?: number;
 }
 
 interface QuizApiResponse {
   id: string;
-  title: string;
-  subject: string;
+  title?: string;
+  subject?: string;
   timeLimitSeconds?: number | null;
   questions: QuizApiQuestion[];
 }
@@ -48,20 +59,29 @@ type QuizResultWithMeta = QuizResult & {
 };
 
 const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
-  if (question.type === 'SHORT_ANSWER') {
+  const qType = question.questionType || question.type;
+  if (qType === 'SHORT_ANSWER') {
     return [];
   }
 
-  if (question.type === 'TRUE_FALSE') {
-    const trueFalseOptions = question.options ?? ['True', 'False'];
+  const opts = question.options;
+  if (opts && opts.length > 0 && typeof opts[0] === 'object') {
+    return (opts as QuizApiQuestionOption[]).map((opt) => ({
+      id: opt.id,
+      text: opt.text || opt.optionText || '',
+    }));
+  }
+
+  if (qType === 'TRUE_FALSE') {
+    const trueFalseOptions = (opts as string[]) ?? ['True', 'False'];
     return trueFalseOptions.map((text) => ({
       id: text.toLowerCase(),
       text,
     }));
   }
 
-  const options = question.options ?? [];
-  return options.map((text, index) => ({
+  const stringOptions = (opts as string[]) ?? [];
+  return stringOptions.map((text, index) => ({
     id: `${question.id}-o${index + 1}`,
     text,
   }));
@@ -69,15 +89,15 @@ const mapQuestionOptions = (question: QuizApiQuestion): QuizOption[] => {
 
 const mapQuizResponse = (response: QuizApiResponse): QuizWithMeta => ({
   id: response.id,
-  title: response.title,
-  subject: response.subject,
+  title: response.title || 'Lesson Final Quiz',
+  subject: response.subject || 'General',
   timeLimit: response.timeLimitSeconds ?? 0,
   timeLimitSeconds: response.timeLimitSeconds ?? null,
-  questions: response.questions.map((question) => ({
+  questions: (response.questions || []).map((question) => ({
     id: question.id,
-    type: question.type,
-    text: question.text,
-    points: question.points,
+    type: question.questionType || question.type || 'MULTIPLE_CHOICE',
+    text: question.questionText || question.text || '',
+    points: question.points || 10,
     options: mapQuestionOptions(question),
   })),
 });
@@ -169,9 +189,24 @@ export const QuizzesStore = signalStore(
 
     const fetchQuiz = (id: string, isStart: boolean) => {
       patchState(store, { loading: true, error: null });
-      http.get<QuizApiResponse>(`${quizApi}/quizzes/${id}`).subscribe({
-        next: (quiz) => {
-          const mappedQuiz = mapQuizResponse(quiz);
+
+      const quiz$ = http.get<QuizApiResponse>(`${quizApi}/lessons/${id}/final-quiz`);
+
+      const questions$ = http.get<QuizApiQuestion[]>(`${quizApi}/lessons/${id}/final-quiz/questions`).pipe(
+        catchError(() => of([] as QuizApiQuestion[]))
+      );
+
+      forkJoin([quiz$, questions$]).subscribe({
+        next: ([quizRes, questionsRes]) => {
+          const combinedQuestions = questionsRes && Array.isArray(questionsRes) && questionsRes.length > 0
+            ? questionsRes
+            : (quizRes.questions || []);
+
+          const mappedQuiz = mapQuizResponse({
+            ...quizRes,
+            questions: combinedQuestions,
+          });
+
           patchState(store, {
             loading: false,
             currentQuiz: mappedQuiz,
@@ -194,7 +229,11 @@ export const QuizzesStore = signalStore(
         ? Math.floor((new Date().getTime() - store.startedAt()!.getTime()) / 1000)
         : 0;
 
-      const answers = store.answers();
+      const answersDict = store.answers();
+      const answersArray = Object.entries(answersDict).map(([questionId, answer]) => ({
+        questionId,
+        answer,
+      }));
       const quizId = store.currentQuiz()?.id;
       if (!quizId) {
         return;
@@ -202,7 +241,7 @@ export const QuizzesStore = signalStore(
 
       patchState(store, { submitted: true });
 
-      http.post<SubmitQuizResponse>(`${quizApi}/quizzes/${quizId}/submit`, { answers }).subscribe({
+      http.post<SubmitQuizResponse>(`${quizApi}/lessons/${quizId}/final-quiz/submit`, { answers: answersArray }).subscribe({
         next: (submission) => {
           patchState(store, {
             result: {
@@ -296,7 +335,7 @@ export const QuizzesStore = signalStore(
       },
       loadResultDetail(quizId: string, attemptId: string) {
         patchState(store, { resultDetailLoading: true, resultDetailError: null });
-        http.get<QuizResultDetail>(`${quizApi}/quizzes/${quizId}/results/${attemptId}`).subscribe({
+        http.get<QuizResultDetail>(`${quizApi}/lessons/${quizId}/final-quiz/results/${attemptId}`).subscribe({
           next: (detail) => {
             patchState(store, {
               resultDetail: detail,

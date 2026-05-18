@@ -15,7 +15,7 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
         <app-skeleton height="1rem" width="80%" />
       </div>
     } @else {
-      <div class="prose prose-lg max-w-none prose-headings:font-black prose-headings:text-black prose-p:text-gray-800 prose-a:text-[#0ABAB5] prose-a:font-bold prose-strong:text-black overflow-visible">
+      <div class="prose prose-lg max-w-none prose-headings:font-black prose-headings:text-black prose-p:text-gray-800 prose-a:text-[#0ABAB5] prose-a:font-bold prose-strong:text-black overflow-visible whitespace-pre-wrap">
         <div [innerHTML]="safeContent()"></div>
       </div>
     }

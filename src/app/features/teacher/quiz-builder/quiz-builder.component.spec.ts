@@ -7,6 +7,9 @@ import { signal } from '@angular/core';
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import { ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { QuestionsService } from '../services/questions.service';
+import { of } from 'rxjs';
 
 describe('QuizBuilderComponent', () => {
   let component: QuizBuilderComponent;
@@ -17,6 +20,8 @@ describe('QuizBuilderComponent', () => {
     quizzes: ReturnType<typeof signal>;
     createQuiz: Mock;
     updateQuiz: Mock;
+    lessons: ReturnType<typeof signal>;
+    loadDashboard: Mock;
   };
   let mockNotificationService: {
     success: Mock;
@@ -32,6 +37,12 @@ describe('QuizBuilderComponent', () => {
       };
     };
   };
+  let mockHttpClient: {
+    post: Mock;
+  };
+  let mockQuestionsService: {
+    addFinalQuizQuestion: Mock;
+  };
 
   const mockQuizData = {
     id: 'quiz-1',
@@ -46,6 +57,8 @@ describe('QuizBuilderComponent', () => {
       quizzes: signal([mockQuizData]),
       createQuiz: vi.fn(),
       updateQuiz: vi.fn(),
+      lessons: signal([]),
+      loadDashboard: vi.fn(),
     };
 
     mockNotificationService = {
@@ -65,6 +78,14 @@ describe('QuizBuilderComponent', () => {
       },
     };
 
+    mockHttpClient = {
+      post: vi.fn().mockReturnValue(of({})),
+    };
+
+    mockQuestionsService = {
+      addFinalQuizQuestion: vi.fn().mockReturnValue(of({})),
+    };
+
     await TestBed.configureTestingModule({
       imports: [QuizBuilderComponent, CommonModule, ReactiveFormsModule],
       providers: [
@@ -72,6 +93,8 @@ describe('QuizBuilderComponent', () => {
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: Router, useValue: mockRouter },
         { provide: ActivatedRoute, useValue: mockActivatedRoute },
+        { provide: HttpClient, useValue: mockHttpClient },
+        { provide: QuestionsService, useValue: mockQuestionsService },
       ],
     }).compileComponents();
 
@@ -193,16 +216,20 @@ describe('QuizBuilderComponent', () => {
       title: 'New Quiz',
       subject: 'Science',
       status: 'DRAFT',
+      lessonId: 'lesson-1',
     });
     component.addQuestion({ text: 'Q1', type: 'multiple-choice', difficulty: 'EASY' });
 
     component.saveQuiz();
 
+    expect(mockHttpClient.post).toHaveBeenCalled();
+    expect(mockQuestionsService.addFinalQuizQuestion).toHaveBeenCalled();
     expect(mockContentStore.createQuiz).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'New Quiz',
         subject: 'Science',
         status: 'DRAFT',
+        id: 'lesson-1',
         questions: [
           expect.objectContaining({
             text: 'Q1',
@@ -223,6 +250,7 @@ describe('QuizBuilderComponent', () => {
 
     component.saveQuiz();
 
+    expect(mockHttpClient.post).toHaveBeenCalled();
     expect(mockContentStore.updateQuiz).toHaveBeenCalledWith(
       'quiz-1',
       expect.objectContaining({
