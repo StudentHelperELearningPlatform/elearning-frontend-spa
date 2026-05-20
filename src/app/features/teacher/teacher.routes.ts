@@ -45,6 +45,11 @@ export default [
   { path: 'learning-paths/:id/edit', component: LearningPathEditorComponent },
   
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: 'classes', component: TeacherClassesPageComponent,},
-  { path: 'classes/:classId', component: TeacherClassDetailPageComponent,}
+  { path: 'classes', component: TeacherClassesPageComponent },
+  { path: 'classes/:classId', component: TeacherClassDetailPageComponent },
+  {
+    path: 'chat',
+    loadComponent: () =>
+      import('@features/shared/chat/chat-page.component').then((m) => m.ChatPageComponent),
+  },
 ] as Routes;

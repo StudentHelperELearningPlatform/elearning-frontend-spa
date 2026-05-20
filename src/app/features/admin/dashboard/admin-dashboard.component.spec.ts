@@ -486,4 +486,62 @@ describe('AdminDashboardComponent', () => {
     component.deleteMessage('m1');
     expect(serviceSpy).not.toHaveBeenCalled();
   });
+
+  // ── User Management Pagination and Key Filtering tests ────────────────────
+  it('should filter out ID and sub fields case-insensitively in getObjectEntries', () => {
+    const obj = {
+      id: 'uuid-1',
+      userId: 'uuid-2',
+      keycloakId: 'uuid-3',
+      sub: 'uuid-4',
+      targetUserId: 'uuid-5',
+      name: 'Alice',
+      email: 'alice@example.com'
+    };
+    const entries = component.getObjectEntries(obj);
+    expect(entries).toEqual([
+      { key: 'name', value: 'Alice' },
+      { key: 'email', value: 'alice@example.com' }
+    ]);
+  });
+
+  it('should paginate users correctly in pages of 5', () => {
+    fixture.detectChanges(); // Loads 5 users
+    expect(component.totalUserPages()).toBe(1);
+    expect(component.paginatedUsers().length).toBe(5);
+
+    // Let's add more users to test pagination
+    const extraUsers = Array.from({ length: 7 }, (_, i) => ({
+      id: `u-extra-${i}`,
+      name: `User Extra ${i}`,
+      email: `extra${i}@example.com`,
+      role: 'STUDENT' as const,
+      status: 'ACTIVE' as const,
+      raw: {}
+    }));
+    component.users.set([...component.users(), ...extraUsers]); // Total: 12 users
+    expect(component.totalUserPages()).toBe(3); // 12 users -> ceil(12/5) = 3 pages
+
+    // Page 1
+    expect(component.userPage()).toBe(1);
+    expect(component.paginatedUsers().length).toBe(5);
+    expect(component.paginatedUsers()[0].name).toBe('Alice');
+
+    // Go to Page 2
+    component.nextUserPage();
+    expect(component.userPage()).toBe(2);
+    expect(component.paginatedUsers().length).toBe(5);
+    expect(component.paginatedUsers()[0].name).toBe('User Extra 0');
+
+    // Go to Page 3
+    component.nextUserPage();
+    expect(component.userPage()).toBe(3);
+    expect(component.paginatedUsers().length).toBe(2);
+    expect(component.paginatedUsers()[0].name).toBe('User Extra 5');
+
+    // Go back to Page 2
+    component.prevUserPage();
+    expect(component.userPage()).toBe(2);
+    expect(component.paginatedUsers().length).toBe(5);
+  });
 });

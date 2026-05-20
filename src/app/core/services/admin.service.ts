@@ -38,6 +38,8 @@ export interface AdminLessonRaw {
   author?: string;
   teacherName?: string;
   status?: string;
+  authorId?: string;
+  author_id?: string;
 }
 
 export interface AdminClassRaw {

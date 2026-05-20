@@ -2,14 +2,13 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { TableModule } from 'primeng/table';
-import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { TeacherProgressStore } from '../state/progress.store';
 
 @Component({
   selector: 'app-class-stats',
   standalone: true,
-  imports: [CommonModule, RouterModule, TableModule, ButtonComponent, CardComponent],
+  imports: [CommonModule, RouterModule, TableModule, CardComponent],
   template: `
     <div class="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
       <!-- Header -->

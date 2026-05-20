@@ -13,6 +13,7 @@ const fixtureNotifs: AppNotification[] = [
     type: 'lesson_complete',
     title: 'Done',
     message: '',
+    isRead: false,
     read: false,
     createdAt: '2026-01-01T00:00:00Z',
   },
@@ -26,6 +27,8 @@ describe('NotificationBellComponent', () => {
   let router: Router;
 
   beforeEach(() => {
+    vi.useFakeTimers();
+
     TestBed.configureTestingModule({
       imports: [NotificationBellComponent, HttpClientTestingModule],
       providers: [
@@ -46,29 +49,41 @@ describe('NotificationBellComponent', () => {
   afterEach(() => {
     httpMock.verify();
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
-  it('loads notifications on init when authenticated', () => {
+  it('does not load notifications on init', () => {
     fixture.detectChanges();
+    httpMock.expectNone('/api/v1/notifications/me/unread');
+    expect(store.notifications()).toEqual([]);
+  });
+
+  it('loads notifications when toggled open and schedules markAllRead', () => {
+    fixture.detectChanges();
+
+    component.toggle();
     httpMock.expectOne('/api/v1/notifications/me/unread').flush(fixtureNotifs);
     expect(store.notifications()).toEqual(fixtureNotifs);
+
+    // After 1500ms, should automatically mark all read
+    vi.advanceTimersByTime(1500);
+    httpMock.expectOne('/api/v1/notifications/me/read-all').flush({});
   });
 
-  it('toggles the panel open and refetches', () => {
+  it('toggles the panel open and closed without extra fetches', () => {
     fixture.detectChanges();
-    httpMock.expectOne('/api/v1/notifications/me/unread').flush(fixtureNotifs);
 
+    // Toggle open -> fetches
     component.toggle();
     httpMock.expectOne('/api/v1/notifications/me/unread').flush(fixtureNotifs);
 
+    // Toggle closed -> should not fetch
     component.toggle();
-    // closing should not refetch
     httpMock.expectNone('/api/v1/notifications/me/unread');
   });
 
   it('markAll proxies to store', () => {
     fixture.detectChanges();
-    httpMock.expectOne('/api/v1/notifications/me/unread').flush(fixtureNotifs);
     const spy = vi.spyOn(store, 'markAllRead');
     component.markAll();
     expect(spy).toHaveBeenCalled();
@@ -77,7 +92,6 @@ describe('NotificationBellComponent', () => {
 
   it('opens link and marks as read when notification clicked', () => {
     fixture.detectChanges();
-    httpMock.expectOne('/api/v1/notifications/me/unread').flush(fixtureNotifs);
     const markSpy = vi.spyOn(store, 'markRead');
     const navSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
 
@@ -86,6 +100,7 @@ describe('NotificationBellComponent', () => {
       type: 'milestone',
       title: 't',
       message: 'm',
+      isRead: false,
       read: false,
       createdAt: '2026-01-01T00:00:00Z',
       linkUrl: '/student/milestones',
@@ -98,7 +113,6 @@ describe('NotificationBellComponent', () => {
 
   it('does not mark or navigate for read notifications without link', () => {
     fixture.detectChanges();
-    httpMock.expectOne('/api/v1/notifications/me/unread').flush(fixtureNotifs);
     const markSpy = vi.spyOn(store, 'markRead');
     const navSpy = vi.spyOn(router, 'navigateByUrl');
 
@@ -107,6 +121,7 @@ describe('NotificationBellComponent', () => {
       type: 'announcement',
       title: 't',
       message: 'm',
+      isRead: true,
       read: true,
       createdAt: '2026-01-01T00:00:00Z',
     });
@@ -117,7 +132,6 @@ describe('NotificationBellComponent', () => {
 
   it('maps notification types to icons', () => {
     fixture.detectChanges();
-    httpMock.expectOne('/api/v1/notifications/me/unread').flush([]);
 
     expect(component.iconFor('lesson_complete')).toBe('menu_book');
     expect(component.iconFor('quiz_result')).toBe('quiz');

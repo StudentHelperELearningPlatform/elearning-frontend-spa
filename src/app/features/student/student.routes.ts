@@ -52,7 +52,12 @@ export default [
    {
     path: 'skills/:subject',
     component: SkillDetailComponent
-  }
+  },
+  {
+    path: 'chat',
+    loadComponent: () =>
+      import('@features/shared/chat/chat-page.component').then((m) => m.ChatPageComponent),
+  },
  /* {
   path: 'skills/:subject',
   loadComponent: () =>

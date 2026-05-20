@@ -15,7 +15,20 @@ export interface AppNotification {
   type: NotificationType;
   title: string;
   message: string;
+  /** API returns `isRead`; mapped to `read` for backwards compatibility */
+  isRead: boolean;
   read: boolean;
+  createdAt: string;
+  linkUrl?: string;
+}
+
+/** Raw shape returned by GET /notifications/me/unread */
+interface RawNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
   createdAt: string;
   linkUrl?: string;
 }
@@ -35,9 +48,12 @@ export class NotificationStore {
   load() {
     this.loading.set(true);
     this.error.set(null);
-    this.http.get<AppNotification[]>(`${this.apiBase}/notifications/me/unread`).subscribe({
+    this.http.get<RawNotification[]>(`${this.apiBase}/notifications/me/unread`).subscribe({
       next: (data) => {
-        this.notifications.set(Array.isArray(data) ? data : []);
+        const mapped: AppNotification[] = (Array.isArray(data) ? data : []).map(
+          (n) => ({ ...n, type: n.type as NotificationType, read: n.isRead }),
+        );
+        this.notifications.set(mapped);
         this.loading.set(false);
       },
       error: () => {
@@ -48,12 +64,13 @@ export class NotificationStore {
   }
 
   markRead(id: string) {
-    this.notifications.update((list) => list.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    this.notifications.update((list) =>
+      list.map((n) => (n.id === id ? { ...n, read: true, isRead: true } : n)),
+    );
     this.http.put(`${this.apiBase}/notifications/${id}/read`, {}).subscribe({
       error: () => {
-        // Roll back on error
         this.notifications.update((list) =>
-          list.map((n) => (n.id === id ? { ...n, read: false } : n)),
+          list.map((n) => (n.id === id ? { ...n, read: false, isRead: false } : n)),
         );
       },
     });
@@ -61,7 +78,9 @@ export class NotificationStore {
 
   markAllRead() {
     const previous = this.notifications();
-    this.notifications.update((list) => list.map((n) => ({ ...n, read: true })));
+    this.notifications.update((list) =>
+      list.map((n) => ({ ...n, read: true, isRead: true })),
+    );
     this.http.put(`${this.apiBase}/notifications/me/read-all`, {}).subscribe({
       error: () => this.notifications.set(previous),
     });
