@@ -6,6 +6,11 @@ import { ContactService, InboxMessage, UserProfile } from './contact.service';
 import { AuthStore } from '@features/auth/store/auth.store';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { TeacherClassService } from '@core/services/teacher-class.service';
+import { TeacherClassDetail } from '@features/teacher/models/class-detail.model';
+
+interface StudentProfile {
+  enrolledClasses?: string[];
+}
 
 export interface Conversation {
   contactId: string;
@@ -73,7 +78,7 @@ export class ChatStore {
           contactId,
           contactName,
           messages: sorted,
-          lastMessage: sorted[sorted.length - 1],
+          lastMessage: sorted.at(-1)!,
         };
       })
       .sort(
@@ -152,6 +157,26 @@ export class ChatStore {
     });
   }
 
+  private _extractUniqueStudents(
+    details: (TeacherClassDetail | null)[],
+    myId: string,
+  ): { id: string; name: string }[] {
+    const studentsMap = new Map<string, string>();
+    for (const detail of details) {
+      if (detail && Array.isArray(detail.students)) {
+        for (const s of detail.students) {
+          if (s.id && s.id !== myId) {
+            studentsMap.set(
+              s.id,
+              s.name || s.email || `Student …${s.id.slice(-6)}`,
+            );
+          }
+        }
+      }
+    }
+    return Array.from(studentsMap.entries()).map(([id, name]) => ({ id, name }));
+  }
+
   private _loadDiscoverableContacts() {
     const me = this.authStore.user();
     if (!me) {
@@ -163,7 +188,7 @@ export class ChatStore {
     const myId = me.id;
 
     if (role === 'STUDENT') {
-      this.http.get<any>(`${this.apiBase}/students/me/profile`).pipe(
+      this.http.get<StudentProfile>(`${this.apiBase}/students/me/profile`).pipe(
         catchError(() => of(null))
       ).subscribe((profile) => {
         if (!profile || !Array.isArray(profile.enrolledClasses) || profile.enrolledClasses.length === 0) {
@@ -175,19 +200,8 @@ export class ChatStore {
           this.classService.getClassDetail(classId).pipe(catchError(() => of(null)))
         );
 
-        forkJoin(requests).subscribe((details: any) => {
-          const peers = new Map<string, string>();
-          details.forEach((detail: any) => {
-            if (detail && Array.isArray(detail.students)) {
-              detail.students.forEach((s: any) => {
-                if (s.id && s.id !== myId) {
-                  peers.set(s.id, s.name || s.email || `Student …${s.id.slice(-6)}`);
-                }
-              });
-            }
-          });
-
-          const list = Array.from(peers.entries()).map(([id, name]) => ({ id, name }));
+        forkJoin(requests).subscribe((details) => {
+          const list = this._extractUniqueStudents(details, myId);
           this._discoverableContacts.set(list);
 
           const nameMap = new Map(this._userNames());
@@ -210,19 +224,8 @@ export class ChatStore {
           this.classService.getClassDetail(c.id).pipe(catchError(() => of(null)))
         );
 
-        forkJoin(requests).subscribe((details: any) => {
-          const studentsMap = new Map<string, string>();
-          details.forEach((detail: any) => {
-            if (detail && Array.isArray(detail.students)) {
-              detail.students.forEach((s: any) => {
-                if (s.id && s.id !== myId) {
-                  studentsMap.set(s.id, s.name || s.email || `Student …${s.id.slice(-6)}`);
-                }
-              });
-            }
-          });
-
-          const list = Array.from(studentsMap.entries()).map(([id, name]) => ({ id, name }));
+        forkJoin(requests).subscribe((details) => {
+          const list = this._extractUniqueStudents(details, myId);
           this._discoverableContacts.set(list);
 
           const nameMap = new Map(this._userNames());

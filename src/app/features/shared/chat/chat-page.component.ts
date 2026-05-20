@@ -4,7 +4,6 @@ import {
   ElementRef,
   OnInit,
   ViewChild,
-  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -17,7 +16,7 @@ function getInitials(name?: string): string {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (parts[0][0] + parts.at(-1)![0]).toUpperCase();
 }
 
 @Component({
@@ -305,7 +304,7 @@ export class ChatPageComponent implements OnInit {
   avatarColor(id: string): string {
     let hash = 0;
     for (let i = 0; i < id.length; i++) {
-      hash = id.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (id.codePointAt(i) ?? 0) + ((hash << 5) - hash);
     }
     return this.AVATAR_PALETTE[Math.abs(hash) % this.AVATAR_PALETTE.length];
   }
