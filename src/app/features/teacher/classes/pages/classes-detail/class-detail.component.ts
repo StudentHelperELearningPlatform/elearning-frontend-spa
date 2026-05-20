@@ -28,6 +28,16 @@ export interface FinalQuizAttempt {
   submittedAt: string;
 }
 
+export interface RawQuizAttempt {
+  id?: string;
+  attemptId?: string;
+  studentId?: string;
+  score?: number;
+  totalScore?: number;
+  submittedAt?: string;
+  completedAt?: string;
+}
+
 @Component({
   selector: 'app-class-detail',
   standalone: true,
@@ -45,10 +55,7 @@ export class ClassDetailComponent implements OnInit {
 
   classId!: string;
 
-  // ─── Students panel ───────────────────────────────
   readonly students = computed(() => this.store.currentClass()?.students ?? []);
-
-  // ─── Lessons panel ────────────────────────────────
   readonly lessons = computed(() => this.store.currentClass()?.lessons ?? []);
 
   // ─── Invite modal ─────────────────────────────────
@@ -63,11 +70,7 @@ export class ClassDetailComponent implements OnInit {
     const enrolled = new Set(this.students().map((s) => s.id));
     return this.allStudents()
       .filter((s) => !enrolled.has(s.studentId))
-      .filter(
-        (s) =>
-          !q ||
-          `${s.firstName} ${s.lastName}`.toLowerCase().includes(q),
-      );
+      .filter((s) => !q || `${s.firstName} ${s.lastName}`.toLowerCase().includes(q));
   });
 
   // ─── Add lesson modal ─────────────────────────────
@@ -82,7 +85,9 @@ export class ClassDetailComponent implements OnInit {
     return this.lessonsStore
       .items()
       .filter((l) => !enrolled.has(l.id))
-      .filter((l) => !q || l.title.toLowerCase().includes(q) || l.subject.toLowerCase().includes(q));
+      .filter(
+        (l) => !q || l.title.toLowerCase().includes(q) || l.subject.toLowerCase().includes(q),
+      );
   });
 
   // ─── Final quiz attempts ──────────────────────────
@@ -96,17 +101,14 @@ export class ClassDetailComponent implements OnInit {
     this.lessonsStore.load();
   }
 
-  // ─── Student remove ───────────────────────────────
   removeStudent(studentId: string): void {
     this.store.removeStudent(this.classId, studentId);
   }
 
-  // ─── Lesson remove ────────────────────────────────
   removeLesson(lessonId: string): void {
     this.store.removeLesson(this.classId, lessonId);
   }
 
-  // ─── Invite modal logic ───────────────────────────
   openInviteModal(): void {
     this.showInviteModal.set(true);
     this.studentSearch.set('');
@@ -140,7 +142,6 @@ export class ClassDetailComponent implements OnInit {
     });
   }
 
-  // ─── Add lesson modal logic ───────────────────────
   openLessonsModal(): void {
     this.showLessonsModal.set(true);
     this.lessonSearch.set('');
@@ -169,7 +170,6 @@ export class ClassDetailComponent implements OnInit {
     });
   }
 
-  // ─── Final quiz attempts ──────────────────────────
   loadQuizAttempts(): void {
     if (this.quizLoading()) return;
 
@@ -184,35 +184,17 @@ export class ClassDetailComponent implements OnInit {
     this.quizLoading.set(true);
     this.quizError.set(null);
 
-    // Fetch attempts for each lesson's final quiz in parallel
     const requests = lessonIds.map((lessonId) =>
       this.http
-        .get<unknown[]>(`${this.contentApi}/lessons/${lessonId}/final-quiz/attempts`)
-        .pipe(
-          map((attempts) =>
-            attempts
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .filter((a: any) => studentIds.includes(a.studentId))
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .map((a: any) => ({
-                attemptId: a.id ?? a.attemptId ?? '',
-                studentId: a.studentId ?? '',
-                studentName: this.resolveStudentName(a.studentId),
-                lessonId,
-                lessonTitle: this.lessons().find((l) => l.id === lessonId)?.title ?? lessonId,
-                score: a.score ?? a.totalScore ?? 0,
-                submittedAt: a.submittedAt ?? a.completedAt ?? '',
-              })),
-          ),
-          catchError(() => of([] as FinalQuizAttempt[])),
-        ),
+        .get<RawQuizAttempt[]>(`${this.contentApi}/lessons/${lessonId}/final-quiz/attempts`)
+        .pipe(map((attempts) => this.mapQuizAttempts(attempts, studentIds, lessonId))),
     );
 
     forkJoin(requests).subscribe({
       next: (results) => {
-        const all = results.flat().sort(
-          (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
-        );
+        const all = results
+          .flat()
+          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
         this.quizAttempts.set(all);
         this.quizLoading.set(false);
       },
@@ -221,6 +203,24 @@ export class ClassDetailComponent implements OnInit {
         this.quizLoading.set(false);
       },
     });
+  }
+
+  private mapQuizAttempts(
+    attempts: RawQuizAttempt[],
+    studentIds: string[],
+    lessonId: string,
+  ): FinalQuizAttempt[] {
+    return attempts
+      .filter((a) => a.studentId && studentIds.includes(a.studentId))
+      .map((a) => ({
+        attemptId: a.id ?? a.attemptId ?? '',
+        studentId: a.studentId ?? '',
+        studentName: this.resolveStudentName(a.studentId ?? ''),
+        lessonId,
+        lessonTitle: this.lessons().find((l) => l.id === lessonId)?.title ?? lessonId,
+        score: a.score ?? a.totalScore ?? 0,
+        submittedAt: a.submittedAt ?? a.completedAt ?? '',
+      }));
   }
 
   private resolveStudentName(studentId: string): string {
