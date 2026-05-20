@@ -24,6 +24,7 @@ interface AdminLesson {
   subject: string;
   grade: number;
   author: string;
+  authorId?: string;
   status: 'PUBLISHED' | 'DRAFT';
 }
 
@@ -324,19 +325,19 @@ interface AdminClass {
               <!-- Status Filter Selectors -->
               <div class="flex bg-white border-2 border-black rounded-xl p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                 <button 
-                  (click)="statusFilter.set('ALL')"
+                  (click)="statusFilter.set('ALL'); userPage.set(1)"
                   [ngClass]="statusFilter() === 'ALL' ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black hover:bg-gray-50'"
                   class="px-3 py-1.5 rounded-lg text-xs font-black transition-all border border-transparent select-none">
                   All
                 </button>
                 <button 
-                  (click)="statusFilter.set('ACTIVE')"
+                  (click)="statusFilter.set('ACTIVE'); userPage.set(1)"
                   [ngClass]="statusFilter() === 'ACTIVE' ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black hover:bg-gray-50'"
                   class="px-3 py-1.5 rounded-lg text-xs font-black transition-all border border-transparent select-none">
                   Active
                 </button>
                 <button 
-                  (click)="statusFilter.set('BANNED')"
+                  (click)="statusFilter.set('BANNED'); userPage.set(1)"
                   [ngClass]="statusFilter() === 'BANNED' ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black hover:bg-gray-50'"
                   class="px-3 py-1.5 rounded-lg text-xs font-black transition-all border border-transparent select-none">
                   Banned
@@ -407,7 +408,7 @@ interface AdminClass {
                     </td>
                   </tr>
                 } @else {
-                  @for (user of filteredUsers(); track user.id) {
+                  @for (user of paginatedUsers(); track user.id) {
                     <tr class="hover:bg-gray-50 transition-colors group align-top">
                       <!-- User Info -->
                       <td class="p-4 w-1/4">
@@ -428,7 +429,7 @@ interface AdminClass {
                         <div class="text-[11px] font-mono bg-gray-50 border-2 border-black rounded-xl p-3 space-y-1 max-h-40 overflow-y-auto shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                           <div class="text-[10px] uppercase font-black tracking-wider text-gray-400 border-b border-gray-200 pb-1 mb-1.5 flex justify-between items-center">
                             <span>Raw Postgres Record</span>
-                            <span class="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">UUID Auto-Detected</span>
+                            <span class="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">Live View</span>
                           </div>
                           @for (entry of getObjectEntries(user.raw); track entry.key) {
                             <div class="flex justify-between items-start gap-4 py-0.5 border-b border-gray-100 last:border-0"
@@ -497,6 +498,27 @@ interface AdminClass {
               </tbody>
             </table>
           </div>
+
+          <!-- Users Pagination -->
+          @if (filteredUsers().length > 0 && !usersLoading() && !usersError()) {
+            <div class="p-4 border-t-4 border-black bg-gray-50 flex justify-between items-center shrink-0">
+              <button 
+                (click)="prevUserPage()" 
+                [disabled]="userPage() === 1"
+                class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none">
+                Previous
+              </button>
+              <span class="text-xs font-black text-black">
+                Page {{ userPage() }} of {{ totalUserPages() }} ({{ filteredUsers().length }} total)
+              </span>
+              <button 
+                (click)="nextUserPage()" 
+                [disabled]="userPage() === totalUserPages()"
+                class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none">
+                Next
+              </button>
+            </div>
+          }
         </app-card>
       }
 
@@ -515,6 +537,49 @@ interface AdminClass {
                   <h3 class="text-xl font-black text-black">Active Curriculum Lessons</h3>
                   <p class="text-xs text-gray-500 font-bold">Oversee and delete instructional units.</p>
                 </div>
+              </div>
+            </div>
+
+            <!-- Lessons Toolbar with Sorting -->
+            <div class="p-4 border-b-2 border-black bg-gray-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-black uppercase text-gray-400">Sort By:</span>
+                <button 
+                  (click)="setLessonSort('title')"
+                  [ngClass]="lessonSortKey() === 'title' ? 'bg-[#0ABAB5] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black hover:bg-gray-50 border-2 border-transparent'"
+                  class="px-2.5 py-1 rounded-lg border-2 border-black font-black text-xs transition-all flex items-center gap-1 select-none">
+                  Title
+                  @if (lessonSortKey() === 'title') {
+                    <span class="material-icons text-xs font-black">{{ lessonSortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+                  }
+                </button>
+                <button 
+                  (click)="setLessonSort('teacher')"
+                  [ngClass]="lessonSortKey() === 'teacher' ? 'bg-[#0ABAB5] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black hover:bg-gray-50 border-2 border-transparent'"
+                  class="px-2.5 py-1 rounded-lg border-2 border-black font-black text-xs transition-all flex items-center gap-1 select-none">
+                  Teacher
+                  @if (lessonSortKey() === 'teacher') {
+                    <span class="material-icons text-xs font-black">{{ lessonSortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+                  }
+                </button>
+                <button 
+                  (click)="setLessonSort('status')"
+                  [ngClass]="lessonSortKey() === 'status' ? 'bg-[#0ABAB5] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black hover:bg-gray-50 border-2 border-transparent'"
+                  class="px-2.5 py-1 rounded-lg border-2 border-black font-black text-xs transition-all flex items-center gap-1 select-none">
+                  Status
+                  @if (lessonSortKey() === 'status') {
+                    <span class="material-icons text-xs font-black">{{ lessonSortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+                  }
+                </button>
+                <button 
+                  (click)="setLessonSort('subject')"
+                  [ngClass]="lessonSortKey() === 'subject' ? 'bg-[#0ABAB5] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black hover:bg-gray-50 border-2 border-transparent'"
+                  class="px-2.5 py-1 rounded-lg border-2 border-black font-black text-xs transition-all flex items-center gap-1 select-none">
+                  Subject
+                  @if (lessonSortKey() === 'subject') {
+                    <span class="material-icons text-xs font-black">{{ lessonSortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+                  }
+                </button>
               </div>
             </div>
 
@@ -543,7 +608,7 @@ interface AdminClass {
                         <button (click)="loadLessons()" class="mt-2 px-3 py-1 bg-red-600 text-white rounded border-2 border-black font-black text-[10px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-0.5 transition-all">Reîncearcă</button>
                       </td>
                     </tr>
-                  } @else if (lessons().length === 0) {
+                  } @else if (sortedLessons().length === 0) {
                     <tr>
                       <td colspan="3" class="p-12 text-center font-bold text-gray-500 bg-white">
                         <div class="flex flex-col items-center justify-center space-y-2">
@@ -554,7 +619,7 @@ interface AdminClass {
                       </td>
                     </tr>
                   } @else {
-                    @for (lesson of lessons(); track lesson.id) {
+                    @for (lesson of paginatedLessons(); track lesson.id) {
                       <tr class="hover:bg-gray-50 transition-colors">
                         <td class="p-4">
                           <div class="space-y-0.5">
@@ -569,6 +634,14 @@ interface AdminClass {
                             </span>
                             <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded text-[10px] font-black">
                               Grade {{ lesson.grade }}
+                            </span>
+                            <span 
+                              [ngClass]="{
+                                'bg-green-100 text-green-700 border-green-200': lesson.status === 'PUBLISHED',
+                                'bg-yellow-100 text-yellow-700 border-yellow-200': lesson.status === 'DRAFT'
+                              }"
+                              class="px-2 py-0.5 border rounded text-[10px] font-black uppercase">
+                              {{ lesson.status }}
                             </span>
                           </div>
                         </td>
@@ -585,6 +658,27 @@ interface AdminClass {
                 </tbody>
               </table>
             </div>
+
+            <!-- Lessons Pagination -->
+            @if (sortedLessons().length > 0 && !lessonsLoading() && !lessonsError()) {
+              <div class="p-4 border-t-4 border-black bg-gray-50 flex justify-between items-center shrink-0">
+                <button 
+                  (click)="prevLessonPage()" 
+                  [disabled]="lessonPage() === 1"
+                  class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none">
+                  Previous
+                </button>
+                <span class="text-xs font-black text-black">
+                  Page {{ lessonPage() }} of {{ totalLessonPages() }} ({{ sortedLessons().length }} total)
+                </span>
+                <button 
+                  (click)="nextLessonPage()" 
+                  [disabled]="lessonPage() === totalLessonPages()"
+                  class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none">
+                  Next
+                </button>
+              </div>
+            }
           </app-card>
 
           <!-- Classes Card Panel -->
@@ -868,6 +962,23 @@ export class AdminDashboardComponent implements OnInit {
   
   userPendingBan = signal<string | null>(null);
   banReason = signal<string>('');
+
+  lessonPage = signal<number>(1);
+  lessonSortKey = signal<'teacher' | 'status' | 'subject' | 'title'>('title');
+  lessonSortOrder = signal<'asc' | 'desc'>('asc');
+
+  userPage = signal<number>(1);
+
+  readonly totalUserPages = computed(() => {
+    return Math.ceil(this.filteredUsers().length / 5) || 1;
+  });
+
+  readonly paginatedUsers = computed(() => {
+    const list = this.filteredUsers();
+    const page = this.userPage();
+    const start = (page - 1) * 5;
+    return list.slice(start, start + 5);
+  });
   
   userInsights = computed(() => {
     const list = this.users();
@@ -896,6 +1007,77 @@ export class AdminDashboardComponent implements OnInit {
   classes = signal<AdminClass[]>([]);
   contactMessages = signal<ContactMessage[]>([]);
   selectedMessage = signal<ContactMessage | null>(null);
+
+  readonly resolvedLessons = computed<AdminLesson[]>(() => {
+    const rawLessons = this.lessons();
+    const userList = this.users();
+
+    const userMap = new Map<string, string>();
+    userList.forEach((u) => {
+      if (u.id) {
+        userMap.set(u.id.toLowerCase(), u.name);
+      }
+    });
+
+    return rawLessons.map((lesson) => {
+      const authorId = lesson.authorId || '';
+      let resolvedAuthorName = '';
+      if (authorId) {
+        resolvedAuthorName = userMap.get(authorId.toLowerCase()) || '';
+      }
+
+      if (!resolvedAuthorName && lesson.author && lesson.author !== 'Unknown Teacher' && lesson.author !== 'UNKNOWN AUTHOR') {
+        resolvedAuthorName = lesson.author;
+      }
+
+      return {
+        ...lesson,
+        author: resolvedAuthorName || 'Unknown Teacher',
+      };
+    });
+  });
+
+  readonly sortedLessons = computed(() => {
+    const list = [...this.resolvedLessons()];
+    const key = this.lessonSortKey();
+    const order = this.lessonSortOrder();
+
+    list.sort((a, b) => {
+      let valA = '';
+      let valB = '';
+
+      if (key === 'teacher') {
+        valA = a.author.toLowerCase();
+        valB = b.author.toLowerCase();
+      } else if (key === 'status') {
+        valA = a.status.toLowerCase();
+        valB = b.status.toLowerCase();
+      } else if (key === 'subject') {
+        valA = a.subject.toLowerCase();
+        valB = b.subject.toLowerCase();
+      } else {
+        valA = a.title.toLowerCase();
+        valB = b.title.toLowerCase();
+      }
+
+      if (valA < valB) return order === 'asc' ? -1 : 1;
+      if (valA > valB) return order === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return list;
+  });
+
+  readonly paginatedLessons = computed(() => {
+    const sorted = this.sortedLessons();
+    const page = this.lessonPage();
+    const start = (page - 1) * 5;
+    return sorted.slice(start, start + 5);
+  });
+
+  readonly totalLessonPages = computed(() => {
+    return Math.ceil(this.sortedLessons().length / 5) || 1;
+  });
 
   // States
   usersLoading = signal<boolean>(false);
@@ -953,12 +1135,53 @@ export class AdminDashboardComponent implements OnInit {
   updateUserSearch(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.userSearchQuery.set(value);
+    this.userPage.set(1);
+  }
+
+  prevUserPage() {
+    if (this.userPage() > 1) {
+      this.userPage.update((p) => p - 1);
+    }
+  }
+
+  nextUserPage() {
+    if (this.userPage() < this.totalUserPages()) {
+      this.userPage.update((p) => p + 1);
+    }
+  }
+
+  prevLessonPage() {
+    if (this.lessonPage() > 1) {
+      this.lessonPage.update((p) => p - 1);
+    }
+  }
+
+  nextLessonPage() {
+    if (this.lessonPage() < this.totalLessonPages()) {
+      this.lessonPage.update((p) => p + 1);
+    }
+  }
+
+  setLessonSort(key: 'teacher' | 'status' | 'subject' | 'title') {
+    if (this.lessonSortKey() === key) {
+      this.lessonSortOrder.update((o) => (o === 'asc' ? 'desc' : 'asc'));
+    } else {
+      this.lessonSortKey.set(key);
+      this.lessonSortOrder.set('asc');
+    }
+    this.lessonPage.set(1);
   }
 
   getObjectEntries(obj: Record<string, unknown> | null | undefined): { key: string; value: string | number | boolean | null | undefined }[] {
     if (!obj) return [];
     return Object.entries(obj)
-      .filter(([key]) => key !== 'raw' && key !== 'avatarSeed')
+      .filter(([key]) => {
+        const lowerKey = key.toLowerCase();
+        return lowerKey !== 'raw' && 
+               lowerKey !== 'avatarseed' && 
+               !lowerKey.includes('id') && 
+               lowerKey !== 'sub';
+      })
       .map(([key, value]) => ({
         key,
         value: typeof value === 'object' && value !== null ? JSON.stringify(value) : (value as string | number | boolean | null | undefined)
@@ -1064,7 +1287,8 @@ export class AdminDashboardComponent implements OnInit {
           title: l.title || 'Untitled Lesson',
           subject: l.subject || 'General',
           grade: l.grade || 10,
-          author: l.author || l.teacherName || 'Unknown Teacher',
+          author: l.teacherName || l.author || 'Unknown Teacher',
+          authorId: l.authorId || l.author_id || l.author || '',
           status: (l.status || 'PUBLISHED').toUpperCase() as 'PUBLISHED' | 'DRAFT'
         }));
         this.lessons.set(mappedLessons);

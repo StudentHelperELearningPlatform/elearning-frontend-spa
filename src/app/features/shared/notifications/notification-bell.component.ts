@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthStore } from '@features/auth/store/auth.store';
@@ -94,7 +94,7 @@ import { AppNotification, NotificationStore } from './notification.store';
     }
   `,
 })
-export class NotificationBellComponent implements OnInit {
+export class NotificationBellComponent {
   protected readonly store = inject(NotificationStore);
   private readonly router = inject(Router);
   private readonly authStore = inject(AuthStore);
@@ -106,17 +106,14 @@ export class NotificationBellComponent implements OnInit {
     return c > 9 ? '9+' : String(c);
   });
 
-  ngOnInit(): void {
-    if (this.authStore.isAuthenticated()) {
-      this.store.load();
-    }
-  }
-
   toggle() {
     const next = !this.open();
     this.open.set(next);
     if (next && this.authStore.isAuthenticated()) {
+      // Fetch only on open — no auto-load on init
       this.store.load();
+      // Auto mark-all-read after a brief moment so user can see the count
+      setTimeout(() => this.store.markAllRead(), 1500);
     }
   }
 

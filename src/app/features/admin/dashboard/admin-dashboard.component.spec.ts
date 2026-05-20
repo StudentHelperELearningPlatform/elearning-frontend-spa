@@ -486,4 +486,286 @@ describe('AdminDashboardComponent', () => {
     component.deleteMessage('m1');
     expect(serviceSpy).not.toHaveBeenCalled();
   });
+
+  // ── User Management Pagination and Key Filtering tests ────────────────────
+  it('should filter out ID and sub fields case-insensitively in getObjectEntries', () => {
+    const obj = {
+      id: 'uuid-1',
+      userId: 'uuid-2',
+      keycloakId: 'uuid-3',
+      sub: 'uuid-4',
+      targetUserId: 'uuid-5',
+      name: 'Alice',
+      email: 'alice@example.com'
+    };
+    const entries = component.getObjectEntries(obj);
+    expect(entries).toEqual([
+      { key: 'name', value: 'Alice' },
+      { key: 'email', value: 'alice@example.com' }
+    ]);
+  });
+
+  it('should paginate users correctly in pages of 5', () => {
+    fixture.detectChanges(); // Loads 5 users
+    expect(component.totalUserPages()).toBe(1);
+    expect(component.paginatedUsers().length).toBe(5);
+
+    // Let's add more users to test pagination
+    const extraUsers = Array.from({ length: 7 }, (_, i) => ({
+      id: `u-extra-${i}`,
+      name: `User Extra ${i}`,
+      email: `extra${i}@example.com`,
+      role: 'STUDENT' as const,
+      status: 'ACTIVE' as const,
+      raw: {}
+    }));
+    component.users.set([...component.users(), ...extraUsers]); // Total: 12 users
+    expect(component.totalUserPages()).toBe(3); // 12 users -> ceil(12/5) = 3 pages
+
+    // Page 1
+    expect(component.userPage()).toBe(1);
+    expect(component.paginatedUsers().length).toBe(5);
+    expect(component.paginatedUsers()[0].name).toBe('Alice');
+
+    // Go to Page 2
+    component.nextUserPage();
+    expect(component.userPage()).toBe(2);
+    expect(component.paginatedUsers().length).toBe(5);
+    expect(component.paginatedUsers()[0].name).toBe('User Extra 0');
+
+    // Go to Page 3
+    component.nextUserPage();
+    expect(component.userPage()).toBe(3);
+    expect(component.paginatedUsers().length).toBe(2);
+    expect(component.paginatedUsers()[0].name).toBe('User Extra 5');
+
+    // Go back to Page 2
+    component.prevUserPage();
+    expect(component.userPage()).toBe(2);
+    expect(component.paginatedUsers().length).toBe(5);
+  });
+
+  describe('extractUserUuid', () => {
+    it('should extract valid UUID from standard keys with correct priority', () => {
+      const uuid1 = '11111111-1111-1111-1111-111111111111';
+      const uuid2 = '22222222-2222-2222-2222-222222222222';
+      
+      // userId has highest priority
+      expect(component.extractUserUuid({ userId: uuid1, keycloakId: uuid2 })).toBe(uuid1);
+      // keycloakId has priority over sub, targetUserId, id
+      expect(component.extractUserUuid({ keycloakId: uuid1, sub: uuid2 })).toBe(uuid1);
+      // sub has priority over targetUserId, id
+      expect(component.extractUserUuid({ sub: uuid1, targetUserId: uuid2 })).toBe(uuid1);
+      // targetUserId has priority over id
+      expect(component.extractUserUuid({ targetUserId: uuid1, id: uuid2 })).toBe(uuid1);
+      // id is fallback standard key
+      expect(component.extractUserUuid({ id: uuid1 })).toBe(uuid1);
+    });
+
+    it('should extract valid UUID from custom dynamic keys if standard keys are absent', () => {
+      const validUuid = '99999999-9999-9999-9999-999999999999';
+      const user = { someCustomKey: validUuid, otherProp: 'hello' } as unknown as AdminUserRaw;
+      expect(component.extractUserUuid(user)).toBe(validUuid);
+    });
+
+    it('should return empty string if no valid UUID is found in any key', () => {
+      const user = { userId: 'not-a-uuid', randomKey: 'also-not-uuid' } as unknown as AdminUserRaw;
+      expect(component.extractUserUuid(user)).toBe('');
+    });
+  });
+
+  describe('getObjectEntries', () => {
+    it('should handle null, undefined and empty objects', () => {
+      expect(component.getObjectEntries(null)).toEqual([]);
+      expect(component.getObjectEntries(undefined)).toEqual([]);
+      expect(component.getObjectEntries({})).toEqual([]);
+    });
+
+    it('should filter out keys case-insensitively', () => {
+      const obj = {
+        RAW: 'some raw data',
+        avatarseed: 'seed',
+        AvatarSeed: 'seed2',
+        sub: 'sub-id',
+        sUb: 'sub-id-2',
+        customField: 'yes'
+      };
+      const result = component.getObjectEntries(obj as unknown as Record<string, unknown>);
+      expect(result).toEqual([{ key: 'customField', value: 'yes' }]);
+    });
+
+    it('should filter out keys containing ID case-insensitively', () => {
+      const obj = {
+        userId: '123',
+        key_id: '456',
+        myIDValue: '789',
+        normalProp: 'hello'
+      };
+      const result = component.getObjectEntries(obj as unknown as Record<string, unknown>);
+      expect(result).toEqual([{ key: 'normalProp', value: 'hello' }]);
+    });
+
+    it('should convert objects/arrays to JSON stringified values', () => {
+      const obj = {
+        arrayVal: [1, 2, 3],
+        nested: { a: 1 },
+        simple: 'text',
+        num: 42,
+        bool: true,
+        nul: null,
+        undef: undefined
+      };
+      const result = component.getObjectEntries(obj);
+      expect(result).toEqual([
+        { key: 'arrayVal', value: '[1,2,3]' },
+        { key: 'nested', value: '{"a":1}' },
+        { key: 'simple', value: 'text' },
+        { key: 'num', value: 42 },
+        { key: 'bool', value: true },
+        { key: 'nul', value: null },
+        { key: 'undef', value: undefined }
+      ]);
+    });
+  });
+
+  describe('Lesson Sorting and Author Resolution', () => {
+    beforeEach(() => {
+      // Setup some users to test author resolution
+      component.users.set([
+        { id: 't1', name: 'Professor Severus', email: 't1@example.com', role: 'TEACHER', status: 'ACTIVE', raw: {} },
+        { id: 't2', name: 'Professor Minerva', email: 't2@example.com', role: 'TEACHER', status: 'ACTIVE', raw: {} }
+      ]);
+    });
+
+    it('should resolve author names correctly', () => {
+      component.lessons.set([
+        // Author ID maps to "Professor Severus"
+        { id: 'l1', title: 'Potions 101', subject: 'Potions', grade: 10, authorId: 't1', author: 'UNKNOWN AUTHOR', status: 'PUBLISHED' },
+        // Author name is custom and preserved
+        { id: 'l2', title: 'Transfiguration', subject: 'Transfiguration', grade: 11, authorId: '', author: 'Professor Minerva', status: 'PUBLISHED' },
+        // Unknown/Fallback authors
+        { id: 'l3', title: 'Defense Against the Dark Arts', subject: 'Defense', grade: 12, authorId: '', author: 'UNKNOWN AUTHOR', status: 'DRAFT' },
+        { id: 'l4', title: 'Herbology', subject: 'Herbology', grade: 10, authorId: 'nonexistent-id', author: 'Unknown Teacher', status: 'PUBLISHED' }
+      ]);
+
+      const resolved = component.resolvedLessons();
+      expect(resolved[0].author).toBe('Professor Severus');
+      expect(resolved[1].author).toBe('Professor Minerva');
+      expect(resolved[2].author).toBe('Unknown Teacher'); // falls back to Unknown Teacher
+      expect(resolved[3].author).toBe('Unknown Teacher');
+    });
+
+    it('should sort lessons by different keys and orders', () => {
+      component.lessons.set([
+        { id: 'l1', title: 'Algebra', subject: 'Mathematics', grade: 10, authorId: 't1', author: 'Professor Severus', status: 'PUBLISHED' },
+        { id: 'l2', title: 'Biology', subject: 'Science', grade: 11, authorId: 't2', author: 'Professor Minerva', status: 'DRAFT' }
+      ]);
+
+      // Initially, sorting key is 'title' and order is 'asc' (default)
+      expect(component.lessonSortKey()).toBe('title');
+      expect(component.lessonSortOrder()).toBe('asc');
+      expect(component.sortedLessons()[0].title).toBe('Algebra');
+
+      // Toggles order to desc
+      component.setLessonSort('title');
+      expect(component.lessonSortOrder()).toBe('desc');
+      expect(component.sortedLessons()[0].title).toBe('Biology');
+
+      // Sort by status
+      component.setLessonSort('status');
+      expect(component.lessonSortKey()).toBe('status');
+      expect(component.lessonSortOrder()).toBe('asc');
+      expect(component.sortedLessons()[0].title).toBe('Biology'); // DRAFT < PUBLISHED
+
+      component.setLessonSort('status');
+      expect(component.lessonSortOrder()).toBe('desc');
+      expect(component.sortedLessons()[0].title).toBe('Algebra'); // PUBLISHED > DRAFT
+
+      // Sort by subject
+      component.setLessonSort('subject');
+      expect(component.lessonSortKey()).toBe('subject');
+      expect(component.lessonSortOrder()).toBe('asc');
+      expect(component.sortedLessons()[0].title).toBe('Algebra'); // Mathematics < Science
+
+      component.setLessonSort('subject');
+      expect(component.lessonSortOrder()).toBe('desc');
+      expect(component.sortedLessons()[0].title).toBe('Biology'); // Science > Mathematics
+
+      // Sort by teacher (author name)
+      component.setLessonSort('teacher');
+      expect(component.lessonSortKey()).toBe('teacher');
+      expect(component.lessonSortOrder()).toBe('asc');
+      expect(component.sortedLessons()[0].title).toBe('Biology'); // Professor Minerva < Professor Severus
+
+      component.setLessonSort('teacher');
+      expect(component.lessonSortOrder()).toBe('desc');
+      expect(component.sortedLessons()[0].title).toBe('Algebra'); // Professor Severus > Professor Minerva
+    });
+  });
+
+  describe('Pagination Boundary Conditions', () => {
+    it('should prevent user page from going below 1 or above max pages', () => {
+      // Total 5 users initially (totalUserPages = 1)
+      fixture.detectChanges();
+      expect(component.userPage()).toBe(1);
+
+      component.prevUserPage();
+      expect(component.userPage()).toBe(1); // remains 1
+
+      component.nextUserPage();
+      expect(component.userPage()).toBe(1); // remains 1 since max page is 1
+    });
+
+    it('should reset user page to 1 when a new search query is updated', () => {
+      component.userPage.set(2);
+      const inputEvent = { target: { value: 'Jane' } } as unknown as Event;
+      component.updateUserSearch(inputEvent);
+      expect(component.userPage()).toBe(1);
+    });
+
+    it('should paginate and handle boundary conditions for lessons correctly', () => {
+      // Setup 12 lessons (total pages = 3)
+      const mockManyLessons = Array.from({ length: 12 }, (_, i) => ({
+        id: `l-${i}`,
+        title: `Lesson ${String.fromCharCode(65 + i)}`,
+        subject: 'General',
+        grade: 10,
+        author: 'Unknown Teacher',
+        status: 'PUBLISHED' as const
+      }));
+      component.lessons.set(mockManyLessons);
+      
+      expect(component.totalLessonPages()).toBe(3);
+      expect(component.lessonPage()).toBe(1);
+      expect(component.paginatedLessons().length).toBe(5);
+      expect(component.paginatedLessons()[0].title).toBe('Lesson A');
+
+      // Go to next page
+      component.nextLessonPage();
+      expect(component.lessonPage()).toBe(2);
+      expect(component.paginatedLessons()[0].title).toBe('Lesson F');
+
+      // Go to next page (last page)
+      component.nextLessonPage();
+      expect(component.lessonPage()).toBe(3);
+      expect(component.paginatedLessons().length).toBe(2);
+      expect(component.paginatedLessons()[0].title).toBe('Lesson K');
+
+      // Try to exceed last page
+      component.nextLessonPage();
+      expect(component.lessonPage()).toBe(3); // remains 3
+
+      // Go back to page 2
+      component.prevLessonPage();
+      expect(component.lessonPage()).toBe(2);
+
+      // Go back to page 1
+      component.prevLessonPage();
+      expect(component.lessonPage()).toBe(1);
+
+      // Try to go below page 1
+      component.prevLessonPage();
+      expect(component.lessonPage()).toBe(1); // remains 1
+    });
+  });
 });
