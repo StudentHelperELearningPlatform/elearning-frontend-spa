@@ -1,61 +1,389 @@
 <div class="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+  <a
+    routerLink="/teacher/classes"
+    class="inline-flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-black transition-colors"
+  >
+    ← Back to Classes
+  </a>
 
-  <!-- HEADER -->
-  <div class="bg-white p-6 rounded-3xl border-4 border-black shadow">
-    <h1 class="text-3xl font-black">
-      {{ store.currentClass()?.name }}
-    </h1>
-    <p class="text-gray-600">Class details</p>
-  </div>
+  @if (store.loading()) {
+    <div
+      class="bg-white p-10 rounded-3xl border-4 border-black text-center font-bold text-gray-500"
+    >
+      Loading class details…
+    </div>
+  }
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  @if (!store.loading() && !store.currentClass()) {
+    <div
+      class="bg-white p-10 rounded-3xl border-4 border-red-400 text-center font-bold text-red-500"
+    >
+      Class not found or failed to load.
+    </div>
+  }
 
-    <!-- STUDENTS -->
-    <div class="bg-white p-6 rounded-3xl border-4 border-black">
-
-      <h2 class="text-xl font-black mb-4">Students</h2>
-
-      @for (s of students(); track s.id) {
-        <div class="flex justify-between items-center p-3 border-b">
-
-          <div>
-            <p class="font-bold">{{ s.name }}</p>
-            <p class="text-sm text-gray-600">{{ s.email }}</p>
+  @if (!store.loading() && store.currentClass()) {
+    <div class="bg-white p-6 rounded-3xl border-4 border-black shadow">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 class="text-3xl font-black">{{ store.currentClass()?.name }}</h1>
+          @if (store.currentClass()?.description) {
+            <p class="text-gray-500 italic mt-1">{{ store.currentClass()?.description }}</p>
+          }
+        </div>
+        @if (store.currentClass()?.code) {
+          <div
+            class="bg-gray-50 border-2 border-dashed border-gray-400 rounded-xl px-4 py-2 text-center shrink-0"
+          >
+            <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Class Code</p>
+            <p class="text-2xl font-black tracking-widest text-black">
+              {{ store.currentClass()?.code }}
+            </p>
           </div>
-
-          <button
-            (click)="removeStudent(s.id)"
-            class="text-red-600 font-bold"
-          >
-            Remove
-          </button>
-
-        </div>
-      }
-
+        }
+      </div>
     </div>
 
-    <!-- LESSONS -->
-    <div class="bg-white p-6 rounded-3xl border-4 border-black">
-
-      <h2 class="text-xl font-black mb-4">Lessons</h2>
-
-      @for (l of lessons(); track l.id) {
-        <div class="flex justify-between items-center p-3 border-b">
-
-          <p class="font-bold">{{ l.title }}</p>
-
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white rounded-3xl border-4 border-black overflow-hidden">
+        <div class="flex items-center justify-between p-5 border-b-4 border-black bg-gray-50">
+          <h2 class="text-xl font-black">Students ({{ students().length }})</h2>
           <button
-            (click)="removeLesson(l.id)"
-            class="text-red-600 font-bold"
+            (click)="openInviteModal()"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-[#0ABAB5] text-white font-black text-sm rounded-xl border-2 border-black hover:bg-[#089692] transition-colors cursor-pointer"
           >
-            Remove
+            + Invite Student
           </button>
-
         </div>
-      }
 
+        <div class="divide-y divide-gray-100">
+          @if (students().length === 0) {
+            <p class="p-6 text-gray-400 text-sm font-medium text-center">
+              No students enrolled yet. Invite some!
+            </p>
+          }
+          @for (s of students(); track s.id) {
+            <div
+              class="flex justify-between items-center px-5 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div>
+                <p class="font-bold">{{ s.name || '—' }}</p>
+                <p class="text-xs text-gray-400 font-mono">{{ s.id }}</p>
+              </div>
+              <button
+                (click)="removeStudent(s.id)"
+                class="text-red-500 font-bold text-sm hover:text-red-700 hover:underline transition-colors"
+              >
+                Remove
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="bg-white rounded-3xl border-4 border-black overflow-hidden">
+        <div class="flex items-center justify-between p-5 border-b-4 border-black bg-gray-50">
+          <h2 class="text-xl font-black">Lessons ({{ lessons().length }})</h2>
+          <button
+            (click)="openLessonsModal()"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-[#0ABAB5] text-white font-black text-sm rounded-xl border-2 border-black hover:bg-[#089692] transition-colors cursor-pointer"
+          >
+            + Add Lesson
+          </button>
+        </div>
+
+        <div class="divide-y divide-gray-100">
+          @if (lessons().length === 0) {
+            <p class="p-6 text-gray-400 text-sm font-medium text-center">
+              No lessons assigned yet.
+            </p>
+          }
+          @for (l of lessons(); track l.id) {
+            <div
+              class="flex justify-between items-center px-5 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <p class="font-bold">{{ l.title }}</p>
+              <button
+                (click)="removeLesson(l.id)"
+                class="text-red-500 font-bold text-sm hover:text-red-700 hover:underline transition-colors"
+              >
+                Remove
+              </button>
+            </div>
+          }
+        </div>
+      </div>
     </div>
 
-  </div>
+    <div class="bg-white rounded-3xl border-4 border-black overflow-hidden">
+      <div class="flex items-center justify-between p-5 border-b-4 border-black bg-gray-50">
+        <div>
+          <h2 class="text-xl font-black">Final Quiz Attempts</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Only students and lessons in this class</p>
+        </div>
+        <button
+          (click)="loadQuizAttempts()"
+          [disabled]="quizLoading()"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-white font-black text-sm rounded-xl border-2 border-black hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          @if (quizLoading()) {
+            Loading…
+          } @else {
+            ↻ Load Attempts
+          }
+        </button>
+      </div>
+
+      @if (quizError()) {
+        <div class="p-5 text-red-500 font-bold text-sm">{{ quizError() }}</div>
+      }
+
+      @if (!quizLoading() && !quizError() && quizAttempts().length === 0 && lessons().length > 0) {
+        <p class="p-6 text-gray-400 text-sm font-medium text-center">
+          Press "Load Attempts" to see student quiz results.
+        </p>
+      }
+
+      @if (
+        !quizLoading() && !quizError() && quizAttempts().length === 0 && lessons().length === 0
+      ) {
+        <p class="p-6 text-gray-400 text-sm font-medium text-center">
+          No lessons in this class yet — add lessons first.
+        </p>
+      }
+
+      @if (quizAttempts().length > 0) {
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b-2 border-black">
+              <tr>
+                <th class="text-left px-5 py-3 font-black">Student</th>
+                <th class="text-left px-5 py-3 font-black">Lesson</th>
+                <th class="text-center px-5 py-3 font-black">Score</th>
+                <th class="text-right px-5 py-3 font-black">Submitted</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              @for (a of quizAttempts(); track a.attemptId) {
+                <tr class="hover:bg-gray-50 transition-colors">
+                  <td class="px-5 py-3 font-semibold">{{ a.studentName }}</td>
+                  <td class="px-5 py-3 text-gray-600">{{ a.lessonTitle }}</td>
+                  <td class="px-5 py-3 text-center">
+                    <span
+                      class="inline-block px-2 py-0.5 rounded-lg font-black text-xs border-2"
+                      [class]="
+                        a.score >= 70
+                          ? 'bg-green-50 text-green-700 border-green-300'
+                          : a.score >= 40
+                            ? 'bg-yellow-50 text-yellow-700 border-yellow-300'
+                            : 'bg-red-50 text-red-600 border-red-300'
+                      "
+                    >
+                      {{ a.score }}%
+                    </span>
+                  </td>
+                  <td class="px-5 py-3 text-right text-gray-500 font-mono text-xs">
+                    {{ a.submittedAt | date: 'MMM d, HH:mm' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
 </div>
+
+@if (showInviteModal()) {
+  <div
+    #inviteBackdrop
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 cursor-pointer"
+    (click)="$event.target === inviteBackdrop && closeInviteModal()"
+    (keyup.escape)="closeInviteModal()"
+    (keydown.enter)="$event.target === inviteBackdrop && closeInviteModal()"
+    tabindex="0"
+    role="button"
+    aria-label="Close invite modal"
+    style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px)"
+  >
+    <div
+      class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg max-h-[80vh] flex flex-col cursor-auto"
+    >
+      <div class="flex items-center justify-between p-6 border-b-4 border-black">
+        <div>
+          <h2 class="text-2xl font-black">Invite a Student</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Search by name and add to this class</p>
+        </div>
+        <button
+          (click)="closeInviteModal()"
+          class="text-2xl font-black text-gray-400 hover:text-black transition-colors leading-none"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="p-4 border-b border-gray-200">
+        <input
+          [ngModel]="studentSearch()"
+          (ngModelChange)="studentSearch.set($event)"
+          placeholder="Search by name…"
+          class="w-full px-4 py-2.5 border-2 border-black rounded-xl font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
+          aria-label="Search students"
+          id="student-search-input"
+        />
+        @if (addStudentError()) {
+          <p class="mt-2 text-xs font-bold text-red-600">{{ addStudentError() }}</p>
+        }
+      </div>
+
+      <div class="overflow-y-auto flex-1">
+        @if (filteredStudents().length === 0 && !studentSearch()) {
+          <div class="p-6 text-center text-gray-400 font-medium text-sm">Loading students…</div>
+        }
+        @if (filteredStudents().length === 0 && studentSearch()) {
+          <div class="p-6 text-center text-gray-400 font-medium text-sm">
+            No students found matching "{{ studentSearch() }}"
+          </div>
+        }
+        @for (s of filteredStudents(); track s.studentId) {
+          <div
+            class="flex items-center justify-between px-5 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+          >
+            <div>
+              <p class="font-bold">{{ s.firstName }} {{ s.lastName }}</p>
+              @if (s.lastActiveAt) {
+                <p class="text-xs text-gray-400">
+                  Last active: {{ s.lastActiveAt | date: 'MMM d' }}
+                </p>
+              }
+            </div>
+            <button
+              (click)="addStudent(s)"
+              [disabled]="addingStudentId() === s.studentId"
+              class="px-3 py-1.5 bg-[#0ABAB5] text-white font-black text-sm rounded-lg border-2 border-black hover:bg-[#089692] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              @if (addingStudentId() === s.studentId) {
+                Adding…
+              } @else {
+                Add
+              }
+            </button>
+          </div>
+        }
+      </div>
+
+      <div class="p-4 border-t border-gray-200 text-right">
+        <button
+          (click)="closeInviteModal()"
+          class="px-4 py-2 bg-gray-100 text-black font-black rounded-xl border-2 border-black hover:bg-gray-200 transition-colors cursor-pointer text-sm"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showLessonsModal()) {
+  <div
+    #lessonBackdrop
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 cursor-pointer"
+    (click)="$event.target === lessonBackdrop && closeLessonsModal()"
+    (keyup.escape)="closeLessonsModal()"
+    (keydown.enter)="$event.target === lessonBackdrop && closeLessonsModal()"
+    tabindex="0"
+    role="button"
+    aria-label="Close lesson modal"
+    style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px)"
+  >
+    <div
+      class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg max-h-[80vh] flex flex-col cursor-auto"
+    >
+      <div class="flex items-center justify-between p-6 border-b-4 border-black">
+        <div>
+          <h2 class="text-2xl font-black">Add a Lesson</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Pick from your published lessons</p>
+        </div>
+        <button
+          (click)="closeLessonsModal()"
+          class="text-2xl font-black text-gray-400 hover:text-black transition-colors leading-none"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="p-4 border-b border-gray-200">
+        <input
+          [ngModel]="lessonSearch()"
+          (ngModelChange)="lessonSearch.set($event)"
+          placeholder="Search by title or subject…"
+          class="w-full px-4 py-2.5 border-2 border-black rounded-xl font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
+          aria-label="Search lessons"
+          id="lesson-search-input"
+        />
+        @if (addLessonError()) {
+          <p class="mt-2 text-xs font-bold text-red-600">{{ addLessonError() }}</p>
+        }
+      </div>
+
+      <div class="overflow-y-auto flex-1">
+        @if (lessonsStore.loading()) {
+          <div class="p-6 text-center text-gray-400 font-medium text-sm">Loading lessons…</div>
+        }
+        @if (!lessonsStore.loading() && filteredLessons().length === 0 && !lessonSearch()) {
+          <div class="p-6 text-center text-gray-400 font-medium text-sm">
+            No available lessons. All your lessons are already added or you have none.
+          </div>
+        }
+        @if (!lessonsStore.loading() && filteredLessons().length === 0 && lessonSearch()) {
+          <div class="p-6 text-center text-gray-400 font-medium text-sm">
+            No lessons found matching "{{ lessonSearch() }}"
+          </div>
+        }
+        @for (l of filteredLessons(); track l.id) {
+          <div
+            class="flex items-center justify-between px-5 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+          >
+            <div>
+              <p class="font-bold">{{ l.title }}</p>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="text-xs text-gray-500">{{ l.subject }}</span>
+                <span
+                  class="text-xs font-bold px-1.5 py-0.5 rounded border"
+                  [class]="
+                    l.status === 'PUBLISHED'
+                      ? 'text-green-700 border-green-300 bg-green-50'
+                      : 'text-yellow-700 border-yellow-300 bg-yellow-50'
+                  "
+                >
+                  {{ l.status }}
+                </span>
+              </div>
+            </div>
+            <button
+              (click)="addLesson(l.id)"
+              [disabled]="addingLessonId() === l.id"
+              class="px-3 py-1.5 bg-[#0ABAB5] text-white font-black text-sm rounded-lg border-2 border-black hover:bg-[#089692] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              @if (addingLessonId() === l.id) {
+                Adding…
+              } @else {
+                Add
+              }
+            </button>
+          </div>
+        }
+      </div>
+
+      <div class="p-4 border-t border-gray-200 text-right">
+        <button
+          (click)="closeLessonsModal()"
+          class="px-4 py-2 bg-gray-100 text-black font-black rounded-xl border-2 border-black hover:bg-gray-200 transition-colors cursor-pointer text-sm"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+}

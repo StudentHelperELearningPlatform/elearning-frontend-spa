@@ -18,12 +18,43 @@ export class ClassesListComponent implements OnInit {
   newClassName = signal('');
   newClassDescription = signal('');
 
+  // Edit mode state
+  editingClassId = signal<string | null>(null);
+  editName = signal('');
+  editDescription = signal('');
+
   ngOnInit(): void {
     this.store.loadClasses();
   }
 
   onDelete(classId: string): void {
-    console.log('delete', classId);
+    this.store.deleteClass(classId);
+  }
+
+  onEdit(classId: string, currentName: string, currentDescription: string): void {
+    this.editingClassId.set(classId);
+    this.editName.set(currentName);
+    this.editDescription.set(currentDescription ?? '');
+  }
+
+  submitEdit(): void {
+    const id = this.editingClassId();
+    if (!id) return;
+    const name = this.editName().trim();
+    if (!name) return;
+
+    this.store.updateClass(id, {
+      name,
+      description: this.editDescription().trim(),
+    });
+
+    this.cancelEdit();
+  }
+
+  cancelEdit(): void {
+    this.editingClassId.set(null);
+    this.editName.set('');
+    this.editDescription.set('');
   }
 
   onCreateClass(): void {
