@@ -83,41 +83,96 @@
     @for (c of store.classes(); track c.id) {
       <div class="p-5 bg-white border-4 border-black rounded-2xl shadow">
 
-        <h3 class="text-xl font-black">{{ c.name }}</h3>
+        @if (editingClassId() === c.id) {
+          <!-- INLINE EDIT FORM -->
+          <div class="space-y-3">
+            <label class="block">
+              <span class="text-xs font-bold mb-1 block">Class Name *</span>
+              <input
+                [ngModel]="editName()"
+                (ngModelChange)="editName.set($event)"
+                placeholder="Class name"
+                class="w-full px-3 py-1.5 border-2 border-black rounded-lg text-sm font-medium"
+                aria-label="Edit class name"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs font-bold mb-1 block">Description</span>
+              <textarea
+                [ngModel]="editDescription()"
+                (ngModelChange)="editDescription.set($event)"
+                placeholder="Description"
+                rows="2"
+                class="w-full px-3 py-1.5 border-2 border-black rounded-lg text-sm font-medium"
+                aria-label="Edit class description"
+              ></textarea>
+            </label>
+            <div class="flex gap-2">
+              <button
+                (click)="submitEdit()"
+                class="px-3 py-1 bg-[#0ABAB5] text-white font-black rounded-lg border-2 border-black cursor-pointer hover:bg-[#089692] transition-colors text-sm"
+              >
+                Save
+              </button>
+              <button
+                (click)="cancelEdit()"
+                class="px-3 py-1 bg-gray-200 text-black font-black rounded-lg border-2 border-black cursor-pointer hover:bg-gray-300 transition-colors text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        } @else {
+          <!-- VIEW MODE -->
+          <h3 class="text-xl font-black">{{ c.name }}</h3>
 
-        <p class="text-sm text-gray-600 mt-2">
-          Students: {{ c.studentCount }}
-        </p>
+          @if (c.description) {
+            <p class="text-sm text-gray-500 mt-1 italic">{{ c.description }}</p>
+          }
 
-        <p class="text-sm text-gray-600">
-          Lessons: {{ c.lessonCount }}
-        </p>
+          <p class="text-sm text-gray-600 mt-2">
+            Students: {{ c.studentCount }}
+          </p>
 
-        <p class="text-xs text-gray-500 mt-2">
-          {{ c.createdAt | date }}
-        </p>
+          <p class="text-sm text-gray-600">
+            Lessons: {{ c.lessonCount }}
+          </p>
 
-        <div class="flex gap-2 mt-4">
+          <p class="text-xs text-gray-500 mt-2">
+            {{ c.createdAt | date }}
+          </p>
 
-          <button
-            [routerLink]="['/teacher/classes', c.id]"
-            class="px-3 py-1 border-2 border-black rounded-lg font-bold"
-          >
-            View
-          </button>
+          <div class="flex gap-2 mt-4">
 
-          <button class="px-3 py-1 border-2 border-black rounded-lg">
-            Edit
-          </button>
+            <button
+              [routerLink]="['/teacher/classes', c.id]"
+              class="px-3 py-1 border-2 border-black rounded-lg font-bold hover:bg-gray-50 transition-colors"
+            >
+              View
+            </button>
 
-          <button
-            (click)="onDelete(c.id)"
-            class="px-3 py-1 border-2 border-red-500 text-red-600 rounded-lg font-bold"
-          >
-            Delete
-          </button>
+            <button
+              (click)="onEdit(c.id, c.name, c.description ?? '')"
+              class="px-3 py-1 border-2 border-blue-500 text-blue-600 rounded-lg font-bold hover:bg-blue-50 transition-colors"
+            >
+              Edit
+            </button>
 
-        </div>
+            <button
+              (click)="onDelete(c.id)"
+              class="px-3 py-1 border-2 border-red-500 text-red-600 rounded-lg font-bold hover:bg-red-50 transition-colors"
+            >
+              Delete
+            </button>
+
+          </div>
+        }
+      </div>
+    }
+
+    @if (!store.loading() && store.classes().length === 0) {
+      <div class="col-span-full text-center py-12 text-gray-400 font-bold">
+        No classes yet. Create your first class!
       </div>
     }
 

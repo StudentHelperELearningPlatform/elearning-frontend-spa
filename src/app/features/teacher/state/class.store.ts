@@ -7,6 +7,8 @@ import {
   withState,
 } from '@ngrx/signals';
 import { HttpClient } from '@angular/common/http';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
@@ -86,27 +88,48 @@ export const ClassStore = signalStore(
       patchState(store, {
         loading: true,
         error: null,
+        currentClass: null,
       });
 
-      http
-        .get<TeacherClassRaw>(
-          `${userApi}/teachers/classes/${classId}`,
-        )
-        .subscribe({
-          next: (rawDetail) => {
-            patchState(store, {
-              currentClass: mapClassDetail(rawDetail),
-              loading: false,
-            });
-          },
-
-          error: (err: Error) => {
-            patchState(store, {
-              loading: false,
-              error: err.message,
-            });
-          },
-        });
+      forkJoin({
+        detail: http.get<TeacherClassRaw>(`${userApi}/teachers/classes/${classId}`),
+        lessons: http
+          .get<{ id: string; title: string }[]>(`${userApi}/teachers/classes/${classId}/lessons`)
+          .pipe(catchError(() => of([]))),
+        enrolledIds: http
+          .get<string[]>(`${userApi}/teachers/classes/${classId}/students`)
+          .pipe(catchError(() => of([]))),
+        allStudents: http
+          .get<{ id: string; firstName: string; lastName: string; email?: string }[]>(
+            `${userApi}/students`,
+          )
+          .pipe(catchError(() => of([]))),
+      }).subscribe({
+        next: ({ detail, lessons, enrolledIds, allStudents }) => {
+          const studentMap = new Map(allStudents.map((s) => [s.id, s]));
+          patchState(store, {
+            currentClass: {
+              ...mapClassDetail(detail),
+              lessons,
+              students: enrolledIds.map((id) => {
+                const s = studentMap.get(id);
+                return {
+                  id,
+                  name: s ? `${s.firstName} ${s.lastName}`.trim() : id,
+                  email: s?.email ?? '',
+                };
+              }),
+            },
+            loading: false,
+          });
+        },
+        error: (err: Error) => {
+          patchState(store, {
+            loading: false,
+            error: err.message,
+          });
+        },
+      });
     },
 
     createClass(payload: {
@@ -216,12 +239,10 @@ export const ClassStore = signalStore(
 },
 
     addStudent(classId: string, studentId: string) {
-      http
-        .post(
-          `${userApi}/teachers/classes/${classId}/students/${studentId}`,
-          {},
-        )
-        .subscribe();
+      return http.post(
+        `${userApi}/teachers/classes/${classId}/students/${studentId}`,
+        {},
+      );
     },
 
     removeStudent(classId: string, studentId: string) {
@@ -242,12 +263,10 @@ export const ClassStore = signalStore(
 },
 
     addLesson(classId: string, lessonId: string) {
-      http
-        .post(
-          `${userApi}/teachers/classes/${classId}/lessons/${lessonId}`,
-          {},
-        )
-        .subscribe();
+      return http.post(
+        `${userApi}/teachers/classes/${classId}/lessons/${lessonId}`,
+        {},
+      );
     },
 
     removeLesson(classId: string, lessonId: string) {
