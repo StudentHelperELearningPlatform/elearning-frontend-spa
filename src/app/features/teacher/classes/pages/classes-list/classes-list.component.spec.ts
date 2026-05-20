@@ -15,6 +15,7 @@ describe('ClassesListComponent', () => {
       classes: signal([]),
       loadClasses: vi.fn(),
       createClass: vi.fn(),
+      deleteClass: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -43,11 +44,10 @@ describe('ClassesListComponent', () => {
     expect(mockClassStore.loadClasses).toHaveBeenCalled();
   });
 
-  it('should handle onDelete (currently just logs)', () => {
-    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  it('should handle onDelete', () => {
     const comp = make();
     comp.onDelete('c1');
-    expect(console.log).toHaveBeenCalledWith('delete', 'c1');
+    expect(mockClassStore.deleteClass).toHaveBeenCalledWith('c1');
   });
 
   it('should set createMode to true on onCreateClass', () => {

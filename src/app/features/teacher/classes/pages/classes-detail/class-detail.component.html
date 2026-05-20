@@ -202,11 +202,12 @@
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4"
     (click)="closeInviteModal()"
+    (keyup.escape)="closeInviteModal()"
+    tabindex="0"
     style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
   >
     <div
       class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg max-h-[80vh] flex flex-col"
-      (click)="$event.stopPropagation()"
     >
       <!-- Modal header -->
       <div class="flex items-center justify-between p-6 border-b-4 border-black">
@@ -293,11 +294,12 @@
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4"
     (click)="closeLessonsModal()"
+    (keyup.escape)="closeLessonsModal()"
+    tabindex="0"
     style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
   >
     <div
       class="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg max-h-[80vh] flex flex-col"
-      (click)="$event.stopPropagation()"
     >
       <!-- Modal header -->
       <div class="flex items-center justify-between p-6 border-b-4 border-black">

@@ -3,12 +3,22 @@ import { TestBed } from '@angular/core/testing';
 import { ClassDetailComponent } from './class-detail.component';
 import { ActivatedRoute } from '@angular/router';
 import { ClassStore } from '../../../state/class.store';
+import { TeacherLessonsStore } from '../../../state/teacher-lessons.store';
 import { signal } from '@angular/core';
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 describe('ClassDetailComponent', () => {
   let injector: EnvironmentInjector;
   let mockClassStore: Record<string, unknown>;
+
+  const mockLessonsStore = {
+    items: signal([]),
+    loading: signal(false),
+    load: vi.fn(),
+  };
 
   beforeEach(() => {
     mockClassStore = {
@@ -16,13 +26,20 @@ describe('ClassDetailComponent', () => {
         students: [{ id: 's1', name: 'John Doe', email: '' }],
         lessons: [{ id: 'l1', title: 'Math 101' }]
       }),
+      loading: signal(false),
       loadClassDetail: vi.fn(),
       removeStudent: vi.fn(),
       removeLesson: vi.fn(),
+      addStudent: vi.fn().mockReturnValue({ subscribe: vi.fn() }),
+      addLesson: vi.fn().mockReturnValue({ subscribe: vi.fn() }),
     };
 
     TestBed.configureTestingModule({
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: USER_PLATFORM_API_URL, useValue: 'http://mock-api' },
+        { provide: CONTENT_API_URL, useValue: 'http://mock-content-api' },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -32,7 +49,11 @@ describe('ClassDetailComponent', () => {
         {
           provide: ClassStore,
           useValue: mockClassStore
-        }
+        },
+        {
+          provide: TeacherLessonsStore,
+          useValue: mockLessonsStore
+        },
       ]
     });
     injector = TestBed.inject(EnvironmentInjector);
@@ -68,7 +89,7 @@ describe('ClassDetailComponent', () => {
   });
   
   it('should return empty arrays for students and lessons if currentClass is null', () => {
-    mockClassStore.currentClass.set(null);
+    (mockClassStore.currentClass as ReturnType<typeof signal>).set(null);
     const comp = make();
     expect(comp.students()).toEqual([]);
     expect(comp.lessons()).toEqual([]);
