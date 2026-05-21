@@ -1,0 +1,26 @@
+# Render Blueprint Specification
+# Use this file to deploy the project to Render automatically.
+# You can import it directly via the Render Dashboard.
+
+services:
+  # Option 1: Native Static Site (Highly Recommended - Free, served via global CDN)
+  - type: web
+    name: elearning-frontend-static
+    runtime: static
+    buildCommand: "npm install && npm run build"
+    publishPath: "dist/elearning-frontend-spa/browser"
+    routes:
+      # Rewrite all routing paths to index.html to support Angular's SPA client-side routing
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"
+
+  # Option 2: Python Web Service (Runs Flask + Gunicorn server)
+  - type: web
+    name: elearning-frontend-python
+    runtime: python
+    buildCommand: "npm install && npm run build && pip install -r requirements.txt"
+    startCommand: "gunicorn server:app"
+    envVars:
+      - key: PORT
+        value: 8080
