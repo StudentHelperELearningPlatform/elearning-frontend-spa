@@ -20,7 +20,7 @@ services:
     name: elearning-frontend-python
     runtime: python
     buildCommand: "npm install && npm run build && pip install -r requirements.txt"
-    startCommand: "gunicorn server:app"
+    startCommand: "gunicorn app:app"
     envVars:
       - key: PORT
         value: 8080
