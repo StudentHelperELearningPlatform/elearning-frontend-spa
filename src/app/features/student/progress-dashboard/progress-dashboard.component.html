@@ -221,6 +221,14 @@
             ></div>
           </div>
         </div>
+        @if (progressStore.myLessonStats(); as stats) {
+          @if (stats.lessonId === lesson.lessonId && stats.quizScore !== null) {
+            <div class="mb-3 text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-50 border-2 border-black rounded-lg p-2">
+              <span class="material-icons text-sm text-[#0ABAB5]" aria-hidden="true">emoji_events</span>
+              <span>Accumulated Score: <strong class="text-[#0ABAB5]">{{ stats.quizScore }}</strong></span>
+            </div>
+          }
+        }
         <a
           [routerLink]="['/student/lesson-viewer', lesson.lessonId]"
           class="block w-full py-2 text-center bg-[#0ABAB5] text-white font-black rounded border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all"
