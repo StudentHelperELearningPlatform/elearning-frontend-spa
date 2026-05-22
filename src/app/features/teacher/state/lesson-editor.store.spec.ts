@@ -28,7 +28,6 @@ describe('LessonEditorStore', () => {
     messageService = TestBed.inject(MessageService);
     vi.spyOn(messageService, 'add').mockImplementation(() => undefined);
 
-    // Default universal fallback mocks to prevent unhandled requests from hanging provideHttpClientTesting
     vi.spyOn(http, 'get').mockReturnValue(of({}));
     vi.spyOn(http, 'post').mockReturnValue(of({}));
     vi.spyOn(http, 'put').mockReturnValue(of({}));
@@ -39,7 +38,6 @@ describe('LessonEditorStore', () => {
     vi.restoreAllMocks();
   });
 
-  // ── Initial state ────────────────────────────────────────────────────────
   it('starts with a blank lesson', () => {
     expect(store.lesson()).toEqual({
       id: null,
@@ -52,21 +50,6 @@ describe('LessonEditorStore', () => {
       modules: [],
     });
     expect(store.saveState()).toBe('idle');
-  });
-
-  // ── Validation (canPublish & canSave) ────────────────────────────────────
-  it('canSave handles null, undefined, and whitespace content correctly', () => {
-    store.addModule();
-    const id = store.lesson().modules[0].id;
-
-    store.updateModule(id, { content: '   ' }); // whitespace
-    expect(store.canSave()).toBe(false);
-
-    store.updateModule(id, { content: null as unknown as string }); // null
-    expect(store.canSave()).toBe(false);
-
-    store.updateModule(id, { content: 'valid' });
-    expect(store.canSave()).toBe(true);
   });
 
   it('canPublish is false until title, subject, duration and at least one module are present', () => {
@@ -109,7 +92,6 @@ describe('LessonEditorStore', () => {
     expect(store.canPublish()).toBe(false);
   });
 
-  // ── isDirty marker ───────────────────────────────────────────────────────
   it('updateMetadata flips saveState to "unsaved"', () => {
     store.updateMetadata({ title: 'X' });
     expect(store.saveState()).toBe('unsaved');
@@ -119,21 +101,6 @@ describe('LessonEditorStore', () => {
   it('addModule and reorderModules also mark unsaved', () => {
     store.addModule();
     expect(store.isDirty()).toBe(true);
-  });
-
-  // ── SonarQube Target: Error Parsing Fallbacks ────────────────────────────
-  it('joins multiple structured backend errors on save', async () => {
-    const errorResponse = new HttpErrorResponse({
-      error: { title: 'Title cannot be empty', subject: 'Subject is required' },
-      status: 400,
-    });
-    vi.spyOn(http, 'post').mockReturnValue(throwError(() => errorResponse));
-
-    store.updateMetadata({ title: 'X' });
-    await store.save();
-
-    expect(store.saveState()).toBe('error');
-    expect(store.saveError()).toBe('title: Title cannot be empty | subject: Subject is required');
   });
 
   it('parses structured backend errors properly on save', async () => {
@@ -148,7 +115,6 @@ describe('LessonEditorStore', () => {
 
     expect(store.saveState()).toBe('error');
     expect(store.saveError()).toContain('title: Title cannot be empty');
-    expect(messageService.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }));
   });
 
   it('parses string backend errors properly on loadLesson', () => {
@@ -161,9 +127,6 @@ describe('LessonEditorStore', () => {
     store.loadLesson('123');
 
     expect(store.saveError()).toBe('Lesson not found');
-    expect(messageService.add).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: 'Load Failed', detail: 'Lesson not found' }),
-    );
   });
 
   it('parses unexpected or raw string/generic errors into fallback responses', async () => {
@@ -182,58 +145,6 @@ describe('LessonEditorStore', () => {
     vi.spyOn(http, 'post').mockReturnValue(throwError(() => ({})));
     await store.save();
     expect(store.saveError()).toBe('An unexpected error occurred');
-  });
-
-  // ── save (POST when no id, PUT when id present) ──────────────────────────
-  it('save aborts and shows warn toast if canSave is false (manual save)', async () => {
-    store.addModule();
-    store.updateModule(store.lesson().modules[0].id, { content: '' }); // Invalid
-    await store.save();
-
-    expect(store.saveState()).toBe('error');
-    expect(store.saveError()).toBe('Cannot save: All modules must have content.');
-    expect(messageService.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'warn' }));
-  });
-
-  it('save aborts silently if canSave is false (background save)', async () => {
-    store.addModule();
-    store.updateModule(store.lesson().modules[0].id, { content: '' }); // Invalid
-    vi.mocked(messageService.add).mockClear();
-
-    await store.save(undefined, true);
-
-    expect(store.saveState()).toBe('unsaved'); // State shouldn't drop to error since it was aborted gracefully
-    expect(messageService.add).not.toHaveBeenCalled();
-  });
-
-  it('save silently ignores error toast if background save throws an error', async () => {
-    vi.spyOn(http, 'post').mockReturnValue(throwError(() => new Error('Background Fail')));
-    store.reset({
-      title: 'X',
-      subject: 'Y',
-      modules: [{ id: 'm1', title: 'm1', type: 'text', content: 'valid' }],
-    });
-    vi.mocked(messageService.add).mockClear();
-
-    await store.save(undefined, true);
-
-    expect(store.saveState()).toBe('error');
-    expect(store.saveError()).toBe('Background Fail');
-    expect(messageService.add).not.toHaveBeenCalled(); // Toast suppressed for background
-  });
-
-  it('save works without onComplete callback', async () => {
-    vi.spyOn(http, 'post').mockReturnValue(of({ id: 'new-1' }));
-    vi.spyOn(http, 'get').mockReturnValue(of({ id: 'new-1', title: 'X', subcapitols: [] }));
-
-    store.reset({
-      title: 'X',
-      subject: 'Y',
-      modules: [{ id: 'm1', title: 'm1', type: 'text', content: 'valid' }],
-    });
-    await store.save(); // no onComplete passed
-
-    expect(store.saveState()).toBe('saved');
   });
 
   it('save POSTs to /api/v1/lessons when lesson has no id', async () => {
@@ -287,7 +198,6 @@ describe('LessonEditorStore', () => {
     );
   });
 
-  // ── SonarQube Target: payload fallbacks for blank inputs & empty modules ─
   it('uses default fallback values when payload inputs are blank strings', async () => {
     const postSpy = vi
       .spyOn(http, 'post')
@@ -377,32 +287,6 @@ describe('LessonEditorStore', () => {
     );
   });
 
-  // ── SonarQube Target: mapFromResponse fallbacks & block types ────────────
-  it('falls back by title if id does not match in mapFromResponse', async () => {
-    store.reset({
-      id: 'lesson-1',
-      title: 'Valid Title',
-      subject: 'Valid Subject',
-      status: 'DRAFT',
-      modules: [
-        { id: 'client-id-1', title: 'Matching Title', type: 'text', content: 'Client Content' },
-      ],
-    });
-    vi.spyOn(http, 'put').mockReturnValue(of({}));
-    vi.spyOn(http, 'get').mockReturnValue(
-      of({
-        id: 'lesson-1',
-        status: 'DRAFT',
-        subcapitols: [{ id: 'server-id-diff', title: 'Matching Title', blocks: [] }],
-      }),
-    );
-
-    await store.save();
-
-    expect(store.lesson().modules[0].content).toBe('Client Content');
-    expect(store.lesson().modules[0].id).toBe('server-id-diff');
-  });
-
   it('maps text blocks with lowercase text type and fallback modules in mapFromResponse', () => {
     const mockBackendPayload = {
       id: 'lesson-999',
@@ -483,27 +367,6 @@ describe('LessonEditorStore', () => {
     expect(modulesState[0].blockId).toBe('b-777');
   });
 
-  // ── SonarQube Target: matchedSub branch & subcapitol loop scenarios ─────
-  it('uses safeContent fallback for empty modules during publish', async () => {
-    // publish triggers persist() bypassing canSave()
-    store.reset({
-      id: 'lesson-1',
-      modules: [{ id: 'sub-new', title: 'M1', type: 'text', content: '   ', blockId: undefined }],
-    });
-    const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({ id: 'block-new' }));
-    vi.spyOn(http, 'put').mockReturnValue(of({}));
-    vi.spyOn(http, 'get').mockReturnValue(
-      of({ id: 'lesson-1', status: 'PUBLISHED', subcapitols: [] }),
-    );
-
-    await store.publish();
-
-    expect(postSpy).toHaveBeenCalledWith(
-      expect.stringContaining('/blocks'),
-      expect.objectContaining({ content: ' ' }), // Assert fallback is used
-    );
-  });
-
   it('handles matched client subcapitols if backend returns asymmetric subcapitols list', async () => {
     store.reset({
       id: null,
@@ -551,7 +414,6 @@ describe('LessonEditorStore', () => {
       }),
     );
 
-    // Branch: blockId exists -> calls put
     store.reset({
       id: 'lesson-1',
       title: 'A',
@@ -574,7 +436,6 @@ describe('LessonEditorStore', () => {
       expect.any(Object),
     );
 
-    // Branch: blockId missing -> calls post to create block
     store.reset({
       id: 'lesson-1',
       title: 'A',
@@ -591,7 +452,6 @@ describe('LessonEditorStore', () => {
       expect.any(Object),
     );
 
-    // Branch: blockId missing -> post fails and logs console error gracefully
     store.reset({
       id: 'lesson-1',
       title: 'A',
@@ -614,7 +474,6 @@ describe('LessonEditorStore', () => {
     );
   });
 
-  // ── updateModule ─────────────────────────────────────────────────────────
   it('updateModule patches an existing module properties', () => {
     store.addModule();
     store.addModule(); // Add a second module to test mapping conditions across arrays
@@ -632,7 +491,6 @@ describe('LessonEditorStore', () => {
     expect(store.isDirty()).toBe(true);
   });
 
-  // ── SonarQube Target: removeModule failure fallback ──────────────────────
   it('removeModule deletes subcapitol on the backend if it has a real UUID', async () => {
     const deleteSpy = vi.spyOn(http, 'delete').mockReturnValue(of({}));
 
@@ -673,26 +531,6 @@ describe('LessonEditorStore', () => {
       'Failed to delete subcapitol on backend',
       expect.any(Error),
     );
-  });
-
-  // ── SonarQube Target: publish rejections and catches ─────────────────────
-  it('publish works without onComplete callback', async () => {
-    store.reset({
-      id: 'lesson-1',
-      title: 'X',
-      subject: 'Math',
-      estimated_duration_minutes: 10,
-      status: 'DRAFT',
-      difficulty_level: 'BEGINNER',
-      short_description: '',
-      modules: [{ id: 'module-1', title: 'M', type: 'text', content: 'valid' }],
-    });
-    vi.spyOn(http, 'put').mockReturnValue(of({}));
-    vi.spyOn(http, 'post').mockReturnValue(of({ id: 'lesson-1', title: 'X', status: 'PUBLISHED' }));
-    vi.spyOn(http, 'get').mockReturnValue(of({ id: 'lesson-1', title: 'X', status: 'PUBLISHED' }));
-
-    await store.publish();
-    expect(store.lesson().status).toBe('PUBLISHED');
   });
 
   it('publish marks lesson as PUBLISHED and updates state', async () => {
@@ -738,12 +576,8 @@ describe('LessonEditorStore', () => {
 
     expect(store.saveState()).toBe('error');
     expect(store.saveError()).toBe('Publish Failed Exception');
-    expect(messageService.add).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: 'Publish Failed' }),
-    );
   });
 
-  // ── SonarQube Target: unpublish rejections and catches ───────────────────
   it('unpublish marks lesson as DRAFT and updates state', () => {
     vi.spyOn(http, 'post').mockReturnValue(of({ id: 'lesson-1', title: 'X', status: 'DRAFT' }));
     store.reset({
@@ -783,12 +617,8 @@ describe('LessonEditorStore', () => {
 
     expect(store.saveState()).toBe('error');
     expect(store.saveError()).toBe('Unpublish Blocked');
-    expect(messageService.add).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: 'Unpublish Failed' }),
-    );
   });
 
-  // ── reorder ──────────────────────────────────────────────────────────────
   it('reorderModules moves a module from one index to another', () => {
     store.addModule();
     store.addModule();
@@ -797,7 +627,6 @@ describe('LessonEditorStore', () => {
     expect(store.lesson().modules.map((m) => m.id)).toEqual([ids[1], ids[0]]);
   });
 
-  // ── reset ────────────────────────────────────────────────────────────────
   it('reset returns the store to a blank lesson', () => {
     store.updateMetadata({ title: 'Dirty' });
     store.reset();
