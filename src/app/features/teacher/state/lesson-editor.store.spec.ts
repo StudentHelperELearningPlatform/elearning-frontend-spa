@@ -63,15 +63,22 @@ describe('LessonEditorStore', () => {
     expect(store.canPublish()).toBe(false);
     store.updateMetadata({ estimated_duration_minutes: 15 });
     expect(store.canPublish()).toBe(false);
+
     store.addModule();
+    const id = store.lesson().modules[0].id;
+    store.updateModule(id, { content: 'Some valid content' });
+
     expect(store.canPublish()).toBe(true);
   });
 
   it('canPublish becomes false again when the only module is removed', () => {
     store.updateMetadata({ title: 'X', subject: 'Math', estimated_duration_minutes: 15 });
     store.addModule();
-    expect(store.canPublish()).toBe(true);
     const id = store.lesson().modules[0].id;
+
+    store.updateModule(id, { content: 'Some valid content' });
+    expect(store.canPublish()).toBe(true);
+
     store.removeModule(id);
     expect(store.canPublish()).toBe(false);
   });
@@ -245,7 +252,7 @@ describe('LessonEditorStore', () => {
       title: 'A',
       subject: 'B',
       difficulty_level: 'BEGINNER',
-      modules: [{ id: 'module-temp-1', title: '   ', type: 'text', content: '' }],
+      modules: [{ id: 'module-temp-1', title: '   ', type: 'text', content: 'valid content' }],
     });
 
     await store.save();

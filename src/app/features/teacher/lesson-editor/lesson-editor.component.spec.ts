@@ -101,10 +101,13 @@ describe('LessonEditorComponent', () => {
     expect(saveSpy).toHaveBeenCalled();
   });
 
-  it('onModuleBlur immediately calls save', () => {
+  it('onModuleBlur calls save after a delay if valid and focus leaves module', () => {
+    vi.useFakeTimers();
+    vi.spyOn(store, 'canSave').mockReturnValue(true);
     const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
-    component['onModuleBlur']();
-    expect(saveSpy).toHaveBeenCalled();
+    component['onModuleBlur']('module-1');
+    vi.advanceTimersByTime(200);
+    expect(saveSpy).toHaveBeenCalledWith(undefined, true);
   });
 
   it('onModuleTitleChange updates store and triggers autosave', () => {

@@ -1,1 +1,0 @@
-import{Q as n}from"./chunk-FDUQXREY.js";var e=class r{success(o){console.log("Success:",o)}error(o){console.error("Error:",o)}info(o){console.info("Info:",o)}warning(o){console.warn("Warning:",o)}static \u0275fac=function(t){return new(t||r)};static \u0275prov=n({token:r,factory:r.\u0275fac,providedIn:"root"})};export{e as a};
