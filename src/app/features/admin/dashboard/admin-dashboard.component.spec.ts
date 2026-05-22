@@ -408,6 +408,52 @@ describe('AdminDashboardComponent', () => {
     expect(component.users()[0].status).toBe('BANNED');
   });
 
+  it('should correctly handle paginated API response shapes using safeExtractArray helper', () => {
+    // 1. Array shape
+    expect(component.safeExtractArray([1, 2])).toEqual([1, 2]);
+    // 2. { items: [...] } shape
+    expect(component.safeExtractArray({ items: [3, 4] })).toEqual([3, 4]);
+    // 3. { data: [...] } shape
+    expect(component.safeExtractArray({ data: [5, 6] })).toEqual([5, 6]);
+    // 4. { content: [...] } shape
+    expect(component.safeExtractArray({ content: [7, 8] })).toEqual([7, 8]);
+    // 5. null/undefined/primitive shapes
+    expect(component.safeExtractArray(null)).toEqual([]);
+    expect(component.safeExtractArray(undefined)).toEqual([]);
+    expect(component.safeExtractArray(123)).toEqual([]);
+    expect(component.safeExtractArray("string")).toEqual([]);
+  });
+
+  it('should successfully parse paginated responses for loadLessons, loadClasses, loadContactMessages, and loadUsers', () => {
+    // Setup paginated structures
+    const paginatedLessons = { items: mockLessons, total: 1 };
+    const paginatedClasses = { data: mockClasses, total: 1 };
+    const paginatedMessages = { content: mockMessages, total: 1 };
+    const paginatedUsers = { items: mockUsers, total: 5 };
+    const paginatedBanned = { items: mockBannedUsers, total: 2 };
+
+    vi.spyOn(adminService, 'getLessons').mockReturnValue(of(paginatedLessons as never));
+    vi.spyOn(adminService, 'getClasses').mockReturnValue(of(paginatedClasses as never));
+    vi.spyOn(adminService, 'getContactMessages').mockReturnValue(of(paginatedMessages as never));
+    vi.spyOn(adminService, 'getUsers').mockReturnValue(of(paginatedUsers as never));
+    vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(of(paginatedBanned as never));
+
+    component.loadLessons();
+    expect(component.lessons().length).toBe(1);
+    expect(component.lessons()[0].title).toBe('Lesson A');
+
+    component.loadClasses();
+    expect(component.classes().length).toBe(1);
+    expect(component.classes()[0].name).toBe('Class A');
+
+    component.loadContactMessages();
+    expect(component.contactMessages().length).toBe(1);
+    expect(component.contactMessages()[0].senderName).toBe('User X');
+
+    component.loadUsers();
+    expect(component.users().length).toBe(5);
+  });
+
   it('should gracefully handle API failure when performBan fails', () => {
     const serviceSpy = vi
       .spyOn(adminService, 'banUser')
@@ -860,6 +906,39 @@ describe('AdminDashboardComponent', () => {
 
       component.prevLessonPage();
       expect(component.lessonPage()).toBe(1);
+    });
+
+    it('should return 0 percentages in userInsights when users list is empty', () => {
+      component.users.set([]);
+      expect(component.userInsights()).toEqual({
+        studentsPct: 0,
+        teachersPct: 0,
+        adminsPct: 0,
+        studentsCount: 0,
+        teachersCount: 0,
+        adminsCount: 0
+      });
+    });
+
+    it('should return 0 in sortedLessons when sorting key values are equal', () => {
+      component.lessons.set([
+        { id: 'l1', title: 'Same Title', subject: 'Math', grade: 10, author: 'Author', status: 'PUBLISHED' },
+        { id: 'l2', title: 'Same Title', subject: 'Math', grade: 10, author: 'Author', status: 'PUBLISHED' },
+      ]);
+      component.lessonSortKey.set('title');
+      component.lessonSortOrder.set('asc');
+      expect(component.sortedLessons().length).toBe(2);
+    });
+
+    it('should filter active users when statusFilter is ACTIVE', () => {
+      component.users.set([
+        { id: 'u1', name: 'Alice', email: 'alice@example.com', role: 'STUDENT', status: 'ACTIVE', raw: {} },
+        { id: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'BANNED', raw: {} },
+      ]);
+      component.statusFilter.set('ACTIVE');
+      const filtered = component.filteredUsers();
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe('u1');
     });
   });
 });

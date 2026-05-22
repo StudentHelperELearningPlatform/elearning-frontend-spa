@@ -18,6 +18,16 @@ export interface StudentRow {
   lastActiveAt?: string | null;
 }
 
+export interface RawStudentRow {
+  id?: string;
+  studentId?: string;
+  firstName?: string;
+  name?: string;
+  lastName?: string;
+  streakValue?: number;
+  lastActiveAt?: string | null;
+}
+
 export interface FinalQuizAttempt {
   attemptId: string;
   studentId: string;
@@ -115,8 +125,19 @@ export class ClassDetailComponent implements OnInit {
     this.addStudentError.set(null);
     if (this.allStudents().length === 0) {
       this.http
-        .get<StudentRow[]>(`${this.userApi}/progress/professor/students`)
-        .pipe(catchError(() => of([] as StudentRow[])))
+        .get<RawStudentRow[]>(`${this.userApi}/students`)
+        .pipe(
+          catchError(() => of([] as RawStudentRow[])),
+          map((rows) =>
+            rows.map((r) => ({
+              studentId: r.studentId || r.id || '',
+              firstName: r.firstName || r.name || '',
+              lastName: r.lastName || '',
+              streakValue: r.streakValue ?? 0,
+              lastActiveAt: r.lastActiveAt || null,
+            }))
+          )
+        )
         .subscribe((rows) => this.allStudents.set(rows));
     }
   }

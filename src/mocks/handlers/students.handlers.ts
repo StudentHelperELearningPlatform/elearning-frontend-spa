@@ -135,8 +135,24 @@ export const studentsHandlers = [
     return HttpResponse.json(dashboardData);
   }),
 
+  // GET My Student Dashboard
+  http.get(`${environment.userPlatformApiUrl}/api/v1/progress/me/dashboard`, () => {
+    return HttpResponse.json(dashboardData);
+  }),
+  http.get('/api/v1/progress/me/dashboard', () => {
+    return HttpResponse.json(dashboardData);
+  }),
+
   // GET Student Milestones
   http.get('/api/v1/students/:id/milestones', () => {
     return HttpResponse.json(milestonesData);
+  }),
+
+  // GET List of all students on the platform
+  http.get(`${environment.userPlatformApiUrl}/student`, () => {
+    return HttpResponse.json([
+      { id: 's1', firstName: 'John', lastName: 'Doe', email: 'john@example.com' },
+      { id: 's2', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com' },
+    ]);
   }),
 ];

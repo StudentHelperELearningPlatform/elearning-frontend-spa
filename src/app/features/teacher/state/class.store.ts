@@ -22,6 +22,15 @@ import {
   TeacherClassRaw,
 } from '@core/services/teacher-class.service';
 
+interface ClassStudentRaw {
+  id?: string;
+  studentId?: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  email?: string;
+}
+
 interface ClassState {
   classes: TeacherClass[];
   currentClass: TeacherClassDetail | null;
@@ -97,25 +106,30 @@ export const ClassStore = signalStore(
           .get<{ id: string; title: string }[]>(`${userApi}/teachers/classes/${classId}/lessons`)
           .pipe(catchError(() => of([]))),
         enrolledIds: http
-          .get<string[]>(`${userApi}/teachers/classes/${classId}/students`)
+          .get<(string | ClassStudentRaw)[]>(`${userApi}/teachers/classes/${classId}/students`)
           .pipe(catchError(() => of([]))),
         allStudents: http
           .get<{ id: string; firstName: string; lastName: string; email?: string }[]>(
-            `${userApi}/students`,
+            `${userApi}/teachers/classes/${classId}/students`,
           )
           .pipe(catchError(() => of([]))),
       }).subscribe({
         next: ({ detail, lessons, enrolledIds, allStudents }) => {
-          const studentMap = new Map(allStudents.map((s) => [s.id, s]));
+          const studentMap = new Map(
+            allStudents
+              .filter((s) => s && typeof s === 'object')
+              .map((s: ClassStudentRaw) => [s.id || s.studentId || '', s])
+          );
           patchState(store, {
             currentClass: {
               ...mapClassDetail(detail),
               lessons,
-              students: enrolledIds.map((id) => {
-                const s = studentMap.get(id);
+              students: enrolledIds.map((item: string | ClassStudentRaw) => {
+                const id = typeof item === 'string' ? item : (item.id || item.studentId || '');
+                const s = studentMap.get(id) || (typeof item === 'object' ? item : null);
                 return {
                   id,
-                  name: s ? `${s.firstName} ${s.lastName}`.trim() : id,
+                  name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim()) : id,
                   email: s?.email ?? '',
                 };
               }),
