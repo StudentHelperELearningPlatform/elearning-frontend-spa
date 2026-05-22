@@ -9,16 +9,18 @@ import { Router } from '@angular/router';
 import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 describe('ProgressDashboardComponent (Logic)', () => {
   let component: ProgressDashboardComponent;
+  let resizeCallback: (() => void) | undefined;
   let progressStoreMock: {
     student: WritableSignal<unknown>;
     activeStreak: WritableSignal<number>;
     skillLevels: WritableSignal<unknown[]>;
     loadDashboard: ReturnType<typeof vi.fn>;
     loadMyDashboard: ReturnType<typeof vi.fn>;
+    loadMyLessonStats: ReturnType<typeof vi.fn>;
     loading: WritableSignal<boolean>;
     error: WritableSignal<string | null>;
     recentMilestones: WritableSignal<unknown[]>;
@@ -45,7 +47,11 @@ describe('ProgressDashboardComponent (Logic)', () => {
 
   beforeEach(() => {
     // Mock ResizeObserver
+    resizeCallback = undefined;
     global.ResizeObserver = class {
+      constructor(cb: () => void) {
+        resizeCallback = cb;
+      }
       observe = vi.fn();
       unobserve = vi.fn();
       disconnect = vi.fn();
@@ -57,6 +63,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       skillLevels: signal([]),
       loadDashboard: vi.fn(),
       loadMyDashboard: vi.fn(),
+      loadMyLessonStats: vi.fn(),
       loading: signal(false),
       error: signal(null),
       recentMilestones: signal([]),
@@ -237,6 +244,22 @@ describe('ProgressDashboardComponent (Logic)', () => {
       expect(disconnectSpy).toHaveBeenCalled();
     });
 
+    it('should render radar chart on resize observer trigger', () => {
+      const el = document.createElement('div');
+      Object.defineProperty(el, 'clientWidth', { value: 300 });
+      component.radarContainer = { nativeElement: el } as ElementRef;
+      progressStoreMock.skillLevels.set([{ subject: 'Math', level: 80 }, { subject: 'Bio', level: 60 }]);
+
+      component.ngAfterViewInit();
+      expect(resizeCallback).toBeDefined();
+
+      const spy = vi.spyOn(component, 'renderRadarChart');
+      if (resizeCallback) {
+        resizeCallback();
+      }
+      expect(spy).toHaveBeenCalled();
+    });
+
     it('should render SVG elements in renderRadarChart', () => {
       const el = document.createElement('div');
       Object.defineProperty(el, 'clientWidth', { value: 300 });
@@ -284,6 +307,24 @@ describe('ProgressDashboardComponent (Logic)', () => {
       
       await new Promise(resolve => setTimeout(resolve, 50));
       expect(component.enrolledClassesList().length).toBe(0);
+    });
+
+    it('should handle getClassDetail failure gracefully', async () => {
+      const classService = TestBed.inject(TeacherClassService);
+      vi.spyOn(classService, 'getClassDetail').mockReturnValue(throwError(() => new Error('Failed')));
+
+      studentProfileStoreMock.profile.set({
+        enrolledClasses: ['class-failed'],
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(component.enrolledClassesList()).toEqual([]);
+    });
+
+    it('should load my lesson stats when continueLesson is set', async () => {
+      progressStoreMock.continueLesson.set({ lessonId: 'lesson-continue', status: 'IN_PROGRESS' });
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(progressStoreMock.loadMyLessonStats).toHaveBeenCalledWith({ lessonId: 'lesson-continue' });
     });
   });
 });

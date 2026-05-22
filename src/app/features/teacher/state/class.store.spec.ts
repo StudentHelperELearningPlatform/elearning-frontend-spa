@@ -162,7 +162,7 @@ describe('ClassStore', () => {
     expect(store.error()).toContain('Http failure response');
   });
 
-  it('should update class', () => {
+  it('should update class with name and description', () => {
     const initialClass: TeacherClass = {
       id: '1',
       name: 'Old Math',
@@ -171,12 +171,23 @@ describe('ClassStore', () => {
       createdAt: '2023-01-01T00:00:00Z',
     };
 
+    const initialDetailRaw = {
+      id: '1',
+      name: 'Old Math',
+      bio: 'Old Bio',
+      createdAt: '2023-01-01T00:00:00Z',
+    };
+
+    // Load initial detail
+    store.loadClassDetail('1');
+    flushClassDetail('1', initialDetailRaw, [], [], []);
+
     store.loadClasses();
     httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`).flush([initialClass]);
 
-    const mockUpdatedClass: TeacherClass = { ...initialClass, name: 'New Math' };
-    const payload = { name: 'New Math' };
-    const expectedBody = { name: 'New Math' };
+    const mockUpdatedClass: TeacherClass = { ...initialClass, name: 'New Math', description: 'New Bio' };
+    const payload = { name: 'New Math', description: 'New Bio' };
+    const expectedBody = { name: 'New Math', bio: 'New Bio' };
 
     store.updateClass('1', payload);
     expect(store.loading()).toBe(true);
@@ -188,6 +199,7 @@ describe('ClassStore', () => {
 
     expect(store.loading()).toBe(false);
     expect(store.classes().find((c: TeacherClass) => c.id === '1')?.name).toBe('New Math');
+    expect(store.currentClass()?.description).toBe('New Bio');
   });
 
   it('should handle error when updating class', () => {
@@ -199,12 +211,45 @@ describe('ClassStore', () => {
     expect(store.error()).toContain('Http failure response');
   });
 
-  it('should delete class', () => {
+  it('should delete class and run filter predicate on classes list', () => {
+    // Populate classes list to ensure filter runs
+    store.loadClasses();
+    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`).flush([
+      { id: '1', name: 'Math', studentCount: 0, lessonCount: 0, createdAt: '' }
+    ]);
+    expect(store.classes().length).toBe(1);
+
     store.deleteClass('1');
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
     expect(req.request.method).toBe('DELETE');
     req.flush({});
+
+    expect(store.classes().length).toBe(0);
+  });
+
+  it('should load class detail and handle fallback empty arrays when sub-requests fail', () => {
+    const mockDetailRaw = {
+      id: '1',
+      name: 'Math',
+      bio: 'Math Class',
+      createdAt: '2023-01-01T00:00:00Z',
+    };
+
+    store.loadClassDetail('1');
+    expect(store.loading()).toBe(true);
+
+    // Primary request succeeds, sub-requests fail but are caught by catchError
+    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`).flush(mockDetailRaw);
+    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1/lessons`).flush('Error', { status: 404, statusText: 'Not Found' });
+    const studentReqs = httpTestingController.match(`${mockApiUrl}/teachers/classes/1/students`);
+    expect(studentReqs.length).toBe(2);
+    studentReqs[0].flush('Error', { status: 500, statusText: 'Error' });
+    studentReqs[1].flush('Error', { status: 500, statusText: 'Error' });
+
+    expect(store.loading()).toBe(false);
+    expect(store.currentClass()?.lessons).toEqual([]);
+    expect(store.currentClass()?.students).toEqual([]);
   });
 
   it('should add student to class', () => {

@@ -813,5 +813,38 @@ describe('AdminDashboardComponent', () => {
       component.prevLessonPage();
       expect(component.lessonPage()).toBe(1); // remains 1
     });
+
+    it('should return 0 percentages in userInsights when users list is empty', () => {
+      component.users.set([]);
+      expect(component.userInsights()).toEqual({
+        studentsPct: 0,
+        teachersPct: 0,
+        adminsPct: 0,
+        studentsCount: 0,
+        teachersCount: 0,
+        adminsCount: 0
+      });
+    });
+
+    it('should return 0 in sortedLessons when sorting key values are equal', () => {
+      component.lessons.set([
+        { id: 'l1', title: 'Same Title', subject: 'Math', grade: 10, author: 'Author', status: 'PUBLISHED' },
+        { id: 'l2', title: 'Same Title', subject: 'Math', grade: 10, author: 'Author', status: 'PUBLISHED' },
+      ]);
+      component.lessonSortKey.set('title');
+      component.lessonSortOrder.set('asc');
+      expect(component.sortedLessons().length).toBe(2);
+    });
+
+    it('should filter active users when statusFilter is ACTIVE', () => {
+      component.users.set([
+        { id: 'u1', name: 'Alice', email: 'alice@example.com', role: 'STUDENT', status: 'ACTIVE', raw: {} },
+        { id: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'BANNED', raw: {} },
+      ]);
+      component.statusFilter.set('ACTIVE');
+      const filtered = component.filteredUsers();
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe('u1');
+    });
   });
 });

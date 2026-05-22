@@ -428,4 +428,183 @@ describe('ProgressStore', () => {
       expect(store.studentHistoryError()).toBeTruthy();
     });
   });
+
+  // ── Additional Branch Coverage Tests ──────────────────────────────────────────
+
+  describe('Additional Branch Coverage Tests', () => {
+    it('completionRate() and overallProgressPercent() fallbacks', () => {
+      // 1. Dashboard null, student null
+      expect(store.completionRate()).toBe(0);
+      expect(store.overallProgressPercent()).toBe(0);
+
+      // 2. Dashboard with no totalLessons, student null
+      // Let's set dashboard state manually by loading it
+      store.loadMyDashboard();
+      let req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      req.flush({ totalLessons: 0, completedLessons: 0 });
+      expect(store.completionRate()).toBe(0);
+
+      // Reset dashboard to null, set student with totalLessons = 0
+      store.loadDashboard('stu-1');
+      req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      req.flush({ studentId: 'stu-1', student: { id: 'stu-1', totalLessons: 0 } });
+      expect(store.completionRate()).toBe(0);
+      expect(store.overallProgressPercent()).toBe(0);
+
+      // Set student with totalLessons > 0, dashboard is null (loadDashboard doesn't set store.dashboard)
+      store.loadDashboard('stu-2');
+      req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      req.flush({
+        student: {
+          id: 'stu-2',
+          totalLessons: 10,
+          completedLessons: 6,
+        }
+      });
+      // Now dashboard is null, student is populated. Should fall back to student.
+      expect(store.completionRate()).toBe(60);
+      expect(store.overallProgressPercent()).toBe(60);
+    });
+
+    it('recentMilestones() sorting and filtering logic', () => {
+      store.loadDashboard('stu-1');
+      const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      req.flush({
+        milestones: [
+          { id: 'm1', name: 'M1', earnedAt: '2026-05-01T12:00:00Z' },
+          { id: 'm2', name: 'M2', earnedAt: null },
+          { id: 'm3', name: 'M3', earnedAt: '2026-05-03T12:00:00Z' },
+          { id: 'm4', name: 'M4', earnedAt: '2026-05-02T12:00:00Z' },
+          { id: 'm5', name: 'M5', earnedAt: '2026-05-04T12:00:00Z' },
+        ],
+      });
+
+      const milestones = store.recentMilestones();
+      expect(milestones.length).toBe(3);
+      expect(milestones[0].id).toBe('m5'); // 2026-05-04
+      expect(milestones[1].id).toBe('m3'); // 2026-05-03
+      expect(milestones[2].id).toBe('m4'); // 2026-05-02
+    });
+
+    it('continueLesson() reduce logic with multiple IN_PROGRESS records', () => {
+      store.loadDashboard('stu-1');
+      const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      req.flush({
+        progressRecords: [
+          { lessonId: 'l1', status: 'COMPLETED', lastAccessedAt: '2026-05-05T12:00:00Z' },
+          { lessonId: 'l2', status: 'IN_PROGRESS', lastAccessedAt: '2026-05-01T12:00:00Z' },
+          { lessonId: 'l3', status: 'IN_PROGRESS', lastAccessedAt: '2026-05-03T12:00:00Z' },
+          { lessonId: 'l4', status: 'IN_PROGRESS', lastAccessedAt: '2026-05-02T12:00:00Z' },
+        ],
+      });
+
+      const cont = store.continueLesson();
+      expect(cont).toBeTruthy();
+      expect(cont!.lessonId).toBe('l3'); // latest lastAccessedAt
+    });
+
+    it('loadDashboard mapping branches for legacy shapes', () => {
+      store.loadDashboard('stu-1');
+      const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      req.flush({
+        student: {
+          id: 'stu-nested',
+          firstName: 'NestedFirst',
+          lastName: 'NestedLast',
+          totalLessons: 8,
+          completedLessons: 4,
+        },
+        subjects: [
+          { subjectId: 'subj-1', skillLevel: 4 },
+          { subjectId: 'subj-2', subjectName: 'Subject 2' },
+        ],
+        streak: {
+          currentStreak: 5,
+          longestStreak: 10,
+          lastActivityDate: '2026-05-15T00:00:00Z',
+        },
+      });
+
+      expect(store.student()?.id).toBe('stu-nested');
+      expect(store.student()?.firstName).toBe('NestedFirst');
+      expect(store.student()?.lastName).toBe('NestedLast');
+      expect(store.student()?.totalLessons).toBe(8);
+      expect(store.student()?.completedLessons).toBe(4);
+      expect(store.skillLevels()).toEqual([
+        { subject: 'subj-1', level: 4 },
+        { subject: 'Subject 2', level: 0 },
+      ]);
+      expect(store.streak()?.currentStreak).toBe(5);
+      expect(store.streak()?.longestStreak).toBe(10);
+      expect(store.streak()?.lastActivityDate).toBe('2026-05-15T00:00:00Z');
+    });
+
+    it('loadMyLessonStats mapping branches for COMPLETED, IN_PROGRESS and default statuses', () => {
+      // Test COMPLETED
+      store.loadMyLessonStats({ lessonId: 'lesson-1' });
+      let req = http.expectOne((r) => r.url.includes('/progress/me/lessons/lesson-1/stats'));
+      req.flush({
+        lessonId: '',
+        status: 'COMPLETED',
+        quizScore: 90,
+      });
+      expect(store.myLessonStats()?.completionPercentage).toBe(100);
+      expect(store.myLessonStats()?.completedModules).toBe(1);
+
+      // Test IN_PROGRESS
+      store.loadMyLessonStats({ lessonId: 'lesson-2' });
+      req = http.expectOne((r) => r.url.includes('/progress/me/lessons/lesson-2/stats'));
+      req.flush({
+        lessonId: 'lesson-2',
+        status: 'IN_PROGRESS',
+        accumulatedScore: 50,
+      });
+      expect(store.myLessonStats()?.completionPercentage).toBe(50);
+      expect(store.myLessonStats()?.completedModules).toBe(0);
+      expect(store.myLessonStats()?.quizScore).toBe(50);
+
+      // Test NOT_STARTED / default
+      store.loadMyLessonStats({ lessonId: 'lesson-3' });
+      req = http.expectOne((r) => r.url.includes('/progress/me/lessons/lesson-3/stats'));
+      req.flush({
+        lessonId: 'lesson-3',
+        status: 'NOT_STARTED',
+      });
+      expect(store.myLessonStats()?.completionPercentage).toBe(0);
+      expect(store.myLessonStats()?.completedModules).toBe(0);
+      expect(store.myLessonStats()?.quizScore).toBeNull();
+    });
+
+    it('loadMyHistory mapping branches', () => {
+      store.loadMyHistory();
+      const req = http.expectOne((r) => r.url.includes('/progress/me/history'));
+      req.flush([
+        {
+          lessonId: 'lesson-123456789',
+          completedAt: '2026-05-10T10:00:00Z',
+        },
+        {
+          lessonId: '',
+          subject: 'Science',
+        },
+      ]);
+
+      const history = store.myHistory();
+      expect(history.length).toBe(2);
+
+      // First item checks: lessonTitle auto formatted, subject default, status based on completedAt
+      expect(history[0].lessonId).toBe('lesson-123456789');
+      expect(history[0].lessonTitle).toBe('Lecția lesson-1');
+      expect(history[0].subject).toBe('General');
+      expect(history[0].status).toBe('completed');
+      expect(history[0].dateCompleted).toBe('2026-05-10T10:00:00Z');
+
+      // Second item checks: empty lessonId, lessonTitle auto-formatted, custom subject, status in_progress
+      expect(history[1].lessonId).toBe('');
+      expect(history[1].lessonTitle).toBe('Lecția ');
+      expect(history[1].subject).toBe('Science');
+      expect(history[1].status).toBe('in_progress');
+      expect(history[1].dateCompleted).toBeNull();
+    });
+  });
 });
