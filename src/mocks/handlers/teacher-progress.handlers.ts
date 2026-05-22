@@ -68,8 +68,8 @@ export const teacherProgressHandlers = [
     return HttpResponse.json(detail);
   }),
 
-  // GET /api/v1/progress/professor/students
-  http.get(`${environment.userPlatformApiUrl}/api/v1/progress/professor/students`, () => {
+  // GET /api/v1/progress/teacher/students
+  http.get(`${environment.userPlatformApiUrl}/api/v1/progress/teacher/students`, () => {
     // Return all mock students
     return HttpResponse.json(mockClassStudents);
   }),

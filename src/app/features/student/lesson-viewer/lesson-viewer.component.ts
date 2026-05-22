@@ -50,7 +50,7 @@ import { CheckoutModalComponent } from '../payments/checkout-modal.component';
               store.currentLesson()?.subject
             }}</app-badge>
             <app-badge variant="secondary" icon="schedule"
-              >{{ store.currentLesson()?.duration }}m</app-badge
+              >{{ store.currentLesson()?.duration }}</app-badge
             >
           </div>
         </div>
@@ -357,6 +357,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
       this.lessonId.set(id);
       this.store.loadLesson(id);
       this.store.loadFinalQuizAttempts(id);
+      this.progressStore.loadMyLessonStats({ lessonId: id });
     }
   }
 

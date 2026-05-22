@@ -102,7 +102,7 @@ describe('ClassDetailComponent', () => {
     comp.openInviteModal();
     expect(comp.showInviteModal()).toBe(true);
 
-    const req = httpTestingController.expectOne('http://mock-api/progress/professor/students');
+    const req = httpTestingController.expectOne('http://mock-api/students');
     req.flush([{ studentId: 's2', firstName: 'Jane', lastName: 'Smith' }]);
     expect(comp.allStudents().length).toBe(1);
   });
@@ -226,5 +226,92 @@ describe('ClassDetailComponent', () => {
 
     expect(comp.quizError()).toBeTruthy();
     expect(comp.quizLoading()).toBe(false);
+  });
+
+  describe('Additional Coverage Specs', () => {
+    it('should handle error when opening invite modal and fetching students fails', () => {
+      const comp = make();
+      comp.openInviteModal();
+      expect(comp.showInviteModal()).toBe(true);
+
+      const req = httpTestingController.expectOne('http://mock-api/students');
+      req.flush('Error fetching', { status: 500, statusText: 'Internal Error' });
+      expect(comp.allStudents()).toEqual([]);
+    });
+
+    it('should sort quiz attempts descending by submittedAt', () => {
+      const comp = make();
+      // Set multiple enrolled students
+      (mockClassStore['currentClass'] as ReturnType<typeof signal>).set({
+        students: [
+          { id: 's1', name: 'John Doe' },
+          { id: 's2', name: 'Jane Smith' },
+        ],
+        lessons: [{ id: 'l1', title: 'Math 101' }],
+      });
+
+      comp.loadQuizAttempts();
+
+      const req = httpTestingController.expectOne(
+        'http://mock-content-api/lessons/l1/final-quiz/attempts',
+      );
+      req.flush([
+        { id: 'a1', studentId: 's1', score: 80, submittedAt: '2023-01-01T10:00:00Z' },
+        { id: 'a2', studentId: 's2', score: 90, completedAt: '2023-01-01T12:00:00Z' }, // Newer, completedAt fallback
+        { id: 'a3', studentId: 's1', score: 95, submittedAt: '2023-01-01T11:00:00Z' }, // Middle
+      ]);
+
+      const attempts = comp.quizAttempts();
+      expect(attempts.length).toBe(3);
+      expect(attempts[0].attemptId).toBe('a2'); // 12:00:00Z
+      expect(attempts[1].attemptId).toBe('a3'); // 11:00:00Z
+      expect(attempts[2].attemptId).toBe('a1'); // 10:00:00Z
+    });
+
+    it('should resolve student name from cached list or fallback to studentId', () => {
+      const comp = make();
+      // s1 enrolled has name 'John Doe'
+      // s2 not enrolled but cached in allStudents
+      comp.allStudents.set([
+        { studentId: 's2', firstName: 'Jane', lastName: 'Smith' }
+      ]);
+
+      // Trigger mapQuizAttempts indirectly or call private resolveStudentName if accessible
+      // Since resolveStudentName is private, we can trigger it via loadQuizAttempts
+      (mockClassStore['currentClass'] as ReturnType<typeof signal>).set({
+        students: [
+          { id: 's1', name: 'John Doe' },
+          { id: 's2' }, // Enrolled, but name is absent/undefined (should trigger cached lookup)
+          { id: 's3' }, // Enrolled, no name, not cached (should fallback to 's3')
+        ],
+        lessons: [{ id: 'l1', title: 'Math 101' }],
+      });
+
+      comp.loadQuizAttempts();
+
+      const req = httpTestingController.expectOne(
+        'http://mock-content-api/lessons/l1/final-quiz/attempts',
+      );
+      req.flush([
+        { id: 'a1', studentId: 's1', score: 80, submittedAt: '2023-01-01T10:00:00Z' },
+        { id: 'a2', studentId: 's2', score: 90, submittedAt: '2023-01-01T11:00:00Z' },
+        { id: 'a3', studentId: 's3', score: 95, submittedAt: '2023-01-01T12:00:00Z' },
+      ]);
+
+      const attempts = comp.quizAttempts();
+      expect(attempts.length).toBe(3);
+
+      // find 's1' attempt
+      const attS1 = attempts.find(a => a.studentId === 's1');
+      expect(attS1?.studentName).toBe('John Doe');
+
+      // find 's2' attempt (should be resolved to cached Jane Smith)
+      const attS2 = attempts.find(a => a.studentId === 's2');
+      expect(attS2?.studentName).toBe('Jane Smith');
+
+      // find 's3' attempt (should be resolved to ID 's3')
+      const attS3 = attempts.find(a => a.studentId === 's3');
+      expect(attS3?.studentName).toBe('s3');
+    });
   });
 });

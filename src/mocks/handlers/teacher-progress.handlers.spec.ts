@@ -69,9 +69,9 @@ describe('teacherProgressHandlers', () => {
     });
   });
 
-  describe('GET /api/v1/progress/professor/students', () => {
+  describe('GET /api/v1/progress/teacher/students', () => {
     it('should return the full list of mock students', async () => {
-      const url = getTargetUrl('/api/v1/progress/professor/students');
+      const url = getTargetUrl('/api/v1/progress/teacher/students');
       const response = await fetch(url);
       
       expect(response.status).toBe(200);

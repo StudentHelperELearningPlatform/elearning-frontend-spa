@@ -83,7 +83,7 @@ describe('TeacherProgressStore', () => {
       store.loadAllStudents();
       expect(store.loading()).toBe(true);
 
-      const req = httpMock.expectOne(`${mockApiUrl}/progress/professor/students`);
+      const req = httpMock.expectOne(`${mockApiUrl}/progress/teacher/students`);
       expect(req.request.method).toBe('GET');
 
       req.flush([
@@ -97,7 +97,7 @@ describe('TeacherProgressStore', () => {
 
     it('should set error state if loadAllStudents fails', () => {
       store.loadAllStudents();
-      const req = httpMock.expectOne(`${mockApiUrl}/progress/professor/students`);
+      const req = httpMock.expectOne(`${mockApiUrl}/progress/teacher/students`);
 
       req.flush('Not Found', { status: 404, statusText: 'Not Found' });
 
