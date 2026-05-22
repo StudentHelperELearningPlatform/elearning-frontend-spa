@@ -415,7 +415,7 @@ export const ProgressStore = signalStore(
       pipe(
         tap(() => patchState(store, { studentsLoading: true, studentsError: null })),
         switchMap(() =>
-          http.get<StudentSummary[]>(`${apiBase}/progress/professor/students`).pipe(
+          http.get<StudentSummary[]>(`${apiBase}/progress/teacher/students`).pipe(
             tapResponse({
               next: (students) => patchState(store, { students, studentsLoading: false }),
               error: (err: { message?: string }) => patchState(store, { studentsLoading: false, studentsError: err?.message ?? 'Failed to load students' }),

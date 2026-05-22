@@ -1206,6 +1206,25 @@ export class AdminDashboardComponent implements OnInit {
     return custom ?? '';
   }
 
+  safeExtractArray<T>(data: unknown): T[] {
+    if (Array.isArray(data)) {
+      return data as T[];
+    }
+    if (data && typeof data === 'object') {
+      const obj = data as Record<string, unknown>;
+      if (Array.isArray(obj['items'])) {
+        return obj['items'] as T[];
+      }
+      if (Array.isArray(obj['data'])) {
+        return obj['data'] as T[];
+      }
+      if (Array.isArray(obj['content'])) {
+        return obj['content'] as T[];
+      }
+    }
+    return [];
+  }
+
   // Loaders calling actual service HTTP endpoints
   loadUsers() {
     this.usersLoading.set(true);
@@ -1214,7 +1233,7 @@ export class AdminDashboardComponent implements OnInit {
     // Fetch live banned users list first (GET /api/v1/admin/users/banned)
     this.adminService.getBannedUsers().subscribe({
       next: (bannedData) => {
-        const bannedList = bannedData || [];
+        const bannedList = this.safeExtractArray<AdminUserRaw>(bannedData);
         const bannedIds = new Set<string>();
         
         bannedList.forEach((u: AdminUserRaw) => {
@@ -1225,7 +1244,7 @@ export class AdminDashboardComponent implements OnInit {
         // Fetch all users list (GET /api/v1/users)
         this.adminService.getUsers().subscribe({
           next: (allUsersData) => {
-            const mappedUsersList = (allUsersData || []).map((u: AdminUserRaw) => {
+            const mappedUsersList = this.safeExtractArray<AdminUserRaw>(allUsersData).map((u: AdminUserRaw) => {
               const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
               const isBanned = bannedIds.has(finalId) || u.status === 'BANNED' || u.banned === true;
               const userName = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.email || 'User';
@@ -1282,7 +1301,8 @@ export class AdminDashboardComponent implements OnInit {
     this.lessonsError.set(null);
     this.adminService.getLessons().subscribe({
       next: (data) => {
-        const mappedLessons = (data || []).map((l: AdminLessonRaw) => ({
+        const lessonsList = this.safeExtractArray<AdminLessonRaw>(data);
+        const mappedLessons = lessonsList.map((l: AdminLessonRaw) => ({
           id: l.id || '',
           title: l.title || 'Untitled Lesson',
           subject: l.subject || 'General',
@@ -1309,7 +1329,7 @@ export class AdminDashboardComponent implements OnInit {
     this.classesError.set(null);
     this.adminService.getClasses().subscribe({
       next: (data) => {
-        const mappedClasses = (data || []).map((c: AdminClassRaw) => ({
+        const mappedClasses = this.safeExtractArray<AdminClassRaw>(data).map((c: AdminClassRaw) => ({
           id: c.id || '',
           name: c.name || 'Unnamed Class',
           teacher: c.teacher || c.teacherName || 'Unknown Teacher',
@@ -1334,7 +1354,7 @@ export class AdminDashboardComponent implements OnInit {
     this.inboxError.set(null);
     this.adminService.getContactMessages().subscribe({
       next: (messages) => {
-        const mappedMessages = (messages || []).map((m: ContactMessage) => ({
+        const mappedMessages = this.safeExtractArray<ContactMessage>(messages).map((m: ContactMessage) => ({
           id: m.id || '',
           senderName: m.senderName || 'Anonymous',
           senderEmail: m.senderEmail || '',

@@ -358,6 +358,52 @@ describe('AdminDashboardComponent', () => {
     expect(component.users()[0].status).toBe('BANNED');
   });
 
+  it('should correctly handle paginated API response shapes using safeExtractArray helper', () => {
+    // 1. Array shape
+    expect(component.safeExtractArray([1, 2])).toEqual([1, 2]);
+    // 2. { items: [...] } shape
+    expect(component.safeExtractArray({ items: [3, 4] })).toEqual([3, 4]);
+    // 3. { data: [...] } shape
+    expect(component.safeExtractArray({ data: [5, 6] })).toEqual([5, 6]);
+    // 4. { content: [...] } shape
+    expect(component.safeExtractArray({ content: [7, 8] })).toEqual([7, 8]);
+    // 5. null/undefined/primitive shapes
+    expect(component.safeExtractArray(null)).toEqual([]);
+    expect(component.safeExtractArray(undefined)).toEqual([]);
+    expect(component.safeExtractArray(123)).toEqual([]);
+    expect(component.safeExtractArray("string")).toEqual([]);
+  });
+
+  it('should successfully parse paginated responses for loadLessons, loadClasses, loadContactMessages, and loadUsers', () => {
+    // Setup paginated structures
+    const paginatedLessons = { items: mockLessons, total: 1 };
+    const paginatedClasses = { data: mockClasses, total: 1 };
+    const paginatedMessages = { content: mockMessages, total: 1 };
+    const paginatedUsers = { items: mockUsers, total: 5 };
+    const paginatedBanned = { items: mockBannedUsers, total: 2 };
+
+    vi.spyOn(adminService, 'getLessons').mockReturnValue(of(paginatedLessons as never));
+    vi.spyOn(adminService, 'getClasses').mockReturnValue(of(paginatedClasses as never));
+    vi.spyOn(adminService, 'getContactMessages').mockReturnValue(of(paginatedMessages as never));
+    vi.spyOn(adminService, 'getUsers').mockReturnValue(of(paginatedUsers as never));
+    vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(of(paginatedBanned as never));
+
+    component.loadLessons();
+    expect(component.lessons().length).toBe(1);
+    expect(component.lessons()[0].title).toBe('Lesson A');
+
+    component.loadClasses();
+    expect(component.classes().length).toBe(1);
+    expect(component.classes()[0].name).toBe('Class A');
+
+    component.loadContactMessages();
+    expect(component.contactMessages().length).toBe(1);
+    expect(component.contactMessages()[0].senderName).toBe('User X');
+
+    component.loadUsers();
+    expect(component.users().length).toBe(5);
+  });
+
   it('should gracefully handle API failure when performBan fails', () => {
     const serviceSpy = vi.spyOn(adminService, 'banUser').mockReturnValue(throwError(() => new Error('Ban failed')));
 
