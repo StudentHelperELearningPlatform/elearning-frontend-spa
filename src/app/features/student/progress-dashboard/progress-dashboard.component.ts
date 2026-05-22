@@ -97,7 +97,7 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
 
         if (classes.length > 0) {
           this.classesLoading.set(true);
-          const requests = classes.map(id => 
+          const requests = classes.map(id =>
             this.classService.getClassDetail(id).pipe(
               catchError(() => of(null))
             )
@@ -122,6 +122,13 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
         this.renderRadarChart(skills);
       }
     });
+
+    effect(() => {
+      const continueLesson = this.progressStore.continueLesson();
+      if (continueLesson) {
+        this.progressStore.loadMyLessonStats({ lessonId: continueLesson.lessonId });
+      }
+    });
   }
 
   ngOnInit() {
@@ -131,9 +138,9 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     if (studentId) {
       this.progressStore.loadDashboard(studentId);
     }
-    
+
     this.profileStore.loadStudentProfile();
-    
+
     // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
     this.progressStore.loadMyDashboard({ classId: '00000000-0000-0000-0000-000000000000' });
   }

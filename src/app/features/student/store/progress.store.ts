@@ -97,6 +97,69 @@ export interface StudentHistory {
   history: StudentDetailEntry[];
 }
 
+export interface SubjectResponse {
+  subjectId: string;
+  subjectName?: string;
+  skillLevel?: number;
+  confidence?: number;
+}
+
+export interface DashboardResponse {
+  firstName?: string;
+  lastName?: string;
+  studentId?: string;
+  subjects?: SubjectResponse[];
+  currentStreak?: number;
+  
+  // Legacy / mock fields
+  student?: {
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    totalLessons?: number;
+    completedLessons?: number;
+  };
+  totalLessons?: number;
+  completedLessons?: number;
+  skillLevels?: SkillLevel[];
+  streak?: {
+    currentStreak?: number;
+    longestStreak?: number;
+    lastActivityDate?: string | null;
+  };
+  longestStreak?: number;
+  lastActivityDate?: string | null;
+  progressRecords?: ProgressRecord[];
+  recentActivity?: ActivityItem[];
+  milestones?: Milestone[];
+  upcomingQuizzes?: UpcomingQuiz[];
+}
+
+export interface MyLessonStatsResponse {
+  lessonId: string;
+  status?: string;
+  accumulatedScore?: number;
+  completionPercentage?: number;
+  completedModules?: number;
+  totalModules?: number;
+  quizScore?: number | null;
+  timeSpentMinutes?: number | null;
+  lastAccessedAt?: string | null;
+  classAverageScore?: number | null;
+}
+
+export interface MyHistoryResponseItem {
+  id?: string;
+  lessonId?: string;
+  startedAt?: string;
+  completedAt?: string;
+  lessonTitle?: string;
+  subject?: string;
+  status?: 'not_started' | 'in_progress' | 'completed';
+  score?: number | null;
+  dateCompleted?: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Store state
 // ---------------------------------------------------------------------------
@@ -255,26 +318,50 @@ export const ProgressStore = signalStore(
     
     // ── Legacy (apelat de progress-dashboard.component.ts) ─────────────
     loadDashboard(studentId: string) {
+      void studentId;
       patchState(store, { loading: true, error: null, dashboardLoading: true });
-      http.get<DashboardData>(`${apiBase}/students/${studentId}/dashboard`).subscribe({
-        next: (data) => {
-          patchState(store, {
-            student: data.student ?? null,
-            skillLevels: data.skillLevels ?? [],
-            streak: data.streak ?? null,
-            progressRecords: data.progressRecords ?? [],
-            recentActivity: data.recentActivity ?? [],
-            milestones: data.milestones ?? [],
-            upcomingQuizzes: data.upcomingQuizzes ?? [],
-            loading: false,
-            dashboardLoading: false,
-            error: null,
-          });
-        },
-        error: () => {
-          patchState(store, { loading: false, dashboardLoading: false, error: 'Failed to load dashboard data.' });
-        },
-      });
+      http
+        .get<DashboardResponse>(`${apiBase}/progress/me/dashboard`, {
+          params: { classId: '00000000-0000-0000-0000-000000000000' }
+        })
+        .subscribe({
+          next: (data) => {
+            const studentInfo = {
+              id: data?.studentId || data?.student?.id || '',
+              firstName: data?.firstName || data?.student?.firstName || '',
+              lastName: data?.lastName || data?.student?.lastName || '',
+              totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
+              completedLessons: data?.completedLessons ?? data?.student?.completedLessons ?? 0,
+            };
+            const mappedSkillLevels = data?.subjects
+              ? data.subjects.map((s: SubjectResponse) => ({
+                  subject: s.subjectName || s.subjectId || '',
+                  level: s.skillLevel ?? 0,
+                }))
+              : (data?.skillLevels ?? []);
+            const mappedStreak = {
+              currentStreak: data?.currentStreak ?? data?.streak?.currentStreak ?? 0,
+              longestStreak: data?.longestStreak ?? data?.streak?.longestStreak ?? 0,
+              lastActivityDate: data?.lastActivityDate ?? data?.streak?.lastActivityDate ?? '',
+            };
+
+            patchState(store, {
+              student: studentInfo,
+              skillLevels: mappedSkillLevels,
+              streak: mappedStreak,
+              progressRecords: data?.progressRecords ?? [],
+              recentActivity: data?.recentActivity ?? [],
+              milestones: data?.milestones ?? [],
+              upcomingQuizzes: data?.upcomingQuizzes ?? [],
+              loading: false,
+              dashboardLoading: false,
+              error: null,
+            });
+          },
+          error: () => {
+            patchState(store, { loading: false, dashboardLoading: false, error: 'Failed to load dashboard data.' });
+          },
+        });
     },
 
     // ── Sprint 6 live endpoints ──────────────────────────────────────────────
@@ -371,10 +458,21 @@ export const ProgressStore = signalStore(
       pipe(
         tap(() => patchState(store, { myLessonStatsLoading: true, myLessonStatsError: null })),
         switchMap(({ lessonId }) =>
-          http.get<MyLessonStats>(`${apiBase}/progress/me/lessons/${lessonId}/stats`).pipe(
+          http.get<MyLessonStatsResponse>(`${apiBase}/progress/me/lessons/${lessonId}/stats`).pipe(
             tapResponse({
-              next: (stats) =>
-                patchState(store, { myLessonStats: stats, myLessonStatsLoading: false }),
+              next: (data) => {
+                const mappedStats: MyLessonStats = {
+                  lessonId: data?.lessonId || '',
+                  completionPercentage: data?.completionPercentage ?? (data?.status === 'COMPLETED' ? 100 : (data?.status === 'IN_PROGRESS' ? 50 : 0)),
+                  completedModules: data?.completedModules ?? (data?.status === 'COMPLETED' ? 1 : 0),
+                  totalModules: data?.totalModules ?? 1,
+                  quizScore: data?.quizScore ?? data?.accumulatedScore ?? null,
+                  timeSpentMinutes: data?.timeSpentMinutes ?? null,
+                  lastAccessedAt: data?.lastAccessedAt ?? null,
+                  classAverageScore: data?.classAverageScore ?? null,
+                };
+                patchState(store, { myLessonStats: mappedStats, myLessonStatsLoading: false });
+              },
               error: (err: { message?: string }) =>
                 patchState(store, {
                   myLessonStatsLoading: false,
@@ -390,10 +488,19 @@ export const ProgressStore = signalStore(
       pipe(
         tap(() => patchState(store, { myHistoryLoading: true, myHistoryError: null })),
         switchMap(() =>
-          http.get<HistoryEntry[]>(`${apiBase}/progress/me/history`).pipe(
+          http.get<MyHistoryResponseItem[]>(`${apiBase}/progress/me/history`).pipe(
             tapResponse({
-              next: (history) =>
-                patchState(store, { myHistory: history ?? [], myHistoryLoading: false }),
+              next: (history) => {
+                const mappedHistory: HistoryEntry[] = (history || []).map((h: MyHistoryResponseItem) => ({
+                  lessonId: h.lessonId || '',
+                  lessonTitle: h.lessonTitle || `Lecția ${h.lessonId ? h.lessonId.substring(0, 8) : ''}`,
+                  subject: h.subject || 'General',
+                  status: h.status || (h.completedAt ? 'completed' : 'in_progress'),
+                  score: h.score ?? null,
+                  dateCompleted: h.dateCompleted || h.completedAt || null,
+                }));
+                patchState(store, { myHistory: mappedHistory, myHistoryLoading: false });
+              },
               error: (err: { message?: string }) =>
                 patchState(store, {
                   myHistoryLoading: false,

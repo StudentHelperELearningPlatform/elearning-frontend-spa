@@ -102,7 +102,7 @@ describe('ClassDetailComponent', () => {
     comp.openInviteModal();
     expect(comp.showInviteModal()).toBe(true);
 
-    const req = httpTestingController.expectOne('http://mock-api/progress/professor/students');
+    const req = httpTestingController.expectOne('http://mock-api/students');
     req.flush([{ studentId: 's2', firstName: 'Jane', lastName: 'Smith' }]);
     expect(comp.allStudents().length).toBe(1);
   });

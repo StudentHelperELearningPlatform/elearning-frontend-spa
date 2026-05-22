@@ -357,6 +357,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
       this.lessonId.set(id);
       this.store.loadLesson(id);
       this.store.loadFinalQuizAttempts(id);
+      this.progressStore.loadMyLessonStats({ lessonId: id });
     }
   }
 

@@ -198,7 +198,7 @@ describe('ProgressStore', () => {
     it('should populate legacy state fields on success', () => {
       store.loadDashboard('stu-1');
       const req = http.expectOne((r) =>
-        r.url.includes('/students/stu-1/dashboard'),
+        r.url.includes('/progress/me/dashboard'),
       );
       req.flush(mockDashboard);
       expect(store.loading()).toBe(false);
@@ -208,7 +208,7 @@ describe('ProgressStore', () => {
     it('should set error state when legacy API fails', () => {
       store.loadDashboard('stu-1');
       const req = http.expectOne((r) =>
-        r.url.includes('/students/stu-1/dashboard'),
+        r.url.includes('/progress/me/dashboard'),
       );
       req.error(new ProgressEvent('error'));
       expect(store.loading()).toBe(false);

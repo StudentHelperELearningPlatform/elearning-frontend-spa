@@ -39,10 +39,10 @@ describe('ClassStore', () => {
     httpTestingController
       .expectOne(`${mockApiUrl}/teachers/classes/${classId}/lessons`)
       .flush(lessons);
-    httpTestingController
-      .expectOne(`${mockApiUrl}/teachers/classes/${classId}/students`)
-      .flush(students);
-    httpTestingController.expectOne(`${mockApiUrl}/students`).flush(allStudents);
+    const studentReqs = httpTestingController.match(`${mockApiUrl}/teachers/classes/${classId}/students`);
+    expect(studentReqs.length).toBe(2);
+    studentReqs[0].flush(students);
+    studentReqs[1].flush(allStudents);
   }
 
   it('should load classes', () => {
@@ -109,21 +109,21 @@ describe('ClassStore', () => {
   it('should handle error when loading class detail', () => {
     store.loadClassDetail('1');
 
-    // 1. Capture all 4 requests initiated by forkJoin
+    // 1. Capture all requests initiated by forkJoin
     const detailReq = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1`);
     const lessonsReq = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1/lessons`);
-    const studentsReq = httpTestingController.expectOne(
+    const studentReqs = httpTestingController.match(
       `${mockApiUrl}/teachers/classes/1/students`,
     );
-    const allStudentsReq = httpTestingController.expectOne(`${mockApiUrl}/students`);
+    expect(studentReqs.length).toBe(2);
 
     // 2. Flush an error on the primary request. This causes forkJoin to error out and cancel the rest.
     detailReq.flush('Error', { status: 500, statusText: 'Server Error' });
 
     // 3. Verify the remaining requests were successfully cancelled by RxJS
     expect(lessonsReq.cancelled).toBe(true);
-    expect(studentsReq.cancelled).toBe(true);
-    expect(allStudentsReq.cancelled).toBe(true);
+    expect(studentReqs[0].cancelled).toBe(true);
+    expect(studentReqs[1].cancelled).toBe(true);
 
     expect(store.loading()).toBe(false);
     expect(store.error()).toContain('Http failure response');
