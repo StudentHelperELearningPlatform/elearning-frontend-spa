@@ -130,13 +130,13 @@ describe('StudentProfileComponent', () => {
     vi.advanceTimersByTime(500);
 
     expect(spyMsg).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'success', summary: 'Success' })
+      expect.objectContaining({ severity: 'success', summary: 'Success' }),
     );
     expect(component.isEditing()).toBe(false);
     vi.useRealTimers();
   });
 
-  it('should handle avatar file selection', () => {
+  it('should handle avatar file selection', async () => {
     fixture.detectChanges();
     const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/profile`);
     req.flush({ firstName: 'Test', lastName: 'Student' });
@@ -151,10 +151,10 @@ describe('StudentProfileComponent', () => {
     const spyMsg = vi.spyOn(messageService, 'add');
     component.onFileSelected(mockEvent);
 
-    // Give FileReader a moment
-    setTimeout(() => {
-      expect(spyMsg).toHaveBeenCalled();
-    }, 100);
+    // Using an awaited Promise instead of a raw setTimeout prevents Uncaught Exceptions
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(spyMsg).toHaveBeenCalled();
   });
 
   it('should compute initials correctly', () => {
