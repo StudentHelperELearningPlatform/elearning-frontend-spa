@@ -479,7 +479,7 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
           this.store.save(() => {
             this.autoSaveInFlight = false;
             this.autoSaveFailed.set(false);
-          });
+          }, true);
         }
       });
   }
@@ -490,7 +490,7 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   }
 
   protected onModuleBlur(): void {
-    this.store.save();
+    this.store.save(undefined, true);
   }
   protected onAddModule(): void {
     this.store.addModule();
