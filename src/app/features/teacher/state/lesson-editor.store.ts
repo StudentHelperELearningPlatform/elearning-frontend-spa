@@ -120,13 +120,18 @@ export const LessonEditorStore = signalStore(
   withState<LessonEditorState>(initialState),
   withComputed((state) => ({
     isDirty: computed(() => state.saveState() === 'unsaved'),
+    canSave: computed(() => {
+      const l = state.lesson();
+      return l.modules.every((m) => (m.content || '').trim().length > 0);
+    }),
     canPublish: computed(() => {
       const l = state.lesson();
       return (
         (l.title || '').trim().length > 0 &&
         (l.subject || '').trim().length > 0 &&
         l.estimated_duration_minutes > 0 &&
-        l.modules.length > 0
+        l.modules.length > 0 &&
+        l.modules.every((m) => (m.content || '').trim().length > 0)
       );
     }),
   })),
@@ -348,13 +353,25 @@ export const LessonEditorStore = signalStore(
           markUnsaved();
         },
 
-        async save(onComplete?: (saved: LessonDraft) => void) {
+        async save(onComplete?: (saved: LessonDraft) => void, background = false) {
+          if (!store.canSave()) {
+            if (!background) {
+              const message = 'Cannot save: All modules must have content.';
+              patchState(store, { saveState: 'error', saveError: message });
+              messageService?.add({
+                severity: 'warn',
+                summary: 'Validation Error',
+                detail: message,
+              });
+            }
+            return;
+          }
           try {
             const savedLesson = await persist(store.lesson());
             messageService?.add({
               severity: 'success',
               summary: 'Saved',
-              detail: 'Draft saved successfully.',
+              detail: 'Saved successfully.',
             });
             if (onComplete) onComplete(savedLesson);
           } catch (err: unknown) {
