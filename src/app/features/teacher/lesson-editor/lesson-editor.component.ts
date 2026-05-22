@@ -213,7 +213,11 @@ interface MetadataForm {
         }
         <ul cdkDropList (cdkDropListDropped)="onModuleDrop($event)" class="space-y-4">
           @for (module of modules(); track module.id; let idx = $index) {
-            <li cdkDrag class="border-2 border-black rounded-2xl bg-gray-50 overflow-hidden">
+            <li
+              cdkDrag
+              class="border-2 border-black rounded-2xl bg-gray-50 overflow-hidden"
+              [attr.data-module-id]="module.id"
+            >
               <ng-template cdkDragPreview [matchSize]="true">
                 <div
                   class="w-full !h-fit !bg-white !border-2 !border-solid !border-black !rounded-2xl flex flex-wrap md:flex-nowrap items-center gap-2 sm:gap-3 !p-3 relative z-50 box-border"
@@ -298,7 +302,7 @@ interface MetadataForm {
                   <p-editor
                     [ngModel]="module.content"
                     (ngModelChange)="onModuleContentChange(module.id, $event)"
-                    (onBlur)="onModuleBlur()"
+                    (onBlur)="onModuleBlur(module.id)"
                     [style]="{ height: '180px' }"
                   ></p-editor>
 
@@ -489,8 +493,27 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.destroy$.complete();
   }
 
-  protected onModuleBlur(): void {
-    this.store.save(undefined, true);
+  protected onModuleBlur(moduleId: string): void {
+    // Delay the save slightly to allow the browser's focus to settle
+    setTimeout(() => {
+      // Check if the newly focused element is anywhere inside the current module's card
+      // (e.g., they clicked the module title, media upload, or a formatting button)
+      const isInsideModule = document.activeElement?.closest(`[data-module-id="${moduleId}"]`);
+
+      // Quill (the engine behind p-editor) sometimes renders floating tooltips
+      // (like the link URL input) directly to the <body>. We protect those too.
+      const isFloatingTooltip = document.activeElement?.closest('.ql-tooltip, .p-overlaypanel');
+
+      // If the user is still interacting with this module or its popups, cancel the save
+      if (isInsideModule || isFloatingTooltip) {
+        return;
+      }
+
+      // Focus genuinely left the module card entirely. Proceed with background save.
+      if (this.store.canSave()) {
+        this.store.save(undefined, true);
+      }
+    }, 200);
   }
   protected onAddModule(): void {
     this.store.addModule();
