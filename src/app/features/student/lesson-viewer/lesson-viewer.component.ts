@@ -50,7 +50,7 @@ import { CheckoutModalComponent } from '../payments/checkout-modal.component';
               store.currentLesson()?.subject
             }}</app-badge>
             <app-badge variant="secondary" icon="schedule"
-              >{{ store.currentLesson()?.duration }}m</app-badge
+              >{{ store.currentLesson()?.duration }}</app-badge
             >
           </div>
         </div>
