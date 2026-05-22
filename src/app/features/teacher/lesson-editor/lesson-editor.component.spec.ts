@@ -43,6 +43,7 @@ describe('LessonEditorComponent', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers(); // Ensure timer mocking doesn't leak to other tests
+    vi.unstubAllGlobals();
     store?.reset();
   });
 
@@ -110,6 +111,31 @@ describe('LessonEditorComponent', () => {
     expect(saveSpy).toHaveBeenCalledWith(undefined, true);
   });
 
+  it('onModuleBlur aborts save if focus is still inside the module or tooltip', () => {
+    vi.useFakeTimers();
+    const saveSpy = vi.spyOn(store, 'save');
+    const closestSpy = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('document', { activeElement: { closest: closestSpy } });
+
+    component['onModuleBlur']('module-1');
+    vi.advanceTimersByTime(200);
+
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  it('onModuleBlur aborts save if store cannot save yet (empty modules)', () => {
+    vi.useFakeTimers();
+    vi.spyOn(store, 'canSave').mockReturnValue(false);
+    const saveSpy = vi.spyOn(store, 'save');
+    const closestSpy = vi.fn().mockReturnValue(false);
+    vi.stubGlobal('document', { activeElement: { closest: closestSpy } });
+
+    component['onModuleBlur']('module-1');
+    vi.advanceTimersByTime(200);
+
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
   it('onModuleTitleChange updates store and triggers autosave', () => {
     vi.useFakeTimers();
     const updateSpy = vi.spyOn(store, 'updateModule');
@@ -146,40 +172,64 @@ describe('LessonEditorComponent', () => {
     expect(saveSpy).toHaveBeenCalled();
   });
 
-  it('confirmRemove deletes module if confirmed', () => {
+  it('confirmRemove deletes module and triggers autosave if confirmed', () => {
+    vi.useFakeTimers();
     const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
     const removeSpy = vi.spyOn(store, 'removeModule');
+    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
 
     component['confirmRemove']('module-1');
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(removeSpy).toHaveBeenCalledWith('module-1');
+    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
+    expect(saveSpy).toHaveBeenCalled();
   });
 
   it('confirmRemove does nothing if declined', () => {
+    vi.useFakeTimers();
     const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(false);
     const removeSpy = vi.spyOn(store, 'removeModule');
+    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
 
     component['confirmRemove']('module-1');
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(removeSpy).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
+    expect(saveSpy).not.toHaveBeenCalled(); // No autosave triggered
   });
 
-  it('onModuleDrop reorders modules if indexes differ', () => {
+  it('onModuleDrop reorders modules and triggers autosave if indexes differ', () => {
+    vi.useFakeTimers();
+    
+    store.addModule();
+    store.addModule();
+
     const reorderSpy = vi.spyOn(store, 'reorderModules');
+    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+
     component['onModuleDrop']({ previousIndex: 0, currentIndex: 1 } as CdkDragDrop<
       LessonModuleDraft[]
     >);
+
     expect(reorderSpy).toHaveBeenCalledWith(0, 1);
+    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
+    expect(saveSpy).toHaveBeenCalled();
   });
 
   it('onModuleDrop does nothing if index is the same', () => {
+    vi.useFakeTimers();
     const reorderSpy = vi.spyOn(store, 'reorderModules');
+    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+
     component['onModuleDrop']({ previousIndex: 1, currentIndex: 1 } as CdkDragDrop<
       LessonModuleDraft[]
     >);
+
     expect(reorderSpy).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
+    expect(saveSpy).not.toHaveBeenCalled();
   });
 
   it('toggleCollapsed switches the collapsed state', () => {
@@ -191,10 +241,14 @@ describe('LessonEditorComponent', () => {
   });
 
   // ── Publishing & Modals ──────────────────────────────────────────────────
-  it('publish without title/subject/grade/modules is rejected (canPublish=false)', () => {
+  it('publish without title/subject/grade/modules is rejected and touches form (canPublish=false)', () => {
     const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({ id: 'x' }));
-    store.reset();
+    const markTouchedSpy = vi.spyOn(component['metaForm'], 'markAllAsTouched');
+
+    store.reset(); // implies canPublish() is false
     component['onPublishClicked']();
+
+    expect(markTouchedSpy).toHaveBeenCalled();
     expect(postSpy).not.toHaveBeenCalled();
   });
 
@@ -222,6 +276,14 @@ describe('LessonEditorComponent', () => {
 
     component['onUnpublish']();
     expect(unpublishSpy).toHaveBeenCalled();
+  });
+
+  it('onUnpublish aborts if confirm is declined', () => {
+    vi.spyOn(globalThis, 'confirm').mockReturnValue(false);
+    const unpublishSpy = vi.spyOn(store, 'unpublish');
+
+    component['onUnpublish']();
+    expect(unpublishSpy).not.toHaveBeenCalled();
   });
 
   it('openCheckQuiz displays alert and calls save if unpersisted/new module', () => {
@@ -308,54 +370,61 @@ describe('LessonEditorComponent', () => {
   });
 
   // ── S6-lesson-save: after first save of a new lesson, redirect to /:id/edit
-  it('onSaveDraft redirects to /teacher/lessons/:id/edit after first save of new lesson', async () => {
+  it('onSaveDraft redirects to /teacher/lessons/:id/edit after first save of new lesson', () => {
     const router = TestBed.inject(Router);
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    vi.spyOn(store, 'save').mockImplementation(async (onComplete) => {
-      onComplete?.({
-        id: 'lesson-new-42',
-        title: 'X',
-        subject: 'Math',
-        difficulty_level: 'BEGINNER',
-        estimated_duration_minutes: 10,
-        short_description: '',
-        status: 'DRAFT',
-        modules: [],
-      });
+
+    // We execute the callback synchronously to guarantee line coverage is registered properly
+    vi.spyOn(store, 'save').mockImplementation((onComplete) => {
+      if (onComplete) {
+        onComplete({
+          id: 'lesson-new-42',
+          title: 'X',
+          subject: 'Math',
+          difficulty_level: 'BEGINNER',
+          estimated_duration_minutes: 10,
+          short_description: '',
+          status: 'DRAFT',
+          modules: [],
+        });
+      }
+      return Promise.resolve();
     });
 
     store.reset();
     component['isEditRoute'].set(false);
     component['onSaveDraft']();
 
-    // Allow async save callback to flush
-    await Promise.resolve();
+    expect(component['isEditRoute']()).toBe(true);
     expect(navigateSpy).toHaveBeenCalledWith(['/teacher/lessons', 'lesson-new-42', 'edit'], {
       replaceUrl: true,
     });
   });
 
-  it('onSaveDraft does NOT redirect when editing an existing lesson', async () => {
+  it('onSaveDraft does NOT redirect when editing an existing lesson', () => {
     const router = TestBed.inject(Router);
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    vi.spyOn(store, 'save').mockImplementation(async (onComplete) => {
-      onComplete?.({
-        id: 'lesson-existing-1',
-        title: 'X',
-        subject: 'Math',
-        difficulty_level: 'BEGINNER',
-        estimated_duration_minutes: 10,
-        short_description: '',
-        status: 'DRAFT',
-        modules: [],
-      });
+
+    vi.spyOn(store, 'save').mockImplementation((onComplete) => {
+      if (onComplete) {
+        onComplete({
+          id: 'lesson-existing-1',
+          title: 'X',
+          subject: 'Math',
+          difficulty_level: 'BEGINNER',
+          estimated_duration_minutes: 10,
+          short_description: '',
+          status: 'DRAFT',
+          modules: [],
+        });
+      }
+      return Promise.resolve();
     });
 
     store.reset({ id: 'lesson-existing-1' });
     component['isEditRoute'].set(true);
     component['onSaveDraft']();
 
-    await Promise.resolve();
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 
