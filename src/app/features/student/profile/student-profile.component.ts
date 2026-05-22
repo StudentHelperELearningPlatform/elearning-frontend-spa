@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, effect, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MessageService } from 'primeng/api';
@@ -28,7 +28,9 @@ import { getInitials, handleFileSelect, parseFullName } from '../../../shared/ut
   ],
   providers: [MessageService],
   template: `
-    <div class="max-w-6xl mx-auto p-4 md:p-8 font-sans bg-gray-50 text-black min-h-[calc(100vh-84px)]">
+    <div
+      class="max-w-6xl mx-auto p-4 md:p-8 font-sans bg-gray-50 text-black min-h-[calc(100vh-84px)]"
+    >
       <p-toast></p-toast>
       <div class="flex items-center justify-between mb-8 border-b-4 border-black pb-4">
         <h1 class="text-4xl md:text-5xl font-black uppercase tracking-tighter">My Profile</h1>
@@ -40,7 +42,12 @@ import { getInitials, handleFileSelect, parseFullName } from '../../../shared/ut
         } @else {
           <div class="flex gap-4">
             <app-button variant="secondary" (btnClick)="cancelEdit()">Cancel</app-button>
-            <app-button variant="primary" icon="save" [disabled]="form.invalid || profileStore.saving()" (btnClick)="saveProfile()">
+            <app-button
+              variant="primary"
+              icon="save"
+              [disabled]="form.invalid || profileStore.saving()"
+              (btnClick)="saveProfile()"
+            >
               {{ profileStore.saving() ? 'Saving...' : 'Save Changes' }}
             </app-button>
           </div>
@@ -57,7 +64,11 @@ import { getInitials, handleFileSelect, parseFullName } from '../../../shared/ut
             <app-card>
               <div class="flex flex-col items-center text-center">
                 <div class="relative group mb-6">
-                  <app-avatar size="xl" [initials]="getInitials(profile.name)" [src]="profile.avatarUrl ?? ''">
+                  <app-avatar
+                    size="xl"
+                    [initials]="getInitials(profile.name)"
+                    [src]="profile.avatarUrl ?? ''"
+                  >
                   </app-avatar>
 
                   @if (isEditing()) {
@@ -65,7 +76,12 @@ import { getInitials, handleFileSelect, parseFullName } from '../../../shared/ut
                       class="absolute bottom-0 right-0 w-10 h-10 bg-[#0ABAB5] border-2 border-black rounded-full flex items-center justify-center text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all cursor-pointer"
                     >
                       <span class="material-icons text-xl">photo_camera</span>
-                      <input type="file" accept="image/*" class="hidden" (change)="onFileSelected($event)" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                        (change)="onFileSelected($event)"
+                      />
                     </label>
                   }
                 </div>
@@ -79,12 +95,16 @@ import { getInitials, handleFileSelect, parseFullName } from '../../../shared/ut
                 </app-badge>
 
                 <div class="w-full text-left space-y-4 pt-6 border-t-2 border-black/10">
-                  <div class="flex justify-between items-center bg-white p-4 border-2 border-black rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <div
+                    class="flex justify-between items-center bg-white p-4 border-2 border-black rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                  >
                     <div>
                       <p class="text-xs font-black text-gray-500 uppercase tracking-widest">
                         Enrolled Lessons
                       </p>
-                      <p class="text-3xl font-black text-[#0ABAB5]">{{ profile.enrolledLessonsCount }}</p>
+                      <p class="text-3xl font-black text-[#0ABAB5]">
+                        {{ profile.enrolledLessonsCount }}
+                      </p>
                     </div>
                     <span class="material-icons text-4xl text-gray-200">menu_book</span>
                   </div>
@@ -117,7 +137,9 @@ import { getInitials, handleFileSelect, parseFullName } from '../../../shared/ut
                   </div>
 
                   <div class="sm:col-span-2">
-                    <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Bio</p>
+                    <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
+                      Bio
+                    </p>
                     <p class="text-lg font-medium leading-relaxed">{{ profile.bio }}</p>
                   </div>
                 </div>
@@ -181,7 +203,7 @@ export class StudentProfileComponent implements OnInit {
   private messageService = inject(MessageService);
 
   isEditing = signal(false);
-  
+
   form = this.fb.group({
     name: ['', Validators.required],
     school: [''],
@@ -191,14 +213,7 @@ export class StudentProfileComponent implements OnInit {
 
   private pendingAvatarBase64: string | null = null;
 
-  constructor() {
-    effect(() => {
-      const error = this.profileStore.error();
-      if (error) {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: error });
-      }
-    });
-  }
+  // REMOVED constructor effect that was triggering the second toast
 
   ngOnInit() {
     this.profileStore.loadStudentProfile();
@@ -241,10 +256,15 @@ export class StudentProfileComponent implements OnInit {
     }
 
     this.profileStore.updateStudentProfile(payload);
-    
+
+    // Kept checking the store error so the success toast is suppressed if the call failed
     setTimeout(() => {
       if (!this.profileStore.error()) {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Profile updated successfully' });
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Profile updated successfully',
+        });
         this.isEditing.set(false);
       }
     }, 500);

@@ -60,7 +60,6 @@ const initialState: LessonEditorState = {
 const isPersisted = (lesson: LessonDraft): lesson is LessonDraft & { id: string } =>
   typeof lesson.id === 'string' && lesson.id.length > 0;
 
-// FIX: Supply "Untitled Lesson" and "General" to bypass the backend @NotBlank validation
 const toCreatePayload = (lesson: LessonDraft) => ({
   title: lesson.title.trim() ? lesson.title : 'Untitled Lesson',
   subject: lesson.subject.trim() ? lesson.subject : 'General',
@@ -186,7 +185,6 @@ export const LessonEditorStore = signalStore(
           const safeContent = (mod.content || '').trim().length > 0 ? mod.content : ' ';
           const safeTitle = (mod.title || '').trim().length > 0 ? mod.title : 'Untitled Module';
 
-          // FIX: Removed orderIndex from POST/PUT because AddSubcapitolRequest does not accept it.
           if (isNewSubcapitol) {
             const subRes = (await lastValueFrom(
               http.post(`${apiBase}/lessons/${lessonId}/subcapitols`, {
@@ -279,7 +277,7 @@ export const LessonEditorStore = signalStore(
             error: (err: unknown) => {
               const message = parseBackendError(err);
               patchState(store, { loading: false, saveError: message });
-              messageService?.add({ severity: 'error', summary: 'Load Failed', detail: message });
+              // REMOVED messageService call (error interceptor handles this)
             },
           });
         },
@@ -362,7 +360,7 @@ export const LessonEditorStore = signalStore(
           } catch (err: unknown) {
             const message = parseBackendError(err);
             patchState(store, { saveState: 'error', saveError: message });
-            messageService?.add({ severity: 'error', summary: 'Save Failed', detail: message });
+            // REMOVED messageService call (error interceptor handles this)
           }
         },
 
@@ -386,7 +384,7 @@ export const LessonEditorStore = signalStore(
           } catch (err: unknown) {
             const message = parseBackendError(err);
             patchState(store, { saveState: 'error', saveError: message });
-            messageService?.add({ severity: 'error', summary: 'Publish Failed', detail: message });
+            // REMOVED messageService call (error interceptor handles this)
           }
         },
 
@@ -409,11 +407,7 @@ export const LessonEditorStore = signalStore(
             error: (err: unknown) => {
               const message = parseBackendError(err);
               patchState(store, { saveState: 'error', saveError: message });
-              messageService?.add({
-                severity: 'error',
-                summary: 'Unpublish Failed',
-                detail: message,
-              });
+              // REMOVED messageService call (error interceptor handles this)
             },
           });
         },
