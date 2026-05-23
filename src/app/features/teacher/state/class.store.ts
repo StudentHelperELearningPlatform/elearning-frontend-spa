@@ -254,8 +254,8 @@ export const ClassStore = signalStore(
 
     addStudent(classId: string, studentId: string) {
       return http.post(
-        `${userApi}/teachers/classes/${classId}/students/${studentId}`,
-        {},
+        `${userApi}/teachers/classes/${classId}/students`,
+        { userId: studentId },
       );
     },
 

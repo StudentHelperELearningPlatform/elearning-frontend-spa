@@ -150,15 +150,17 @@ describe('teacherClassesHandlers', () => {
     });
   });
 
-  describe('POST /teachers/classes/:classId/students/:studentId', () => {
-    it('should add student to a class', async () => {
-      const url = getTargetUrl('/teachers/classes/1/students/s3');
-      const response = await fetch(url, { method: 'POST' });
-      
-      expect(response.status).toBe(200);
+  describe('POST /teachers/classes/:classId/students', () => {
+    it('should add a student to the class', async () => {
+      const url = getTargetUrl('/teachers/classes/1/students');
+      const response = await fetch(url, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 's3' })
+      });
       const data = await response.json();
-      
-      expect(data.success).toBe(true);
+      expect(response.status).toBe(200);
+      expect(data).toEqual({ success: true });
     });
   });
 

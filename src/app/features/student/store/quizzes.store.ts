@@ -149,6 +149,9 @@ interface QuizzesState {
   resultDetail: QuizResultDetail | null;
   resultDetailLoading: boolean;
   resultDetailError: string | null;
+  /** Per-question AI explanations returned by the final-quiz explain endpoint (one per submitted answer) */
+  quizExplanations: unknown[] | null;
+  quizExplanationLoading: boolean;
 }
 
 const getInitialQuizState = (quiz: QuizWithMeta | null, isStart: boolean) => ({
@@ -179,6 +182,8 @@ export const QuizzesStore = signalStore(
     resultDetail: null,
     resultDetailLoading: false,
     resultDetailError: null,
+    quizExplanations: null,
+    quizExplanationLoading: false,
   }),
   withComputed((state) => ({
     answeredCount: computed(() => Object.keys(state.answers()).length),
@@ -505,6 +510,41 @@ export const QuizzesStore = signalStore(
           resultDetailLoading: false,
           resultDetailError: null,
         });
+      },
+
+      /**
+       * Call the AI explanation endpoint for a final-quiz.
+       * Endpoint: POST /api/v1/lessons/{id}/final-quiz/explain
+       * Header X-User-Id is added automatically by the auth interceptor.
+       * @param lessonId  The lesson whose final quiz was taken.
+       * @param userAnswers   The student's submitted answers as an array of arrays of strings.
+       */
+      explainQuiz(lessonId: string, userAnswers: string[][]): void {
+        patchState(store, { quizExplanationLoading: true, quizExplanations: null });
+        http
+          .post<unknown[]>(
+            `${quizApi}/lessons/${lessonId}/final-quiz/explain`,
+            { user_answers: userAnswers },
+          )
+          .subscribe({
+            next: (res) => {
+              // Response is an array — one explanation object per submitted answer
+              patchState(store, {
+                quizExplanations: Array.isArray(res) ? res : [res],
+                quizExplanationLoading: false,
+              });
+            },
+            error: () => {
+              patchState(store, {
+                quizExplanations: [],
+                quizExplanationLoading: false,
+              });
+            },
+          });
+      },
+
+      clearQuizExplanation(): void {
+        patchState(store, { quizExplanations: null, quizExplanationLoading: false });
       },
     };
   }),

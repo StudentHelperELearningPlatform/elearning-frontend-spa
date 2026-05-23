@@ -5,6 +5,7 @@ import {
   DestroyRef,
   effect,
   inject,
+  OnDestroy,
   OnInit,
   signal,
 } from '@angular/core';
@@ -67,7 +68,7 @@ const DIFFICULTY_COLORS: Record<QuestionDifficulty, string> = {
   templateUrl: './results-summary.component.html',
   styleUrl: './results-summary.component.css',
 })
-export class ResultsSummaryComponent implements OnInit {
+export class ResultsSummaryComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -78,12 +79,16 @@ export class ResultsSummaryComponent implements OnInit {
   displayedScore = signal(0);
   attemptId = signal<string | null>(null);
   quizId = signal<string | null>(null);
+  explainMistakesOpen = signal(false);
+  private explanationCalled = false;
 
   private readonly counterStarted = signal(false);
 
   detail = computed(() => this.store.resultDetail());
   loading = computed(() => this.store.resultDetailLoading());
   error = computed(() => this.store.resultDetailError());
+  quizExplanations = computed(() => this.store.quizExplanations());
+  quizExplanationLoading = computed(() => this.store.quizExplanationLoading());
 
   scoreLabel = computed(() => {
     const d = this.detail();
@@ -223,6 +228,9 @@ export class ResultsSummaryComponent implements OnInit {
     if (!quizId) return;
     this.store.resetQuiz();
     this.store.clearResultDetail();
+    this.store.clearQuizExplanation();
+    this.explanationCalled = false;
+    this.explainMistakesOpen.set(false);
     this.router.navigate(['/student/quizzes', quizId]);
   }
 
@@ -243,6 +251,50 @@ export class ResultsSummaryComponent implements OnInit {
 
   questionPreview(q: QuestionResultBreakdown): string {
     return q.questionText.length > 60 ? `${q.questionText.slice(0, 60)}…` : q.questionText;
+  }
+
+  explainMistakes(): void {
+    if (this.explanationCalled) return;
+    const detail = this.detail();
+    const lessonId = detail?.lessonId;
+    if (!detail || !lessonId) return;
+    const userAnswers = detail.questionBreakdown.map(q => [q.studentAnswer]);
+    this.explanationCalled = true;
+    this.store.explainQuiz(lessonId, userAnswers);
+  }
+
+  /**
+   * Extracts a plain text explanation from a single array item.
+   * Handles multiple possible API response shapes:
+   *   - Plain string
+   *   - { content: "JSON string with simplified_explanation" }
+   *   - { explanation: string }
+   *   - Fallback: JSON.stringify
+   */
+  getExplanationForQuestion(index: number): string | null {
+    const explanations = this.quizExplanations();
+    if (!explanations || index >= explanations.length) return null;
+    const item = explanations[index];
+    if (!item) return null;
+    if (typeof item === 'string') return item;
+    const obj = item as Record<string, unknown>;
+    // { content: '{ "simplified_explanation": "..." }' }
+    if (typeof obj['content'] === 'string') {
+      try {
+        const parsed = JSON.parse(obj['content'] as string) as Record<string, unknown>;
+        return (parsed['simplified_explanation'] as string) ?? obj['content'] as string;
+      } catch {
+        return obj['content'] as string;
+      }
+    }
+    // { explanation: string }
+    if (typeof obj['explanation'] === 'string') return obj['explanation'] as string;
+    // Fallback
+    return JSON.stringify(item);
+  }
+
+  ngOnDestroy(): void {
+    this.store.clearQuizExplanation();
   }
 
   formatTime(seconds: number): string {

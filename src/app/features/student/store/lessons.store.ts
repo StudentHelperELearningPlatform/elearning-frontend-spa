@@ -92,6 +92,13 @@ const SEED_LESSONS: Lesson[] = [
   },
 ];
 
+/** Parsed AI explanation returned by POST /api/v1/blocks/{id}/explain */
+export interface BlockExplanation {
+  simplified_explanation: string;
+  analogy: string;
+  check_for_understanding_question: string;
+}
+
 interface LessonsState {
   lessons: Lesson[];
   currentLesson: Lesson | null;
@@ -102,6 +109,11 @@ interface LessonsState {
   /** Final quiz attempts for the current lesson; null = not yet loaded */
   finalQuizAttempts: FinalQuizAttempt[] | null;
   attemptsLoading: boolean;
+  /** Parsed AI explanation for the currently viewed block */
+  explanation: BlockExplanation | null;
+  explanationLoading: boolean;
+  /** Block ID for which the explanation was last requested */
+  explanationBlockId: string | null;
 }
 
 export const LessonsStore = signalStore(
@@ -114,6 +126,9 @@ export const LessonsStore = signalStore(
     completedModuleIds: new Set<string>(),
     finalQuizAttempts: null,
     attemptsLoading: false,
+    explanation: null,
+    explanationLoading: false,
+    explanationBlockId: null,
   }),
 
   withComputed((state) => ({
@@ -281,6 +296,48 @@ export const LessonsStore = signalStore(
     /** Reset completion tracking (e.g. when leaving the lesson) */
     clearCompletionState(): void {
       patchState(store, { completedModuleIds: new Set<string>(), finalQuizAttempts: null });
+    },
+
+    /**
+     * Request an AI explanation for a text block.
+     * Endpoint: POST /api/v1/blocks/{id}/explain  (no body)
+     * Accessible by both students and teachers.
+     */
+    explainBlock(blockId: string): void {
+      patchState(store, { explanationLoading: true, explanation: null, explanationBlockId: blockId });
+      // Response shape: { content: "{\"simplified_explanation\":\"...\",\"analogy\":\"...\",\"check_for_understanding_question\":\"...\"}" }
+      http.post<{ content: string }>(`${apiBase}/blocks/${blockId}/explain`, null).subscribe({
+        next: (res) => {
+          try {
+            const parsed: BlockExplanation = JSON.parse(res.content);
+            patchState(store, { explanation: parsed, explanationLoading: false });
+          } catch {
+            patchState(store, {
+              explanation: {
+                simplified_explanation: res.content ?? 'No explanation returned.',
+                analogy: '',
+                check_for_understanding_question: '',
+              },
+              explanationLoading: false,
+            });
+          }
+        },
+        error: () => {
+          patchState(store, {
+            explanation: {
+              simplified_explanation: 'Could not load the explanation. Please try again.',
+              analogy: '',
+              check_for_understanding_question: '',
+            },
+            explanationLoading: false,
+          });
+        },
+      });
+    },
+
+    /** Clear explanation state when closing the panel */
+    clearExplanation(): void {
+      patchState(store, { explanation: null, explanationBlockId: null });
     },
   }))
 );

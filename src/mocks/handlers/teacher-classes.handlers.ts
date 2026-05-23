@@ -159,9 +159,15 @@ export const getStudents = http.get(`${base}/:classId/students`, getStudentsReso
 /**
  * ADD student
  */
-export const addStudentResolver = ({ params }: { params?: ResolverParams }) => {
+export const addStudentResolver = async ({ request, params }: { request: Request; params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
-  const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
+  let studentId = '';
+  try {
+    const body = (await request.json()) as { userId?: string };
+    studentId = body.userId ?? '';
+  } catch {
+    // ignore
+  }
 
   studentsByClass[classId] = [
     ...(studentsByClass[classId] ?? []),
@@ -175,7 +181,7 @@ export const addStudentResolver = ({ params }: { params?: ResolverParams }) => {
   return HttpResponse.json({ success: true });
 };
 export const addStudent = http.post(
-  `${base}/:classId/students/:studentId`,
+  `${base}/:classId/students`,
   addStudentResolver,
 );
 
