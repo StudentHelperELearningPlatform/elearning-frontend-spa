@@ -1,5 +1,7 @@
 import { Component, inject, effect } from '@angular/core';
-import { RouterOutlet, Router } from '@angular/router';
+import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map, startWith } from 'rxjs';
 import { AuthStore } from './features/auth/store/auth.store';
 
 @Component({
@@ -18,20 +20,34 @@ export class App {
   private authStore = inject(AuthStore);
   private router = inject(Router);
 
+  // Track the current route path reliably via NavigationEnd events.
+  // startWith('') ensures the signal has an initial value immediately.
+  // We strip query params/fragments so that '/auth/login?state=...' is
+  // treated the same as '/auth/login'.
+  private readonly currentPath = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects.split('?')[0].split('#')[0]),
+      startWith(''),
+    ),
+    { initialValue: '' },
+  );
+
   constructor() {
     // Single effect — only fires when BOTH authenticated AND fully loaded.
     // Redirects away from public/auth pages to the correct dashboard.
     effect(() => {
       const isAuth = this.authStore.isAuthenticated();
       const isReady = this.authStore.isFullyLoaded();
+      const path = this.currentPath();
 
       if (!isAuth || !isReady) return;
 
-      const currentUrl = this.router.url;
       const isOnPublicPage =
-        currentUrl === '/' ||
-        currentUrl.startsWith('/auth') ||
-        currentUrl.startsWith('/for-');
+        path === '/' ||
+        path === '' ||
+        path.startsWith('/auth') ||
+        path.startsWith('/for-');
 
       if (isOnPublicPage) {
         this.performRedirect();
