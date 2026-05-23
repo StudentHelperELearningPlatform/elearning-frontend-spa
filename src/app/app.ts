@@ -24,7 +24,7 @@ export class App {
   // startWith('') ensures the signal has an initial value immediately.
   // We strip query params/fragments so that '/auth/login?state=...' is
   // treated the same as '/auth/login'.
-  private currentPath = toSignal(
+  private readonly currentPath = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
       map((e) => e.urlAfterRedirects.split('?')[0].split('#')[0]),
