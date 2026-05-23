@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build -- --configuration production",
+  "outputDirectory": "dist/elearning-frontend-spa/browser",
+  "framework": "angular",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
