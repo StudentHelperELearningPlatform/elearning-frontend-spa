@@ -279,4 +279,114 @@ describe('ResultsSummaryComponent', () => {
     expect(comp.difficultyBadgeClasses('MEDIUM')).toContain('amber');
     expect(comp.difficultyBadgeClasses('HARD')).toContain('red');
   });
+
+  describe('explainMistakes', () => {
+    it('calls explainQuiz on store with mapped user answers', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: MOCK_DETAIL });
+      const spy = vi.spyOn(store, 'explainQuiz').mockImplementation(() => undefined);
+      comp.explainMistakes();
+      expect(spy).toHaveBeenCalledWith('lesson-1', [['20'], ['72'], ['Repetition strengthens recall.']]);
+      expect((comp as unknown as { explanationCalled: boolean }).explanationCalled).toBe(true);
+    });
+
+    it('does nothing if explanation is already called', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: MOCK_DETAIL });
+      (comp as unknown as { explanationCalled: boolean }).explanationCalled = true;
+      const spy = vi.spyOn(store, 'explainQuiz').mockImplementation(() => undefined);
+      comp.explainMistakes();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('does nothing if detail or lessonId is missing', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: { ...MOCK_DETAIL, lessonId: undefined } });
+      const spy = vi.spyOn(store, 'explainQuiz').mockImplementation(() => undefined);
+      comp.explainMistakes();
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('toggleExplanation and isExplanationExpanded', () => {
+    it('toggles explanation state', () => {
+      const comp = create();
+      expect(comp.isExplanationExpanded('q1')).toBe(false);
+      comp.toggleExplanation('q1');
+      expect(comp.isExplanationExpanded('q1')).toBe(true);
+      comp.toggleExplanation('q1');
+      expect(comp.isExplanationExpanded('q1')).toBe(false);
+    });
+  });
+
+  describe('getExplanationForQuestion', () => {
+    it('returns null if explanations are not loaded or out of bounds', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: null });
+      expect(comp.getExplanationForQuestion(0)).toBeNull();
+
+      patchStore(store, { quizExplanations: ['expl'] });
+      expect(comp.getExplanationForQuestion(1)).toBeNull();
+    });
+
+    it('handles plain string', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: ['plain string explanation'] });
+      expect(comp.getExplanationForQuestion(0)).toBe('plain string explanation');
+    });
+
+    it('handles { content: JSON }', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: [{ content: '{"simplified_explanation": "parsed json"}' }] });
+      expect(comp.getExplanationForQuestion(0)).toBe('parsed json');
+    });
+
+    it('handles { content: non-JSON string }', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: [{ content: 'just content string' }] });
+      expect(comp.getExplanationForQuestion(0)).toBe('just content string');
+    });
+
+    it('handles { explanation: string }', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: [{ explanation: 'direct explanation' }] });
+      expect(comp.getExplanationForQuestion(0)).toBe('direct explanation');
+    });
+
+    it('handles fallback stringification', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: [{ unknownField: 'data' }] });
+      expect(comp.getExplanationForQuestion(0)).toBe('{"unknownField":"data"}');
+    });
+  });
+
+  describe('ngOnDestroy', () => {
+    it('clears quiz explanation on destroy', () => {
+      const comp = create();
+      const spy = vi.spyOn(store, 'clearQuizExplanation').mockImplementation(() => undefined);
+      comp.ngOnDestroy();
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
+  describe('edge cases for empty breakdown', () => {
+    it('donutSlices returns empty array if no breakdown', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: { ...MOCK_DETAIL, questionBreakdown: [] } });
+      expect(comp.donutSlices()).toEqual([]);
+    });
+
+    it('barRows returns empty array if no breakdown', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: { ...MOCK_DETAIL, questionBreakdown: [] } });
+      expect(comp.barRows()).toEqual([]);
+    });
+
+    it('score counter sets 0 instantly if target <= 0', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: { ...MOCK_DETAIL, score: 0 } });
+      expect(comp.displayedScore()).toBe(0);
+    });
+  });
 });
+

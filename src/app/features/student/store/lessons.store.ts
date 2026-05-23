@@ -171,6 +171,7 @@ export const LessonsStore = signalStore(
     store,
     http = inject(HttpClient),
     apiBase = inject(CONTENT_API_URL),
+    userApiBase = inject(USER_PLATFORM_API_URL),
   ) => ({
 
     loadLessons(): void {
@@ -203,7 +204,7 @@ export const LessonsStore = signalStore(
 
     checkout(studentId: string, lessonId: string): void {
       patchState(store, { loading: true });
-      http.post(`${inject(USER_PLATFORM_API_URL)}/payments/checkout`, null, {
+      http.post(`${userApiBase}/payments/checkout`, null, {
         params: {
           studentId,
           bundleId: lessonId,
