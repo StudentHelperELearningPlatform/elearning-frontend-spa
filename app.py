@@ -38,7 +38,27 @@ def serve(path):
     response.headers['Expires'] = '0'
     return response
 
+@app.route('/debug-paths')
+def debug_paths():
+    import os
+    cwd = os.getcwd()
+    static_folder = app.static_folder
+    exists = os.path.exists(static_folder)
+    files = []
+    if exists:
+        for root, dirs, filenames in os.walk(static_folder):
+            for f in filenames:
+                files.append(os.path.relpath(os.path.join(root, f), static_folder))
+    return {
+        "cwd": cwd,
+        "static_folder": static_folder,
+        "static_folder_exists": exists,
+        "files_count": len(files),
+        "files": files[:100]  # list first 100 files
+    }
+
 if __name__ == '__main__':
+
     # Bind to the PORT environment variable supplied by Render
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
