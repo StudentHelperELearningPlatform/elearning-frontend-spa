@@ -7,6 +7,7 @@ import { ProgressStore } from '../store/progress.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
+import { MessageService } from 'primeng/api';
 
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
@@ -401,6 +402,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly messageService = inject(MessageService);
 
   currentModuleIndex = signal(0);
   private readonly lessonId = signal<string | null>(null);
@@ -474,7 +476,31 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   }
 
   finishLesson() {
-    this.router.navigate(['/student/lessons']);
+    const id = this.lessonId();
+    if (!id) return;
+
+    const attempts = this.store.finalQuizAttempts() || [];
+    
+    // Daca studentul nu a dat inca final quiz -> redirectezi
+    if (attempts.length === 0) {
+      this.router.navigate(['/student/quiz-player', id]);
+      return;
+    }
+
+    const hasPassed = attempts.some(a => a.passed === true);
+
+    // Daca a dat quiz si a trecut -> complete lesson
+    if (hasPassed) {
+      this.store.completeLesson(id);
+      this.router.navigate(['/student/lessons']);
+    } else {
+      // Daca a dat quiz dar nu a trecut -> afiseaza mesaj
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Test Final Nefinalizat',
+        detail: 'Trebuie sa treci testul final inainte sa finalizezi lectia',
+      });
+    }
   }
 
   startFinalQuiz() {

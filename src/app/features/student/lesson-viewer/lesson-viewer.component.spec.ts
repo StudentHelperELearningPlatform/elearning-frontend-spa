@@ -10,6 +10,7 @@ import { AuthStore } from '../../auth/store/auth.store';
 import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { By } from '@angular/platform-browser';
 import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
+import { MessageService } from 'primeng/api';
 
 const MOCK_LESSON: Lesson = {
   id: '1',
@@ -71,6 +72,7 @@ describe('LessonViewerComponent', () => {
       providers: [
         provideRouter([]),
         { provide: AuthStore, useValue: authStore },
+        MessageService,
         ...provideApiMocks(),
         {
           provide: ActivatedRoute,
@@ -237,11 +239,32 @@ describe('LessonViewerComponent', () => {
     expect(spy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
-  it('finishLesson navigates to /student/lessons', () => {
+  it('finishLesson navigates to /student/quiz-player if no attempts', () => {
+    // By default, MOCK_LESSON in patchStore has no finalQuizAttempts, or we can ensure it's empty
+    patchStore(store, { currentLesson: MOCK_LESSON, finalQuizAttempts: [] });
     fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.finishLesson();
+    expect(spy).toHaveBeenCalledWith(['/student/quiz-player', '1']);
+  });
+
+  it('finishLesson navigates to /student/lessons if passed', () => {
+    patchStore(store, { currentLesson: MOCK_LESSON, finalQuizAttempts: [{ passed: true } as unknown as import('@shared/models/quiz.types').QuizResultDetail] });
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
     const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.finishLesson();
     expect(spy).toHaveBeenCalledWith(['/student/lessons']);
+  });
+
+  it('finishLesson shows error if not passed', () => {
+    patchStore(store, { currentLesson: MOCK_LESSON, finalQuizAttempts: [{ passed: false } as unknown as import('@shared/models/quiz.types').QuizResultDetail] });
+    fixture.detectChanges();
+    const msgService = TestBed.inject(MessageService);
+    const spy = vi.spyOn(msgService, 'add');
+    component.finishLesson();
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }));
   });
 
   it('startFinalQuiz navigates to quiz player', () => {

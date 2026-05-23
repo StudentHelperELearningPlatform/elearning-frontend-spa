@@ -275,6 +275,15 @@ export const LessonsStore = signalStore(
       });
     },
 
+    completeLesson(lessonId: string): void {
+      http.post(`${apiBase}/lessons/${lessonId}/complete`, {}).subscribe({
+        next: () => { /* lesson marked complete */ },
+        error: (err) => {
+          console.error('Failed to complete lesson', err);
+        },
+      });
+    },
+
     /**
      * Load the final quiz attempt history for a lesson.
      * Used by the lesson viewer to check whether the student already submitted.

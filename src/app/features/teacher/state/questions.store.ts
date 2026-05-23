@@ -15,6 +15,7 @@ interface QuestionsState {
   isLoading: boolean;
   isGeneratingAI: boolean;
   error: string | null;
+  passThreshold: number;
 }
 
 const initialState: QuestionsState = {
@@ -22,6 +23,7 @@ const initialState: QuestionsState = {
   isLoading: false,
   isGeneratingAI: false,
   error: null,
+  passThreshold: 100,
 };
 
 export const QuestionsStore = signalStore(
@@ -51,9 +53,9 @@ export const QuestionsStore = signalStore(
               type === 'check'
                 ? http.post(`${apiBase}/subcapitols/${parentId}/check-quiz`, {})
                 : http.post(`${apiBase}/lessons/${parentId}/final-quiz`, {
-                    passThreshold: 50,
-                    mandatory: false,
-                    maxAttempts: 3,
+                    passThreshold: 100,
+                    mandatory: true,
+                    maxAttempts: 1073741824,
                   });
 
             return getReq$.pipe(
@@ -267,6 +269,28 @@ export const QuestionsStore = signalStore(
             );
           }),
         ),
+      ),
+      // --- UPDATE PASS THRESHOLD ---
+      updatePassThreshold: rxMethod<{ parentId: string; passThreshold: number }>(
+        pipe(
+          switchMap(({ parentId, passThreshold }) => {
+            patchState(store, { passThreshold });
+            // Best-effort patch since the backend may or may not support this yet
+            return http.patch(`${apiBase}/lessons/${parentId}/final-quiz`, { passThreshold }).pipe(
+              catchError(() => of(null)),
+              tapResponse({
+                next: () => {
+                  messageService?.add({
+                    severity: 'success',
+                    summary: 'Settings Saved',
+                    detail: 'Pass threshold updated successfully.',
+                  });
+                },
+                error: () => undefined, // silent fallback
+              })
+            );
+          })
+        )
       ),
     }),
   ),

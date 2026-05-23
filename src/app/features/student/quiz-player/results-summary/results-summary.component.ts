@@ -19,6 +19,7 @@ import {
   QuestionResultBreakdown,
 } from '@shared/models/quiz.types';
 import { QuizzesStore } from '../../store/quizzes.store';
+import { LessonsStore } from '../../store/lessons.store';
 
 const PASS_THRESHOLD = 60;
 const COUNTER_DURATION_MS = 900;
@@ -70,9 +71,10 @@ const DIFFICULTY_COLORS: Record<QuestionDifficulty, string> = {
 })
 export class ResultsSummaryComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  store = inject(QuizzesStore);
+  private readonly router = inject(Router);
+  protected readonly store = inject(QuizzesStore);
+  protected readonly lessonsStore = inject(LessonsStore);
 
   expandedQuestions = signal<Set<string>>(new Set());
   expandedExplanations = signal<Set<string>>(new Set());
@@ -243,10 +245,11 @@ export class ResultsSummaryComponent implements OnInit, OnDestroy {
     this.router.navigate(['/student/lesson-viewer', lessonId]);
   }
 
-  nextLesson() {
-    const nextLessonId = this.detail()?.nextLessonId;
-    if (!nextLessonId) return;
-    this.router.navigate(['/student/lesson-viewer', nextLessonId]);
+  finishLesson() {
+    const lessonId = this.detail()?.lessonId;
+    if (!lessonId) return;
+    this.lessonsStore.completeLesson(lessonId);
+    this.router.navigate(['/student/lessons']);
   }
 
   questionPreview(q: QuestionResultBreakdown): string {

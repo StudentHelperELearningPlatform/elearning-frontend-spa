@@ -5,6 +5,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { patchStore } from '../../../../../test-utils/patch-store';
 import { QuizzesStore } from '../../store/quizzes.store';
+import { LessonsStore } from '../../store/lessons.store';
 import { QuizResultDetail } from '@shared/models/quiz.types';
 import { ResultsSummaryComponent } from './results-summary.component';
 import { provideApiMocks } from '../../../../../test-utils/api-testing';
@@ -77,6 +78,7 @@ describe('ResultsSummaryComponent', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: route },
         ...provideApiMocks(),
+        LessonsStore,
       ],
       schemas: [NO_ERRORS_SCHEMA],
     });
@@ -201,17 +203,7 @@ describe('ResultsSummaryComponent', () => {
     expect(easy?.accuracy).toBe(100);
   });
 
-  it('hasNextLesson is true when nextLessonId is set', () => {
-    const comp = create();
-    patchStore(store, { resultDetail: MOCK_DETAIL });
-    expect(comp.hasNextLesson()).toBe(true);
-  });
 
-  it('hasNextLesson is false when nextLessonId is null', () => {
-    const comp = create();
-    patchStore(store, { resultDetail: { ...MOCK_DETAIL, nextLessonId: null } });
-    expect(comp.hasNextLesson()).toBe(false);
-  });
 
   it('retryQuiz resets store and navigates back to the quiz route', () => {
     const comp = create();
@@ -244,22 +236,32 @@ describe('ResultsSummaryComponent', () => {
     expect(navSpy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
-  it('nextLesson does nothing when nextLessonId missing', () => {
+  it('finishLesson does nothing when lessonId missing', () => {
     const comp = create();
-    patchStore(store, { resultDetail: { ...MOCK_DETAIL, nextLessonId: null } });
+    patchStore(store, {
+      resultDetail: {
+        ...MOCK_DETAIL,
+        lessonId: undefined, // no lesson ID
+      },
+    });
     const router = TestBed.inject(Router);
     const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    comp.nextLesson();
+    comp.finishLesson();
     expect(navSpy).not.toHaveBeenCalled();
   });
 
-  it('nextLesson navigates to the next lesson when present', () => {
+  it('finishLesson calls completeLesson and navigates to lessons list', () => {
     const comp = create();
-    patchStore(store, { resultDetail: MOCK_DETAIL });
+    patchStore(store, {
+      resultDetail: {
+        ...MOCK_DETAIL,
+        lessonId: 'lesson-1',
+      },
+    });
     const router = TestBed.inject(Router);
     const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    comp.nextLesson();
-    expect(navSpy).toHaveBeenCalledWith(['/student/lesson-viewer', 'lesson-2']);
+    comp.finishLesson();
+    expect(navSpy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
   it('questionPreview truncates over 60 chars', () => {

@@ -322,16 +322,16 @@
       <app-button variant="secondary" icon="menu_book" (btnClick)="backToLesson()">
         Back to Lesson
       </app-button>
-      <app-button
-        variant="primary"
-        icon="arrow_forward"
-        iconPosition="right"
-        [disabled]="!hasNextLesson()"
-        [attr.title]="hasNextLesson() ? null : 'No next lesson'"
-        (btnClick)="nextLesson()"
-      >
-        Next Lesson
-      </app-button>
+      @if (detail()?.passed) {
+        <app-button
+          variant="primary"
+          icon="check_circle"
+          iconPosition="right"
+          (btnClick)="finishLesson()"
+        >
+          Finish Lesson
+        </app-button>
+      }
     </section>
   </div>
 }
