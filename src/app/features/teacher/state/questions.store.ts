@@ -277,7 +277,6 @@ export const QuestionsStore = signalStore(
             patchState(store, { passThreshold });
             // Best-effort patch since the backend may or may not support this yet
             return http.patch(`${apiBase}/lessons/${parentId}/final-quiz`, { passThreshold }).pipe(
-              catchError(() => of(null)),
               tapResponse({
                 next: () => {
                   messageService?.add({
