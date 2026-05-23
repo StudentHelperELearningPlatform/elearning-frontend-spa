@@ -110,7 +110,7 @@ export const teacherHandlers = [
     });
   }),
 
-  http.get('/api/v1/lessons', ({ request }) => {
+  http.get('/api/v1/lessons/my', ({ request }) => {
     const url = new URL(request.url);
     const search = (url.searchParams.get('search') ?? '').toLowerCase();
     const status = url.searchParams.get('status');

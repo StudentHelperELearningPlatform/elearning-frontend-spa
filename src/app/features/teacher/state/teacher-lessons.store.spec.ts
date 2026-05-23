@@ -45,7 +45,7 @@ describe('TeacherLessonsStore', () => {
     store.load();
     expect(spy).toHaveBeenCalled();
     const args = spy.mock.calls[0];
-    expect(args[0]).toBe('/api/v1/lessons');
+    expect(args[0]).toBe('/api/v1/lessons/my');
     const params = (args[1] as { params: { toString: () => string } }).params;
     const s = params.toString();
     expect(s).toContain('page=0');
