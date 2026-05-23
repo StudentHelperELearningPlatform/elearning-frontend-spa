@@ -12,7 +12,7 @@ export const environment = {
   userPlatformApiUrl: 'https://platform-api.example.com',
 
   keycloak: {
-    url: 'https://keycloak-26-0-7-vb34.onrender.com/',
+    url: 'https://keycloak-26-0-7-vb34.onrender.com',
     realm: 'elearning',
     clientId: 'elearning-angular',
   },
