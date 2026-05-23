@@ -97,7 +97,7 @@ export const TeacherLessonsStore = signalStore(
       patchState(store, { loading: true, error: null });
       // FIX: was /teachers/lessons (MOISA path) — correct path is /lessons on ARIANA
       http
-        .get<unknown>(`${apiBase}/lessons`, { params: buildParams() })
+        .get<unknown>(`${apiBase}/lessons/my`, { params: buildParams() })
         .subscribe({
           next: (res: unknown) => {
             // Handle both array response and paginated { items, total } or Spring Boot { content, totalElements } response

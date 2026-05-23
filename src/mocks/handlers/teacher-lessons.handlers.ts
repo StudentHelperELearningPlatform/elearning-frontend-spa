@@ -69,7 +69,7 @@ const compare = (a: unknown, b: unknown): number => {
 };
 
 export const teacherLessonsHandlers = [
-  http.get('/api/v1/lessons', ({ request }) => {
+  http.get('/api/v1/lessons/my', ({ request }) => {
     const url = new URL(request.url);
     const search = (url.searchParams.get('search') ?? '').toLowerCase().trim();
     const status = url.searchParams.get('status');
