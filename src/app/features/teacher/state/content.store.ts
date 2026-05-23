@@ -156,7 +156,7 @@ export const ContentStore = signalStore(
 
       forkJoin({
         lessons: http.get<unknown>(
-          `${contentApi}/lessons`,
+          `${contentApi}/lessons/my`,
         ),
 
         profile: http.get<RawProfile | null>(
