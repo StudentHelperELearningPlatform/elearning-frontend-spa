@@ -159,7 +159,7 @@ export const getStudents = http.get(`${base}/:classId/students`, getStudentsReso
 /**
  * ADD student
  */
-export const addStudentResolver = ({ params }: { params?: ResolverParams }) => {
+export const addStudentResolver = async ({ params }: { params?: ResolverParams }) => {
   const classId = typeof params?.['classId'] === 'string' ? params['classId'] : '';
   const studentId = typeof params?.['studentId'] === 'string' ? params['studentId'] : '';
 

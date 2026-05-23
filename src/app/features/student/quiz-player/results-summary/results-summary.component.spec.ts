@@ -5,6 +5,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { patchStore } from '../../../../../test-utils/patch-store';
 import { QuizzesStore } from '../../store/quizzes.store';
+import { LessonsStore } from '../../store/lessons.store';
 import { QuizResultDetail } from '@shared/models/quiz.types';
 import { ResultsSummaryComponent } from './results-summary.component';
 import { provideApiMocks } from '../../../../../test-utils/api-testing';
@@ -77,6 +78,7 @@ describe('ResultsSummaryComponent', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: route },
         ...provideApiMocks(),
+        LessonsStore,
       ],
       schemas: [NO_ERRORS_SCHEMA],
     });
@@ -201,17 +203,7 @@ describe('ResultsSummaryComponent', () => {
     expect(easy?.accuracy).toBe(100);
   });
 
-  it('hasNextLesson is true when nextLessonId is set', () => {
-    const comp = create();
-    patchStore(store, { resultDetail: MOCK_DETAIL });
-    expect(comp.hasNextLesson()).toBe(true);
-  });
 
-  it('hasNextLesson is false when nextLessonId is null', () => {
-    const comp = create();
-    patchStore(store, { resultDetail: { ...MOCK_DETAIL, nextLessonId: null } });
-    expect(comp.hasNextLesson()).toBe(false);
-  });
 
   it('retryQuiz resets store and navigates back to the quiz route', () => {
     const comp = create();
@@ -244,22 +236,32 @@ describe('ResultsSummaryComponent', () => {
     expect(navSpy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
-  it('nextLesson does nothing when nextLessonId missing', () => {
+  it('finishLesson does nothing when lessonId missing', () => {
     const comp = create();
-    patchStore(store, { resultDetail: { ...MOCK_DETAIL, nextLessonId: null } });
+    patchStore(store, {
+      resultDetail: {
+        ...MOCK_DETAIL,
+        lessonId: undefined, // no lesson ID
+      },
+    });
     const router = TestBed.inject(Router);
     const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    comp.nextLesson();
+    comp.finishLesson();
     expect(navSpy).not.toHaveBeenCalled();
   });
 
-  it('nextLesson navigates to the next lesson when present', () => {
+  it('finishLesson calls completeLesson and navigates to lessons list', () => {
     const comp = create();
-    patchStore(store, { resultDetail: MOCK_DETAIL });
+    patchStore(store, {
+      resultDetail: {
+        ...MOCK_DETAIL,
+        lessonId: 'lesson-1',
+      },
+    });
     const router = TestBed.inject(Router);
     const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    comp.nextLesson();
-    expect(navSpy).toHaveBeenCalledWith(['/student/lesson-viewer', 'lesson-2']);
+    comp.finishLesson();
+    expect(navSpy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
   it('questionPreview truncates over 60 chars', () => {
@@ -277,4 +279,114 @@ describe('ResultsSummaryComponent', () => {
     expect(comp.difficultyBadgeClasses('MEDIUM')).toContain('amber');
     expect(comp.difficultyBadgeClasses('HARD')).toContain('red');
   });
+
+  describe('explainMistakes', () => {
+    it('calls explainQuiz on store with mapped user answers', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: MOCK_DETAIL });
+      const spy = vi.spyOn(store, 'explainQuiz').mockImplementation(() => undefined);
+      comp.explainMistakes();
+      expect(spy).toHaveBeenCalledWith('lesson-1', [['20'], ['72'], ['Repetition strengthens recall.']]);
+      expect((comp as unknown as { explanationCalled: boolean }).explanationCalled).toBe(true);
+    });
+
+    it('does nothing if explanation is already called', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: MOCK_DETAIL });
+      (comp as unknown as { explanationCalled: boolean }).explanationCalled = true;
+      const spy = vi.spyOn(store, 'explainQuiz').mockImplementation(() => undefined);
+      comp.explainMistakes();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('does nothing if detail or lessonId is missing', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: { ...MOCK_DETAIL, lessonId: undefined } });
+      const spy = vi.spyOn(store, 'explainQuiz').mockImplementation(() => undefined);
+      comp.explainMistakes();
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('toggleExplanation and isExplanationExpanded', () => {
+    it('toggles explanation state', () => {
+      const comp = create();
+      expect(comp.isExplanationExpanded('q1')).toBe(false);
+      comp.toggleExplanation('q1');
+      expect(comp.isExplanationExpanded('q1')).toBe(true);
+      comp.toggleExplanation('q1');
+      expect(comp.isExplanationExpanded('q1')).toBe(false);
+    });
+  });
+
+  describe('getExplanationForQuestion', () => {
+    it('returns null if explanations are not loaded or out of bounds', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: null });
+      expect(comp.getExplanationForQuestion(0)).toBeNull();
+
+      patchStore(store, { quizExplanations: ['expl'] });
+      expect(comp.getExplanationForQuestion(1)).toBeNull();
+    });
+
+    it('handles plain string', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: ['plain string explanation'] });
+      expect(comp.getExplanationForQuestion(0)).toBe('plain string explanation');
+    });
+
+    it('handles { content: JSON }', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: [{ content: '{"simplified_explanation": "parsed json"}' }] });
+      expect(comp.getExplanationForQuestion(0)).toBe('parsed json');
+    });
+
+    it('handles { content: non-JSON string }', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: [{ content: 'just content string' }] });
+      expect(comp.getExplanationForQuestion(0)).toBe('just content string');
+    });
+
+    it('handles { explanation: string }', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: [{ explanation: 'direct explanation' }] });
+      expect(comp.getExplanationForQuestion(0)).toBe('direct explanation');
+    });
+
+    it('handles fallback stringification', () => {
+      const comp = create();
+      patchStore(store, { quizExplanations: [{ unknownField: 'data' }] });
+      expect(comp.getExplanationForQuestion(0)).toBe('{"unknownField":"data"}');
+    });
+  });
+
+  describe('ngOnDestroy', () => {
+    it('clears quiz explanation on destroy', () => {
+      const comp = create();
+      const spy = vi.spyOn(store, 'clearQuizExplanation').mockImplementation(() => undefined);
+      comp.ngOnDestroy();
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
+  describe('edge cases for empty breakdown', () => {
+    it('donutSlices returns empty array if no breakdown', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: { ...MOCK_DETAIL, questionBreakdown: [] } });
+      expect(comp.donutSlices()).toEqual([]);
+    });
+
+    it('barRows returns empty array if no breakdown', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: { ...MOCK_DETAIL, questionBreakdown: [] } });
+      expect(comp.barRows()).toEqual([]);
+    });
+
+    it('score counter sets 0 instantly if target <= 0', () => {
+      const comp = create();
+      patchStore(store, { resultDetail: { ...MOCK_DETAIL, score: 0 } });
+      expect(comp.displayedScore()).toBe(0);
+    });
+  });
 });
+

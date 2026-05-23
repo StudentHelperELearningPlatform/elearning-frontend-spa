@@ -10,6 +10,7 @@ import { AuthStore } from '../../auth/store/auth.store';
 import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { By } from '@angular/platform-browser';
 import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
+import { MessageService } from 'primeng/api';
 
 const MOCK_LESSON: Lesson = {
   id: '1',
@@ -71,6 +72,7 @@ describe('LessonViewerComponent', () => {
       providers: [
         provideRouter([]),
         { provide: AuthStore, useValue: authStore },
+        MessageService,
         ...provideApiMocks(),
         {
           provide: ActivatedRoute,
@@ -237,11 +239,32 @@ describe('LessonViewerComponent', () => {
     expect(spy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
-  it('finishLesson navigates to /student/lessons', () => {
+  it('finishLesson navigates to /student/quiz-player if no attempts', () => {
+    // By default, MOCK_LESSON in patchStore has no finalQuizAttempts, or we can ensure it's empty
+    patchStore(store, { currentLesson: MOCK_LESSON, finalQuizAttempts: [] });
     fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.finishLesson();
+    expect(spy).toHaveBeenCalledWith(['/student/quiz-player', '1']);
+  });
+
+  it('finishLesson navigates to /student/lessons if passed', () => {
+    patchStore(store, { currentLesson: MOCK_LESSON, finalQuizAttempts: [{ passed: true } as unknown as import('@shared/models/quiz.types').QuizResultDetail] });
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
     const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.finishLesson();
     expect(spy).toHaveBeenCalledWith(['/student/lessons']);
+  });
+
+  it('finishLesson shows error if not passed', () => {
+    patchStore(store, { currentLesson: MOCK_LESSON, finalQuizAttempts: [{ passed: false } as unknown as import('@shared/models/quiz.types').QuizResultDetail] });
+    fixture.detectChanges();
+    const msgService = TestBed.inject(MessageService);
+    const spy = vi.spyOn(msgService, 'add');
+    component.finishLesson();
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }));
   });
 
   it('startFinalQuiz navigates to quiz player', () => {
@@ -309,5 +332,64 @@ describe('LessonViewerComponent', () => {
     expect(element.textContent).toContain('Final Quiz Completed!');
     expect(element.textContent).toContain('90%');
     expect(element.textContent).toContain('Retake Quiz');
+  });
+
+  // ─── AI Explanation & Formatting ──────────────────────────────────────────
+  
+  describe('AI Explanation & Formatting', () => {
+    it('boldify converts markdown bold to HTML strong tags and sanitizes', () => {
+      fixture.detectChanges();
+      const input = 'This is **bold** text and **more bold**';
+      const result = component.boldify(input) as unknown as { changingThisBreaksApplicationSecurity: string };
+      // Depending on DomSanitizer implementation in tests, it might wrap it or bypass it
+      // we check that the strong tags are there.
+      expect(JSON.stringify(result)).toContain('<strong>bold</strong>');
+      expect(JSON.stringify(result)).toContain('<strong>more bold</strong>');
+    });
+
+    it('explainCurrentModule calls explainBlock on the store and opens the modal', () => {
+      fixture.detectChanges();
+      const spy = vi.spyOn(store, 'explainBlock').mockImplementation(() => undefined);
+      component.selectModule(0);
+      component.explainCurrentModule();
+      expect(spy).toHaveBeenCalledWith('m1');
+      
+      const explanationOpen = (
+        component as unknown as { explanationOpen: { (): boolean; set: (v: boolean) => void } }
+      ).explanationOpen;
+      expect(explanationOpen()).toBe(true);
+    });
+
+    it('explainCurrentModule does nothing if no module is selected', () => {
+      fixture.detectChanges();
+      const spy = vi.spyOn(store, 'explainBlock').mockImplementation(() => undefined);
+      // Deselect all
+      patchStore(store, { currentLesson: { ...MOCK_LESSON, modules: [] } });
+      component.explainCurrentModule();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('closeExplanation closes the modal and clears explanation', () => {
+      fixture.detectChanges();
+      const spy = vi.spyOn(store, 'clearExplanation').mockImplementation(() => undefined);
+      const explanationOpen = (
+        component as unknown as { explanationOpen: { (): boolean; set: (v: boolean) => void } }
+      ).explanationOpen;
+      explanationOpen.set(true);
+      
+      component.closeExplanation();
+      expect(spy).toHaveBeenCalled();
+      expect(explanationOpen()).toBe(false);
+    });
+
+    it('getModuleIcon returns correct icons for different module types', () => {
+      fixture.detectChanges();
+      expect(component.getModuleIcon('video')).toBe('play_circle');
+      expect(component.getModuleIcon('text')).toBe('article');
+      expect(component.getModuleIcon('quiz')).toBe('quiz');
+      expect(component.getModuleIcon('interactive')).toBe('touch_app');
+      expect(component.getModuleIcon('audio')).toBe('headphones');
+      expect(component.getModuleIcon('unknown_type')).toBe('menu_book');
+    });
   });
 });

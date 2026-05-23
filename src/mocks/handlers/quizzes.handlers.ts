@@ -374,4 +374,29 @@ export const quizzesHandlers = [
       return HttpResponse.json(await calculateQuizResult(request, 'attempt'));
     },
   ),
+
+  http.post(
+    `${environment.quizApiUrl}/api/v1/subcapitols/:id/check-quiz/explain`,
+    async ({ request }) => {
+      const body = (await request.json()) as { user_answers?: string[][] };
+      const answers = body.user_answers ?? [];
+      // Simulate AI processing time
+      await new Promise((r) => setTimeout(r, 700));
+      // Return one explanation object per submitted answer
+      const explanations = answers.map((answerArray, i) =>
+        ({
+          content: JSON.stringify({
+            simplified_explanation:
+              `Your answer "${answerArray.join(', ')}" was evaluated against the expected concept for question ${i + 1}. ` +
+              `The key idea here is understanding the core principle being tested — re-read the relevant section of the lesson and focus on the bolded terms and definitions.`,
+            analogy:
+              `Think of it like a recipe: you need the right **ingredients** (facts) in the right **order** (logic) to get the correct result. If one ingredient is wrong, the dish doesn't turn out as expected.`,
+            check_for_understanding_question:
+              `Can you restate the correct concept for question ${i + 1} in your own words without looking at the lesson?`,
+          }),
+        })
+      );
+      return HttpResponse.json(explanations);
+    },
+  ),
 ];
