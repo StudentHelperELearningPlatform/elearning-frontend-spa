@@ -5,7 +5,7 @@
 services:
   # Native Static Site (Highly Recommended - Free, served via global CDN)
   - type: web
-    name: elearning-frontend-static
+    name: elearning-frontend-spa
     runtime: static
     buildCommand: "npm install && npm run build"
     staticPublishPath: "dist/elearning-frontend-spa/browser"
