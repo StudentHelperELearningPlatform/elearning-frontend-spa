@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import { inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, catchError, of, throwError } from 'rxjs';
+import { pipe, switchMap, catchError, of, throwError, tap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { MessageService } from 'primeng/api';
 import { CONTENT_API_URL } from '../../../core/tokens/api.token';
@@ -16,9 +16,6 @@ interface QuestionsState {
   isGeneratingAI: boolean;
   error: string | null;
   passThreshold: number;
-  mandatory: boolean;
-  maxAttempts: number | null;
-  timeLimit: number | null;
 }
 
 const initialState: QuestionsState = {
@@ -27,9 +24,6 @@ const initialState: QuestionsState = {
   isGeneratingAI: false,
   error: null,
   passThreshold: 70,
-  mandatory: true,
-  maxAttempts: null,
-  timeLimit: 900,
 };
 
 export const QuestionsStore = signalStore(
@@ -278,76 +272,26 @@ export const QuestionsStore = signalStore(
         ),
       ),
 
-      // --- LOAD QUIZ SETTINGS ---
-      loadQuizSettings: rxMethod<string>(
-        pipe(
-          switchMap((lessonId) => {
-            return http.get<{
-              passThreshold: number;
-              mandatory: boolean;
-              maxAttempts: number | null;
-              timeLimitSeconds?: number | null;
-              timeLimit?: number | null;
-            }>(`${apiBase}/lessons/${lessonId}/final-quiz`).pipe(
-              tapResponse({
-                next: (settings) => {
-                  patchState(store, {
-                    passThreshold: settings.passThreshold,
-                    mandatory: settings.mandatory,
-                    maxAttempts: settings.maxAttempts,
-                    timeLimit: settings.timeLimitSeconds ?? settings.timeLimit ?? 900,
-                  });
-                },
-                error: (err) => console.error('Failed to load quiz settings:', err),
-              })
-            );
-          }),
-        ),
-      ),
 
-      // --- UPDATE QUIZ SETTINGS ---
-      updateQuizSettings: rxMethod<{
-        lessonId: string;
-        settings: {
-          passThreshold: number;
-          mandatory: boolean;
-          maxAttempts: number | null;
-          timeLimit: number | null;
-        };
-      }>(
+
+      // --- UPDATE PASS THRESHOLD ---
+      updatePassThreshold: rxMethod<{ parentId: string; passThreshold: number }>(
         pipe(
-          switchMap(({ lessonId, settings }) => {
-            patchState(store, { isLoading: true });
-            return http.post<{
-              passThreshold: number;
-              mandatory: boolean;
-              maxAttempts: number | null;
-              timeLimitSeconds?: number | null;
-              timeLimit?: number | null;
-            }>(`${apiBase}/lessons/${lessonId}/final-quiz`, settings).pipe(
+          tap(({ passThreshold }) => {
+            patchState(store, { passThreshold });
+          }),
+          switchMap(({ parentId, passThreshold }) => {
+            return http.patch(`${apiBase}/lessons/${parentId}/final-quiz`, { passThreshold }).pipe(
               tapResponse({
-                next: (updated) => {
-                  patchState(store, {
-                    isLoading: false,
-                    passThreshold: updated.passThreshold,
-                    mandatory: updated.mandatory,
-                    maxAttempts: updated.maxAttempts,
-                    timeLimit: updated.timeLimitSeconds ?? updated.timeLimit ?? settings.timeLimit,
-                  });
+                next: () => {
                   messageService?.add({
                     severity: 'success',
-                    summary: 'Success',
-                    detail: 'Quiz settings updated successfully.',
+                    summary: 'Settings Saved',
+                    detail: 'Pass threshold updated.',
                   });
                 },
-                error: (err: HttpErrorResponse) => {
-                  const errorMessage = err.error?.error || 'Failed to update quiz settings.';
-                  patchState(store, { isLoading: false, error: errorMessage });
-                  messageService?.add({
-                    severity: 'error',
-                    summary: 'Error',
-                    detail: errorMessage,
-                  });
+                error: (err) => {
+                  console.error('Failed to update pass threshold:', err);
                 },
               })
             );

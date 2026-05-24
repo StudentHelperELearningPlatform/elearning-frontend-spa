@@ -153,6 +153,8 @@ interface QuizzesState {
   resultDetailLoading: boolean;
   resultDetailError: string | null;
   questionTimes: Record<string, number>;
+  quizExplanations: unknown[] | null;
+  quizExplanationLoading: boolean;
 }
 
 const getInitialQuizState = (quiz: QuizWithMeta | null, isStart: boolean) => ({
@@ -165,6 +167,8 @@ const getInitialQuizState = (quiz: QuizWithMeta | null, isStart: boolean) => ({
   result: null,
   error: null,
   questionTimes: {},
+  quizExplanations: null,
+  quizExplanationLoading: false,
 });
 
 export const QuizzesStore = signalStore(
@@ -185,6 +189,8 @@ export const QuizzesStore = signalStore(
     resultDetailLoading: false,
     resultDetailError: null,
     questionTimes: {},
+    quizExplanations: null,
+    quizExplanationLoading: false,
   }),
   withComputed((state) => ({
     answeredCount: computed(() => Object.keys(state.answers()).length),
@@ -501,6 +507,12 @@ export const QuizzesStore = signalStore(
                 };
               });
 
+              const sortedBreakdown = [...mappedBreakdown].sort((a, b) => {
+                const idxA = questions.findIndex((q) => q.id === a.questionId);
+                const idxB = questions.findIndex((q) => q.id === b.questionId);
+                return idxA - idxB;
+              });
+
               const detail: QuizResultDetail = {
                 attemptId: foundAttempt.attemptId || foundAttempt.id || attemptId,
                 quizId: foundAttempt.quizId || lessonId,
@@ -513,119 +525,13 @@ export const QuizzesStore = signalStore(
                 percentage: calculatedPercentage,
                 passed: foundAttempt.passed ?? (calculatedPercentage >= 70),
                 timeSpent: foundAttempt.timeTakenSeconds ?? foundAttempt.timeSpent ?? 0,
-                questionBreakdown: mappedBreakdown,
+                questionBreakdown: sortedBreakdown,
               };
 
-              const explainUrl = `${quizApi}/lessons/${lessonId}/final-quiz/explain`;
-              const userAnswers = questions.map((q) => {
-                const r = foundAttempt.results?.find((res) => res.questionId === q.id);
-                return r?.submittedAnswer ? [r.submittedAnswer] : [];
-              });
-
-              http.post<unknown>(explainUrl, { user_answers: userAnswers }).subscribe({
-                next: (response) => {
-                  console.log('[QuizzesStore] POST explain response received:', response);
-                  const explanationsMap: Record<string, string> = {};
-
-                  if (response && typeof response === 'object') {
-                    const obj = response as Record<string, unknown>;
-                    const rawContent = obj['content'] !== undefined ? obj['content'] : response;
-                    
-                    let itemsArray: unknown[] = [];
-                    if (typeof rawContent === 'string') {
-                      try {
-                        itemsArray = JSON.parse(rawContent);
-                      } catch (e) {
-                        console.error('[QuizzesStore] Failed to parse content JSON string:', e);
-                      }
-                    } else if (Array.isArray(rawContent)) {
-                      itemsArray = rawContent;
-                    } else if (Array.isArray(response)) {
-                      itemsArray = response;
-                    }
-
-                    if (Array.isArray(itemsArray) && itemsArray.length > 0) {
-                      itemsArray.forEach((item, index) => {
-                        if (typeof item === 'string') {
-                          const q = questions[index];
-                          if (q) {
-                            explanationsMap[q.id] = item;
-                          }
-                        } else if (item && typeof item === 'object') {
-                          const itemObj = item as Record<string, unknown>;
-                          const qText = (itemObj['question'] || '') as string;
-                          const exp = (itemObj['explanation'] || itemObj['text'] || itemObj['aiExplanation']) as string;
-                          const qId = (itemObj['questionId'] || itemObj['id']) as string;
-
-                          if (qId && exp) {
-                            explanationsMap[qId] = exp;
-                          } else if (qText && exp) {
-                            const matchedQ = questions.find(
-                              (quest) =>
-                                quest.text.toLowerCase().trim() === qText.toLowerCase().trim() ||
-                                quest.text.toLowerCase().includes(qText.toLowerCase()) ||
-                                qText.toLowerCase().includes(quest.text.toLowerCase())
-                            );
-                            if (matchedQ) {
-                              explanationsMap[matchedQ.id] = exp;
-                            }
-                          }
-                        }
-                      });
-                    } else {
-                      const dict = response as Record<string, unknown>;
-                      Object.entries(dict).forEach(([key, val]) => {
-                        if (typeof val === 'string') {
-                          explanationsMap[key] = val;
-                        } else if (val && typeof val === 'object') {
-                          const valObj = val as Record<string, unknown>;
-                          const exp = (valObj['explanation'] || valObj['text'] || valObj['aiExplanation']) as string;
-                          if (exp) {
-                            explanationsMap[key] = exp;
-                          }
-                        }
-                      });
-                    }
-                  }
-
-                  const finalBreakdown = mappedBreakdown.map((item) => ({
-                    ...item,
-                    aiExplanation: explanationsMap[item.questionId] || item.aiExplanation,
-                  }));
-
-                  const sortedBreakdown = [...finalBreakdown].sort((a, b) => {
-                    const idxA = questions.findIndex((q) => q.id === a.questionId);
-                    const idxB = questions.findIndex((q) => q.id === b.questionId);
-                    return idxA - idxB;
-                  });
-
-                  patchState(store, {
-                    resultDetail: {
-                      ...detail,
-                      questionBreakdown: sortedBreakdown,
-                    },
-                    resultDetailLoading: false,
-                    resultDetailError: null,
-                  });
-                },
-                error: (err) => {
-                  console.error('[QuizzesStore] Failed to load AI explanations:', err);
-                  
-                  const sortedBreakdown = [...mappedBreakdown].sort((a, b) => {
-                    const idxA = questions.findIndex((q) => q.id === a.questionId);
-                    const idxB = questions.findIndex((q) => q.id === b.questionId);
-                    return idxA - idxB;
-                  });
-
-                  patchState(store, {
-                    resultDetail: {
-                      ...detail,
-                      questionBreakdown: sortedBreakdown,
-                    },
-                    resultDetailLoading: false,
-                    resultDetailError: null,
-                  });
-                }
+              patchState(store, {
+                resultDetail: detail,
+                resultDetailLoading: false,
+                resultDetailError: null,
               });
             } else {
               console.warn('[QuizzesStore] No matching attempt found. Falling back to local store result.');
@@ -656,17 +562,76 @@ export const QuizzesStore = signalStore(
       explainQuiz(lessonId: string, userAnswers: string[][]): void {
         patchState(store, { quizExplanationLoading: true, quizExplanations: null });
         http
-          .post<unknown[]>(
+          .post<unknown>(
             `${quizApi}/lessons/${lessonId}/final-quiz/explain`,
             { user_answers: userAnswers },
           )
           .subscribe({
             next: (res) => {
-              // Response is an array — one explanation object per submitted answer
-              patchState(store, {
-                quizExplanations: Array.isArray(res) ? res : [res],
-                quizExplanationLoading: false,
-              });
+              let rawArray: unknown[] = [];
+              if (Array.isArray(res)) {
+                rawArray = res;
+              } else if (res && typeof res === 'object') {
+                const resObj = res as Record<string, unknown>;
+                const content = resObj['content'];
+                if (typeof content === 'string') {
+                  try {
+                    const parsed = JSON.parse(content);
+                    if (Array.isArray(parsed)) {
+                      rawArray = parsed as unknown[];
+                    } else if (parsed && typeof parsed === 'object') {
+                      rawArray = [parsed];
+                    } else {
+                      rawArray = [res];
+                    }
+                  } catch {
+                    rawArray = [res];
+                  }
+                } else if (Array.isArray(content)) {
+                  rawArray = content as unknown[];
+                } else {
+                  rawArray = [res];
+                }
+              }
+
+              const breakdown = store.resultDetail()?.questionBreakdown || [];
+              if (breakdown.length > 0 && rawArray.length > 0) {
+                const normalizeText = (t: string | undefined | null): string => {
+                  if (!t) return '';
+                  return t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+                };
+
+                const mappedExplanations = breakdown.map((bq, index) => {
+                  const normalizedBqText = normalizeText(bq.questionText);
+                  
+                  const match = rawArray.find(item => {
+                    if (!item || typeof item !== 'object') return false;
+                    const itemObj = item as Record<string, unknown>;
+                    const itemQ = (itemObj['question'] || itemObj['questionText'] || itemObj['question_text']) as string | undefined;
+                    return normalizeText(itemQ) === normalizedBqText;
+                  });
+
+                  if (match) {
+                    return match;
+                  }
+
+                  if (rawArray.length === breakdown.length) {
+                    return rawArray[index];
+                  }
+
+                  return null;
+                });
+
+                patchState(store, {
+                  quizExplanations: mappedExplanations,
+                  quizExplanationLoading: false,
+                });
+              } else {
+                patchState(store, {
+                  quizExplanations: rawArray,
+                  quizExplanationLoading: false,
+                });
+              }
             },
             error: () => {
               patchState(store, {
