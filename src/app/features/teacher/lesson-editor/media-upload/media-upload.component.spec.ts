@@ -146,12 +146,12 @@ describe('MediaUploadComponent', () => {
 
     it('should reject invalid MIME types', () => {
       const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
-      const invalidAudio = createMockFile('song.mp3', 'audio/mpeg', 1024);
+      const invalidAudio = createMockFile('notes.txt', 'text/plain', 1024);
 
       component.handleFiles([invalidAudio]);
 
       expect(uploadSpy).not.toHaveBeenCalled();
-      expect(component.errorMessage()).toContain('Invalid file type: song.mp3');
+      expect(component.errorMessage()).toContain('Invalid file type: notes.txt');
     });
 
     it('should process mixed valid and invalid files simultaneously', () => {

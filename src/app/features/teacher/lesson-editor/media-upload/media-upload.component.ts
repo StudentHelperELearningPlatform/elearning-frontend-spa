@@ -71,7 +71,7 @@ export interface UploadedMedia {
           >cloud_upload</span
         >
         <p class="text-black font-bold text-lg tracking-tight mb-1">Drag and drop media here</p>
-        <p class="text-sm text-gray-600 font-medium mb-4">Images, Video, or Audio (Max 50MB)</p>
+        <p class="text-sm text-gray-600 font-medium mb-4">Images, Video, Audio, or PDF (Max 50MB)</p>
 
         <label class="sr-only" for="fileInput">Browse files</label>
         <input
@@ -80,7 +80,7 @@ export interface UploadedMedia {
           id="fileInput"
           class="sr-only"
           multiple
-          accept="image/jpeg,image/png,image/gif,video/mp4,application/pdf"
+          accept="image/jpeg,image/png,image/gif,video/mp4,audio/*,application/pdf"
           (change)="onFileSelected($event)"
           tabindex="-1"
         />
@@ -256,7 +256,16 @@ export class MediaUploadComponent {
 
   readonly MAX_SIZE_MB = 50;
   readonly MAX_SIZE_BYTES = this.MAX_SIZE_MB * 1024 * 1024;
-  readonly ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'application/pdf'];
+  readonly ALLOWED_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'video/mp4',
+    'audio/mpeg',
+    'audio/wav',
+    'audio/ogg',
+    'application/pdf',
+  ];
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
@@ -297,8 +306,8 @@ export class MediaUploadComponent {
     const validFiles: File[] = [];
 
     for (const file of files) {
-      if (!this.ALLOWED_TYPES.includes(file.type)) {
-        errors.push(`Invalid file type: ${file.name}. Only images, videos, and audio are allowed.`);
+      if (!this.ALLOWED_TYPES.includes(file.type) && !file.type.startsWith('audio/')) {
+        errors.push(`Invalid file type: ${file.name}. Only images, videos, audio, and PDFs are allowed.`);
       } else if (file.size > this.MAX_SIZE_BYTES) {
         errors.push(`File too large: ${file.name}. Maximum size is ${this.MAX_SIZE_MB}MB.`);
       } else {
