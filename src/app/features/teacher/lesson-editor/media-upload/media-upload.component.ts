@@ -80,7 +80,7 @@ export interface UploadedMedia {
           id="fileInput"
           class="sr-only"
           multiple
-          accept="image/jpeg,image/png,image/gif,video/mp4,audio/*,application/pdf"
+          accept="image/jpeg,image/png,image/gif,video/mp4,audio/mpeg,audio/wav,audio/ogg,application/pdf"
           (change)="onFileSelected($event)"
           tabindex="-1"
         />
@@ -306,7 +306,7 @@ export class MediaUploadComponent {
     const validFiles: File[] = [];
 
     for (const file of files) {
-      if (!this.ALLOWED_TYPES.includes(file.type) && !file.type.startsWith('audio/')) {
+      if (!this.ALLOWED_TYPES.includes(file.type)) {
         errors.push(`Invalid file type: ${file.name}. Only images, videos, audio, and PDFs are allowed.`);
       } else if (file.size > this.MAX_SIZE_BYTES) {
         errors.push(`File too large: ${file.name}. Maximum size is ${this.MAX_SIZE_MB}MB.`);
@@ -326,7 +326,7 @@ export class MediaUploadComponent {
   }
 
   uploadFile(file: File, existingId?: string) {
-    let mediaType: 'image' | 'video' | 'audio' | 'pdf'; 
+    let mediaType: 'image' | 'video' | 'audio' | 'pdf';
 
     if (file.type.startsWith('image/')) {
       mediaType = 'image';
