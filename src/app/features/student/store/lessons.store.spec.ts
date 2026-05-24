@@ -299,5 +299,102 @@ describe('LessonsStore', () => {
       expect(store.lastQuizAttempt()?.attemptId).toBe('a2');
     });
   });
+
+  // ─── Miscellaneous missing coverage ───────────────────────────────────────
+  describe('loadLessons payload formats', () => {
+    it('handles { content: [...] } format', () => {
+      vi.spyOn(http, 'get').mockReturnValue(of({ content: [backendFixture] }));
+      store.loadLessons();
+      expect(store.lessons().length).toBe(1);
+    });
+    it('handles { lessons: [...] } format', () => {
+      vi.spyOn(http, 'get').mockReturnValue(of({ lessons: [backendFixture] }));
+      store.loadLessons();
+      expect(store.lessons().length).toBe(1);
+    });
+    it('handles single object with id format', () => {
+      vi.spyOn(http, 'get').mockReturnValue(of(backendFixture));
+      store.loadLessons();
+      expect(store.lessons().length).toBe(1);
+    });
+    it('handles error gracefully', () => {
+      vi.spyOn(http, 'get').mockReturnValue(throwError(() => new Error('API failure')));
+      store.loadLessons();
+      expect(store.loading()).toBe(false);
+    });
+  });
+
+  describe('checkout', () => {
+    it('initiates checkout successfully', () => {
+      const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({}));
+      store.checkout('stu-1', 'les-1');
+      expect(postSpy).toHaveBeenCalledWith('/api/v1/payments/checkout', null, expect.objectContaining({
+        params: { studentId: 'stu-1', bundleId: 'les-1', itemType: 'LESSON', itemId: 'les-1' }
+      }));
+      expect(store.loading()).toBe(false);
+      expect(store.error()).toBeNull();
+    });
+    it('sets error on checkout failure', () => {
+      vi.spyOn(http, 'post').mockReturnValue(throwError(() => new Error('API failure')));
+      store.checkout('stu-1', 'les-1');
+      expect(store.loading()).toBe(false);
+      expect(store.error()?.message).toContain('Failed to initiate unlock');
+    });
+  });
+
+  describe('completeLesson', () => {
+    it('calls complete endpoint', () => {
+      const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({}));
+      store.completeLesson('les-1');
+      expect(postSpy).toHaveBeenCalledWith('/api/v1/lessons/les-1/complete', {});
+    });
+    it('handles error silently', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.spyOn(http, 'post').mockReturnValue(throwError(() => new Error('API failure')));
+      store.completeLesson('les-1');
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to complete lesson', expect.any(Error));
+    });
+  });
+
+  describe('clearCompletionState', () => {
+    it('resets tracking sets', () => {
+      patchStore(store, { completedModuleIds: new Set(['m1']), finalQuizAttempts: [] });
+      store.clearCompletionState();
+      expect(store.completedModuleIds().size).toBe(0);
+      expect(store.finalQuizAttempts()).toBeNull();
+    });
+  });
+
+  describe('explainBlock', () => {
+    it('parses valid JSON response', () => {
+      const postSpy = vi.spyOn(http, 'post').mockReturnValue(of({
+        content: '{"simplified_explanation":"Simple","analogy":"Like X","check_for_understanding_question":"Why?"}'
+      }));
+      store.explainBlock('block-1');
+      expect(postSpy).toHaveBeenCalledWith('/api/v1/blocks/block-1/explain', null);
+      expect(store.explanation()?.simplified_explanation).toBe('Simple');
+      expect(store.explanationLoading()).toBe(false);
+    });
+    it('falls back if parsing fails', () => {
+      vi.spyOn(http, 'post').mockReturnValue(of({ content: 'Just a string' }));
+      store.explainBlock('block-1');
+      expect(store.explanation()?.simplified_explanation).toBe('Just a string');
+    });
+    it('handles error response gracefully', () => {
+      vi.spyOn(http, 'post').mockReturnValue(throwError(() => new Error('API failure')));
+      store.explainBlock('block-1');
+      expect(store.explanation()?.simplified_explanation).toContain('Could not load');
+      expect(store.explanationLoading()).toBe(false);
+    });
+  });
+
+  describe('clearExplanation', () => {
+    it('resets explanation', () => {
+      patchStore(store, { explanation: { simplified_explanation: '', analogy: '', check_for_understanding_question: '' }, explanationBlockId: 'block-1' });
+      store.clearExplanation();
+      expect(store.explanation()).toBeNull();
+      expect(store.explanationBlockId()).toBeNull();
+    });
+  });
 });
 

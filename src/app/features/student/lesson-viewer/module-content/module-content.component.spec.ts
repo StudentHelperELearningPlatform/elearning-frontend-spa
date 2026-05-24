@@ -66,4 +66,31 @@ describe('ModuleContentComponent', () => {
   it('handles arbitrary HTML in content without throwing', () => {
     expect(() => make('<h2>Title</h2><ul><li>Item</li></ul>').content()).not.toThrow();
   });
+
+  describe('safeContent', () => {
+    it('removes <br> when surrounded by word characters', () => {
+      const comp = make('testin<br>g');
+      // The DOM sanitizer bypassSecurityTrustHtml returns an object with a changingThisBreaksApplicationSecurity property
+      const safe = comp.safeContent() as unknown as { changingThisBreaksApplicationSecurity: string };
+      expect(safe.changingThisBreaksApplicationSecurity).toBe('testing');
+    });
+
+    it('replaces <br> with a space when not surrounded by word characters', () => {
+      const comp = make('hello <br> world');
+      const safe = comp.safeContent() as unknown as { changingThisBreaksApplicationSecurity: string };
+      expect(safe.changingThisBreaksApplicationSecurity).toBe('hello   world');
+    });
+
+    it('handles multiple br formats like <br/> and <br />', () => {
+      const comp = make('hello<br/>world and test<br />ing');
+      const safe = comp.safeContent() as unknown as { changingThisBreaksApplicationSecurity: string };
+      expect(safe.changingThisBreaksApplicationSecurity).toBe('helloworld and testing');
+    });
+
+    it('falls back to empty string if content is somehow null', () => {
+      const comp = make(null as unknown as string);
+      const safe = comp.safeContent() as unknown as { changingThisBreaksApplicationSecurity: string };
+      expect(safe.changingThisBreaksApplicationSecurity).toBe('');
+    });
+  });
 });

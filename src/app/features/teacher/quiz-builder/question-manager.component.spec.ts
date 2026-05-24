@@ -199,4 +199,41 @@ describe('QuestionManagerComponent', () => {
     });
     expect(component.editingId()).toBeNull();
   });
+
+  it('should update pass threshold if valid', () => {
+    storeMock.updatePassThreshold = vi.fn();
+    const event = { target: { value: '80' } } as unknown as Event;
+    component.updatePassThreshold(event);
+    expect(storeMock.updatePassThreshold).toHaveBeenCalledWith({ parentId: 'parent-1', passThreshold: 80 });
+  });
+
+  it('should revert pass threshold if invalid', () => {
+    storeMock.updatePassThreshold = vi.fn();
+    // Assuming passThreshold is mocked as returning 100 by default, let's just mock it
+    (storeMock as unknown as Record<string, unknown>)['passThreshold'] = signal(70);
+    const target = { value: '150' };
+    const event = { target } as unknown as Event;
+    component.updatePassThreshold(event);
+    expect(storeMock.updatePassThreshold).not.toHaveBeenCalled();
+    expect(target.value).toBe('70');
+  });
+
+  it('should block submit if less than 2 valid options', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    component.newQuestionText.set('Test?');
+    component.newOptions.set([{ text: 'Opt 1', isCorrect: true }, { text: '', isCorrect: false }]);
+    component.submitQuestion();
+    expect(alertSpy).toHaveBeenCalledWith('Please provide at least 2 valid options.');
+    expect(storeMock.addQuestion).not.toHaveBeenCalled();
+  });
+
+  it('should block submit if no correct option selected', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    component.newQuestionText.set('Test?');
+    component.newOptions.set([{ text: 'Opt 1', isCorrect: false }, { text: 'Opt 2', isCorrect: false }]);
+    component.submitQuestion();
+    expect(alertSpy).toHaveBeenCalledWith('Please select a correct answer.');
+    expect(storeMock.addQuestion).not.toHaveBeenCalled();
+  });
 });
+

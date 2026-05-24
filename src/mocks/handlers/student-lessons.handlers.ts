@@ -188,4 +188,25 @@ export const studentLessonsHandlers = [
   http.post(`${environment.lessonApiUrl}/api/v1/lessons/:id/complete`, () => {
     return HttpResponse.json({ message: 'Lesson completed' });
   }),
+
+  http.post(`${environment.lessonApiUrl}/api/v1/blocks/:id/explain`, async () => {
+    // Simulate AI processing delay
+    await new Promise((r) => setTimeout(r, 700));
+    return HttpResponse.json({
+      content: JSON.stringify({
+        simplified_explanation:
+          'This block covers key concepts that build on each other step by step. ' +
+          'The core idea is introduced with definitions or bolded terms — these form the foundation. ' +
+          'The middle section connects those definitions to real-world examples. ' +
+          'The final part draws a conclusion or transitions to the next concept.',
+        analogy:
+          'Think of it like building a house:\n' +
+          '• The definitions are the foundation — without them nothing stands.\n' +
+          '• The examples are the walls — they give the structure shape and meaning.\n' +
+          '• The conclusion is the roof — it ties everything together and keeps it solid.',
+        check_for_understanding_question:
+          'In your own words, what is the single most important idea introduced in this block, and how does the example support it?',
+      }),
+    });
+  }),
 ];

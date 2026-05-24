@@ -15,8 +15,8 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
         <app-skeleton height="1rem" width="80%" />
       </div>
     } @else {
-      <div class="prose prose-lg max-w-none prose-headings:font-black prose-headings:text-black prose-p:text-gray-800 prose-a:text-[#0ABAB5] prose-a:font-bold prose-strong:text-black overflow-visible whitespace-pre-wrap">
-        <div [innerHTML]="safeContent()"></div>
+      <div class="prose prose-lg max-w-none prose-headings:font-black prose-headings:text-black prose-p:text-gray-800 prose-a:text-[#0ABAB5] prose-a:font-bold prose-strong:text-black overflow-hidden">
+        <div [innerHTML]="safeContent()" style="overflow-wrap: break-word; hyphens: none; word-break: normal;"></div>
       </div>
     }
   `,
@@ -28,7 +28,15 @@ export class ModuleContentComponent {
   // NOSONAR: lesson HTML originates from our authenticated content service
   // and is authored exclusively by trusted teacher accounts. Bypass is required
   // to render rich-text formatting (headings, lists, emphasis) without escaping.
-  safeContent = computed((): SafeHtml =>
-    this.sanitizer.bypassSecurityTrustHtml(this.content() ?? ''), // NOSONAR
-  );
+  safeContent = computed((): SafeHtml => {
+    // The backend stores content with <br> tags at fixed column widths,
+    // sometimes splitting words mid-character. We remove <br> entirely when
+    // it appears between two word characters (rejoining the word), and replace
+    // with a space when it falls between separate words/tokens.
+    const cleaned = (this.content() ?? '').replace(
+      /([a-zA-Z'`\u00C0-\u024F])<br\s*\/?>\s*([a-zA-Z'`\u00C0-\u024F])/gi,
+      '$1$2',
+    ).replace(/<br\s*\/?>/gi, ' ');
+    return this.sanitizer.bypassSecurityTrustHtml(cleaned); // NOSONAR
+  });
 }

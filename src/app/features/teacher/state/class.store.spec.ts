@@ -257,6 +257,7 @@ describe('ClassStore', () => {
 
     const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1/students/s1`);
     expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
     req.flush({});
   });
 

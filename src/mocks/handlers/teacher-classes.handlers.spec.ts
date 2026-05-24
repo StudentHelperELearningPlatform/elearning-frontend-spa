@@ -151,14 +151,14 @@ describe('teacherClassesHandlers', () => {
   });
 
   describe('POST /teachers/classes/:classId/students/:studentId', () => {
-    it('should add student to a class', async () => {
+    it('should add a student to the class', async () => {
       const url = getTargetUrl('/teachers/classes/1/students/s3');
-      const response = await fetch(url, { method: 'POST' });
-      
-      expect(response.status).toBe(200);
+      const response = await fetch(url, { 
+        method: 'POST'
+      });
       const data = await response.json();
-      
-      expect(data.success).toBe(true);
+      expect(response.status).toBe(200);
+      expect(data).toEqual({ success: true });
     });
   });
 
@@ -284,7 +284,9 @@ describe('teacherClassesHandlers', () => {
 
     it('should add student to nonexistent class and initialize list', async () => {
       const url = getTargetUrl('/teachers/classes/999/students/s99');
-      const response = await fetch(url, { method: 'POST' });
+      const response = await fetch(url, { 
+        method: 'POST'
+      });
       
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -339,7 +341,8 @@ describe('teacherClassesHandlers', () => {
       expect(res5).toBeDefined();
 
       // 5. addStudentResolver
-      const res6 = addStudentResolver({ params: undefined });
+      const addReqMock = new Request('http://localhost', { method: 'POST', body: '{}' });
+      const res6 = await addStudentResolver({ request: addReqMock, params: undefined });
       expect(res6).toBeDefined();
 
       // 6. removeStudentResolver

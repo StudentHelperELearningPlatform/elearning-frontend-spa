@@ -329,4 +329,31 @@ describe('QuestionsStore', () => {
       expect.objectContaining({ severity: 'error', detail: 'Approve failed' }),
     );
   });
+  // --- UPDATE PASS THRESHOLD ---
+
+  it('should update pass threshold', () => {
+    store.updatePassThreshold({ parentId: 'p1', passThreshold: 75 });
+
+    const req = httpMock.expectOne('http://api/lessons/p1/final-quiz');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ passThreshold: 75 });
+    req.flush({});
+
+    expect(store.passThreshold()).toBe(75);
+    expect(messageServiceSpy.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'success', summary: 'Settings Saved' }),
+    );
+  });
+
+  it('should handle error silently during updatePassThreshold', () => {
+    store.updatePassThreshold({ parentId: 'p1', passThreshold: 80 });
+
+    const req = httpMock.expectOne('http://api/lessons/p1/final-quiz');
+    req.flush({ error: 'Patch failed' }, { status: 400, statusText: 'Bad Request' });
+
+    // Should still update the store since it's an optimistic update
+    expect(store.passThreshold()).toBe(80);
+    // Should NOT call success message
+    expect(messageServiceSpy.add).not.toHaveBeenCalled();
+  });
 });

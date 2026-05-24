@@ -94,8 +94,25 @@ export interface EditableQuestion {
       }
 
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div class="text-xl sm:text-2xl font-black text-black">
-          {{ quizType === 'check' ? 'Check Quiz Questions' : 'Final Quiz Questions' }}
+        <div class="text-xl sm:text-2xl font-black text-black flex items-center flex-wrap gap-4">
+          <span>{{ quizType === 'check' ? 'Check Quiz Questions' : 'Final Quiz Questions' }}</span>
+          
+          @if (quizType === 'final') {
+            <div class="flex items-center gap-2 text-sm font-normal bg-gray-100 px-3 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              <label for="pass-threshold-input" class="font-bold whitespace-nowrap">Pass Threshold:</label>
+              <input
+                id="pass-threshold-input"
+                type="number"
+                class="w-16 px-1.5 py-1 border-2 border-black rounded-lg font-bold outline-none focus:ring-2 focus:ring-[#0ABAB5] text-center"
+                [value]="store.passThreshold()"
+                (change)="updatePassThreshold($event)"
+                min="0"
+                max="100"
+                title="Percentage required to pass"
+              />
+              <span class="font-bold">%</span>
+            </div>
+          }
         </div>
 
         <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3">
@@ -249,11 +266,12 @@ export interface EditableQuestion {
           {{ editingId() ? 'Edit Question' : 'Add New Question' }}
         </div>
 
-        <label class="block mb-5">
+        <label for="question-text-input" class="block mb-5">
           <span class="text-xs font-black text-black block mb-2 uppercase tracking-wider"
             >Question Text <span class="text-[#0ABAB5]">*</span></span
           >
           <textarea
+            id="question-text-input"
             [(ngModel)]="newQuestionText"
             rows="3"
             class="w-full px-3 py-2 border-2 border-black rounded-xl font-bold text-sm sm:text-base resize-none focus:ring-2 focus:ring-[#0ABAB5]/30 outline-none transition-all"
@@ -371,6 +389,16 @@ export class QuestionManagerComponent implements OnInit {
         mandatory: this.quizMandatory()
       }
     });
+  }
+
+  updatePassThreshold(event: Event) {
+    const val = parseInt((event.target as HTMLInputElement).value, 10);
+    if (!isNaN(val) && val >= 0 && val <= 100) {
+      this.store.updatePassThreshold({ parentId: this.parentId, passThreshold: val });
+    } else {
+      // Revert if invalid
+      (event.target as HTMLInputElement).value = this.store.passThreshold().toString();
+    }
   }
 
   generateAI() {

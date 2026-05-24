@@ -1,8 +1,9 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { USER_PLATFORM_API_URL, AUTH_API_URL } from '@core/tokens/api.token';
 import Keycloak from 'keycloak-js';
+import { KEYCLOAK_EVENT_SIGNAL } from 'keycloak-angular';
 
 export interface User {
   id: string;
@@ -35,6 +36,7 @@ export class AuthService {
   private readonly keycloak = inject(Keycloak);
   private readonly userPlatformApi = inject(USER_PLATFORM_API_URL);
   private readonly authApi = inject(AUTH_API_URL);
+  private readonly keycloakEvents = inject(KEYCLOAK_EVENT_SIGNAL);
 
   private _currentUser = signal<User | null>(null);
 
@@ -44,6 +46,13 @@ export class AuthService {
 
   constructor() {
     this._syncState();
+
+    // Synchronize state reactively when OIDC initialization/ready event fires
+    effect(() => {
+      if (this.keycloakEvents()) {
+        this._syncState();
+      }
+    });
 
     // Attach listeners
     this.keycloak.onAuthSuccess = () => this._syncState();

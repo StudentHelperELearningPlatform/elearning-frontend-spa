@@ -429,4 +429,37 @@ describe('QuizzesStore', () => {
       expect(store.resultDetailError()).toBeNull();
     });
   });
+
+  describe('explainQuiz and clearQuizExplanation', () => {
+    it('calls API and sets quizExplanations on success', () => {
+      const mockExp = { questionId: 'q1', text: 'explain' };
+      vi.spyOn(httpClient, 'post').mockReturnValue(of([mockExp]));
+      store.explainQuiz('lesson-1', [['q1', 'A']]);
+      expect(store.quizExplanations()).toEqual([mockExp]);
+      expect(store.quizExplanationLoading()).toBe(false);
+    });
+
+    it('wraps non-array response into an array', () => {
+      const mockExp = { questionId: 'q1', text: 'explain' };
+      vi.spyOn(httpClient, 'post').mockReturnValue(of(mockExp));
+      store.explainQuiz('lesson-1', [['q1', 'A']]);
+      expect(store.quizExplanations()).toEqual([mockExp]);
+      expect(store.quizExplanationLoading()).toBe(false);
+    });
+
+    it('sets empty array on error', () => {
+      vi.spyOn(httpClient, 'post').mockReturnValue(throwError(() => new Error('API Failure')));
+      store.explainQuiz('lesson-1', [['q1', 'A']]);
+      expect(store.quizExplanations()).toEqual([]);
+      expect(store.quizExplanationLoading()).toBe(false);
+    });
+
+    it('clearQuizExplanation clears explanations state', () => {
+      patchStore(store, { quizExplanations: [{}], quizExplanationLoading: true });
+      store.clearQuizExplanation();
+      expect(store.quizExplanations()).toBeNull();
+      expect(store.quizExplanationLoading()).toBe(false);
+    });
+  });
 });
+

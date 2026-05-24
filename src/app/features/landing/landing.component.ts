@@ -9,7 +9,9 @@ import { ButtonComponent } from '../../shared/components/button/button.component
   standalone: true,
   imports: [CommonModule, RouterModule, ButtonComponent],
   template: `
-    <div class="min-h-screen bg-white font-sans text-black overflow-x-hidden">
+    <div
+      class="h-screen bg-white font-sans text-black overflow-x-hidden overflow-y-auto scroll-smooth"
+    >
       <nav
         class="flex items-center justify-between px-6 py-6 border-b-4 border-black sticky top-0 bg-white z-50"
       >
@@ -221,9 +223,6 @@ import { ButtonComponent } from '../../shared/components/button/button.component
       :host {
         display: block;
       }
-      html {
-        scroll-behavior: smooth;
-      }
     `,
   ],
 })
@@ -231,14 +230,10 @@ export class LandingComponent {
   private router = inject(Router);
 
   navigateToAuth() {
-    this.router.navigate(['/auth/login']).then(() => {
-      window.scrollTo(0, 0);
-    });
+    this.router.navigate(['/auth/login']);
   }
 
   navigateAndScroll(path: string) {
-    this.router.navigate([path]).then(() => {
-      window.scrollTo(0, 0);
-    });
+    this.router.navigate([path]);
   }
 }
