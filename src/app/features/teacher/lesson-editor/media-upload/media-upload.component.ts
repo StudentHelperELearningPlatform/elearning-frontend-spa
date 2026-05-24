@@ -285,6 +285,7 @@ export class MediaUploadComponent {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.handleFiles(Array.from(input.files));
+      input.value = '';
     }
 
   }
