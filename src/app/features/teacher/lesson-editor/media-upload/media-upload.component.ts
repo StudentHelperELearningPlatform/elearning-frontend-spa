@@ -14,7 +14,7 @@ export interface UploadedMedia {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'audio';
+  type: 'image' | 'video' | 'audio' | 'pdf';
   progress: number;
   status: 'uploading' | 'complete' | 'error';
   file?: File;
@@ -61,7 +61,7 @@ export interface UploadedMedia {
         (dragover)="onDragOver($event)"
         (dragleave)="onDragLeave($event)"
         (drop)="onDrop($event)"
-        (click)="fileInput.click()"
+        (click)="fileInput.click(); $event.stopPropagation()"
         (keydown.enter)="fileInput.click()"
         (keydown.space)="fileInput.click(); $event.preventDefault()"
       >
@@ -87,7 +87,7 @@ export interface UploadedMedia {
 
         <button
           type="button"
-          (click)="fileInput.click()"
+          (click)="fileInput.click(); $event.stopPropagation()"
           (keydown.enter)="fileInput.click(); $event.stopPropagation()"
           (keydown.space)="fileInput.click(); $event.preventDefault(); $event.stopPropagation()"
           class="bg-[#0ABAB5] text-white px-5 py-2 rounded-lg font-bold border-2 border-black hover:bg-teal-500 focus:outline-none focus:ring-2 focus:ring-black transition-all"
@@ -286,7 +286,7 @@ export class MediaUploadComponent {
     if (input.files && input.files.length > 0) {
       this.handleFiles(Array.from(input.files));
     }
-    input.value = '';
+
   }
 
   handleFiles(files: File[]) {
@@ -316,7 +316,19 @@ export class MediaUploadComponent {
   }
 
   uploadFile(file: File, existingId?: string) {
-    const mediaType = file.type.split('/')[0] as 'image' | 'video' | 'audio';
+    let mediaType: 'image' | 'video' | 'audio' | 'pdf'; 
+
+    if (file.type.startsWith('image/')) {
+      mediaType = 'image';
+    } else if (file.type.startsWith('video/')) {
+      mediaType = 'video';
+    } else if (file.type.startsWith('audio/')) {
+      mediaType = 'audio';
+    } else if (file.type === 'application/pdf') {
+      mediaType = 'pdf';
+    } else {
+      return;
+    }
     const id = existingId || crypto.randomUUID();
 
     if (existingId) {
