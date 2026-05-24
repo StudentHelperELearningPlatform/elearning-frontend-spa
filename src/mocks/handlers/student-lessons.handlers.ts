@@ -185,8 +185,8 @@ export const studentLessonsHandlers = [
     return HttpResponse.json(lesson);
   }),
 
-  http.put(`${environment.lessonApiUrl}/api/v1/lessons/:id/progress`, () => {
-    return HttpResponse.json({ message: 'Progress saved' });
+  http.post(`${environment.lessonApiUrl}/api/v1/lessons/:id/complete`, () => {
+    return HttpResponse.json({ message: 'Lesson completed' });
   }),
 
   http.post(`${environment.lessonApiUrl}/api/v1/blocks/:id/explain`, async () => {

@@ -3,7 +3,7 @@ import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { QUIZ_API_URL } from '@core/tokens/api.token';
+import { QUIZ_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 export {
   type Question,
   type Quiz,
@@ -54,13 +54,14 @@ interface QuizAttemptResult {
   submittedAnswer?: string;
   correctAnswer?: string;
   correct?: boolean;
+  timeSpentSeconds?: number;
 }
 
 interface QuizAttempt {
   attemptId?: string;
   id?: string;
   score?: number;
-  submittedAt?: number;
+  submittedAt?: number | string;
   results?: QuizAttemptResult[];
   quizId?: string;
   quizTitle?: string;
@@ -69,6 +70,8 @@ interface QuizAttempt {
   nextLessonId?: string | null;
   passed?: boolean;
   timeSpent?: number;
+  timeTakenSeconds?: number;
+  recommendedSubcapitols?: string[];
 }
 
 type QuizWithMeta = Quiz & {
@@ -149,7 +152,7 @@ interface QuizzesState {
   resultDetail: QuizResultDetail | null;
   resultDetailLoading: boolean;
   resultDetailError: string | null;
-  /** Per-question AI explanations returned by the final-quiz explain endpoint (one per submitted answer) */
+  questionTimes: Record<string, number>;
   quizExplanations: unknown[] | null;
   quizExplanationLoading: boolean;
 }
@@ -163,6 +166,9 @@ const getInitialQuizState = (quiz: QuizWithMeta | null, isStart: boolean) => ({
   submitted: false,
   result: null,
   error: null,
+  questionTimes: {},
+  quizExplanations: null,
+  quizExplanationLoading: false,
 });
 
 export const QuizzesStore = signalStore(
@@ -182,6 +188,7 @@ export const QuizzesStore = signalStore(
     resultDetail: null,
     resultDetailLoading: false,
     resultDetailError: null,
+    questionTimes: {},
     quizExplanations: null,
     quizExplanationLoading: false,
   }),
@@ -215,7 +222,7 @@ export const QuizzesStore = signalStore(
     totalPoints: computed(() => state.result()?.totalPoints || 0),
     timeSpent: computed(() => state.result()?.timeSpent || 0),
   })),
-  withMethods((store, http = inject(HttpClient), quizApi = inject(QUIZ_API_URL)) => {
+  withMethods((store, http = inject(HttpClient), quizApi = inject(QUIZ_API_URL), contentApi = inject(CONTENT_API_URL)) => {
     const navigateToIndex = (index: number) => {
       const total = store.currentQuiz()?.questions?.length ?? 0;
       if (total === 0) {
@@ -271,9 +278,11 @@ export const QuizzesStore = signalStore(
         : 0;
 
       const answersDict = store.answers();
+      const questionTimesDict = store.questionTimes();
       const answersArray = Object.entries(answersDict).map(([questionId, answer]) => ({
         questionId,
         answer,
+        timeSpentSeconds: questionTimesDict[questionId] || 0,
       }));
 
       const lessonId = store.lessonId();
@@ -286,11 +295,18 @@ export const QuizzesStore = signalStore(
       const url = `${quizApi}/lessons/${lessonId}/final-quiz/submit`;
       console.log('[QuizzesStore] Posting answers to submit URL:', url, answersArray);
 
-      http.post<SubmitQuizResponse>(url, { answers: answersArray }).subscribe({
+      const submitPayload = {
+        answers: answersArray,
+        totalTimeSeconds: timeSpent,
+      };
+
+      http.post<SubmitQuizResponse>(url, submitPayload).subscribe({
         next: (submission) => {
           console.log('[QuizzesStore] Quiz submit API response received:', submission);
           const rawAttemptId = submission?.attemptId || submission?.id || `attempt-fallback-${Date.now()}`;
           console.log('[QuizzesStore] Resolved attempt ID:', rawAttemptId);
+
+          const passed = submission?.passed ?? false;
 
           patchState(store, {
             result: {
@@ -298,10 +314,19 @@ export const QuizzesStore = signalStore(
               totalPoints: submission?.totalPoints ?? 100,
               timeSpent: submission?.timeSpent ?? timeSpent,
               percentage: submission?.percentage ?? 0,
-              passed: submission?.passed ?? false,
+              passed: passed,
               attemptId: rawAttemptId,
             },
           });
+
+          if (passed && lessonId) {
+            const completeUrl = `${contentApi}/lessons/${lessonId}/complete`;
+            console.log('[QuizzesStore] Quiz passed! Marking lesson complete at:', completeUrl);
+            http.post(completeUrl, {}).subscribe({
+              next: () => console.log('[QuizzesStore] Lesson marked complete successfully.'),
+              error: (err) => console.error('[QuizzesStore] Failed to mark lesson complete:', err),
+            });
+          }
         },
         error: (err) => {
           console.error('[QuizzesStore] Failed to submit quiz via API:', err);
@@ -355,6 +380,15 @@ export const QuizzesStore = signalStore(
       },
       submitQuiz: submitQuizInternal,
       tickTimer(this: { submitQuiz: () => void }) {
+        const currentQ = store.currentQuestion();
+        if (currentQ) {
+          patchState(store, (state) => {
+            const nextTimes = { ...state.questionTimes };
+            nextTimes[currentQ.id] = (nextTimes[currentQ.id] || 0) + 1;
+            return { questionTimes: nextTimes };
+          });
+        }
+
         const remaining = store.timeRemaining();
         if (remaining === null) return;
 
@@ -445,7 +479,7 @@ export const QuizzesStore = signalStore(
 
             if (!foundAttempt && attemptsArray.length > 0) {
               console.log('[QuizzesStore] Specific attemptId not matched. Filtering and sorting to get the latest attempt.');
-              const sortedAttempts = [...attemptsArray].sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+              const sortedAttempts = [...attemptsArray].sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
               foundAttempt = sortedAttempts[0];
             }
 
@@ -468,9 +502,15 @@ export const QuizzesStore = signalStore(
                   studentAnswer: resolveOptionLabel(q, r.submittedAnswer),
                   correctAnswer: resolveOptionLabel(q, r.correctAnswer) || 'Correct Answer',
                   isCorrect: r.correct ?? false,
-                  timeSpentSeconds: 0,
+                  timeSpentSeconds: r.timeSpentSeconds || 0,
                   aiExplanation: 'AI Explanation is not available for this question.',
                 };
+              });
+
+              const sortedBreakdown = [...mappedBreakdown].sort((a, b) => {
+                const idxA = questions.findIndex((q) => q.id === a.questionId);
+                const idxB = questions.findIndex((q) => q.id === b.questionId);
+                return idxA - idxB;
               });
 
               const detail: QuizResultDetail = {
@@ -484,8 +524,8 @@ export const QuizzesStore = signalStore(
                 totalPoints: calculatedTotalPoints,
                 percentage: calculatedPercentage,
                 passed: foundAttempt.passed ?? (calculatedPercentage >= 70),
-                timeSpent: foundAttempt.timeSpent ?? 0,
-                questionBreakdown: mappedBreakdown,
+                timeSpent: foundAttempt.timeTakenSeconds ?? foundAttempt.timeSpent ?? 0,
+                questionBreakdown: sortedBreakdown,
               };
 
               patchState(store, {
@@ -522,17 +562,76 @@ export const QuizzesStore = signalStore(
       explainQuiz(lessonId: string, userAnswers: string[][]): void {
         patchState(store, { quizExplanationLoading: true, quizExplanations: null });
         http
-          .post<unknown[]>(
+          .post<unknown>(
             `${quizApi}/lessons/${lessonId}/final-quiz/explain`,
             { user_answers: userAnswers },
           )
           .subscribe({
             next: (res) => {
-              // Response is an array — one explanation object per submitted answer
-              patchState(store, {
-                quizExplanations: Array.isArray(res) ? res : [res],
-                quizExplanationLoading: false,
-              });
+              let rawArray: unknown[] = [];
+              if (Array.isArray(res)) {
+                rawArray = res;
+              } else if (res && typeof res === 'object') {
+                const resObj = res as Record<string, unknown>;
+                const content = resObj['content'];
+                if (typeof content === 'string') {
+                  try {
+                    const parsed = JSON.parse(content);
+                    if (Array.isArray(parsed)) {
+                      rawArray = parsed as unknown[];
+                    } else if (parsed && typeof parsed === 'object') {
+                      rawArray = [parsed];
+                    } else {
+                      rawArray = [res];
+                    }
+                  } catch {
+                    rawArray = [res];
+                  }
+                } else if (Array.isArray(content)) {
+                  rawArray = content as unknown[];
+                } else {
+                  rawArray = [res];
+                }
+              }
+
+              const breakdown = store.resultDetail()?.questionBreakdown || [];
+              if (breakdown.length > 0 && rawArray.length > 0) {
+                const normalizeText = (t: string | undefined | null): string => {
+                  if (!t) return '';
+                  return t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+                };
+
+                const mappedExplanations = breakdown.map((bq, index) => {
+                  const normalizedBqText = normalizeText(bq.questionText);
+                  
+                  const match = rawArray.find(item => {
+                    if (!item || typeof item !== 'object') return false;
+                    const itemObj = item as Record<string, unknown>;
+                    const itemQ = (itemObj['question'] || itemObj['questionText'] || itemObj['question_text']) as string | undefined;
+                    return normalizeText(itemQ) === normalizedBqText;
+                  });
+
+                  if (match) {
+                    return match;
+                  }
+
+                  if (rawArray.length === breakdown.length) {
+                    return rawArray[index];
+                  }
+
+                  return null;
+                });
+
+                patchState(store, {
+                  quizExplanations: mappedExplanations,
+                  quizExplanationLoading: false,
+                });
+              } else {
+                patchState(store, {
+                  quizExplanations: rawArray,
+                  quizExplanationLoading: false,
+                });
+              }
             },
             error: () => {
               patchState(store, {

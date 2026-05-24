@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import { inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, catchError, of, throwError } from 'rxjs';
+import { pipe, switchMap, catchError, of, throwError, tap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { MessageService } from 'primeng/api';
 import { CONTENT_API_URL } from '../../../core/tokens/api.token';
@@ -23,7 +23,7 @@ const initialState: QuestionsState = {
   isLoading: false,
   isGeneratingAI: false,
   error: null,
-  passThreshold: 100,
+  passThreshold: 70,
 };
 
 export const QuestionsStore = signalStore(
@@ -53,9 +53,10 @@ export const QuestionsStore = signalStore(
               type === 'check'
                 ? http.post(`${apiBase}/subcapitols/${parentId}/check-quiz`, {})
                 : http.post(`${apiBase}/lessons/${parentId}/final-quiz`, {
-                    passThreshold: 100,
-                    mandatory: true,
-                    maxAttempts: 1073741824,
+                    passThreshold: 50,
+                    mandatory: false,
+                    maxAttempts: 3,
+                    timeLimit: 900,
                   });
 
             return getReq$.pipe(
@@ -270,26 +271,32 @@ export const QuestionsStore = signalStore(
           }),
         ),
       ),
+
+
+
       // --- UPDATE PASS THRESHOLD ---
       updatePassThreshold: rxMethod<{ parentId: string; passThreshold: number }>(
         pipe(
-          switchMap(({ parentId, passThreshold }) => {
+          tap(({ passThreshold }) => {
             patchState(store, { passThreshold });
-            // Best-effort patch since the backend may or may not support this yet
+          }),
+          switchMap(({ parentId, passThreshold }) => {
             return http.patch(`${apiBase}/lessons/${parentId}/final-quiz`, { passThreshold }).pipe(
               tapResponse({
                 next: () => {
                   messageService?.add({
                     severity: 'success',
                     summary: 'Settings Saved',
-                    detail: 'Pass threshold updated successfully.',
+                    detail: 'Pass threshold updated.',
                   });
                 },
-                error: () => undefined, // silent fallback
+                error: (err) => {
+                  console.error('Failed to update pass threshold:', err);
+                },
               })
             );
-          })
-        )
+          }),
+        ),
       ),
     }),
   ),

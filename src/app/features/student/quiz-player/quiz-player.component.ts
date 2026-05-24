@@ -49,8 +49,7 @@ export class QuizPlayerComponent implements OnInit {
 
   constructor() {
     effect(() => {
-      const shouldRunTimer =
-        this.started() && !this.store.submitted() && this.store.timeRemaining() !== null;
+      const shouldRunTimer = this.started() && !this.store.submitted();
 
       if (shouldRunTimer && !this.timerSubscription) {
         this.timerSubscription = interval(1000)

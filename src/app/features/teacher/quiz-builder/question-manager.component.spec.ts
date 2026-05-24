@@ -14,6 +14,7 @@ describe('QuestionManagerComponent', () => {
     isLoading: ReturnType<typeof signal>;
     isGeneratingAI: ReturnType<typeof signal>;
     error: ReturnType<typeof signal>;
+    passThreshold: ReturnType<typeof signal>;
     loadQuestions: Mock;
     generateAI: Mock;
     deleteQuestion: Mock;
@@ -28,6 +29,7 @@ describe('QuestionManagerComponent', () => {
       isLoading: signal(false),
       isGeneratingAI: signal(false),
       error: signal<string | null>(null),
+      passThreshold: signal(70),
       loadQuestions: vi.fn(),
       generateAI: vi.fn(),
       deleteQuestion: vi.fn(),

@@ -281,17 +281,33 @@ export class ResultsSummaryComponent implements OnInit, OnDestroy {
     if (!item) return null;
     if (typeof item === 'string') return item;
     const obj = item as Record<string, unknown>;
+    
+    let explanationText: string | null = null;
+    
     // { content: '{ "simplified_explanation": "..." }' }
     if (typeof obj['content'] === 'string') {
       try {
         const parsed = JSON.parse(obj['content'] as string) as Record<string, unknown>;
-        return (parsed['simplified_explanation'] as string) ?? obj['content'] as string;
+        explanationText = (parsed['simplified_explanation'] as string) ?? (parsed['explanation'] as string) ?? obj['content'] as string;
       } catch {
-        return obj['content'] as string;
+        explanationText = obj['content'] as string;
+      }
+    } else if (typeof obj['explanation'] === 'string') {
+      explanationText = obj['explanation'] as string;
+    } else {
+      const directExp = obj['explanation'] ?? obj['content'] ?? obj['simplified_explanation'];
+      if (directExp && typeof directExp === 'string') {
+        explanationText = directExp;
       }
     }
-    // { explanation: string }
-    if (typeof obj['explanation'] === 'string') return obj['explanation'] as string;
+    
+    if (explanationText) {
+      if (typeof obj['key_takeaway'] === 'string' && obj['key_takeaway'].trim() !== '') {
+        return `${explanationText}\n\nKey Takeaway: ${obj['key_takeaway']}`;
+      }
+      return explanationText;
+    }
+
     // Fallback
     return JSON.stringify(item);
   }

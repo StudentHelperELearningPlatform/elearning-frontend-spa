@@ -18,6 +18,8 @@ export interface EditableQuestion {
   providers: [QuestionsStore],
   template: `
     <div class="p-1 sm:p-2">
+
+
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div class="text-xl sm:text-2xl font-black text-black flex items-center flex-wrap gap-4">
           <span>{{ quizType === 'check' ? 'Check Quiz Questions' : 'Final Quiz Questions' }}</span>

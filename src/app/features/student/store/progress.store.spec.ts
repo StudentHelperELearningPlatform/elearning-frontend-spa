@@ -219,29 +219,29 @@ describe('ProgressStore', () => {
   // ── markLessonComplete ─────────────────────────────────────────────────────
 
   describe('markLessonComplete()', () => {
-    it('should call PUT with correct URL and body', () => {
+    it('should call POST with correct URL and body', () => {
       store.markLessonComplete({ lessonId: 'lesson-42', score: 95 });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-42/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-42/complete') && r.method === 'POST',
       );
-      expect(req.request.body).toEqual({ status: 'completed', score: 95 });
+      expect(req.request.body).toBeNull();
       req.flush({});
       expect(store.markCompleteLoading()).toBe(false);
     });
 
-    it('should use null score when score is omitted', () => {
+    it('should use null body when score is omitted', () => {
       store.markLessonComplete({ lessonId: 'lesson-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-1/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-1/complete') && r.method === 'POST',
       );
-      expect(req.request.body).toEqual({ status: 'completed', score: null });
+      expect(req.request.body).toBeNull();
       req.flush({});
     });
 
     it('should set markCompleteError on failure', () => {
       store.markLessonComplete({ lessonId: 'lesson-1', score: 80 });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-1/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-1/complete') && r.method === 'POST',
       );
       req.flush('Error', { status: 500, statusText: 'Server Error' });
       expect(store.markCompleteLoading()).toBe(false);

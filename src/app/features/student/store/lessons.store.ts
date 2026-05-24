@@ -259,6 +259,12 @@ export const LessonsStore = signalStore(
       });
     },
 
+    markModuleCompleteLocally(moduleId: string): void {
+      patchState(store, (s) => ({
+        completedModuleIds: new Set([...s.completedModuleIds, moduleId]),
+      }));
+    },
+
     markModuleComplete(lessonId: string, moduleId: string): void {
       // Track locally so allModulesComplete updates immediately
       patchState(store, (s) => ({
