@@ -150,6 +150,19 @@ describe('LessonsStore', () => {
     expect(store.error()?.kind).not.toBe('unknown');
   });
 
+  describe('markModuleCompleteLocally', () => {
+    it('should mark module complete in local state without API call', () => {
+      const putSpy = vi.spyOn(http, 'put');
+      const postSpy = vi.spyOn(http, 'post');
+
+      store.markModuleCompleteLocally('module-loc');
+
+      expect(store.completedModuleIds().has('module-loc')).toBe(true);
+      expect(putSpy).not.toHaveBeenCalled();
+      expect(postSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('markModuleComplete (INT-02)', () => {
     it('should call PUT /api/v1/lessons/:lessonId/progress with correct payload', () => {
       const putSpy = vi.spyOn(http, 'put').mockReturnValue(of({ message: 'Progress saved successfully' }));

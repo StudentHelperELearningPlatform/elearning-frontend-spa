@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { QuizzesStore } from './quizzes.store';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { QUIZ_API_URL } from '@core/tokens/api.token';
+import { QUIZ_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 
 const MOCK_QUIZ_API = {
   id: 'quiz-1',
@@ -30,6 +30,7 @@ describe('QuizzesStore', () => {
         provideHttpClient(),
         provideRouter([]),
         { provide: QUIZ_API_URL, useValue: '/api' },
+        { provide: CONTENT_API_URL, useValue: '/api' },
       ],
     });
     store = TestBed.inject(QuizzesStore);
@@ -46,6 +47,8 @@ describe('QuizzesStore', () => {
       result: null,
       loading: false,
     });
+
+    vi.spyOn(httpClient, 'post').mockReturnValue(of({}));
   });
 
   afterEach(() => vi.restoreAllMocks());
@@ -196,8 +199,9 @@ describe('QuizzesStore', () => {
         expect.stringContaining('/final-quiz/submit'),
         expect.objectContaining({
           answers: [
-            { questionId: 'q1', answer: 'A' }
-          ]
+            expect.objectContaining({ questionId: 'q1', answer: 'A' })
+          ],
+          totalTimeSeconds: 60
         })
       );
     });

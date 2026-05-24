@@ -130,6 +130,14 @@ export const studentsHandlers = [
     }, { status: 200 });
   }),
 
+  // POST Lesson Complete
+  http.post(`${environment.userPlatformApiUrl}/lessons/:lessonId/complete`, async ({ params }) => {
+    return HttpResponse.json({
+      message: 'Lesson completed successfully',
+      lessonId: params['lessonId'],
+    }, { status: 200 });
+  }),
+
   // GET Student Dashboard
   http.get('/api/v1/students/:id/dashboard', () => {
     return HttpResponse.json(dashboardData);

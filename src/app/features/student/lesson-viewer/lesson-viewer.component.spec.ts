@@ -3,6 +3,7 @@ import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LessonViewerComponent } from './lesson-viewer.component';
 import { LessonsStore, Lesson } from '../store/lessons.store';
+import { ProgressStore } from '../store/progress.store';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
@@ -81,8 +82,11 @@ describe('LessonViewerComponent', () => {
 
     store = TestBed.inject(LessonsStore);
     router = TestBed.inject(Router);
+    const progressStore = TestBed.inject(ProgressStore);
     vi.spyOn(store, 'loadLesson').mockImplementation(() => undefined);
     vi.spyOn(store, 'loadFinalQuizAttempts').mockImplementation(() => undefined);
+    vi.spyOn(progressStore, 'loadMyLessonStats').mockImplementation(() => undefined);
+    vi.spyOn(progressStore, 'markLessonComplete').mockImplementation(() => undefined);
     patchStore(store, { currentLesson: MOCK_LESSON, loading: false });
     fixture = TestBed.createComponent(LessonViewerComponent);
     component = fixture.componentInstance; // Deliberately skipping initial fixture.detectChanges() here to prevent NG0100
@@ -216,15 +220,18 @@ describe('LessonViewerComponent', () => {
     expect(component.currentModuleIndex()).toBe(1);
   });
 
-  it('completeLastModule marks the module complete and navigates to the final quiz player', () => {
+  it('completeLastModule marks the module complete locally and calls progressStore.markLessonComplete', () => {
     fixture.detectChanges();
-    const spy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => {
+    const locallySpy = vi.spyOn(store, 'markModuleCompleteLocally').mockImplementation(() => {
       /* mock */
     });
+    const progressStore = TestBed.inject(ProgressStore);
+    const markCompleteSpy = vi.spyOn(progressStore, 'markLessonComplete').mockImplementation(() => undefined);
     const routerSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.selectModule(2);
     component.completeLastModule();
-    expect(spy).toHaveBeenCalledWith('1', 'm3');
+    expect(locallySpy).toHaveBeenCalledWith('m3');
+    expect(markCompleteSpy).not.toHaveBeenCalled();
     expect(routerSpy).toHaveBeenCalledWith(['/student/quiz-player', '1']);
   });
 

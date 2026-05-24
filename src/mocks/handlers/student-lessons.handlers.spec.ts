@@ -48,14 +48,14 @@ describe('studentLessonsHandlers', () => {
     expect(data.message).toBe('Lesson not found');
   });
 
-  it('should return success message when saving progress', async () => {
-    const response = await fetch(getTargetUrl('/api/v1/lessons/1/progress'), {
-      method: 'PUT',
+  it('should return success message when completing lesson', async () => {
+    const response = await fetch(getTargetUrl('/api/v1/lessons/1/complete'), {
+      method: 'POST',
     });
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    expect(data.message).toBe('Progress saved');
+    expect(data.message).toBe('Lesson completed');
   });
 });

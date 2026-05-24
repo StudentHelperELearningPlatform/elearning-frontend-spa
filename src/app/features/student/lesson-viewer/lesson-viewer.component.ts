@@ -396,7 +396,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     const module = this.currentModule();
     if (lesson) {
       if (module) {
-        this.store.markModuleComplete(lesson.id, module.id);
+        this.store.markModuleCompleteLocally(module.id);
       }
       this.startFinalQuiz();
     }

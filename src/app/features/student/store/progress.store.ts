@@ -386,8 +386,8 @@ export const ProgressStore = signalStore(
     markLessonComplete: rxMethod<{ lessonId: string; score?: number }>(
       pipe(
         tap(() => patchState(store, { markCompleteLoading: true, markCompleteError: null })),
-        switchMap(({ lessonId, score }) =>
-          http.put<LessonProgress>(`${apiBase}/lessons/${lessonId}/progress`, { status: 'completed', score: score ?? null }).pipe(
+        switchMap(({ lessonId }) =>
+          http.post<LessonProgress>(`${apiBase}/lessons/${lessonId}/complete`, null).pipe(
             tapResponse({
               next: () => patchState(store, { markCompleteLoading: false }),
               error: (err: { message?: string }) => patchState(store, { markCompleteLoading: false, markCompleteError: err?.message ?? 'Failed to mark lesson complete' }),

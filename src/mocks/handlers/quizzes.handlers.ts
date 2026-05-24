@@ -124,14 +124,20 @@ const calculateQuizResult = async (
   request: StrictRequest<DefaultBodyType>,
   attemptPrefix: string,
 ) => {
-  const body = (await request.json()) as { answers: Record<string, string> | { questionId: string; answer: string }[] };
+  const body = (await request.json()) as {
+    answers?: Record<string, string> | { questionId: string; answer: string; timeSpentSeconds?: number }[];
+    totalTimeSeconds?: number;
+  };
   const submittedRaw = body.answers ?? {};
 
   const submitted: Record<string, string> = {};
+  const timeSpentMap: Record<string, number> = {};
+  
   if (Array.isArray(submittedRaw)) {
     for (const item of submittedRaw) {
       if (item && item.questionId) {
         submitted[item.questionId] = item.answer;
+        timeSpentMap[item.questionId] = item.timeSpentSeconds ?? 0;
       }
     }
   } else {
@@ -169,23 +175,44 @@ const calculateQuizResult = async (
     totalPoints,
     percentage,
     passed: percentage >= 70,
-    timeSpent: 0,
+    timeSpent: body.totalTimeSeconds ?? 0,
+    timeTakenSeconds: body.totalTimeSeconds ?? 0,
+    submittedAt: new Date().toISOString(),
+    results: quizTemplate.questions.map((q) => {
+      const studentAns = submitted[q.id] || '';
+      const correctOptionIndex = q.correctAnswer && q.correctAnswer.includes('-o') 
+        ? parseInt(q.correctAnswer.split('-o')[1]) - 1 
+        : -1;
+      const correctOptionText = q.options && correctOptionIndex >= 0 ? q.options[correctOptionIndex] : null;
+
+      const isCorrect = q.correctAnswer === null
+        ? studentAns.trim().length > 0
+        : studentAns.toLowerCase() === (q.correctAnswer ?? '').toLowerCase() ||
+          (correctOptionText && studentAns.toLowerCase() === correctOptionText.toLowerCase()) ||
+          (studentAns.toLowerCase() === 'true' && (q.correctAnswer === 'true' || q.correctAnswer === 'True')) ||
+          (studentAns.toLowerCase() === 'false' && (q.correctAnswer === 'false' || q.correctAnswer === 'False'));
+
+      return {
+        questionId: q.id,
+        submittedAnswer: studentAns,
+        correctAnswer: q.correctAnswer || 'Correct Answer',
+        correct: isCorrect,
+        timeSpentSeconds: timeSpentMap[q.id] ?? 0,
+      };
+    }),
   };
 };
 
 interface MockQuestionResult {
   questionId: string;
-  questionText: string;
-  type: string;
-  difficulty: string;
-  studentAnswer: string;
-  correctAnswer: string | null;
-  isCorrect: boolean;
+  submittedAnswer: string;
+  correct: boolean;
+  correctAnswer: string;
   timeSpentSeconds: number;
-  aiExplanation: string;
 }
 
 interface MockAttempt {
+  id: string;
   attemptId: string;
   quizId: string;
   quizTitle: string;
@@ -197,13 +224,10 @@ interface MockAttempt {
   percentage: number;
   passed: boolean;
   timeSpent: number;
-  questionBreakdown?: MockQuestionResult[];
-  results?: {
-    questionId: string;
-    submittedAnswer?: string;
-    correctAnswer?: string;
-    correct?: boolean;
-  }[];
+  timeTakenSeconds: number;
+  submittedAt: string;
+  results: MockQuestionResult[];
+  recommendedSubcapitols?: string[];
 }
 
 const submittedAttemptsMap = new Map<string, MockAttempt[]>();
@@ -211,6 +235,7 @@ const submittedAttemptsMap = new Map<string, MockAttempt[]>();
 // Seed a default attempt for local dev testing
 submittedAttemptsMap.set('seed-1', [
   {
+    id: 'attempt-1',
     attemptId: 'attempt-1',
     quizId: 'seed-1',
     quizTitle: 'Sample Quiz',
@@ -222,30 +247,25 @@ submittedAttemptsMap.set('seed-1', [
     percentage: 70,
     passed: true,
     timeSpent: 245,
-    questionBreakdown: [
+    timeTakenSeconds: 245,
+    submittedAt: '2026-05-24T20:19:58.231Z',
+    results: [
       {
         questionId: 'q1',
-        questionText: 'What is 12 + 8?',
-        type: 'MULTIPLE_CHOICE',
-        difficulty: 'EASY',
-        studentAnswer: 'q1-o3',
+        submittedAnswer: 'q1-o3',
+        correct: true,
         correctAnswer: 'q1-o3',
-        isCorrect: true,
         timeSpentSeconds: 15,
-        aiExplanation: 'Twelve plus eight equals twenty.',
       },
       {
         questionId: 'q2',
-        questionText: 'What is 9 squared?',
-        type: 'MULTIPLE_CHOICE',
-        difficulty: 'MEDIUM',
-        studentAnswer: 'q5-o1',
+        submittedAnswer: 'q5-o1',
+        correct: false,
         correctAnswer: 'q5-o3',
-        isCorrect: false,
         timeSpentSeconds: 65,
-        aiExplanation: '9 x 9 = 81.',
       }
-    ]
+    ],
+    recommendedSubcapitols: ['Algebra Basics']
   }
 ]);
 
@@ -276,17 +296,26 @@ export const quizzesHandlers = [
       passThreshold: 70,
       mandatory: true,
       maxAttempts: null,
+      timeLimitSeconds: 900,
     });
   }),
 
   http.post(
     `${environment.quizApiUrl}/api/v1/lessons/:lessonId/final-quiz`,
-    ({ params }) => {
+    async ({ request, params }) => {
+      const body = (await request.json()) as {
+        passThreshold?: number;
+        mandatory?: boolean;
+        maxAttempts?: number | null;
+        timeLimit?: number | null;
+      };
       return HttpResponse.json({
         id: params['lessonId'],
-        passThreshold: 70,
-        mandatory: true,
-        maxAttempts: 3,
+        passThreshold: body.passThreshold ?? 70,
+        mandatory: body.mandatory ?? true,
+        maxAttempts: body.maxAttempts ?? 3,
+        timeLimitSeconds: body.timeLimit ?? 900,
+        timeLimit: body.timeLimit ?? 900,
       });
     },
   ),
@@ -316,24 +345,23 @@ export const quizzesHandlers = [
           submittedAttemptsMap.set(lessonId, []);
         }
         
-        const detailedAttempt = {
-          ...result,
+        const detailedAttempt: MockAttempt = {
+          id: result.attemptId,
+          attemptId: result.attemptId,
           quizId: lessonId,
           quizTitle: 'Sample Quiz',
           subject: 'Mathematics',
           lessonId: lessonId,
           nextLessonId: 'seed-2',
-          questionBreakdown: quizTemplate.questions.map((q, idx) => ({
-            questionId: q.id,
-            questionText: q.text,
-            type: q.type,
-            difficulty: idx % 3 === 0 ? 'EASY' : idx % 3 === 1 ? 'MEDIUM' : 'HARD',
-            studentAnswer: q.correctAnswer || 'true',
-            correctAnswer: q.correctAnswer || 'true',
-            isCorrect: true,
-            timeSpentSeconds: 15 + idx * 5,
-            aiExplanation: `Explanation for ${q.text}.`
-          }))
+          score: result.score,
+          totalPoints: result.totalPoints,
+          percentage: result.percentage,
+          passed: result.passed,
+          timeSpent: result.timeTakenSeconds,
+          timeTakenSeconds: result.timeTakenSeconds,
+          submittedAt: result.submittedAt,
+          results: result.results,
+          recommendedSubcapitols: ['Mathematics Advanced']
         };
         
         submittedAttemptsMap.get(lessonId)!.push(detailedAttempt);

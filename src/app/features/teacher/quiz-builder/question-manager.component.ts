@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { QuestionsStore } from '../state/questions.store';
@@ -18,6 +18,81 @@ export interface EditableQuestion {
   providers: [QuestionsStore],
   template: `
     <div class="p-1 sm:p-2">
+      @if (quizType === 'final') {
+        <div
+          class="bg-amber-50 border-2 border-black rounded-2xl p-4 sm:p-5 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+        >
+          <div class="font-black text-lg text-black mb-4 flex items-center">
+            <span class="material-icons mr-2 text-[#0ABAB5]">settings</span>
+            Quiz Configuration
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <label class="block">
+              <span class="text-xs font-black text-black block mb-1 uppercase tracking-wider">
+                Time Limit (seconds)
+              </span>
+              <input
+                type="number"
+                [ngModel]="quizTimeLimit()"
+                (ngModelChange)="quizTimeLimit.set($event)"
+                class="w-full px-3 py-2 border-2 border-black rounded-xl font-bold text-sm focus:ring-2 focus:ring-[#0ABAB5]/30 outline-none transition-all"
+                placeholder="e.g. 900"
+              />
+            </label>
+            
+            <label class="block">
+              <span class="text-xs font-black text-black block mb-1 uppercase tracking-wider">
+                Passing Score (%)
+              </span>
+              <input
+                type="number"
+                [ngModel]="quizPassThreshold()"
+                (ngModelChange)="quizPassThreshold.set($event)"
+                class="w-full px-3 py-2 border-2 border-black rounded-xl font-bold text-sm focus:ring-2 focus:ring-[#0ABAB5]/30 outline-none transition-all"
+                placeholder="e.g. 70"
+              />
+            </label>
+            
+            <label class="block">
+              <span class="text-xs font-black text-black block mb-1 uppercase tracking-wider">
+                Max Attempts
+              </span>
+              <input
+                type="number"
+                [ngModel]="quizMaxAttempts()"
+                (ngModelChange)="quizMaxAttempts.set($event)"
+                class="w-full px-3 py-2 border-2 border-black rounded-xl font-bold text-sm focus:ring-2 focus:ring-[#0ABAB5]/30 outline-none transition-all"
+                placeholder="e.g. 3 (empty for unlimited)"
+              />
+            </label>
+            
+            <div class="flex items-center pt-5">
+              <label class="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  [ngModel]="quizMandatory()"
+                  (ngModelChange)="quizMandatory.set($event)"
+                  class="w-5 h-5 text-[#0ABAB5] border-2 border-black rounded-md focus:ring-[#0ABAB5] cursor-pointer"
+                />
+                <span class="ml-2 text-xs font-black text-black uppercase tracking-wider font-semibold">
+                  Mandatory Quiz
+                </span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="flex justify-end mt-4">
+            <button
+              (click)="saveQuizSettings()"
+              class="w-full sm:w-auto px-4 py-2 bg-[#0ABAB5] text-white font-black uppercase tracking-wide border-2 border-black rounded-xl hover:bg-[#099994] transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none text-xs"
+            >
+              Save Settings
+            </button>
+          </div>
+        </div>
+      }
+
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div class="text-xl sm:text-2xl font-black text-black">
           {{ quizType === 'check' ? 'Check Quiz Questions' : 'Final Quiz Questions' }}
@@ -265,8 +340,37 @@ export class QuestionManagerComponent implements OnInit {
     { text: '', isCorrect: false },
   ]);
 
+  quizTimeLimit = signal<number | null>(900);
+  quizPassThreshold = signal<number>(70);
+  quizMaxAttempts = signal<number | null>(null);
+  quizMandatory = signal<boolean>(true);
+
+  constructor() {
+    effect(() => {
+      this.quizTimeLimit.set(this.store.timeLimit());
+      this.quizPassThreshold.set(this.store.passThreshold());
+      this.quizMaxAttempts.set(this.store.maxAttempts());
+      this.quizMandatory.set(this.store.mandatory());
+    }, { allowSignalWrites: true });
+  }
+
   ngOnInit() {
     this.store.loadQuestions({ type: this.quizType, parentId: this.parentId });
+    if (this.quizType === 'final') {
+      this.store.loadQuizSettings(this.parentId);
+    }
+  }
+
+  saveQuizSettings() {
+    this.store.updateQuizSettings({
+      lessonId: this.parentId,
+      settings: {
+        timeLimit: this.quizTimeLimit(),
+        passThreshold: this.quizPassThreshold(),
+        maxAttempts: this.quizMaxAttempts(),
+        mandatory: this.quizMandatory()
+      }
+    });
   }
 
   generateAI() {

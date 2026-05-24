@@ -3,7 +3,7 @@ import { computed, inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { QUIZ_API_URL } from '@core/tokens/api.token';
+import { QUIZ_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 export {
   type Question,
   type Quiz,
@@ -54,13 +54,14 @@ interface QuizAttemptResult {
   submittedAnswer?: string;
   correctAnswer?: string;
   correct?: boolean;
+  timeSpentSeconds?: number;
 }
 
 interface QuizAttempt {
   attemptId?: string;
   id?: string;
   score?: number;
-  submittedAt?: number;
+  submittedAt?: number | string;
   results?: QuizAttemptResult[];
   quizId?: string;
   quizTitle?: string;
@@ -69,6 +70,8 @@ interface QuizAttempt {
   nextLessonId?: string | null;
   passed?: boolean;
   timeSpent?: number;
+  timeTakenSeconds?: number;
+  recommendedSubcapitols?: string[];
 }
 
 type QuizWithMeta = Quiz & {
@@ -149,6 +152,7 @@ interface QuizzesState {
   resultDetail: QuizResultDetail | null;
   resultDetailLoading: boolean;
   resultDetailError: string | null;
+  questionTimes: Record<string, number>;
 }
 
 const getInitialQuizState = (quiz: QuizWithMeta | null, isStart: boolean) => ({
@@ -160,6 +164,7 @@ const getInitialQuizState = (quiz: QuizWithMeta | null, isStart: boolean) => ({
   submitted: false,
   result: null,
   error: null,
+  questionTimes: {},
 });
 
 export const QuizzesStore = signalStore(
@@ -179,6 +184,7 @@ export const QuizzesStore = signalStore(
     resultDetail: null,
     resultDetailLoading: false,
     resultDetailError: null,
+    questionTimes: {},
   }),
   withComputed((state) => ({
     answeredCount: computed(() => Object.keys(state.answers()).length),
@@ -210,7 +216,7 @@ export const QuizzesStore = signalStore(
     totalPoints: computed(() => state.result()?.totalPoints || 0),
     timeSpent: computed(() => state.result()?.timeSpent || 0),
   })),
-  withMethods((store, http = inject(HttpClient), quizApi = inject(QUIZ_API_URL)) => {
+  withMethods((store, http = inject(HttpClient), quizApi = inject(QUIZ_API_URL), contentApi = inject(CONTENT_API_URL)) => {
     const navigateToIndex = (index: number) => {
       const total = store.currentQuiz()?.questions?.length ?? 0;
       if (total === 0) {
@@ -266,9 +272,11 @@ export const QuizzesStore = signalStore(
         : 0;
 
       const answersDict = store.answers();
+      const questionTimesDict = store.questionTimes();
       const answersArray = Object.entries(answersDict).map(([questionId, answer]) => ({
         questionId,
         answer,
+        timeSpentSeconds: questionTimesDict[questionId] || 0,
       }));
 
       const lessonId = store.lessonId();
@@ -281,11 +289,18 @@ export const QuizzesStore = signalStore(
       const url = `${quizApi}/lessons/${lessonId}/final-quiz/submit`;
       console.log('[QuizzesStore] Posting answers to submit URL:', url, answersArray);
 
-      http.post<SubmitQuizResponse>(url, { answers: answersArray }).subscribe({
+      const submitPayload = {
+        answers: answersArray,
+        totalTimeSeconds: timeSpent,
+      };
+
+      http.post<SubmitQuizResponse>(url, submitPayload).subscribe({
         next: (submission) => {
           console.log('[QuizzesStore] Quiz submit API response received:', submission);
           const rawAttemptId = submission?.attemptId || submission?.id || `attempt-fallback-${Date.now()}`;
           console.log('[QuizzesStore] Resolved attempt ID:', rawAttemptId);
+
+          const passed = submission?.passed ?? false;
 
           patchState(store, {
             result: {
@@ -293,10 +308,19 @@ export const QuizzesStore = signalStore(
               totalPoints: submission?.totalPoints ?? 100,
               timeSpent: submission?.timeSpent ?? timeSpent,
               percentage: submission?.percentage ?? 0,
-              passed: submission?.passed ?? false,
+              passed: passed,
               attemptId: rawAttemptId,
             },
           });
+
+          if (passed && lessonId) {
+            const completeUrl = `${contentApi}/lessons/${lessonId}/complete`;
+            console.log('[QuizzesStore] Quiz passed! Marking lesson complete at:', completeUrl);
+            http.post(completeUrl, {}).subscribe({
+              next: () => console.log('[QuizzesStore] Lesson marked complete successfully.'),
+              error: (err) => console.error('[QuizzesStore] Failed to mark lesson complete:', err),
+            });
+          }
         },
         error: (err) => {
           console.error('[QuizzesStore] Failed to submit quiz via API:', err);
@@ -350,6 +374,15 @@ export const QuizzesStore = signalStore(
       },
       submitQuiz: submitQuizInternal,
       tickTimer(this: { submitQuiz: () => void }) {
+        const currentQ = store.currentQuestion();
+        if (currentQ) {
+          patchState(store, (state) => {
+            const nextTimes = { ...state.questionTimes };
+            nextTimes[currentQ.id] = (nextTimes[currentQ.id] || 0) + 1;
+            return { questionTimes: nextTimes };
+          });
+        }
+
         const remaining = store.timeRemaining();
         if (remaining === null) return;
 
@@ -440,7 +473,7 @@ export const QuizzesStore = signalStore(
 
             if (!foundAttempt && attemptsArray.length > 0) {
               console.log('[QuizzesStore] Specific attemptId not matched. Filtering and sorting to get the latest attempt.');
-              const sortedAttempts = [...attemptsArray].sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+              const sortedAttempts = [...attemptsArray].sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
               foundAttempt = sortedAttempts[0];
             }
 
@@ -463,7 +496,7 @@ export const QuizzesStore = signalStore(
                   studentAnswer: resolveOptionLabel(q, r.submittedAnswer),
                   correctAnswer: resolveOptionLabel(q, r.correctAnswer) || 'Correct Answer',
                   isCorrect: r.correct ?? false,
-                  timeSpentSeconds: 0,
+                  timeSpentSeconds: r.timeSpentSeconds || 0,
                   aiExplanation: 'AI Explanation is not available for this question.',
                 };
               });
@@ -479,14 +512,120 @@ export const QuizzesStore = signalStore(
                 totalPoints: calculatedTotalPoints,
                 percentage: calculatedPercentage,
                 passed: foundAttempt.passed ?? (calculatedPercentage >= 70),
-                timeSpent: foundAttempt.timeSpent ?? 0,
+                timeSpent: foundAttempt.timeTakenSeconds ?? foundAttempt.timeSpent ?? 0,
                 questionBreakdown: mappedBreakdown,
               };
 
-              patchState(store, {
-                resultDetail: detail,
-                resultDetailLoading: false,
-                resultDetailError: null,
+              const explainUrl = `${quizApi}/lessons/${lessonId}/final-quiz/explain`;
+              const userAnswers = questions.map((q) => {
+                const r = foundAttempt.results?.find((res) => res.questionId === q.id);
+                return r?.submittedAnswer ? [r.submittedAnswer] : [];
+              });
+
+              http.post<unknown>(explainUrl, { user_answers: userAnswers }).subscribe({
+                next: (response) => {
+                  console.log('[QuizzesStore] POST explain response received:', response);
+                  const explanationsMap: Record<string, string> = {};
+
+                  if (response && typeof response === 'object') {
+                    const obj = response as Record<string, unknown>;
+                    const rawContent = obj['content'] !== undefined ? obj['content'] : response;
+                    
+                    let itemsArray: unknown[] = [];
+                    if (typeof rawContent === 'string') {
+                      try {
+                        itemsArray = JSON.parse(rawContent);
+                      } catch (e) {
+                        console.error('[QuizzesStore] Failed to parse content JSON string:', e);
+                      }
+                    } else if (Array.isArray(rawContent)) {
+                      itemsArray = rawContent;
+                    } else if (Array.isArray(response)) {
+                      itemsArray = response;
+                    }
+
+                    if (Array.isArray(itemsArray) && itemsArray.length > 0) {
+                      itemsArray.forEach((item, index) => {
+                        if (typeof item === 'string') {
+                          const q = questions[index];
+                          if (q) {
+                            explanationsMap[q.id] = item;
+                          }
+                        } else if (item && typeof item === 'object') {
+                          const itemObj = item as Record<string, unknown>;
+                          const qText = (itemObj['question'] || '') as string;
+                          const exp = (itemObj['explanation'] || itemObj['text'] || itemObj['aiExplanation']) as string;
+                          const qId = (itemObj['questionId'] || itemObj['id']) as string;
+
+                          if (qId && exp) {
+                            explanationsMap[qId] = exp;
+                          } else if (qText && exp) {
+                            const matchedQ = questions.find(
+                              (quest) =>
+                                quest.text.toLowerCase().trim() === qText.toLowerCase().trim() ||
+                                quest.text.toLowerCase().includes(qText.toLowerCase()) ||
+                                qText.toLowerCase().includes(quest.text.toLowerCase())
+                            );
+                            if (matchedQ) {
+                              explanationsMap[matchedQ.id] = exp;
+                            }
+                          }
+                        }
+                      });
+                    } else {
+                      const dict = response as Record<string, unknown>;
+                      Object.entries(dict).forEach(([key, val]) => {
+                        if (typeof val === 'string') {
+                          explanationsMap[key] = val;
+                        } else if (val && typeof val === 'object') {
+                          const valObj = val as Record<string, unknown>;
+                          const exp = (valObj['explanation'] || valObj['text'] || valObj['aiExplanation']) as string;
+                          if (exp) {
+                            explanationsMap[key] = exp;
+                          }
+                        }
+                      });
+                    }
+                  }
+
+                  const finalBreakdown = mappedBreakdown.map((item) => ({
+                    ...item,
+                    aiExplanation: explanationsMap[item.questionId] || item.aiExplanation,
+                  }));
+
+                  const sortedBreakdown = [...finalBreakdown].sort((a, b) => {
+                    const idxA = questions.findIndex((q) => q.id === a.questionId);
+                    const idxB = questions.findIndex((q) => q.id === b.questionId);
+                    return idxA - idxB;
+                  });
+
+                  patchState(store, {
+                    resultDetail: {
+                      ...detail,
+                      questionBreakdown: sortedBreakdown,
+                    },
+                    resultDetailLoading: false,
+                    resultDetailError: null,
+                  });
+                },
+                error: (err) => {
+                  console.error('[QuizzesStore] Failed to load AI explanations:', err);
+                  
+                  const sortedBreakdown = [...mappedBreakdown].sort((a, b) => {
+                    const idxA = questions.findIndex((q) => q.id === a.questionId);
+                    const idxB = questions.findIndex((q) => q.id === b.questionId);
+                    return idxA - idxB;
+                  });
+
+                  patchState(store, {
+                    resultDetail: {
+                      ...detail,
+                      questionBreakdown: sortedBreakdown,
+                    },
+                    resultDetailLoading: false,
+                    resultDetailError: null,
+                  });
+                }
               });
             } else {
               console.warn('[QuizzesStore] No matching attempt found. Falling back to local store result.');

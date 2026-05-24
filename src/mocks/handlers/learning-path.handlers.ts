@@ -146,4 +146,11 @@ export const learningPathHandlers = [
       completedModuleIds: [body.moduleId],
     });
   }),
+
+  http.post('/api/v1/lessons/:lessonId/complete', async ({ params }) => {
+    return HttpResponse.json({
+      message: 'Lesson completed successfully',
+      lessonId: params['lessonId'],
+    }, { status: 200 });
+  }),
 ];

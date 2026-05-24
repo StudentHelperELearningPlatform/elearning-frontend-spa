@@ -108,7 +108,7 @@ describe('QuestionsStore', () => {
 
     const req = httpMock.expectOne('http://api/lessons/p2/final-quiz');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ passThreshold: 50, mandatory: false, maxAttempts: 3 });
+    expect(req.request.body).toEqual({ passThreshold: 50, mandatory: false, maxAttempts: 3, timeLimit: 900 });
     req.flush({});
 
     expect(store.questions()).toEqual([]);

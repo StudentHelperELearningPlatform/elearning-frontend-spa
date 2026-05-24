@@ -15,6 +15,10 @@ interface QuestionsState {
   isLoading: boolean;
   isGeneratingAI: boolean;
   error: string | null;
+  passThreshold: number;
+  mandatory: boolean;
+  maxAttempts: number | null;
+  timeLimit: number | null;
 }
 
 const initialState: QuestionsState = {
@@ -22,6 +26,10 @@ const initialState: QuestionsState = {
   isLoading: false,
   isGeneratingAI: false,
   error: null,
+  passThreshold: 70,
+  mandatory: true,
+  maxAttempts: null,
+  timeLimit: 900,
 };
 
 export const QuestionsStore = signalStore(
@@ -54,6 +62,7 @@ export const QuestionsStore = signalStore(
                     passThreshold: 50,
                     mandatory: false,
                     maxAttempts: 3,
+                    timeLimit: 900,
                   });
 
             return getReq$.pipe(
@@ -264,6 +273,83 @@ export const QuestionsStore = signalStore(
                   });
                 },
               }),
+            );
+          }),
+        ),
+      ),
+
+      // --- LOAD QUIZ SETTINGS ---
+      loadQuizSettings: rxMethod<string>(
+        pipe(
+          switchMap((lessonId) => {
+            return http.get<{
+              passThreshold: number;
+              mandatory: boolean;
+              maxAttempts: number | null;
+              timeLimitSeconds?: number | null;
+              timeLimit?: number | null;
+            }>(`${apiBase}/lessons/${lessonId}/final-quiz`).pipe(
+              tapResponse({
+                next: (settings) => {
+                  patchState(store, {
+                    passThreshold: settings.passThreshold,
+                    mandatory: settings.mandatory,
+                    maxAttempts: settings.maxAttempts,
+                    timeLimit: settings.timeLimitSeconds ?? settings.timeLimit ?? 900,
+                  });
+                },
+                error: (err) => console.error('Failed to load quiz settings:', err),
+              })
+            );
+          }),
+        ),
+      ),
+
+      // --- UPDATE QUIZ SETTINGS ---
+      updateQuizSettings: rxMethod<{
+        lessonId: string;
+        settings: {
+          passThreshold: number;
+          mandatory: boolean;
+          maxAttempts: number | null;
+          timeLimit: number | null;
+        };
+      }>(
+        pipe(
+          switchMap(({ lessonId, settings }) => {
+            patchState(store, { isLoading: true });
+            return http.post<{
+              passThreshold: number;
+              mandatory: boolean;
+              maxAttempts: number | null;
+              timeLimitSeconds?: number | null;
+              timeLimit?: number | null;
+            }>(`${apiBase}/lessons/${lessonId}/final-quiz`, settings).pipe(
+              tapResponse({
+                next: (updated) => {
+                  patchState(store, {
+                    isLoading: false,
+                    passThreshold: updated.passThreshold,
+                    mandatory: updated.mandatory,
+                    maxAttempts: updated.maxAttempts,
+                    timeLimit: updated.timeLimitSeconds ?? updated.timeLimit ?? settings.timeLimit,
+                  });
+                  messageService?.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'Quiz settings updated successfully.',
+                  });
+                },
+                error: (err: HttpErrorResponse) => {
+                  const errorMessage = err.error?.error || 'Failed to update quiz settings.';
+                  patchState(store, { isLoading: false, error: errorMessage });
+                  messageService?.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: errorMessage,
+                  });
+                },
+              })
             );
           }),
         ),
