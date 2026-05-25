@@ -205,6 +205,10 @@ export class HistoryComponent implements OnInit {
     this.fromDateSignal.set(this.fromDate || null);
     this.toDateSignal.set(this.toDate || null);
     this.page.set(1);
+    this.progressStore.loadMyHistory({
+      from: this.fromDate ? this.fromDate : undefined,
+      to: this.toDate ? this.toDate : undefined,
+    });
   }
 
   protected clearFilters(): void {
@@ -213,6 +217,7 @@ export class HistoryComponent implements OnInit {
     this.fromDateSignal.set(null);
     this.toDateSignal.set(null);
     this.page.set(1);
+    this.progressStore.loadMyHistory();
   }
 
   protected nextPage(): void {

@@ -1,5 +1,5 @@
 import { computed, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { tapResponse } from '@ngrx/operators';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
@@ -316,67 +316,72 @@ export const ProgressStore = signalStore(
 
   withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => ({
     
-    // ── Legacy (apelat de progress-dashboard.component.ts) ─────────────
-    loadDashboard(studentId: string) {
-      void studentId;
-      patchState(store, { loading: true, error: null, dashboardLoading: true });
-      http
-        .get<DashboardResponse>(`${apiBase}/progress/me/dashboard`, {
-          params: { classId: '00000000-0000-0000-0000-000000000000' }
-        })
-        .subscribe({
-          next: (data) => {
-            const studentInfo = {
-              id: data?.studentId || data?.student?.id || '',
-              firstName: data?.firstName || data?.student?.firstName || '',
-              lastName: data?.lastName || data?.student?.lastName || '',
-              totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
-              completedLessons: data?.completedLessons ?? data?.student?.completedLessons ?? 0,
-            };
-            const mappedSkillLevels = data?.subjects
-              ? data.subjects.map((s: SubjectResponse) => ({
-                  subject: s.subjectName || s.subjectId || '',
-                  level: s.skillLevel ?? 0,
-                }))
-              : (data?.skillLevels ?? []);
-            const mappedStreak = {
-              currentStreak: data?.currentStreak ?? data?.streak?.currentStreak ?? 0,
-              longestStreak: data?.longestStreak ?? data?.streak?.longestStreak ?? 0,
-              lastActivityDate: data?.lastActivityDate ?? data?.streak?.lastActivityDate ?? '',
-            };
-
-            patchState(store, {
-              student: studentInfo,
-              skillLevels: mappedSkillLevels,
-              streak: mappedStreak,
-              progressRecords: data?.progressRecords ?? [],
-              recentActivity: data?.recentActivity ?? [],
-              milestones: data?.milestones ?? [],
-              upcomingQuizzes: data?.upcomingQuizzes ?? [],
-              loading: false,
-              dashboardLoading: false,
-              error: null,
-            });
-          },
-          error: () => {
-            patchState(store, { loading: false, dashboardLoading: false, error: 'Failed to load dashboard data.' });
-          },
-        });
-    },
-
     // ── Sprint 6 live endpoints ──────────────────────────────────────────────
 
     loadMyDashboard: rxMethod<{ classId?: string } | void>(
       pipe(
-        tap(() => patchState(store, { dashboardLoading: true, dashboardError: null })),
+        tap(() => patchState(store, { dashboardLoading: true, dashboardError: null, loading: true, error: null })),
         switchMap((params) => {
           const classId = (params && typeof params === 'object' && 'classId' in params ? params.classId : null) || '00000000-0000-0000-0000-000000000000';
-          return http.get<DashboardData>(`${apiBase}/progress/me/dashboard`, {
+          return http.get<DashboardResponse>(`${apiBase}/progress/me/dashboard`, {
             params: { classId }
           }).pipe(
             tapResponse({
-              next: (dashboard) => patchState(store, { dashboard, dashboardLoading: false }),
-              error: (err: { message?: string }) => patchState(store, { dashboardLoading: false, dashboardError: err?.message ?? 'Failed to load dashboard' }),
+              next: (data) => {
+                const studentInfo = {
+                  id: data?.studentId || data?.student?.id || '',
+                  firstName: data?.firstName || data?.student?.firstName || '',
+                  lastName: data?.lastName || data?.student?.lastName || '',
+                  totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
+                  completedLessons: data?.completedLessons ?? data?.student?.completedLessons ?? 0,
+                };
+                const mappedSkillLevels = data?.subjects
+                  ? data.subjects.map((s: SubjectResponse) => ({
+                      subject: s.subjectName || s.subjectId || '',
+                      level: s.skillLevel ?? 0,
+                    }))
+                  : (data?.skillLevels ?? []);
+                const mappedStreak = {
+                  currentStreak: data?.currentStreak ?? data?.streak?.currentStreak ?? 0,
+                  longestStreak: data?.longestStreak ?? data?.streak?.longestStreak ?? 0,
+                  lastActivityDate: data?.lastActivityDate ?? data?.streak?.lastActivityDate ?? '',
+                };
+
+                const dashboard: DashboardData = {
+                  student: studentInfo,
+                  skillLevels: mappedSkillLevels,
+                  streak: mappedStreak,
+                  progressRecords: data?.progressRecords ?? [],
+                  recentActivity: data?.recentActivity ?? [],
+                  milestones: data?.milestones ?? [],
+                  upcomingQuizzes: data?.upcomingQuizzes ?? [],
+                  totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
+                  completedLessons: data?.completedLessons ?? data?.student?.completedLessons ?? 0,
+                  averageScore: 0,
+                  lastActive: data?.lastActivityDate ?? data?.streak?.lastActivityDate ?? null,
+                };
+
+                patchState(store, {
+                  student: studentInfo,
+                  skillLevels: mappedSkillLevels,
+                  streak: mappedStreak,
+                  progressRecords: dashboard.progressRecords,
+                  recentActivity: dashboard.recentActivity,
+                  milestones: dashboard.milestones,
+                  upcomingQuizzes: dashboard.upcomingQuizzes,
+                  dashboard,
+                  dashboardLoading: false,
+                  loading: false,
+                  dashboardError: null,
+                  error: null,
+                });
+              },
+              error: (err: { message?: string }) => patchState(store, {
+                dashboardLoading: false,
+                dashboardError: err?.message ?? 'Failed to load dashboard',
+                loading: false,
+                error: err?.message ?? 'Failed to load dashboard'
+              }),
             })
           );
         })
@@ -484,11 +489,19 @@ export const ProgressStore = signalStore(
       ),
     ),
 
-    loadMyHistory: rxMethod<void>(
+    loadMyHistory: rxMethod<{ lessonId?: string; result?: string; from?: string; to?: string } | void>(
       pipe(
         tap(() => patchState(store, { myHistoryLoading: true, myHistoryError: null })),
-        switchMap(() =>
-          http.get<MyHistoryResponseItem[]>(`${apiBase}/progress/me/history`).pipe(
+        switchMap((params) => {
+          let httpParams = new HttpParams();
+          if (params) {
+            if (params.lessonId) httpParams = httpParams.set('lessonId', params.lessonId);
+            if (params.result) httpParams = httpParams.set('result', params.result);
+            if (params.from) httpParams = httpParams.set('from', params.from);
+            if (params.to) httpParams = httpParams.set('to', params.to);
+          }
+          
+          return http.get<MyHistoryResponseItem[]>(`${apiBase}/progress/me/history`, { params: httpParams }).pipe(
             tapResponse({
               next: (history) => {
                 const mappedHistory: HistoryEntry[] = (history || []).map((h: MyHistoryResponseItem) => ({
@@ -507,8 +520,8 @@ export const ProgressStore = signalStore(
                   myHistoryError: err?.message ?? 'Failed to load history',
                 }),
             }),
-          ),
-        ),
+          );
+        }),
       ),
     ),
   }))

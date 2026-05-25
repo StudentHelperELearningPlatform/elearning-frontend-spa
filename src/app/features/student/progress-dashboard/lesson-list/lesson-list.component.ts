@@ -1,6 +1,7 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LessonsStore } from '../../store/lessons.store';
+import { ProgressStore } from '../../store/progress.store';
 import { AuthStore } from '../../../auth/store/auth.store';
 import { RouterModule } from '@angular/router';
 import { CardComponent } from '../../../../shared/components/card/card.component';
@@ -105,7 +106,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             }
           }
           @case ('history') {
-            @if (lessonsStore.completedLessons().length === 0) {
+            @if (completedLessons().length === 0) {
               <app-empty-state
                 [title]="'No history yet'"
                 [description]="'Finish a lesson to see your achievements here!'"
@@ -113,7 +114,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               ></app-empty-state>
             } @else {
               <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                @for (lesson of lessonsStore.completedLessons(); track lesson.id) {
+                @for (lesson of completedLessons(); track lesson.id) {
                   <ng-container
                     *ngTemplateOutlet="lessonCard; context: { $implicit: lesson, type: 'history' }"
                   />
@@ -223,13 +224,21 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 })
 export class LessonListComponent implements OnInit {
   lessonsStore = inject(LessonsStore);
+  progressStore = inject(ProgressStore);
   authStore = inject(AuthStore);
   activeTab = signal<'browser' | 'my-lessons' | 'history'>('browser');
 
   private readonly lessonStatusMap = signal<Record<string, string>>({});
 
+  completedLessons = computed(() => {
+    const history = this.progressStore.myHistory();
+    const historyIds = new Set(history.map((h) => h.lessonId));
+    return this.lessonsStore.publishedLessons().filter((l) => historyIds.has(l.id));
+  });
+
   ngOnInit() {
     this.lessonsStore.loadLessons();
+    this.progressStore.loadMyHistory();
   }
 
   getLessonStatus(lessonId: string): string {

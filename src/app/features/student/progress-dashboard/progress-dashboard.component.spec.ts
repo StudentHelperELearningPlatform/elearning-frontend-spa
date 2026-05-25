@@ -18,7 +18,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     student: WritableSignal<unknown>;
     activeStreak: WritableSignal<number>;
     skillLevels: WritableSignal<unknown[]>;
-    loadDashboard: ReturnType<typeof vi.fn>;
+
     loadMyDashboard: ReturnType<typeof vi.fn>;
     loadMyLessonStats: ReturnType<typeof vi.fn>;
     loading: WritableSignal<boolean>;
@@ -61,7 +61,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       student: signal({ firstName: 'Test', totalLessons: 10, completedLessons: 5 }),
       activeStreak: signal(5),
       skillLevels: signal([]),
-      loadDashboard: vi.fn(),
+
       loadMyDashboard: vi.fn(),
       loadMyLessonStats: vi.fn(),
       loading: signal(false),
@@ -122,28 +122,13 @@ describe('ProgressDashboardComponent (Logic)', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should call progressStore.loadDashboard on init', () => {
+  it('should fetch dashboard via loadMyDashboard when profile loads', async () => {
+    studentProfileStoreMock.profile.set({ enrolledClasses: ['class-123'] } as unknown as StudentProfile);
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });
-    expect(progressStoreMock.loadDashboard).toHaveBeenCalledWith('123');
-  });
-
-  it('should also pull aggregate stats from loadMyDashboard on init', () => {
-    TestBed.runInInjectionContext(() => {
-      component.ngOnInit();
-    });
-    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
-  });
-
-  it('should skip loadDashboard when user is not yet loaded', () => {
-    (authStoreStub.user as WritableSignal<{ id: string, name: string } | null>).set(null);
-    TestBed.runInInjectionContext(() => {
-      component.ngOnInit();
-    });
-    expect(progressStoreMock.loadDashboard).not.toHaveBeenCalled();
-    // loadMyDashboard is token-based and always safe
-    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalledWith({ classId: 'class-123' });
   });
 
   describe('greeting', () => {

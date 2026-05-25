@@ -132,17 +132,7 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnInit() {
-    // Use the authenticated student's own ID — guard against '1' placeholder
-    // that would call the wrong account for unauthenticated/test states.
-    const studentId = this.authStore.user()?.id;
-    if (studentId) {
-      this.progressStore.loadDashboard(studentId);
-    }
-
     this.profileStore.loadStudentProfile();
-
-    // S6-stats-01: also pull aggregate stats from the live /progress/me/dashboard endpoint
-    this.progressStore.loadMyDashboard({ classId: '00000000-0000-0000-0000-000000000000' });
   }
 
   ngAfterViewInit() {
