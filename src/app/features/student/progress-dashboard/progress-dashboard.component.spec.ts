@@ -123,7 +123,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
   });
 
   it('should fetch dashboard via loadMyDashboard when profile loads', async () => {
-    studentProfileStoreMock.profile.set({ enrolledClasses: ['class-123'] } as any);
+    studentProfileStoreMock.profile.set({ enrolledClasses: ['class-123'] } as unknown as StudentProfile);
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });
