@@ -18,17 +18,27 @@ import type {
 // ---------------------------------------------------------------------------
 
 const mockDashboard: DashboardData = {
-  student: null,
+  student: {
+    id: '',
+    firstName: '',
+    lastName: '',
+    totalLessons: 10,
+    completedLessons: 7,
+  },
   skillLevels: [],
-  streak: null,
+  streak: {
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: '',
+  },
   progressRecords: [],
   recentActivity: [],
   milestones: [],
   upcomingQuizzes: [],
   totalLessons: 10,
   completedLessons: 7,
-  averageScore: 82,
-  lastActive: '2026-05-10T12:00:00Z',
+  averageScore: 0,
+  lastActive: '',
 };
 
 const mockLessonStats: LessonStats = {
@@ -192,29 +202,7 @@ describe('ProgressStore', () => {
     });
   });
 
-  // ── loadDashboard (Legacy) ─────────────────────────────────────────────────
 
-  describe('loadDashboard() — legacy', () => {
-    it('should populate legacy state fields on success', () => {
-      store.loadDashboard('stu-1');
-      const req = http.expectOne((r) =>
-        r.url.includes('/progress/me/dashboard'),
-      );
-      req.flush(mockDashboard);
-      expect(store.loading()).toBe(false);
-      expect(store.error()).toBeNull();
-    });
-
-    it('should set error state when legacy API fails', () => {
-      store.loadDashboard('stu-1');
-      const req = http.expectOne((r) =>
-        r.url.includes('/progress/me/dashboard'),
-      );
-      req.error(new ProgressEvent('error'));
-      expect(store.loading()).toBe(false);
-      expect(store.error()).toBeTruthy();
-    });
-  });
 
   // ── markLessonComplete ─────────────────────────────────────────────────────
 
@@ -389,6 +377,19 @@ describe('ProgressStore', () => {
       expect(store.myHistoryLoading()).toBe(false);
     });
 
+    it('should pass query parameters if provided', () => {
+      store.loadMyHistory({ lessonId: 'l1', result: 'ALL', from: '2023-01-01', to: '2023-12-31' });
+      const req = http.expectOne((r) => 
+        r.url.includes('/progress/me/history') &&
+        r.params.get('lessonId') === 'l1' &&
+        r.params.get('result') === 'ALL' &&
+        r.params.get('from') === '2023-01-01' &&
+        r.params.get('to') === '2023-12-31'
+      );
+      req.flush([]);
+      expect(store.myHistory()).toEqual([]);
+    });
+
     it('coerces a null response into an empty array', () => {
       store.loadMyHistory();
       const req = http.expectOne((r) => r.url.includes('/progress/me/history'));
@@ -445,14 +446,14 @@ describe('ProgressStore', () => {
       expect(store.completionRate()).toBe(0);
 
       // Reset dashboard to null, set student with totalLessons = 0
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({ studentId: 'stu-1', student: { id: 'stu-1', totalLessons: 0 } });
       expect(store.completionRate()).toBe(0);
       expect(store.overallProgressPercent()).toBe(0);
 
       // Set student with totalLessons > 0, dashboard is null (loadDashboard doesn't set store.dashboard)
-      store.loadDashboard('stu-2');
+      store.loadMyDashboard();
       req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         student: {
@@ -467,7 +468,7 @@ describe('ProgressStore', () => {
     });
 
     it('recentMilestones() sorting and filtering logic', () => {
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         milestones: [
@@ -487,7 +488,7 @@ describe('ProgressStore', () => {
     });
 
     it('continueLesson() reduce logic with multiple IN_PROGRESS records', () => {
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         progressRecords: [
@@ -504,7 +505,7 @@ describe('ProgressStore', () => {
     });
 
     it('loadDashboard mapping branches for legacy shapes', () => {
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         student: {

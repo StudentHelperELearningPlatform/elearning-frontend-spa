@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { LessonListComponent } from './lesson-list.component';
 import { LessonsStore, Lesson } from '../../store/lessons.store';
+import { ProgressStore, HistoryEntry } from '../../store/progress.store';
 import { AuthStore } from '../../../auth/store/auth.store';
 import { createAuthStoreStub } from '../../../../../test-utils/auth-testing';
 import { patchStore } from '../../../../../test-utils/patch-store';
@@ -58,6 +59,7 @@ describe('LessonListComponent', () => {
   let component: LessonListComponent;
   let fixture: ComponentFixture<LessonListComponent>;
   let store: InstanceType<typeof LessonsStore>;
+  let progressStore: InstanceType<typeof ProgressStore>;
   let router: Router;
 
   beforeEach(async () => {
@@ -73,11 +75,16 @@ describe('LessonListComponent', () => {
     }).compileComponents();
 
     store = TestBed.inject(LessonsStore);
+    progressStore = TestBed.inject(ProgressStore);
     router = TestBed.inject(Router);
     vi.spyOn(store, 'loadLessons').mockImplementation(() => undefined);
+    vi.spyOn(progressStore, 'loadMyHistory').mockImplementation(() => undefined);
     patchStore(store, {
       lessons: MOCK_LESSONS,
       loading: false,
+    });
+    patchStore(progressStore, {
+      myHistory: [],
     });
     fixture = TestBed.createComponent(LessonListComponent);
     component = fixture.componentInstance;
@@ -237,9 +244,9 @@ describe('LessonListComponent', () => {
   });
 
   it('switches to History tab and renders list', () => {
-    store.completedLessons = signal([
-      MOCK_LESSONS[3],
-    ] as unknown as Lesson[]) as unknown as typeof store.completedLessons;
+    patchStore(progressStore, {
+      myHistory: [{ lessonId: 'completed-id' } as HistoryEntry]
+    });
     component.activeTab.set('history');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Completed Lesson');
