@@ -396,5 +396,51 @@ describe('LessonsStore', () => {
       expect(store.explanationBlockId()).toBeNull();
     });
   });
+
+  describe('loadAccessibleLessons', () => {
+    it('sets accessibleLessonIds successfully by calling access-check for each lesson', () => {
+      patchStore(store, { lessons: [{ ...mockLesson, id: 'l1' }, { ...mockLesson, id: 'l2' }] });
+      
+      const getSpy = vi.spyOn(http, 'get').mockImplementation((url: unknown, options?: { params?: { lessonId?: string } }) => {
+        if (options?.params?.lessonId === 'l1') {
+          return of(true);
+        }
+        return of(false);
+      });
+
+      store.loadAccessibleLessons('stu-1');
+      
+      expect(getSpy).toHaveBeenCalledTimes(2);
+      expect(store.accessibleLessonIds().size).toBe(1);
+      expect(store.accessibleLessonIds().has('l1')).toBe(true);
+      expect(store.accessibleLessonsLoading()).toBe(false);
+    });
+
+    it('does nothing if no lessons are published', () => {
+      patchStore(store, { lessons: [] });
+      const getSpy = vi.spyOn(http, 'get');
+      store.loadAccessibleLessons('stu-1');
+      expect(getSpy).not.toHaveBeenCalled();
+      expect(store.accessibleLessonsLoading()).toBe(false);
+    });
+
+    it('does nothing if studentId is not provided', () => {
+      patchStore(store, { lessons: [{ ...mockLesson, id: 'l1' }] });
+      const getSpy = vi.spyOn(http, 'get');
+      store.loadAccessibleLessons('');
+      expect(getSpy).not.toHaveBeenCalled();
+      expect(store.accessibleLessonsLoading()).toBe(false);
+    });
+
+    it('handles HTTP errors gracefully by defaulting to false', () => {
+      patchStore(store, { lessons: [{ ...mockLesson, id: 'l1' }] });
+      vi.spyOn(http, 'get').mockReturnValue(throwError(() => new Error('API failure')));
+      
+      store.loadAccessibleLessons('stu-1');
+      
+      expect(store.accessibleLessonIds().size).toBe(0);
+      expect(store.accessibleLessonsLoading()).toBe(false);
+    });
+  });
 });
 
