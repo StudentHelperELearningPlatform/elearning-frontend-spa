@@ -14,7 +14,7 @@ export interface UploadedMedia {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'audio';
+  type: 'image' | 'video' | 'audio' | 'pdf';
   progress: number;
   status: 'uploading' | 'complete' | 'error';
   file?: File;
@@ -61,7 +61,7 @@ export interface UploadedMedia {
         (dragover)="onDragOver($event)"
         (dragleave)="onDragLeave($event)"
         (drop)="onDrop($event)"
-        (click)="fileInput.click()"
+        (click)="fileInput.click(); $event.stopPropagation()"
         (keydown.enter)="fileInput.click()"
         (keydown.space)="fileInput.click(); $event.preventDefault()"
       >
@@ -71,7 +71,7 @@ export interface UploadedMedia {
           >cloud_upload</span
         >
         <p class="text-black font-bold text-lg tracking-tight mb-1">Drag and drop media here</p>
-        <p class="text-sm text-gray-600 font-medium mb-4">Images, Video, or Audio (Max 50MB)</p>
+        <p class="text-sm text-gray-600 font-medium mb-4">Images, Video, Audio, or PDF (Max 50MB)</p>
 
         <label class="sr-only" for="fileInput">Browse files</label>
         <input
@@ -80,14 +80,14 @@ export interface UploadedMedia {
           id="fileInput"
           class="sr-only"
           multiple
-          accept="image/jpeg,image/png,image/gif,video/mp4,application/pdf"
+          accept="image/jpeg,image/png,image/gif,video/mp4,audio/mpeg,audio/wav,audio/ogg,application/pdf"
           (change)="onFileSelected($event)"
           tabindex="-1"
         />
 
         <button
           type="button"
-          (click)="fileInput.click()"
+          (click)="fileInput.click(); $event.stopPropagation()"
           (keydown.enter)="fileInput.click(); $event.stopPropagation()"
           (keydown.space)="fileInput.click(); $event.preventDefault(); $event.stopPropagation()"
           class="bg-[#0ABAB5] text-white px-5 py-2 rounded-lg font-bold border-2 border-black hover:bg-teal-500 focus:outline-none focus:ring-2 focus:ring-black transition-all"
@@ -256,7 +256,16 @@ export class MediaUploadComponent {
 
   readonly MAX_SIZE_MB = 50;
   readonly MAX_SIZE_BYTES = this.MAX_SIZE_MB * 1024 * 1024;
-  readonly ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'application/pdf'];
+  readonly ALLOWED_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'video/mp4',
+    'audio/mpeg',
+    'audio/wav',
+    'audio/ogg',
+    'application/pdf',
+  ];
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
@@ -285,8 +294,9 @@ export class MediaUploadComponent {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.handleFiles(Array.from(input.files));
+      input.value = '';
     }
-    input.value = '';
+
   }
 
   handleFiles(files: File[]) {
@@ -297,7 +307,7 @@ export class MediaUploadComponent {
 
     for (const file of files) {
       if (!this.ALLOWED_TYPES.includes(file.type)) {
-        errors.push(`Invalid file type: ${file.name}. Only images, videos, and audio are allowed.`);
+        errors.push(`Invalid file type: ${file.name}. Only images, videos, audio, and PDFs are allowed.`);
       } else if (file.size > this.MAX_SIZE_BYTES) {
         errors.push(`File too large: ${file.name}. Maximum size is ${this.MAX_SIZE_MB}MB.`);
       } else {
@@ -316,7 +326,19 @@ export class MediaUploadComponent {
   }
 
   uploadFile(file: File, existingId?: string) {
-    const mediaType = file.type.split('/')[0] as 'image' | 'video' | 'audio';
+    let mediaType: 'image' | 'video' | 'audio' | 'pdf';
+
+    if (file.type.startsWith('image/')) {
+      mediaType = 'image';
+    } else if (file.type.startsWith('video/')) {
+      mediaType = 'video';
+    } else if (file.type.startsWith('audio/')) {
+      mediaType = 'audio';
+    } else if (file.type === 'application/pdf') {
+      mediaType = 'pdf';
+    } else {
+      return;
+    }
     const id = existingId || crypto.randomUUID();
 
     if (existingId) {

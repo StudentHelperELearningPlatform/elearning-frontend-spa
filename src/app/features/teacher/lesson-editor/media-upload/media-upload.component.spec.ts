@@ -108,6 +108,28 @@ describe('MediaUploadComponent', () => {
       expect(handleSpy).not.toHaveBeenCalled();
     });
 
+    it('should safely ignore onDrop if files array is empty', () => {
+      const event = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        dataTransfer: { files: [] }
+      } as unknown as DragEvent;
+      const handleSpy = vi.spyOn(component, 'handleFiles');
+
+      component.onDrop(event);
+      expect(handleSpy).not.toHaveBeenCalled();
+    });
+
+    it('should safely ignore onFileSelected if files is null', () => {
+      const event = {
+        target: { files: null, value: 'C:\\fakepath\\test.png' }
+      } as unknown as Event;
+      const handleSpy = vi.spyOn(component, 'handleFiles');
+
+      component.onFileSelected(event);
+      expect(handleSpy).not.toHaveBeenCalled();
+    });
+
     it('should handle onFileSelected from HTML input and reset value', () => {
       const file = createMockFile('test.png', 'image/png', 1024);
       const event = {
@@ -146,12 +168,12 @@ describe('MediaUploadComponent', () => {
 
     it('should reject invalid MIME types', () => {
       const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
-      const invalidAudio = createMockFile('song.mp3', 'audio/mpeg', 1024);
+      const invalidAudio = createMockFile('notes.txt', 'text/plain', 1024);
 
       component.handleFiles([invalidAudio]);
 
       expect(uploadSpy).not.toHaveBeenCalled();
-      expect(component.errorMessage()).toContain('Invalid file type: song.mp3');
+      expect(component.errorMessage()).toContain('Invalid file type: notes.txt');
     });
 
     it('should process mixed valid and invalid files simultaneously', () => {
@@ -226,6 +248,26 @@ describe('MediaUploadComponent', () => {
       expect(component.mediaList()[0].status).toBe('error');
       expect(component.a11yMessage()).toContain('Upload failed for test.png');
     });
+
+    it('should properly classify video, audio, and pdf files', () => {
+      component.uploadFile(createMockFile('test.mp4', 'video/mp4', 1024));
+      component.uploadFile(createMockFile('test.mp3', 'audio/mpeg', 1024));
+      component.uploadFile(createMockFile('test.pdf', 'application/pdf', 1024));
+
+      const reqs = httpTestingController.match(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      expect(reqs.length).toBe(3);
+
+      expect(component.mediaList()[0].type).toBe('video');
+      expect(component.mediaList()[1].type).toBe('audio');
+      expect(component.mediaList()[2].type).toBe('pdf');
+    });
+
+    it('should return early if media type is unsupported in uploadFile', () => {
+      const file = createMockFile('test.txt', 'text/plain', 1024);
+      component.uploadFile(file);
+      httpTestingController.expectNone(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      expect(component.mediaList().length).toBe(0);
+    });
   });
 
   describe('Retry & Remove Operations', () => {
@@ -255,6 +297,15 @@ describe('MediaUploadComponent', () => {
       
       // Add this assertion to satisfy SonarQube
       expect(component.mediaList().length).toBeGreaterThanOrEqual(0); 
+    });
+
+    it('should safely ignore retry if media exists but has no file attached', () => {
+      component.mediaList.set([{
+        id: 'no-file-123', url: 'https://example.com/test.png', name: 'test.png', type: 'image', 
+        progress: 100, status: 'complete'
+      }]);
+      component.retryUpload('no-file-123');
+      httpTestingController.expectNone(`${environment.lessonApiUrl}/api/v1/media/upload`);
     });
 
     it('should remove media when confirmed', () => {
