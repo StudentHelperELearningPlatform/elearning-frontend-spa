@@ -181,8 +181,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
 
               @if (
                 currentModule()?.type === 'video' ||
-                currentModule()?.type === 'image' ||
-                currentModule()?.type === 'audio'
+                currentModule()?.type === 'image'
               ) {
                 <div class="mb-10">
                   <app-media-player
@@ -190,16 +189,13 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
                     [type]="
                       currentModule()?.type === 'video'
                         ? 'video'
-                        : currentModule()?.type === 'audio'
-                          ? 'audio'
-                          : 'image'
+                        : 'image'
                     "
                     [title]="currentModule()?.title || 'Media'"
                   >
                   </app-media-player>
                 </div>
               }
-
               <app-card class="mb-6 block">
                 <div class="p-8">
                   <app-module-content
@@ -561,8 +557,6 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
         return 'quiz';
       case 'interactive':
         return 'touch_app';
-      case 'audio':
-        return 'headphones';
       default:
         return 'menu_book';
     }
