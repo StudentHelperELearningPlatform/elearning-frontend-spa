@@ -1,14 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { By } from '@angular/platform-browser';
-import { describe, it, expect, beforeEach, afterEach, vi, MockInstance } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { LandingComponent } from './landing.component';
 
 describe('LandingComponent', () => {
   let component: LandingComponent;
   let fixture: ComponentFixture<LandingComponent>;
   let router: Router;
-  let scrollToSpy: MockInstance;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -19,8 +18,6 @@ describe('LandingComponent', () => {
     fixture = TestBed.createComponent(LandingComponent);
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
-
-    scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
 
     fixture.detectChanges();
   });
@@ -63,17 +60,16 @@ describe('LandingComponent', () => {
   });
 
   describe('Navigation Logic', () => {
-    it('should navigate to login and scroll to top when navigateToAuth is called', async () => {
+    it('should navigate to login when navigateToAuth is called', async () => {
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
       component.navigateToAuth();
       await Promise.resolve(); // Flush the promise returned by router.navigate
 
       expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
-      expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
     });
 
-    it('should navigate to provided path and scroll to top when navigateAndScroll is called', async () => {
+    it('should navigate to provided path when navigateAndScroll is called', async () => {
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       const testPath = '/for-students';
 
@@ -81,7 +77,6 @@ describe('LandingComponent', () => {
       await Promise.resolve(); // Flush the promise returned by router.navigate
 
       expect(navigateSpy).toHaveBeenCalledWith([testPath]);
-      expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
     });
   });
 

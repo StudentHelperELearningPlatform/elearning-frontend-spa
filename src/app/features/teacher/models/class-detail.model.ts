@@ -2,6 +2,8 @@ import { TeacherClass } from './class.model';
 
 export interface ClassStudent {
   id: string;
+  userId?: string;
+  studentId?: string;
   name: string;
   email: string;
    grade?: number;

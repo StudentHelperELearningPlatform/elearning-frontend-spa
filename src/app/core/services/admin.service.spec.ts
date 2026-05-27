@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { AdminService, ContactMessage, AdminUserRaw, AdminLessonRaw, AdminClassRaw } from './admin.service';
+import { AdminService, ContactMessage, AdminUserRaw, AdminLessonRaw, AdminClassRaw, PaginatedUsersResponse } from './admin.service';
 import { USER_PLATFORM_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 import { lastValueFrom } from 'rxjs';
 
@@ -29,18 +29,53 @@ describe('AdminService', () => {
     httpTestingController.verify();
   });
 
-  it('should get all users', () => {
+  it('should get paginated users with default parameters', () => {
     const mockUsers: AdminUserRaw[] = [
       { id: 'u1', name: 'Alice', email: 'alice@example.com', role: 'STUDENT', status: 'ACTIVE' }
     ];
+    const mockResponse: PaginatedUsersResponse = {
+      content: mockUsers,
+      currentPage: 0,
+      totalPages: 1,
+      totalElements: 1
+    };
 
-    service.getUsers().subscribe((users) => {
-      expect(users).toEqual(mockUsers);
+    service.getUsers().subscribe((response) => {
+      expect(response).toEqual(mockResponse);
+      expect(response.content).toEqual(mockUsers);
+      expect(response.currentPage).toBe(0);
+      expect(response.totalPages).toBe(1);
+      expect(response.totalElements).toBe(1);
     });
 
-    const req = httpTestingController.expectOne(`${mockUserApiUrl}/users`);
+    const req = httpTestingController.expectOne(`${mockUserApiUrl}/users?page=0&size=5`);
     expect(req.request.method).toBe('GET');
-    req.flush(mockUsers);
+    req.flush(mockResponse);
+  });
+
+  it('should get paginated users with custom page and size', () => {
+    const mockUsers: AdminUserRaw[] = [
+      { id: 'u1', name: 'Alice', email: 'alice@example.com', role: 'STUDENT', status: 'ACTIVE' },
+      { id: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'ACTIVE' }
+    ];
+    const mockResponse: PaginatedUsersResponse = {
+      content: mockUsers,
+      currentPage: 2,
+      totalPages: 5,
+      totalElements: 25
+    };
+
+    service.getUsers(2, 10).subscribe((response) => {
+      expect(response).toEqual(mockResponse);
+      expect(response.content).toHaveLength(2);
+      expect(response.currentPage).toBe(2);
+      expect(response.totalPages).toBe(5);
+      expect(response.totalElements).toBe(25);
+    });
+
+    const req = httpTestingController.expectOne(`${mockUserApiUrl}/users?page=2&size=10`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
   });
 
   it('should get banned users', () => {

@@ -358,6 +358,37 @@ describe('ResultsSummaryComponent', () => {
       patchStore(store, { quizExplanations: [{ unknownField: 'data' }] });
       expect(comp.getExplanationForQuestion(0)).toBe('{"unknownField":"data"}');
     });
+
+    it('handles key_takeaway if present', () => {
+      const comp = create();
+      patchStore(store, {
+        quizExplanations: [{
+          explanation: 'This is the explanation.',
+          key_takeaway: 'Focus on practice.'
+        }]
+      });
+      expect(comp.getExplanationForQuestion(0)).toBe('This is the explanation.\n\nKey Takeaway: Focus on practice.');
+    });
+
+    it('handles content field that has nested explanation field inside parsed JSON', () => {
+      const comp = create();
+      patchStore(store, {
+        quizExplanations: [{
+          content: '{"explanation": "parsed nested explanation"}'
+        }]
+      });
+      expect(comp.getExplanationForQuestion(0)).toBe('parsed nested explanation');
+    });
+
+    it('handles fallback lookup for explanation, content or simplified_explanation in generic objects', () => {
+      const comp = create();
+      patchStore(store, {
+        quizExplanations: [{
+          simplified_explanation: 'fallback simplified value'
+        }]
+      });
+      expect(comp.getExplanationForQuestion(0)).toBe('fallback simplified value');
+    });
   });
 
   describe('ngOnDestroy', () => {

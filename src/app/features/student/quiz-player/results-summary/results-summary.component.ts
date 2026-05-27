@@ -81,6 +81,8 @@ export class ResultsSummaryComponent implements OnInit, OnDestroy {
   displayedScore = signal(0);
   attemptId = signal<string | null>(null);
   quizId = signal<string | null>(null);
+  quizType = signal<'check' | 'final'>('final');
+  parentLessonId = signal<string | null>(null);
   explainMistakesOpen = signal(false);
   private explanationCalled = false;
 
@@ -179,6 +181,11 @@ export class ResultsSummaryComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.store.clearResultDetail();
+    this.store.clearQuizExplanation();
+    this.counterStarted.set(false);
+    this.displayedScore.set(0);
+
     const quizId = this.route.snapshot.paramMap.get('id');
     const attemptId = this.route.snapshot.paramMap.get('attemptId');
     console.log('[ResultsSummaryComponent] ngOnInit - extracted route params:', { quizId, attemptId });
@@ -190,7 +197,19 @@ export class ResultsSummaryComponent implements OnInit, OnDestroy {
 
     this.quizId.set(quizId);
     this.attemptId.set(attemptId);
-    this.store.loadResultDetail(quizId, attemptId);
+
+    const typeParam = this.route.snapshot.queryParamMap?.get('type');
+    const type: 'check' | 'final' = typeParam === 'check' ? 'check' : 'final';
+    this.quizType.set(type);
+
+    const lessonIdParam = this.route.snapshot.queryParamMap?.get('lessonId');
+    this.parentLessonId.set(lessonIdParam ?? null);
+
+    if (type === 'check') {
+      this.store.loadResultDetail(quizId, attemptId, 'check');
+    } else {
+      this.store.loadResultDetail(quizId, attemptId);
+    }
   }
 
   expandAll() {
@@ -233,11 +252,24 @@ export class ResultsSummaryComponent implements OnInit, OnDestroy {
     this.store.clearQuizExplanation();
     this.explanationCalled = false;
     this.explainMistakesOpen.set(false);
-    this.router.navigate(['/student/quizzes', quizId]);
+
+    const queryParams: Record<string, string> = {};
+    if (this.quizType() === 'check') {
+      queryParams['type'] = 'check';
+    }
+    if (this.parentLessonId()) {
+      queryParams['lessonId'] = this.parentLessonId()!;
+    }
+
+    if (Object.keys(queryParams).length > 0) {
+      this.router.navigate(['/student/quizzes', quizId], { queryParams });
+    } else {
+      this.router.navigate(['/student/quizzes', quizId]);
+    }
   }
 
   backToLesson() {
-    const lessonId = this.detail()?.lessonId;
+    const lessonId = this.parentLessonId() || this.detail()?.lessonId;
     if (!lessonId) {
       this.router.navigate(['/student/lessons']);
       return;
@@ -259,11 +291,16 @@ export class ResultsSummaryComponent implements OnInit, OnDestroy {
   explainMistakes(): void {
     if (this.explanationCalled) return;
     const detail = this.detail();
-    const lessonId = detail?.lessonId;
-    if (!detail || !lessonId) return;
+    const parentId = this.quizType() === 'check' ? this.quizId() : detail?.lessonId;
+    if (!detail || !parentId) return;
     const userAnswers = detail.questionBreakdown.map(q => [q.studentAnswer]);
     this.explanationCalled = true;
-    this.store.explainQuiz(lessonId, userAnswers);
+
+    if (this.quizType() === 'check') {
+      this.store.explainQuiz(parentId, userAnswers, 'check');
+    } else {
+      this.store.explainQuiz(parentId, userAnswers);
+    }
   }
 
   /**
@@ -281,17 +318,33 @@ export class ResultsSummaryComponent implements OnInit, OnDestroy {
     if (!item) return null;
     if (typeof item === 'string') return item;
     const obj = item as Record<string, unknown>;
+    
+    let explanationText: string | null = null;
+    
     // { content: '{ "simplified_explanation": "..." }' }
     if (typeof obj['content'] === 'string') {
       try {
         const parsed = JSON.parse(obj['content'] as string) as Record<string, unknown>;
-        return (parsed['simplified_explanation'] as string) ?? obj['content'] as string;
+        explanationText = (parsed['simplified_explanation'] as string) ?? (parsed['explanation'] as string) ?? obj['content'] as string;
       } catch {
-        return obj['content'] as string;
+        explanationText = obj['content'] as string;
+      }
+    } else if (typeof obj['explanation'] === 'string') {
+      explanationText = obj['explanation'] as string;
+    } else {
+      const directExp = obj['explanation'] ?? obj['content'] ?? obj['simplified_explanation'];
+      if (directExp && typeof directExp === 'string') {
+        explanationText = directExp;
       }
     }
-    // { explanation: string }
-    if (typeof obj['explanation'] === 'string') return obj['explanation'] as string;
+    
+    if (explanationText) {
+      if (typeof obj['key_takeaway'] === 'string' && obj['key_takeaway'].trim() !== '') {
+        return `${explanationText}\n\nKey Takeaway: ${obj['key_takeaway']}`;
+      }
+      return explanationText;
+    }
+
     // Fallback
     return JSON.stringify(item);
   }

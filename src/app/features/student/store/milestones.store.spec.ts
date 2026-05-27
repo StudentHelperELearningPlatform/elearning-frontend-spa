@@ -43,45 +43,112 @@ describe('MilestonesStore', () => {
 
   describe('loadMilestones', () => {
     it('should fetch milestones and update state', () => {
-      const mockMilestones: Milestone[] = [
-        { id: '1', title: 'First', description: 'desc', category: 'learning', earnedAt: '2024-01-01', icon: 'pi-star' },
-        { id: '2', title: 'Second', description: 'desc', category: 'streak', icon: 'pi-bolt' }
+      const mockBackend = [
+        { id: '1', nume: 'First', descriere: 'desc', type: 'learning', achievedAt: '2024-01-01' },
+        { id: '2', nume: 'Second', descriere: 'desc', type: 'streak' }
       ];
 
-      store.loadMilestones('student-123');
+      const expected: Milestone[] = [
+        { id: '1', title: 'First', description: 'desc', category: 'learning', earnedAt: '2024-01-01', icon: 'school' },
+        { id: '2', title: 'Second', description: 'desc', category: 'streak', icon: 'local_fire_department' }
+      ];
+
+      store.loadMilestones();
       expect(store.loading()).toBe(true);
 
-      const req = httpMock.expectOne('/api/v1/students/student-123/milestones');
+      const req = httpMock.expectOne('/api/v1/progress/me/milestones');
       expect(req.request.method).toBe('GET');
-      req.flush(mockMilestones);
+      req.flush(mockBackend);
 
       expect(store.loading()).toBe(false);
-      expect(store.milestones()).toEqual(mockMilestones);
+      expect(store.milestones()).toEqual(expected);
       expect(store.earnedCount()).toBe(1);
       expect(store.totalCount()).toBe(2);
     });
 
     it('should notify when a new milestone is earned', () => {
-      const mockMilestones: Milestone[] = [
-        { id: '1', title: 'Achievement', description: 'desc', category: 'mastery', earnedAt: '2024-05-05', icon: 'pi-check' }
+      const mockBackend = [
+        { id: '1', nume: 'Achievement', descriere: 'desc', type: 'mastery', achievedAt: '2024-05-05' }
       ];
 
-      store.loadMilestones('student-123');
-      const req = httpMock.expectOne('/api/v1/students/student-123/milestones');
-      req.flush(mockMilestones);
+      store.loadMilestones();
+      const req = httpMock.expectOne('/api/v1/progress/me/milestones');
+      req.flush(mockBackend);
 
       expect(notificationMock.success).toHaveBeenCalledWith(
         expect.stringContaining('Achievement')
       );
     });
 
+    it('should not notify twice for the same earned milestone id', () => {
+      const mockBackend = [
+        { id: '1', nume: 'Achievement', descriere: 'desc', type: 'mastery', achievedAt: '2024-05-05' }
+      ];
+
+      store.loadMilestones();
+      httpMock.expectOne('/api/v1/progress/me/milestones').flush(mockBackend);
+
+      store.loadMilestones();
+      httpMock.expectOne('/api/v1/progress/me/milestones').flush(mockBackend);
+
+      expect(notificationMock.success).toHaveBeenCalledTimes(1);
+    });
+
+    it('should fallback to emoji_events icon for unknown category', () => {
+      store.loadMilestones();
+      httpMock.expectOne('/api/v1/progress/me/milestones').flush([
+        { id: '9', nume: 'Unknown', descriere: 'desc', type: 'custom' }
+      ]);
+
+      expect(store.milestones()[0].icon).toBe('emoji_events');
+    });
+
     it('should handle errors', () => {
-      store.loadMilestones('student-123');
-      const req = httpMock.expectOne('/api/v1/students/student-123/milestones');
+      store.loadMilestones();
+      const req = httpMock.expectOne('/api/v1/progress/me/milestones');
       req.error(new ErrorEvent('Network error'));
 
       expect(store.loading()).toBe(false);
       expect(store.milestones()).toEqual([]);
+    });
+  });
+
+  describe('loadMilestoneDetail', () => {
+    it('should fetch single milestone detail and update state', () => {
+      const mockDetail = { id: '5', nume: 'Superstar', descriere: 'desc', type: 'social', achievedAt: '2026-05-25' };
+
+      store.loadMilestoneDetail('5');
+      expect(store.detailLoading()).toBe(true);
+
+      const req = httpMock.expectOne('/api/v1/progress/me/milestones/5');
+      expect(req.request.method).toBe('GET');
+      req.flush(mockDetail);
+
+      expect(store.detailLoading()).toBe(false);
+      expect(store.selectedMilestone()).toEqual({
+        id: '5',
+        title: 'Superstar',
+        description: 'desc',
+        category: 'social',
+        earnedAt: '2026-05-25',
+        icon: 'people'
+      });
+    });
+
+    it('should keep selectedMilestone null when detail response is empty', () => {
+      store.loadMilestoneDetail('5');
+      httpMock.expectOne('/api/v1/progress/me/milestones/5').flush(null);
+
+      expect(store.detailLoading()).toBe(false);
+      expect(store.selectedMilestone()).toBeNull();
+    });
+
+    it('should report error when detail request fails', () => {
+      store.loadMilestoneDetail('5');
+      httpMock.expectOne('/api/v1/progress/me/milestones/5').error(new ErrorEvent('Network error'));
+
+      expect(store.detailLoading()).toBe(false);
+      expect(notificationMock.error).toHaveBeenCalledWith('Failed to load milestone detail');
     });
   });
 });

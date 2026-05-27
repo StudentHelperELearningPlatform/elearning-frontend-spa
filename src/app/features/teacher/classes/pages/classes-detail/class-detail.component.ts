@@ -11,6 +11,7 @@ import { TeacherLessonsStore } from '../../../state/teacher-lessons.store';
 import { USER_PLATFORM_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 
 export interface StudentRow {
+  userId?: string;
   studentId: string;
   firstName: string;
   lastName: string;
@@ -20,12 +21,27 @@ export interface StudentRow {
 
 export interface RawStudentRow {
   id?: string;
+  userId?: string;
   studentId?: string;
   firstName?: string;
   name?: string;
   lastName?: string;
   streakValue?: number;
   lastActiveAt?: string | null;
+}
+
+export interface PaginatedUsersResponse {
+  users: {
+    firstName: string;
+    lastName: string;
+    id: string;
+    email: string;
+    role: string;
+    profilePictureUrl?: string;
+  }[];
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
 }
 
 export interface FinalQuizAttempt {
@@ -72,15 +88,14 @@ export class ClassDetailComponent implements OnInit {
   showInviteModal = signal(false);
   allStudents = signal<StudentRow[]>([]);
   studentSearch = signal('');
+  isSearching = signal(false);
   addingStudentId = signal<string | null>(null);
   addStudentError = signal<string | null>(null);
 
   readonly filteredStudents = computed(() => {
-    const q = this.studentSearch().toLowerCase().trim();
     const enrolled = new Set(this.students().map((s) => s.id));
     return this.allStudents()
-      .filter((s) => !enrolled.has(s.studentId))
-      .filter((s) => !q || `${s.firstName} ${s.lastName}`.toLowerCase().includes(q));
+      .filter((s) => !enrolled.has(s.studentId));
   });
 
   // ─── Add lesson modal ─────────────────────────────
@@ -123,23 +138,47 @@ export class ClassDetailComponent implements OnInit {
     this.showInviteModal.set(true);
     this.studentSearch.set('');
     this.addStudentError.set(null);
-    if (this.allStudents().length === 0) {
-      this.http
-        .get<RawStudentRow[]>(`${this.userApi}/students`)
-        .pipe(
-          catchError(() => of([] as RawStudentRow[])),
-          map((rows) =>
-            rows.map((r) => ({
-              studentId: r.studentId || r.id || '',
-              firstName: r.firstName || r.name || '',
-              lastName: r.lastName || '',
-              streakValue: r.streakValue ?? 0,
-              lastActiveAt: r.lastActiveAt || null,
-            }))
-          )
-        )
-        .subscribe((rows) => this.allStudents.set(rows));
+    this.allStudents.set([]);
+  }
+
+  performSearch(): void {
+    const q = this.studentSearch().trim();
+    if (!q) {
+      this.allStudents.set([]);
+      return;
     }
+
+    this.isSearching.set(true);
+    
+    interface UserSearchItem {
+      id?: string;
+      firstName?: string;
+      lastName?: string;
+      role?: string;
+    }
+
+    this.http
+      .get<UserSearchItem[] | { users: UserSearchItem[] }>(`${this.userApi}/users/search`, {
+        params: { name: q }
+      })
+      .pipe(
+        catchError(() => of([]))
+      )
+      .subscribe((res) => {
+        const usersList = Array.isArray(res) ? res : (res.users || []);
+        const studentRows: StudentRow[] = usersList
+          .filter((u: UserSearchItem) => u.role === 'STUDENT')
+          .map((u: UserSearchItem) => ({
+            studentId: u.id || '',
+            firstName: u.firstName || '',
+            lastName: u.lastName || '',
+            streakValue: 0,
+            lastActiveAt: null,
+          }));
+
+        this.allStudents.set(studentRows);
+        this.isSearching.set(false);
+      });
   }
 
   closeInviteModal(): void {
@@ -151,7 +190,7 @@ export class ClassDetailComponent implements OnInit {
   addStudent(student: StudentRow): void {
     this.addingStudentId.set(student.studentId);
     this.addStudentError.set(null);
-    this.store.addStudent(this.classId, student.studentId).subscribe({
+    this.store.addStudent(this.classId, student.studentId, student.userId).subscribe({
       next: () => {
         this.store.loadClassDetail(this.classId);
         this.addingStudentId.set(null);

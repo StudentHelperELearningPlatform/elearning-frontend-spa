@@ -18,17 +18,27 @@ import type {
 // ---------------------------------------------------------------------------
 
 const mockDashboard: DashboardData = {
-  student: null,
+  student: {
+    id: '',
+    firstName: '',
+    lastName: '',
+    totalLessons: 10,
+    completedLessons: 7,
+  },
   skillLevels: [],
-  streak: null,
+  streak: {
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: '',
+  },
   progressRecords: [],
   recentActivity: [],
   milestones: [],
   upcomingQuizzes: [],
   totalLessons: 10,
   completedLessons: 7,
-  averageScore: 82,
-  lastActive: '2026-05-10T12:00:00Z',
+  averageScore: 0,
+  lastActive: '',
 };
 
 const mockLessonStats: LessonStats = {
@@ -192,56 +202,34 @@ describe('ProgressStore', () => {
     });
   });
 
-  // ── loadDashboard (Legacy) ─────────────────────────────────────────────────
 
-  describe('loadDashboard() — legacy', () => {
-    it('should populate legacy state fields on success', () => {
-      store.loadDashboard('stu-1');
-      const req = http.expectOne((r) =>
-        r.url.includes('/progress/me/dashboard'),
-      );
-      req.flush(mockDashboard);
-      expect(store.loading()).toBe(false);
-      expect(store.error()).toBeNull();
-    });
-
-    it('should set error state when legacy API fails', () => {
-      store.loadDashboard('stu-1');
-      const req = http.expectOne((r) =>
-        r.url.includes('/progress/me/dashboard'),
-      );
-      req.error(new ProgressEvent('error'));
-      expect(store.loading()).toBe(false);
-      expect(store.error()).toBeTruthy();
-    });
-  });
 
   // ── markLessonComplete ─────────────────────────────────────────────────────
 
   describe('markLessonComplete()', () => {
-    it('should call PUT with correct URL and body', () => {
+    it('should call POST with correct URL and body', () => {
       store.markLessonComplete({ lessonId: 'lesson-42', score: 95 });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-42/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-42/complete') && r.method === 'POST',
       );
-      expect(req.request.body).toEqual({ status: 'completed', score: 95 });
+      expect(req.request.body).toBeNull();
       req.flush({});
       expect(store.markCompleteLoading()).toBe(false);
     });
 
-    it('should use null score when score is omitted', () => {
+    it('should use null body when score is omitted', () => {
       store.markLessonComplete({ lessonId: 'lesson-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-1/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-1/complete') && r.method === 'POST',
       );
-      expect(req.request.body).toEqual({ status: 'completed', score: null });
+      expect(req.request.body).toBeNull();
       req.flush({});
     });
 
     it('should set markCompleteError on failure', () => {
       store.markLessonComplete({ lessonId: 'lesson-1', score: 80 });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-1/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-1/complete') && r.method === 'POST',
       );
       req.flush('Error', { status: 500, statusText: 'Server Error' });
       expect(store.markCompleteLoading()).toBe(false);
@@ -277,9 +265,9 @@ describe('ProgressStore', () => {
 
   describe('loadStudents()', () => {
     it('should load and store students list', () => {
-      store.loadStudents();
+      store.loadStudents({ classId: 'cls-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/teacher/students'),
+        r.url.includes('/progress/teacher/students') && r.params.get('classId') === 'cls-1'
       );
       req.flush(mockStudents);
       expect(store.students()).toEqual(mockStudents);
@@ -287,9 +275,9 @@ describe('ProgressStore', () => {
     });
 
     it('should set studentsError on failure', () => {
-      store.loadStudents();
+      store.loadStudents({ classId: 'cls-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/teacher/students'),
+        r.url.includes('/progress/teacher/students') && r.params.get('classId') === 'cls-1'
       );
       req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
       expect(store.studentsLoading()).toBe(false);
@@ -389,6 +377,19 @@ describe('ProgressStore', () => {
       expect(store.myHistoryLoading()).toBe(false);
     });
 
+    it('should pass query parameters if provided', () => {
+      store.loadMyHistory({ lessonId: 'l1', result: 'ALL', from: '2023-01-01', to: '2023-12-31' });
+      const req = http.expectOne((r) => 
+        r.url.includes('/progress/me/history') &&
+        r.params.get('lessonId') === 'l1' &&
+        r.params.get('result') === 'ALL' &&
+        r.params.get('from') === '2023-01-01' &&
+        r.params.get('to') === '2023-12-31'
+      );
+      req.flush([]);
+      expect(store.myHistory()).toEqual([]);
+    });
+
     it('coerces a null response into an empty array', () => {
       store.loadMyHistory();
       const req = http.expectOne((r) => r.url.includes('/progress/me/history'));
@@ -445,14 +446,14 @@ describe('ProgressStore', () => {
       expect(store.completionRate()).toBe(0);
 
       // Reset dashboard to null, set student with totalLessons = 0
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({ studentId: 'stu-1', student: { id: 'stu-1', totalLessons: 0 } });
       expect(store.completionRate()).toBe(0);
       expect(store.overallProgressPercent()).toBe(0);
 
       // Set student with totalLessons > 0, dashboard is null (loadDashboard doesn't set store.dashboard)
-      store.loadDashboard('stu-2');
+      store.loadMyDashboard();
       req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         student: {
@@ -467,7 +468,7 @@ describe('ProgressStore', () => {
     });
 
     it('recentMilestones() sorting and filtering logic', () => {
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         milestones: [
@@ -487,7 +488,7 @@ describe('ProgressStore', () => {
     });
 
     it('continueLesson() reduce logic with multiple IN_PROGRESS records', () => {
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         progressRecords: [
@@ -504,7 +505,7 @@ describe('ProgressStore', () => {
     });
 
     it('loadDashboard mapping branches for legacy shapes', () => {
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         student: {
@@ -587,24 +588,32 @@ describe('ProgressStore', () => {
           lessonId: '',
           subject: 'Science',
         },
+        {
+          lessonId: 'lesson-with-name',
+          lessonName: 'Real Lesson Name',
+        },
       ]);
 
       const history = store.myHistory();
-      expect(history.length).toBe(2);
+      expect(history.length).toBe(3);
 
-      // First item checks: lessonTitle auto formatted, subject default, status based on completedAt
+      // First item checks: fallback title, subject default, status based on completedAt
       expect(history[0].lessonId).toBe('lesson-123456789');
-      expect(history[0].lessonTitle).toBe('Lecția lesson-1');
+      expect(history[0].lessonTitle).toBe('Untitled lesson');
       expect(history[0].subject).toBe('General');
       expect(history[0].status).toBe('completed');
       expect(history[0].dateCompleted).toBe('2026-05-10T10:00:00Z');
 
-      // Second item checks: empty lessonId, lessonTitle auto-formatted, custom subject, status in_progress
+      // Second item checks: empty lessonId, custom subject, status in_progress
       expect(history[1].lessonId).toBe('');
-      expect(history[1].lessonTitle).toBe('Lecția ');
+      expect(history[1].lessonTitle).toBe('Untitled lesson');
       expect(history[1].subject).toBe('Science');
       expect(history[1].status).toBe('in_progress');
       expect(history[1].dateCompleted).toBeNull();
+
+      // Third item checks: lessonName alias is picked as display title
+      expect(history[2].lessonId).toBe('lesson-with-name');
+      expect(history[2].lessonTitle).toBe('Real Lesson Name');
     });
   });
 });

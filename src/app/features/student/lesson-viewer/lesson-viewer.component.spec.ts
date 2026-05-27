@@ -3,6 +3,7 @@ import { patchStore } from '../../../../test-utils/patch-store';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LessonViewerComponent } from './lesson-viewer.component';
 import { LessonsStore, Lesson } from '../store/lessons.store';
+import { ProgressStore } from '../store/progress.store';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
@@ -11,6 +12,8 @@ import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { By } from '@angular/platform-browser';
 import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
 import { MessageService } from 'primeng/api';
+import { HttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
 
 const MOCK_LESSON: Lesson = {
   id: '1',
@@ -83,8 +86,11 @@ describe('LessonViewerComponent', () => {
 
     store = TestBed.inject(LessonsStore);
     router = TestBed.inject(Router);
+    const progressStore = TestBed.inject(ProgressStore);
     vi.spyOn(store, 'loadLesson').mockImplementation(() => undefined);
     vi.spyOn(store, 'loadFinalQuizAttempts').mockImplementation(() => undefined);
+    vi.spyOn(progressStore, 'loadMyLessonStats').mockImplementation(() => undefined);
+    vi.spyOn(progressStore, 'markLessonComplete').mockImplementation(() => undefined);
     patchStore(store, { currentLesson: MOCK_LESSON, loading: false });
     fixture = TestBed.createComponent(LessonViewerComponent);
     component = fixture.componentInstance; // Deliberately skipping initial fixture.detectChanges() here to prevent NG0100
@@ -218,16 +224,33 @@ describe('LessonViewerComponent', () => {
     expect(component.currentModuleIndex()).toBe(1);
   });
 
-  it('completeLastModule marks the module complete and navigates to the final quiz player', () => {
+  it('completeLastModule marks the module complete and navigates to quiz player if final quiz exists', () => {
     fixture.detectChanges();
-    const spy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => {
-      /* mock */
-    });
+    const markModuleSpy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => undefined);
+    vi.spyOn(store, 'hasFinalQuiz').mockReturnValue(true);
     const routerSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.selectModule(2);
     component.completeLastModule();
-    expect(spy).toHaveBeenCalledWith('1', 'm3');
+    expect(markModuleSpy).toHaveBeenCalledWith('1', 'm3');
     expect(routerSpy).toHaveBeenCalledWith(['/student/quiz-player', '1']);
+  });
+
+  it('completeLastModule marks the module complete, completes the lesson, and navigates to lessons list if no final quiz exists', () => {
+    fixture.detectChanges();
+    const markModuleSpy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => undefined);
+    const completeLessonSpy = vi.spyOn(store, 'completeLesson').mockImplementation(() => undefined);
+    vi.spyOn(store, 'hasFinalQuiz').mockReturnValue(false);
+    const routerSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const msgService = TestBed.inject(MessageService);
+    const toastSpy = vi.spyOn(msgService, 'add');
+
+    component.selectModule(2);
+    component.completeLastModule();
+
+    expect(markModuleSpy).toHaveBeenCalledWith('1', 'm3');
+    expect(completeLessonSpy).toHaveBeenCalledWith('1');
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success', summary: 'Lesson Completed' }));
+    expect(routerSpy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
   // ─── Navigation helpers ────────────────────────────────────────────────────
@@ -388,8 +411,75 @@ describe('LessonViewerComponent', () => {
       expect(component.getModuleIcon('text')).toBe('article');
       expect(component.getModuleIcon('quiz')).toBe('quiz');
       expect(component.getModuleIcon('interactive')).toBe('touch_app');
-      expect(component.getModuleIcon('audio')).toBe('headphones');
+      expect(component.getModuleIcon('pdf')).toBe('picture_as_pdf');
+      expect(component.getModuleIcon('image')).toBe('image');
       expect(component.getModuleIcon('unknown_type')).toBe('menu_book');
+    });
+  });
+
+  describe('Subcapitol Check Quizzes', () => {
+    let httpClient: HttpClient;
+
+    beforeEach(() => {
+      httpClient = TestBed.inject(HttpClient);
+    });
+
+    it('loadSubcapitolAttempts loads attempts in parallel and updates subcapitolAttempts signal', () => {
+      const mockAttempts = [
+        { attemptId: 'att1', score: 8, passed: true }
+      ];
+      const getSpy = vi.spyOn(httpClient, 'get').mockReturnValue(of(mockAttempts));
+      
+      component.loadSubcapitolAttempts(MOCK_LESSON.subcapitols!);
+      
+      expect(getSpy).toHaveBeenCalledTimes(MOCK_LESSON.subcapitols!.length);
+      expect(component.subcapitolAttempts()['sub1']).toEqual(mockAttempts);
+    });
+
+    it('getBestAttempt returns the attempt with the highest score', () => {
+      const mockAttempts = [
+        { attemptId: 'att1', score: 5, passed: false },
+        { attemptId: 'att2', score: 9, passed: true },
+        { attemptId: 'att3', score: 7, passed: true }
+      ];
+      component.subcapitolAttempts.set({
+        'sub1': mockAttempts
+      });
+
+      const best = component.getBestAttempt('sub1');
+      expect(best?.attemptId).toBe('att2');
+      expect(best?.score).toBe(9);
+    });
+
+    it('isSubcapitolPassed returns true if passed attempt exists', () => {
+      component.subcapitolAttempts.set({
+        'sub1': [
+          { attemptId: 'att1', score: 5, passed: false },
+          { attemptId: 'att2', score: 8, passed: true }
+        ],
+        'sub2': [
+          { attemptId: 'att3', score: 4, passed: false }
+        ]
+      });
+
+      expect(component.isSubcapitolPassed('sub1')).toBe(true);
+      expect(component.isSubcapitolPassed('sub2')).toBe(false);
+      expect(component.isSubcapitolPassed('sub-nonexistent')).toBe(false);
+    });
+
+    it('startCheckQuiz navigates to quiz player with check type and lessonId', () => {
+      const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      const lessonIdSignal = (component as unknown as { lessonId: { set: (id: string) => void } }).lessonId;
+      lessonIdSignal.set('1');
+
+      component.startCheckQuiz('sub1');
+
+      expect(spy).toHaveBeenCalledWith(['/student/quiz-player', 'sub1'], {
+        queryParams: {
+          type: 'check',
+          lessonId: '1'
+        }
+      });
     });
   });
 });

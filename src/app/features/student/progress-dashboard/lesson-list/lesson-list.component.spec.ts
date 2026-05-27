@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { LessonListComponent } from './lesson-list.component';
 import { LessonsStore, Lesson } from '../../store/lessons.store';
+import { ProgressStore, HistoryEntry } from '../../store/progress.store';
 import { AuthStore } from '../../../auth/store/auth.store';
 import { createAuthStoreStub } from '../../../../../test-utils/auth-testing';
 import { patchStore } from '../../../../../test-utils/patch-store';
@@ -58,6 +59,7 @@ describe('LessonListComponent', () => {
   let component: LessonListComponent;
   let fixture: ComponentFixture<LessonListComponent>;
   let store: InstanceType<typeof LessonsStore>;
+  let progressStore: InstanceType<typeof ProgressStore>;
   let router: Router;
 
   beforeEach(async () => {
@@ -73,11 +75,16 @@ describe('LessonListComponent', () => {
     }).compileComponents();
 
     store = TestBed.inject(LessonsStore);
+    progressStore = TestBed.inject(ProgressStore);
     router = TestBed.inject(Router);
     vi.spyOn(store, 'loadLessons').mockImplementation(() => undefined);
+    vi.spyOn(progressStore, 'loadMyHistory').mockImplementation(() => undefined);
     patchStore(store, {
       lessons: MOCK_LESSONS,
       loading: false,
+    });
+    patchStore(progressStore, {
+      myHistory: [],
     });
     fixture = TestBed.createComponent(LessonListComponent);
     component = fixture.componentInstance;
@@ -105,6 +112,18 @@ describe('LessonListComponent', () => {
     expect(store.loadLessons).toHaveBeenCalled();
   });
 
+  it('calls loadMyHistory on init', () => {
+    fixture.detectChanges();
+    expect(progressStore.loadMyHistory).toHaveBeenCalled();
+  });
+
+  it('shows loading skeleton in my-lessons tab when accessibleLessonsLoading is true', () => {
+    component.activeTab.set('my-lessons');
+    patchStore(store, { accessibleLessonsLoading: true });
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('.animate-pulse'))).toBeTruthy();
+  });
+
   it('renders all lesson cards with correct statuses on browser tab', () => {
     store.publishedLessons = signal(
       MOCK_LESSONS as unknown as Lesson[],
@@ -130,6 +149,49 @@ describe('LessonListComponent', () => {
     expect(component.getLessonStatus('unknown-id')).toBe('not-started');
   });
 
+  it('getLessonStatus maps finished/completed statuses from lesson entity', () => {
+    patchStore(store, {
+      lessons: [
+        { ...MOCK_LESSONS[0], id: 'finished-id', status: 'Finished' },
+        { ...MOCK_LESSONS[0], id: 'completed-id-2', status: 'COMPLETED' },
+      ],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('finished-id')).toBe('quiz-submitted');
+    expect(component.getLessonStatus('completed-id-2')).toBe('quiz-submitted');
+  });
+
+  it('getLessonStatus maps in-progress and quiz-ready statuses from lesson entity', () => {
+    patchStore(store, {
+      lessons: [
+        { ...MOCK_LESSONS[0], id: 'ip-1', status: 'In Progress' },
+        { ...MOCK_LESSONS[0], id: 'ip-2', status: 'in-progress' },
+        { ...MOCK_LESSONS[0], id: 'qr-1', status: 'quiz-ready' },
+      ],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('ip-1')).toBe('in-progress');
+    expect(component.getLessonStatus('ip-2')).toBe('in-progress');
+    expect(component.getLessonStatus('qr-1')).toBe('quiz-ready');
+  });
+
+  it('getLessonStatus falls back to history entry when lesson has no explicit status mapping', () => {
+    patchStore(store, {
+      lessons: [{ ...MOCK_LESSONS[0], id: 'hist-lesson', status: '' }],
+    });
+    patchStore(progressStore, {
+      myHistory: [{ lessonId: 'hist-lesson', status: 'completed', dateCompleted: '2026-01-01' } as HistoryEntry],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('hist-lesson')).toBe('quiz-submitted');
+  });
+
   it('hasAccess returns true', () => {
     fixture.detectChanges();
     expect(component.hasAccess()).toBe(true);
@@ -150,7 +212,7 @@ describe('LessonListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0].toString()).toContain('/student/lesson-viewer/not-started-id');
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/not-started-id');
   });
 
   it('Continue button has correct routerLink', async () => {
@@ -166,7 +228,7 @@ describe('LessonListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0].toString()).toContain('/student/lesson-viewer/in-progress-id');
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/in-progress-id');
   });
 
   it('Go to Lesson button has correct routerLink', async () => {
@@ -182,7 +244,7 @@ describe('LessonListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0].toString()).toContain('/student/lesson-viewer/quiz-ready-id');
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/quiz-ready-id');
   });
 
   it('Review button has correct routerLink', async () => {
@@ -198,7 +260,7 @@ describe('LessonListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0].toString()).toContain('/student/lesson-viewer/completed-id');
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/completed-id');
   });
 
   // ─── UI States (Loading & Tabs & Empty) ──────────────────────────────────
@@ -237,9 +299,9 @@ describe('LessonListComponent', () => {
   });
 
   it('switches to History tab and renders list', () => {
-    store.completedLessons = signal([
-      MOCK_LESSONS[3],
-    ] as unknown as Lesson[]) as unknown as typeof store.completedLessons;
+    patchStore(progressStore, {
+      myHistory: [{ lessonId: 'completed-id' } as HistoryEntry]
+    });
     component.activeTab.set('history');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Completed Lesson');

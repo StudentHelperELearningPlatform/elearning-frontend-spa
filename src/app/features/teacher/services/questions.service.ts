@@ -15,6 +15,20 @@ export class QuestionsService {
   private readonly baseUrl = `${environment.lessonApiUrl}/api/v1`;
 
   // --- GET ---
+  getCheckQuiz(subcapitolId: string): Observable<unknown> {
+    return this.http.get<unknown>(
+      `${this.baseUrl}/subcapitols/${subcapitolId}/check-quiz`,
+      { headers: { 'X-Skip-Error-Notification': 'true' } }
+    );
+  }
+
+  getFinalQuiz(lessonId: string): Observable<unknown> {
+    return this.http.get<unknown>(
+      `${this.baseUrl}/lessons/${lessonId}/final-quiz`,
+      { headers: { 'X-Skip-Error-Notification': 'true' } }
+    );
+  }
+
   getCheckQuizQuestions(subcapitolId: string): Observable<QuestionResponse[]> {
     return this.http.get<QuestionResponse[]>(
       `${this.baseUrl}/subcapitols/${subcapitolId}/check-quiz/questions`,

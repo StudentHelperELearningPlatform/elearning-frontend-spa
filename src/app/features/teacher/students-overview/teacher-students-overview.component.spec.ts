@@ -5,6 +5,7 @@ import { MessageService } from 'primeng/api';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { TeacherStudentsOverviewComponent } from './teacher-students-overview.component';
 import { ProgressStore } from '../../student/store/progress.store';
+import { ClassStore } from '../state/class.store';
 
 interface TeacherStudentSummary {
   studentId: string;
@@ -29,14 +30,23 @@ function buildStoreMock() {
   };
 }
 
+function buildClassStoreMock() {
+  return {
+    classes: signal([{ id: 'cls-1', name: 'Class 1' }]),
+    loadClasses: vi.fn(),
+  };
+}
+
 describe('TeacherStudentsOverviewComponent', () => {
   let fixture: ComponentFixture<TeacherStudentsOverviewComponent>;
   let component: TeacherStudentsOverviewComponent;
   let storeMock: ReturnType<typeof buildStoreMock>;
+  let classStoreMock: ReturnType<typeof buildClassStoreMock>;
   let routerSpy: Pick<Router, 'navigate'>;
 
   beforeEach(async () => {
     storeMock = buildStoreMock();
+    classStoreMock = buildClassStoreMock();
     routerSpy = { navigate: vi.fn().mockResolvedValue(true) };
 
     TestBed.overrideComponent(TeacherStudentsOverviewComponent, {
@@ -46,6 +56,7 @@ describe('TeacherStudentsOverviewComponent', () => {
     await TestBed.configureTestingModule({
       providers: [
         { provide: ProgressStore, useValue: storeMock },
+        { provide: ClassStore, useValue: classStoreMock },
         { provide: Router, useValue: routerSpy },
         MessageService,
       ],
@@ -64,8 +75,10 @@ describe('TeacherStudentsOverviewComponent', () => {
     vi.useRealTimers();
   });
 
-  it('should call loadStudents on init', () => {
-    expect(storeMock.loadStudents).toHaveBeenCalledTimes(1);
+  it('should call loadClasses on init and loadStudents via effect', () => {
+    expect(classStoreMock.loadClasses).toHaveBeenCalledTimes(1);
+    TestBed.flushEffects();
+    expect(storeMock.loadStudents).toHaveBeenCalledWith({ classId: 'cls-1' });
   });
 
   it('should return all students when search is empty', () => {

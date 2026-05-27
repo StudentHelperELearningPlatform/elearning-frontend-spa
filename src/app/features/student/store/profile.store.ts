@@ -7,6 +7,8 @@ import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap } from 'rxjs';
 
 export interface StudentProfile {
+  userId?: string;
+  studentId?: string;
   name: string;
   bio: string;
   avatarUrl?: string;
@@ -21,6 +23,9 @@ export interface StudentProfile {
 }
 
 export interface RawStudentProfile {
+  id?: string;
+  userId?: string;
+  studentId?: string;
   name?: string;
   firstName?: string;
   lastName?: string;
@@ -40,6 +45,8 @@ export interface RawStudentProfile {
 }
 
 export interface RawStudentProfileUpdate {
+  userId?: string;
+  studentId?: string;
   firstName?: string;
   lastName?: string;
   school?: string;
@@ -75,6 +82,8 @@ export const StudentProfileStore = signalStore(
         enrolledClasses: []
       };
 
+      const userId = raw.userId || raw.id || '';
+      const studentId = raw.studentId || raw.id || '';
       const name = raw.name || `${raw.firstName || ''} ${raw.lastName || ''}`.trim() || 'Alex Student';
       const email = raw.contactInfo?.email || raw.email || '';
       const phone = raw.contactInfo?.phone || raw.phone || '';
@@ -86,6 +95,8 @@ export const StudentProfileStore = signalStore(
       const avatarUrl = raw.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email || 'student')}`;
 
       return {
+        userId,
+        studentId,
         name,
         bio,
         avatarUrl,
@@ -108,8 +119,15 @@ export const StudentProfileStore = signalStore(
       updateStudentProfile: rxMethod<RawStudentProfileUpdate>(
         pipe(
           tap(() => patchState(store, { saving: true, error: null })),
-          switchMap((payload) =>
-            http.put<RawStudentProfile>(`${apiBase}/students/me/profile`, payload).pipe(
+          switchMap((payload) => {
+            const currentProfileData = store.profile();
+            const enrichedPayload = {
+              ...payload,
+              userId: payload.userId || currentProfileData?.userId,
+              studentId: payload.studentId || currentProfileData?.studentId,
+            };
+
+            return http.put<RawStudentProfile>(`${apiBase}/students/me/profile`, enrichedPayload).pipe(
               tapResponse({
                 next: (raw) => {
                   const currentProfile = store.profile();
@@ -131,7 +149,7 @@ export const StudentProfileStore = signalStore(
                 error: (err: { message?: string }) => patchState(store, { saving: false, error: err.message || 'Failed to update profile' }),
               })
             )
-          )
+          })
         )
       )
     };

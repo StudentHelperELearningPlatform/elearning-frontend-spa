@@ -2,6 +2,8 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
@@ -14,10 +16,11 @@ export interface FinalQuizAttempt {
   submittedAt: string;
 }
 
+
 export interface Module {
   id: string;
   title: string;
-  type: 'video' | 'text' | 'quiz' | 'interactive' | 'audio' | 'image';
+  type: 'video' | 'text' | 'quiz' | 'interactive' | 'image' | 'pdf';
   content: string;
   mediaUrl?: string;
   blockType?: string;
@@ -109,11 +112,15 @@ interface LessonsState {
   /** Final quiz attempts for the current lesson; null = not yet loaded */
   finalQuizAttempts: FinalQuizAttempt[] | null;
   attemptsLoading: boolean;
+  hasFinalQuiz: boolean | null;
   /** Parsed AI explanation for the currently viewed block */
   explanation: BlockExplanation | null;
   explanationLoading: boolean;
   /** Block ID for which the explanation was last requested */
   explanationBlockId: string | null;
+  /** Set of lesson IDs the user has access to */
+  accessibleLessonIds: Set<string>;
+  accessibleLessonsLoading: boolean;
 }
 
 export const LessonsStore = signalStore(
@@ -126,16 +133,22 @@ export const LessonsStore = signalStore(
     completedModuleIds: new Set<string>(),
     finalQuizAttempts: null,
     attemptsLoading: false,
+    hasFinalQuiz: null,
     explanation: null,
     explanationLoading: false,
     explanationBlockId: null,
+    accessibleLessonIds: new Set<string>(),
+    accessibleLessonsLoading: false,
   }),
 
   withComputed((state) => ({
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
     completedLessons: computed(() => [] as Lesson[]),
-    myLessons: computed(() => state.lessons()),
+    myLessons: computed(() => {
+      const ids = state.accessibleLessonIds();
+      return state.lessons().filter((l) => ids.has(l.id));
+    }),
 
     /** True when every module in the current lesson has been marked complete */
     allModulesComplete: computed(() => {
@@ -202,6 +215,40 @@ export const LessonsStore = signalStore(
       });
     },
 
+    loadAccessibleLessons(studentId: string): void {
+      patchState(store, { accessibleLessonsLoading: true });
+      const lessons = store.lessons();
+      if (!lessons.length || !studentId) {
+        patchState(store, { accessibleLessonsLoading: false });
+        return;
+      }
+      
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const checks = lessons.map(l => {
+        if (!uuidRegex.test(l.id)) {
+          // If the lesson ID is not a valid UUID (e.g., mock data like "seed-1"),
+          // bypass the real backend access check to avoid a 400 Bad Request and assume access is granted.
+          return of({ id: l.id, hasAccess: true });
+        }
+        return http.get<boolean>(`${userApiBase}/payments/access-check`, {
+          params: { studentId, lessonId: l.id }
+        }).pipe(
+          map(hasAccess => ({ id: l.id, hasAccess })),
+          catchError(() => of({ id: l.id, hasAccess: false }))
+        );
+      });
+
+      forkJoin(checks).subscribe({
+        next: (results) => {
+          const accessibleIds = new Set(results.filter(r => r.hasAccess).map(r => r.id));
+          patchState(store, { accessibleLessonIds: accessibleIds, accessibleLessonsLoading: false });
+        },
+        error: () => {
+          patchState(store, { accessibleLessonsLoading: false });
+        }
+      });
+    },
+
     checkout(studentId: string, lessonId: string): void {
       patchState(store, { loading: true });
       http.post(`${userApiBase}/payments/checkout`, null, {
@@ -259,21 +306,17 @@ export const LessonsStore = signalStore(
       });
     },
 
+    markModuleCompleteLocally(moduleId: string): void {
+      patchState(store, (s) => ({
+        completedModuleIds: new Set([...s.completedModuleIds, moduleId]),
+      }));
+    },
+
     markModuleComplete(lessonId: string, moduleId: string): void {
       // Track locally so allModulesComplete updates immediately
       patchState(store, (s) => ({
         completedModuleIds: new Set([...s.completedModuleIds, moduleId]),
       }));
-
-      http.put(`${apiBase}/lessons/${lessonId}/progress`, {
-        moduleId,
-        completedAt: new Date().toISOString(),
-      }).subscribe({
-        next: () => { /* progress saved — no state change needed */ },
-        error: (err) => {
-          console.error('Failed to save module progress', err);
-        },
-      });
     },
 
     completeLesson(lessonId: string): void {
@@ -294,18 +337,24 @@ export const LessonsStore = signalStore(
       patchState(store, { attemptsLoading: true });
       http.get<FinalQuizAttempt[]>(`${apiBase}/lessons/${lessonId}/final-quiz/attempts`).subscribe({
         next: (attempts) => {
-          patchState(store, { finalQuizAttempts: attempts, attemptsLoading: false });
+          patchState(store, { finalQuizAttempts: attempts, attemptsLoading: false, hasFinalQuiz: true });
         },
-        error: () => {
+        error: (err) => {
           // Treat as no attempts on error — don't block the lesson viewer
-          patchState(store, { finalQuizAttempts: [], attemptsLoading: false });
+          // If error status is 404, we know there is no final quiz.
+          const is404 = err?.status === 404;
+          patchState(store, {
+            finalQuizAttempts: [],
+            attemptsLoading: false,
+            hasFinalQuiz: !is404,
+          });
         },
       });
     },
 
     /** Reset completion tracking (e.g. when leaving the lesson) */
     clearCompletionState(): void {
-      patchState(store, { completedModuleIds: new Set<string>(), finalQuizAttempts: null });
+      patchState(store, { completedModuleIds: new Set<string>(), finalQuizAttempts: null, hasFinalQuiz: null });
     },
 
     /**

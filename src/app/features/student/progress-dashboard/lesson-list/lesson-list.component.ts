@@ -1,6 +1,7 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LessonsStore } from '../../store/lessons.store';
+import { ProgressStore } from '../../store/progress.store';
 import { AuthStore } from '../../../auth/store/auth.store';
 import { RouterModule } from '@angular/router';
 import { CardComponent } from '../../../../shared/components/card/card.component';
@@ -88,10 +89,16 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             }
           }
           @case ('my-lessons') {
-            @if (lessonsStore.myLessons().length === 0) {
+            @if (lessonsStore.accessibleLessonsLoading()) {
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                @for (i of [1, 2, 3]; track i) {
+                  <div class="bg-gray-200 animate-pulse h-80 rounded-3xl border-4 border-black"></div>
+                }
+              </div>
+            } @else if (lessonsStore.myLessons().length === 0) {
               <app-empty-state
                 [title]="'No active lessons'"
-                [description]="'Start a lesson from the catalog to see it here!'"
+                [description]="'Start or unlock a lesson from the catalog to see it here!'"
                 [icon]="'school'"
               ></app-empty-state>
             } @else {
@@ -105,7 +112,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             }
           }
           @case ('history') {
-            @if (lessonsStore.completedLessons().length === 0) {
+            @if (completedLessons().length === 0) {
               <app-empty-state
                 [title]="'No history yet'"
                 [description]="'Finish a lesson to see your achievements here!'"
@@ -113,7 +120,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               ></app-empty-state>
             } @else {
               <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                @for (lesson of lessonsStore.completedLessons(); track lesson.id) {
+                @for (lesson of completedLessons(); track lesson.id) {
                   <ng-container
                     *ngTemplateOutlet="lessonCard; context: { $implicit: lesson, type: 'history' }"
                   />
@@ -126,7 +133,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
     </div>
 
     <ng-template #lessonCard let-lesson let-type="type">
-      <app-card [hoverable]="true" class="h-full flex flex-col transition-all duration-300">
+      <app-card [hoverable]="true" [routerLink]="['/student/lessons', lesson.id]" class="h-full flex flex-col transition-all duration-300">
         <div
           class="-mx-6 -mt-6 mb-6 h-40 bg-[#0ABAB5]/20 border-b-4 border-black flex items-center justify-center relative overflow-hidden"
         >
@@ -187,7 +194,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <app-button
                   variant="primary"
                   size="sm"
-                  [routerLink]="['/student/lesson-viewer', lesson.id]"
+                  [routerLink]="['/student/lessons', lesson.id]"
                 >
                   Continue
                 </app-button>
@@ -196,7 +203,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <app-button
                   variant="secondary"
                   size="sm"
-                  [routerLink]="['/student/lesson-viewer', lesson.id]"
+                  [routerLink]="['/student/lessons', lesson.id]"
                 >
                   Review
                 </app-button>
@@ -205,7 +212,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <app-button
                   variant="primary"
                   size="sm"
-                  [routerLink]="['/student/lesson-viewer', lesson.id]"
+                  [routerLink]="['/student/lessons', lesson.id]"
                 >
                   @if (getLessonStatus(lesson.id) === 'quiz-ready') {
                     Go to Lesson
@@ -223,17 +230,70 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 })
 export class LessonListComponent implements OnInit {
   lessonsStore = inject(LessonsStore);
+  progressStore = inject(ProgressStore);
   authStore = inject(AuthStore);
   activeTab = signal<'browser' | 'my-lessons' | 'history'>('browser');
 
   private readonly lessonStatusMap = signal<Record<string, string>>({});
 
+  completedLessons = computed(() => {
+    const history = this.progressStore.myHistory();
+    const completedHistoryIds = new Set(
+      history
+        .filter((h) => h.status === 'completed' || h.dateCompleted != null || (h.status !== 'in_progress' && h.status !== 'not_started'))
+        .map((h) => h.lessonId)
+    );
+    return this.lessonsStore.publishedLessons().filter((l) => completedHistoryIds.has(l.id));
+  });
+  
+  constructor() {
+    effect(() => {
+      const lessons = this.lessonsStore.publishedLessons();
+      const studentId = this.authStore.user()?.id;
+      if (lessons.length > 0 && studentId) {
+        untracked(() => {
+          this.lessonsStore.loadAccessibleLessons(studentId);
+        });
+      }
+    });
+  }
+
   ngOnInit() {
     this.lessonsStore.loadLessons();
+    this.progressStore.loadMyHistory();
   }
 
   getLessonStatus(lessonId: string): string {
-    return this.lessonStatusMap()[lessonId] ?? 'not-started';
+    const testMapStatus = this.lessonStatusMap()[lessonId];
+    if (testMapStatus) {
+      return testMapStatus;
+    }
+
+    const lesson = this.lessonsStore.lessons().find(l => l.id === lessonId);
+    if (lesson) {
+      const status = (lesson.status || '').toLowerCase().trim();
+      if (status === 'finished' || status === 'completed' || status === 'quiz-submitted') {
+        return 'quiz-submitted';
+      }
+      if (status === 'in progress' || status === 'in-progress') {
+        return 'in-progress';
+      }
+      if (status === 'quiz-ready') {
+        return 'quiz-ready';
+      }
+    }
+
+    // Fallback to history entry if available
+    const history = this.progressStore.myHistory();
+    const entry = history.find(h => h.lessonId === lessonId);
+    if (entry) {
+      if (entry.status === 'completed' || entry.dateCompleted || (entry.status !== 'in_progress' && entry.status !== 'not_started')) {
+        return 'quiz-submitted';
+      }
+      return 'in-progress';
+    }
+
+    return 'not-started';
   }
 
   hasAccess(): boolean {

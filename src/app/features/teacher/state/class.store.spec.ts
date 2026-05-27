@@ -102,7 +102,7 @@ describe('ClassStore', () => {
     expect(store.currentClass()?.name).toBe('Math');
     expect(store.currentClass()?.lessons).toEqual(mockLessons);
     expect(store.currentClass()?.students).toEqual([
-      { id: 's1', name: 'John Doe', email: 'john@example.com' },
+      { id: 's1', studentId: 's1', userId: undefined, name: 'John Doe', email: 'john@example.com' },
     ]);
   });
 
@@ -324,4 +324,36 @@ describe('ClassStore', () => {
     store.removeLesson('1', 'l1');
     httpTestingController.expectNone(`${mockApiUrl}/teachers/classes/1/lessons/l1`);
   });
+
+  it('should correctly map student details with various raw data shapes', () => {
+    const mockDetailRaw = { id: '1', name: 'Math', bio: '', createdAt: '' };
+    const enrolledRaw = [
+      's1',
+      { userId: 'u2' },
+      { id: 's3' },
+      { studentId: 's4' },
+      { id: 's5', name: 'Predefined Name' },
+      { userId: 'u6', firstName: 'Jane', lastName: 'Doe' },
+      {}
+    ];
+    const allStudentsRaw = [
+      { id: 's1', name: 'Alice' },
+      { userId: 'u2', name: 'Bob' },
+      { studentId: 's3', name: 'Charlie' }
+    ];
+
+    store.loadClassDetail('1');
+    flushClassDetail('1', mockDetailRaw, [], enrolledRaw, allStudentsRaw);
+
+    const students = store.currentClass()?.students || [];
+    expect(students.length).toBe(7);
+    expect(students[0]).toEqual({ id: 's1', studentId: 's1', userId: undefined, name: 'Alice', email: '' });
+    expect(students[1]).toEqual({ id: 'u2', studentId: '', userId: 'u2', name: 'Bob', email: '' });
+    expect(students[2]).toEqual({ id: 's3', studentId: 's3', userId: undefined, name: 'Charlie', email: '' });
+    expect(students[3]).toEqual({ id: 's4', studentId: 's4', userId: undefined, name: 's4', email: '' });
+    expect(students[4]).toEqual({ id: 's5', studentId: 's5', userId: undefined, name: 'Predefined Name', email: '' });
+    expect(students[5]).toEqual({ id: 'u6', studentId: '', userId: 'u6', name: 'Jane Doe', email: '' });
+    expect(students[6]).toEqual({ id: '', studentId: '', userId: undefined, name: '', email: '' });
+  });
 });
+

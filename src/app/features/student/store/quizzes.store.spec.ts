@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { QuizzesStore } from './quizzes.store';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { QUIZ_API_URL } from '@core/tokens/api.token';
+import { QUIZ_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 
 const MOCK_QUIZ_API = {
   id: 'quiz-1',
@@ -30,6 +30,7 @@ describe('QuizzesStore', () => {
         provideHttpClient(),
         provideRouter([]),
         { provide: QUIZ_API_URL, useValue: '/api' },
+        { provide: CONTENT_API_URL, useValue: '/api' },
       ],
     });
     store = TestBed.inject(QuizzesStore);
@@ -46,6 +47,8 @@ describe('QuizzesStore', () => {
       result: null,
       loading: false,
     });
+
+    vi.spyOn(httpClient, 'post').mockReturnValue(of({}));
   });
 
   afterEach(() => vi.restoreAllMocks());
@@ -196,8 +199,9 @@ describe('QuizzesStore', () => {
         expect.stringContaining('/final-quiz/submit'),
         expect.objectContaining({
           answers: [
-            { questionId: 'q1', answer: 'A' }
-          ]
+            expect.objectContaining({ questionId: 'q1', answer: 'A' })
+          ],
+          totalTimeSeconds: 60
         })
       );
     });
@@ -450,11 +454,278 @@ describe('QuizzesStore', () => {
       expect(store.quizExplanationLoading()).toBe(false);
     });
 
+    it('should parse res.content JSON string representing an array and match by question text (normalized)', () => {
+      patchStore(store, {
+        resultDetail: {
+          attemptId: 'att-1',
+          quizId: 'quiz-1',
+          quizTitle: 'Quiz',
+          subject: 'Sub',
+          lessonId: 'lesson-1',
+          nextLessonId: null,
+          score: 1,
+          totalPoints: 10,
+          percentage: 10,
+          passed: false,
+          timeSpent: 10,
+          questionBreakdown: [
+            {
+              questionId: 'q1',
+              questionText: 'What is 2 + 2?',
+              type: 'MULTIPLE_CHOICE',
+              difficulty: 'EASY',
+              studentAnswer: '3',
+              correctAnswer: '4',
+              isCorrect: false,
+              timeSpentSeconds: 10,
+              aiExplanation: '',
+            }
+          ]
+        }
+      });
+
+      const explanationItem = { question: 'what is 2 + 2', explanation: 'It is 4.' };
+      vi.spyOn(httpClient, 'post').mockReturnValue(of({
+        content: JSON.stringify([explanationItem])
+      }));
+
+      store.explainQuiz('lesson-1', [['3']]);
+      expect(store.quizExplanations()).toEqual([explanationItem]);
+    });
+
+    it('should fallback to matching index if question text cannot be matched', () => {
+      patchStore(store, {
+        resultDetail: {
+          attemptId: 'att-1',
+          quizId: 'quiz-1',
+          quizTitle: 'Quiz',
+          subject: 'Sub',
+          lessonId: 'lesson-1',
+          nextLessonId: null,
+          score: 1,
+          totalPoints: 10,
+          percentage: 10,
+          passed: false,
+          timeSpent: 10,
+          questionBreakdown: [
+            {
+              questionId: 'q1',
+              questionText: 'What is 2 + 2?',
+              type: 'MULTIPLE_CHOICE',
+              difficulty: 'EASY',
+              studentAnswer: '3',
+              correctAnswer: '4',
+              isCorrect: false,
+              timeSpentSeconds: 10,
+              aiExplanation: '',
+            }
+          ]
+        }
+      });
+
+      const explanationItem = { question: 'Different Text', explanation: 'Fallback by index.' };
+      vi.spyOn(httpClient, 'post').mockReturnValue(of({
+        content: JSON.stringify([explanationItem])
+      }));
+
+      store.explainQuiz('lesson-1', [['3']]);
+      expect(store.quizExplanations()).toEqual([explanationItem]);
+    });
+
+    it('should handle content that is a raw array directly or single object', () => {
+      patchStore(store, {
+        resultDetail: {
+          attemptId: 'att-1',
+          quizId: 'quiz-1',
+          quizTitle: 'Quiz',
+          subject: 'Sub',
+          lessonId: 'lesson-1',
+          nextLessonId: null,
+          score: 1,
+          totalPoints: 10,
+          percentage: 10,
+          passed: false,
+          timeSpent: 10,
+          questionBreakdown: [
+            {
+              questionId: 'q1',
+              questionText: 'What is 2 + 2?',
+              type: 'MULTIPLE_CHOICE',
+              difficulty: 'EASY',
+              studentAnswer: '3',
+              correctAnswer: '4',
+              isCorrect: false,
+              timeSpentSeconds: 10,
+              aiExplanation: '',
+            }
+          ]
+        }
+      });
+
+      const explanationItem = { question: 'What is 2 + 2?', explanation: 'Yes.' };
+      vi.spyOn(httpClient, 'post').mockReturnValue(of({
+        content: [explanationItem]
+      }));
+
+      store.explainQuiz('lesson-1', [['3']]);
+      expect(store.quizExplanations()).toEqual([explanationItem]);
+    });
+
+    it('should handle json parse error in content', () => {
+      const apiResponse = { content: 'invalid json text' };
+      vi.spyOn(httpClient, 'post').mockReturnValue(of(apiResponse));
+      store.explainQuiz('lesson-1', [['3']]);
+      expect(store.quizExplanations()).toEqual([apiResponse]);
+    });
+
+    it('should match by questionText or question_text properties', () => {
+      patchStore(store, {
+        resultDetail: {
+          attemptId: 'att-1',
+          quizId: 'quiz-1',
+          quizTitle: 'Quiz',
+          subject: 'Sub',
+          lessonId: 'lesson-1',
+          nextLessonId: null,
+          score: 1,
+          totalPoints: 10,
+          percentage: 10,
+          passed: false,
+          timeSpent: 10,
+          questionBreakdown: [
+            {
+              questionId: 'q1',
+              questionText: 'What is 2 + 2?',
+              type: 'MULTIPLE_CHOICE',
+              difficulty: 'EASY',
+              studentAnswer: '3',
+              correctAnswer: '4',
+              isCorrect: false,
+              timeSpentSeconds: 10,
+              aiExplanation: '',
+            }
+          ]
+        }
+      });
+
+      const explanationItem1 = { questionText: 'What is 2 + 2?', explanation: 'Text' };
+      const explanationItem2 = { question_text: 'What is 2 + 2?', explanation: 'Text2' };
+
+      vi.spyOn(httpClient, 'post').mockReturnValue(of([explanationItem1]));
+      store.explainQuiz('lesson-1', [['3']]);
+      expect(store.quizExplanations()).toEqual([explanationItem1]);
+
+      vi.spyOn(httpClient, 'post').mockReturnValue(of([explanationItem2]));
+      store.explainQuiz('lesson-1', [['3']]);
+      expect(store.quizExplanations()).toEqual([explanationItem2]);
+    });
+
     it('clearQuizExplanation clears explanations state', () => {
       patchStore(store, { quizExplanations: [{}], quizExplanationLoading: true });
       store.clearQuizExplanation();
       expect(store.quizExplanations()).toBeNull();
       expect(store.quizExplanationLoading()).toBe(false);
+    });
+  });
+
+  describe('Subcapitol Check Quiz', () => {
+    it('loadQuiz with check type fetches from subcapitol check-quiz endpoint', () => {
+      const getSpy = vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.loadQuiz('sub-123', 'check');
+
+      expect(store.loading()).toBe(false);
+      expect(store.quizType()).toBe('check');
+      expect(store.currentQuiz()?.title).toBe('Lesson check quizz');
+      expect(getSpy).toHaveBeenCalledWith('/api/subcapitols/sub-123/check-quiz');
+    });
+
+    it('startQuiz with check type calls startQuiz on check endpoint', () => {
+      const getSpy = vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.startQuiz('sub-123', 'check');
+      expect(store.quizType()).toBe('check');
+      expect(store.startedAt()).toBeInstanceOf(Date);
+      expect(getSpy).toHaveBeenCalledWith('/api/subcapitols/sub-123/check-quiz');
+    });
+
+    it('submitQuiz posts to the check-quiz submit endpoint', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.startQuiz('sub-123', 'check');
+      
+      const postSpy = vi.spyOn(httpClient, 'post').mockReturnValue(
+        of({
+          attemptId: 'check-att-1',
+          score: 10,
+          totalPoints: 10,
+          percentage: 100,
+          passed: true,
+        })
+      );
+
+      store.submitQuiz();
+
+      expect(store.submitted()).toBe(true);
+      expect(postSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/subcapitols/sub-123/check-quiz/submit'),
+        expect.any(Object)
+      );
+    });
+
+    it('loadResultDetail with check type fetches attempts from check-quiz attempts endpoint', () => {
+      const getSpy = vi.spyOn(httpClient, 'get').mockReturnValue(of([{ attemptId: 'check-att-1', score: 10 }]));
+      store.loadResultDetail('sub-123', 'check-att-1', 'check');
+
+      expect(store.resultDetail()?.attemptId).toBe('check-att-1');
+      expect(getSpy).toHaveBeenCalledWith('/api/subcapitols/sub-123/check-quiz/attempts');
+    });
+
+    it('explainQuiz with check type posts to the check-quiz explain endpoint', () => {
+      const postSpy = vi.spyOn(httpClient, 'post').mockReturnValue(of([]));
+      store.explainQuiz('sub-123', [['answer']], 'check');
+
+      expect(postSpy).toHaveBeenCalledWith(
+        '/api/subcapitols/sub-123/check-quiz/explain',
+        expect.any(Object)
+      );
+    });
+
+    it('clearResult clears progress and results while keeping currentQuiz intact', () => {
+      patchStore(store, {
+        result: { score: 10, totalPoints: 10, timeSpent: 5, percentage: 100, passed: true, attemptId: 'att' },
+        submitted: true,
+        startedAt: new Date(),
+        timeRemaining: 100,
+        answers: { q1: 'A' },
+      });
+
+      store.clearResult();
+
+      expect(store.result()).toBeNull();
+      expect(store.submitted()).toBe(false);
+      expect(store.startedAt()).toBeNull();
+      expect(store.timeRemaining()).toBeNull();
+      expect(store.answers()).toEqual({});
+    });
+
+    it('loadResultDetail parallel loads quiz questions if not loaded', () => {
+      const getSpy = vi.spyOn(httpClient, 'get').mockImplementation((url: string) => {
+        if (url.includes('/attempts')) {
+          return of([{ attemptId: 'check-att-1', score: 10, results: [{ questionId: 'q1', submittedAnswer: 'A', correctAnswer: 'A', correct: true }] }]);
+        }
+        if (url.includes('/questions')) {
+          return of([{ id: 'q1', type: 'MULTIPLE_CHOICE', questionText: 'Q1', options: [{ id: 'A', text: 'Option A' }] }]);
+        }
+        // Quiz details GET
+        return of({ id: 'sub-123', title: 'Fetched Sub Quiz', timeLimitSeconds: 600 });
+      });
+
+      patchStore(store, { currentQuiz: null });
+      store.loadResultDetail('sub-123', 'check-att-1', 'check');
+
+      expect(store.currentQuiz()?.id).toBe('sub-123');
+      expect(store.currentQuiz()?.title).toBe('Lesson check quizz');
+      expect(store.resultDetail()?.score).toBe(10);
+      expect(store.resultDetail()?.percentage).toBe(100);
+      expect(getSpy).toHaveBeenCalled();
     });
   });
 });

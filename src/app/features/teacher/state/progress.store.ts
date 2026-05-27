@@ -16,6 +16,7 @@ export interface ClassStatsSummary {
 }
 
 export interface StudentProgressRow {
+  userId?: string;
   studentId: string;
   studentName: string;
   lessonsCompleted: number;
@@ -32,6 +33,7 @@ export interface LessonBreakdown {
 }
 
 export interface StudentDetail {
+  userId?: string;
   studentId: string;
   studentName: string;
   totalLessonsCompleted: number;
@@ -97,11 +99,11 @@ export const TeacherProgressStore = signalStore(
     ),
 
     // S6-stats-03 stub for Melora
-    loadAllStudents: rxMethod<void>(
+    loadAllStudents: rxMethod<{ classId: string }>(
       pipe(
         tap(() => patchState(store, { loading: true, error: null })),
-        switchMap(() =>
-          http.get<StudentProgressRow[]>(`${apiBase}/progress/teacher/students`).pipe(
+        switchMap(({ classId }) =>
+          http.get<StudentProgressRow[]>(`${apiBase}/progress/teacher/students`, { params: { classId } }).pipe(
             tapResponse({
               next: (students) => patchState(store, { allStudents: students, loading: false }),
               error: (err: Error) => patchState(store, { error: err.message || 'Failed to load all students', loading: false }),

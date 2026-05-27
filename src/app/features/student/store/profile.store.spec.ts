@@ -39,6 +39,8 @@ describe('StudentProfileStore', () => {
     };
 
     const expectedProfile: StudentProfile = {
+      userId: '',
+      studentId: '',
       name: 'Test Student',
       bio: 'Test bio',
       contactInfo: { email: 'test@test.com', phone: '123' },

@@ -80,10 +80,10 @@ describe('TeacherProgressStore', () => {
 
   describe('loadAllStudents', () => {
     it('should successfully load all students', () => {
-      store.loadAllStudents();
+      store.loadAllStudents({ classId: 'cls-1' });
       expect(store.loading()).toBe(true);
 
-      const req = httpMock.expectOne(`${mockApiUrl}/progress/teacher/students`);
+      const req = httpMock.expectOne(`${mockApiUrl}/progress/teacher/students?classId=cls-1`);
       expect(req.request.method).toBe('GET');
 
       req.flush([
@@ -96,8 +96,8 @@ describe('TeacherProgressStore', () => {
     });
 
     it('should set error state if loadAllStudents fails', () => {
-      store.loadAllStudents();
-      const req = httpMock.expectOne(`${mockApiUrl}/progress/teacher/students`);
+      store.loadAllStudents({ classId: 'cls-1' });
+      const req = httpMock.expectOne(`${mockApiUrl}/progress/teacher/students?classId=cls-1`);
 
       req.flush('Not Found', { status: 404, statusText: 'Not Found' });
 

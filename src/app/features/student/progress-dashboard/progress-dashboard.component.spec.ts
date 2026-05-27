@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ProgressDashboardComponent } from './progress-dashboard.component';
 import { ProgressStore } from '../store/progress.store';
+import { LessonsStore } from '../store/lessons.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { StudentProfileStore, StudentProfile } from '../store/profile.store';
 import { TeacherClassService } from '../../../core/services/teacher-class.service';
@@ -18,8 +19,9 @@ describe('ProgressDashboardComponent (Logic)', () => {
     student: WritableSignal<unknown>;
     activeStreak: WritableSignal<number>;
     skillLevels: WritableSignal<unknown[]>;
-    loadDashboard: ReturnType<typeof vi.fn>;
+
     loadMyDashboard: ReturnType<typeof vi.fn>;
+    loadMyHistory: ReturnType<typeof vi.fn>;
     loadMyLessonStats: ReturnType<typeof vi.fn>;
     loading: WritableSignal<boolean>;
     error: WritableSignal<string | null>;
@@ -32,6 +34,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     dashboard: WritableSignal<unknown>;
     dashboardLoading: WritableSignal<boolean>;
     dashboardError: WritableSignal<string | null>;
+    myHistory: WritableSignal<{ lessonId: string; lessonTitle?: string; status: 'not_started' | 'in_progress' | 'completed'; score: number | null; dateCompleted: string | null }[]>;
   };
   let studentProfileStoreMock: {
     profile: WritableSignal<StudentProfile | null>;
@@ -41,6 +44,10 @@ describe('ProgressDashboardComponent (Logic)', () => {
     loadStudentProfile: ReturnType<typeof vi.fn>;
   };
   let authStoreStub: ReturnType<typeof createAuthStoreStub>;
+  let lessonsStoreMock: {
+    currentLesson: WritableSignal<{ id: string; title: string } | null>;
+    loadLesson: ReturnType<typeof vi.fn>;
+  };
   let routerMock: {
     navigate: ReturnType<typeof vi.fn>;
   };
@@ -61,8 +68,9 @@ describe('ProgressDashboardComponent (Logic)', () => {
       student: signal({ firstName: 'Test', totalLessons: 10, completedLessons: 5 }),
       activeStreak: signal(5),
       skillLevels: signal([]),
-      loadDashboard: vi.fn(),
+
       loadMyDashboard: vi.fn(),
+      loadMyHistory: vi.fn(),
       loadMyLessonStats: vi.fn(),
       loading: signal(false),
       error: signal(null),
@@ -75,6 +83,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       dashboard: signal(null),
       dashboardLoading: signal(false),
       dashboardError: signal(null),
+      myHistory: signal([]),
     };
 
     studentProfileStoreMock = {
@@ -97,6 +106,11 @@ describe('ProgressDashboardComponent (Logic)', () => {
       isAuthenticated: true
     });
 
+    lessonsStoreMock = {
+      currentLesson: signal(null),
+      loadLesson: vi.fn(),
+    };
+
     routerMock = {
       navigate: vi.fn(),
     };
@@ -104,9 +118,10 @@ describe('ProgressDashboardComponent (Logic)', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ProgressStore, useValue: progressStoreMock },
+        { provide: LessonsStore, useValue: lessonsStoreMock },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: StudentProfileStore, useValue: studentProfileStoreMock },
-        { provide: TeacherClassService, useValue: { getClassDetail: vi.fn().mockReturnValue(of({ id: 'class-1', name: 'Mock Class', description: 'Mock Class Desc', lessonCount: 2 })) } },
+        { provide: TeacherClassService, useValue: { getStudentClasses: vi.fn().mockReturnValue(of([{ id: 'class-1', name: 'Mock Class', description: 'Mock Class Desc', lessonCount: 2 }])) } },
         { provide: Router, useValue: routerMock },
         ...provideApiMocks(),
       ],
@@ -122,28 +137,13 @@ describe('ProgressDashboardComponent (Logic)', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should call progressStore.loadDashboard on init', () => {
+  it('should fetch dashboard via loadMyDashboard when profile loads', async () => {
+    studentProfileStoreMock.profile.set({ enrolledClasses: ['class-123'] } as unknown as StudentProfile);
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });
-    expect(progressStoreMock.loadDashboard).toHaveBeenCalledWith('123');
-  });
-
-  it('should also pull aggregate stats from loadMyDashboard on init', () => {
-    TestBed.runInInjectionContext(() => {
-      component.ngOnInit();
-    });
-    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
-  });
-
-  it('should skip loadDashboard when user is not yet loaded', () => {
-    (authStoreStub.user as WritableSignal<{ id: string, name: string } | null>).set(null);
-    TestBed.runInInjectionContext(() => {
-      component.ngOnInit();
-    });
-    expect(progressStoreMock.loadDashboard).not.toHaveBeenCalled();
-    // loadMyDashboard is token-based and always safe
-    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalledWith({ classId: 'class-1' });
   });
 
   describe('greeting', () => {
@@ -286,9 +286,10 @@ describe('ProgressDashboardComponent (Logic)', () => {
         component.ngOnInit();
       });
       expect(studentProfileStoreMock.loadStudentProfile).toHaveBeenCalled();
+      expect(progressStoreMock.loadMyHistory).toHaveBeenCalled();
     });
 
-    it('should fetch class details if student has enrolled classes', async () => {
+    it('should fetch student classes on init', async () => {
       studentProfileStoreMock.profile.set({
         enrolledClasses: ['class-123'],
       });
@@ -301,6 +302,8 @@ describe('ProgressDashboardComponent (Logic)', () => {
     });
 
     it('should clean enrolledClassesList if student has no classes', async () => {
+      const classService = TestBed.inject(TeacherClassService);
+      vi.spyOn(classService, 'getStudentClasses').mockReturnValue(of([]));
       studentProfileStoreMock.profile.set({
         enrolledClasses: [],
       });
@@ -309,9 +312,9 @@ describe('ProgressDashboardComponent (Logic)', () => {
       expect(component.enrolledClassesList().length).toBe(0);
     });
 
-    it('should handle getClassDetail failure gracefully', async () => {
+    it('should handle getStudentClasses failure gracefully', async () => {
       const classService = TestBed.inject(TeacherClassService);
-      vi.spyOn(classService, 'getClassDetail').mockReturnValue(throwError(() => new Error('Failed')));
+      vi.spyOn(classService, 'getStudentClasses').mockReturnValue(throwError(() => new Error('Failed')));
 
       studentProfileStoreMock.profile.set({
         enrolledClasses: ['class-failed'],
@@ -325,6 +328,45 @@ describe('ProgressDashboardComponent (Logic)', () => {
       progressStoreMock.continueLesson.set({ lessonId: 'lesson-continue', status: 'IN_PROGRESS' });
       await new Promise(resolve => setTimeout(resolve, 50));
       expect(progressStoreMock.loadMyLessonStats).toHaveBeenCalledWith({ lessonId: 'lesson-continue' });
+    });
+  });
+
+  describe('History-based aggregate fallback', () => {
+    it('computes started count and latest lesson from myHistory when dashboard aggregate is unavailable', () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([
+        { lessonId: 'l1', status: 'in_progress', score: 70, dateCompleted: null },
+        { lessonId: 'l2', status: 'completed', score: 90, dateCompleted: '2026-05-01', lessonTitle: 'Algebra Basics' },
+        { lessonId: 'l3', status: 'completed', score: 80, dateCompleted: '2026-05-10', lessonTitle: 'Geometry Intro' },
+      ]);
+
+      expect(component.startedLessonsCount).toBe(3);
+      expect(component.latestLessonTitle).toBe('Geometry Intro');
+    });
+
+    it('loads latest lesson by id and uses currentLesson title when history title is missing', async () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([
+        { lessonId: 'lesson-123', status: 'completed', score: 80, dateCompleted: '2026-05-10', lessonTitle: '' },
+      ]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(lessonsStoreMock.loadLesson).toHaveBeenCalledWith('lesson-123');
+
+      lessonsStoreMock.currentLesson.set({ id: 'lesson-123', title: 'Catalog Lesson Name' });
+
+      expect(component.latestLessonTitle).toBe('Catalog Lesson Name');
+    });
+
+    it('ignores "Untitled lesson" history placeholder and uses currentLesson title', async () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([
+        { lessonId: 'lesson-456', status: 'completed', score: 80, dateCompleted: '2026-05-11', lessonTitle: 'Untitled lesson' },
+      ]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(lessonsStoreMock.loadLesson).toHaveBeenCalledWith('lesson-456');
+
+      lessonsStoreMock.currentLesson.set({ id: 'lesson-456', title: 'Meme lesson' });
+      expect(component.latestLessonTitle).toBe('Meme lesson');
     });
   });
 });

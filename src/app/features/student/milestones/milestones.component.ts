@@ -20,7 +20,7 @@ export class MilestonesComponent implements OnInit {
   selectedCategory = signal<Category>('all');
 
   ngOnInit() {
-    this.store.loadMilestones(this.studentId);
+    this.store.loadMilestones();
   }
 
   setCategory(cat: Category) {

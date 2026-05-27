@@ -60,6 +60,12 @@ export class TeacherClassService {
     );
   }
 
+  getStudentClasses(): Observable<TeacherClass[]> {
+    return this.http.get<TeacherClassRaw[]>(`${this.apiUrl}/students/me/classes`).pipe(
+      map((list) => list.map(mapClass))
+    );
+  }
+
   createClass(data: {
     name: string;
     description?: string;

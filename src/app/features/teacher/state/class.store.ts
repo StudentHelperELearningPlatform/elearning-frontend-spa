@@ -24,6 +24,7 @@ import {
 
 interface ClassStudentRaw {
   id?: string;
+  userId?: string;
   studentId?: string;
   firstName?: string;
   lastName?: string;
@@ -109,7 +110,7 @@ export const ClassStore = signalStore(
           .get<(string | ClassStudentRaw)[]>(`${userApi}/teachers/classes/${classId}/students`)
           .pipe(catchError(() => of([]))),
         allStudents: http
-          .get<{ id: string; firstName: string; lastName: string; email?: string }[]>(
+          .get<{ id: string; userId?: string; studentId?: string; firstName: string; lastName: string; email?: string }[]>(
             `${userApi}/teachers/classes/${classId}/students`,
           )
           .pipe(catchError(() => of([]))),
@@ -118,18 +119,20 @@ export const ClassStore = signalStore(
           const studentMap = new Map(
             allStudents
               .filter((s) => s && typeof s === 'object')
-              .map((s: ClassStudentRaw) => [s.id || s.studentId || '', s])
+              .map((s: ClassStudentRaw) => [s.userId || s.id || s.studentId || '', s])
           );
           patchState(store, {
             currentClass: {
               ...mapClassDetail(detail),
               lessons,
               students: enrolledIds.map((item: string | ClassStudentRaw) => {
-                const id = typeof item === 'string' ? item : (item.id || item.studentId || '');
+                const id = typeof item === 'string' ? item : (item.userId || item.id || item.studentId || '');
                 const s = studentMap.get(id) || (typeof item === 'object' ? item : null);
                 return {
                   id,
-                  name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim()) : id,
+                  studentId: typeof item === 'string' ? item : (item.studentId || item.id || ''),
+                  userId: typeof item === 'string' ? undefined : item.userId,
+                  name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim() || id) : id,
                   email: s?.email ?? '',
                 };
               }),
@@ -252,10 +255,13 @@ export const ClassStore = signalStore(
     .subscribe();
 },
 
-    addStudent(classId: string, studentId: string) {
-      return http.post(
-        `${userApi}/teachers/classes/${classId}/students/${studentId}`,
-        {},
+    addStudent(classId: string, studentId: string, userId?: string) {
+      const req = http.post(`${userApi}/teachers/classes/${classId}/students/${studentId}`, {});
+      if (!userId || userId === studentId) {
+        return req;
+      }
+      return req.pipe(
+        catchError(() => http.post(`${userApi}/teachers/classes/${classId}/students/${userId}`, {}))
       );
     },
 
