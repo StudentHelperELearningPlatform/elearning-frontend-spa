@@ -17,6 +17,15 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { CheckoutModalComponent } from '../payments/checkout-modal.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 
+type ViewerMediaType = 'image' | 'video' | 'pdf';
+
+interface ViewerMedia {
+  name: string;
+  url: string;
+  type: ViewerMediaType;
+  mediaId?: string;
+}
+
 @Component({
   selector: 'app-lesson-viewer',
   imports: [
@@ -34,7 +43,6 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
   ],
   template: `
     <div class="h-auto md:h-[calc(100vh-80px)] flex flex-col md:flex-row bg-gray-50 overflow-y-auto md:overflow-hidden">
-      <!-- Sidebar / Modules List -->
       <div
         class="w-full md:w-80 bg-white border-r-4 border-black flex flex-col h-auto md:h-full z-10 shadow-[4px_0px_0px_0px_rgba(0,0,0,1)]"
       >
@@ -46,16 +54,19 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
             <span class="material-icons mr-2">arrow_back</span>
             Back to Lessons
           </button>
+
           <h2 class="text-2xl font-black text-black leading-tight">
             {{ store.currentLesson()?.title || 'Loading...' }}
           </h2>
+
           <div class="flex items-center mt-3 space-x-2">
-            <app-badge variant="primary" icon="category">{{
-              store.currentLesson()?.subject
-            }}</app-badge>
-            <app-badge variant="secondary" icon="schedule"
-              >{{ store.currentLesson()?.duration }}</app-badge
-            >
+            <app-badge variant="primary" icon="category">
+              {{ store.currentLesson()?.subject }}
+            </app-badge>
+
+            <app-badge variant="secondary" icon="schedule">
+              {{ store.currentLesson()?.duration }}
+            </app-badge>
           </div>
         </div>
 
@@ -77,6 +88,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
 
                 @for (module of sub.blocks; track module.id) {
                   @let globalIdx = getGlobalIndex(sub, module);
+
                   <div
                     (click)="selectModule(globalIdx)"
                     (keydown.enter)="selectModule(globalIdx)"
@@ -86,7 +98,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
                       'border-black bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]':
                         currentModuleIndex() === globalIdx,
                       'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]':
-                        currentModuleIndex() !== globalIdx,
+                        currentModuleIndex() !== globalIdx
                     }"
                   >
                     <div
@@ -94,7 +106,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
                       [ngClass]="{
                         'bg-white text-[#0ABAB5] border-black': currentModuleIndex() === globalIdx,
                         'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black':
-                          currentModuleIndex() !== globalIdx,
+                          currentModuleIndex() !== globalIdx
                       }"
                     >
                       {{ globalIdx + 1 }}
@@ -105,22 +117,23 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
                         class="font-bold text-base leading-tight"
                         [ngClass]="{
                           'text-white': currentModuleIndex() === globalIdx,
-                          'text-black': currentModuleIndex() !== globalIdx,
+                          'text-black': currentModuleIndex() !== globalIdx
                         }"
                       >
                         {{ module.title }}
                       </h4>
+
                       <div
                         class="flex items-center mt-1 text-xs font-medium opacity-80"
                         [ngClass]="{
                           'text-white': currentModuleIndex() === globalIdx,
-                          'text-gray-500': currentModuleIndex() !== globalIdx,
+                          'text-gray-500': currentModuleIndex() !== globalIdx
                         }"
                       >
-                        <span class="material-icons text-sm mr-1">{{
-                          getModuleIcon(module.type)
-                        }}</span>
-                        <span class="capitalize">{{ module.type }}</span>
+                        <span class="material-icons text-sm mr-1">
+                          {{ getModuleIcon(module.type) }}
+                        </span>
+                        <span class="capitalize">{{ getModuleLabel(module.type) }}</span>
                       </div>
                     </div>
                   </div>
@@ -132,7 +145,6 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
       </div>
 
       <div class="flex-1 flex flex-col h-auto md:h-full overflow-y-auto md:overflow-hidden bg-white relative">
-        <!-- Decorative Background Pattern -->
         <div
           class="absolute inset-0 opacity-5 pointer-events-none"
           style="background-image: radial-gradient(#000 2px, transparent 2px); background-size: 30px 30px;"
@@ -179,30 +191,37 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
                 <div class="h-2 w-24 bg-[#0ABAB5] rounded-full"></div>
               </div>
 
-              @if (
-                currentModule()?.type === 'video' ||
-                currentModule()?.type === 'image'
-              ) {
-                <div class="mb-10">
-                  <app-media-player
-                    [url]="currentModule()?.mediaUrl || 'https://picsum.photos/seed/lesson/800/450'"
-                    [type]="
-                      currentModule()?.type === 'video'
-                        ? 'video'
-                        : 'image'
-                    "
-                    [title]="currentModule()?.title || 'Media'"
-                  >
-                  </app-media-player>
-                </div>
+              @if (isMediaModule(currentModule())) {
+                @if (currentMedia(); as media) {
+                  @if (media.url) {
+                    <div class="mb-10">
+                      <app-media-player
+                        [url]="media.url"
+                        [type]="media.type"
+                        [title]="media.name"
+                      ></app-media-player>
+                    </div>
+                  } @else {
+                    <app-card class="mb-6 block">
+                      <div class="p-8 text-center">
+                        <span class="material-icons text-5xl text-red-500 mb-3">broken_image</span>
+                        <p class="font-black text-black mb-2">Media URL missing</p>
+                        <p class="text-gray-600 font-medium">
+                          This media block does not contain a valid URL.
+                        </p>
+                      </div>
+                    </app-card>
+                  }
+                }
+              } @else {
+                <app-card class="mb-6 block">
+                  <div class="p-8">
+                    <app-module-content
+                      [content]="currentModule()?.content || ''"
+                    ></app-module-content>
+                  </div>
+                </app-card>
               }
-              <app-card class="mb-6 block">
-                <div class="p-8">
-                  <app-module-content
-                    [content]="currentModule()?.content || ''"
-                  ></app-module-content>
-                </div>
-              </app-card>
 
               @if (currentModule()?.type === 'text') {
                 <div class="mb-10 flex justify-end">
@@ -240,15 +259,14 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
                   <p class="font-black text-black text-lg">Final Quiz Completed!</p>
                   <p class="text-gray-600 font-medium text-sm">
                     Last score:
-                    <span class="font-black text-[#0ABAB5]"
-                      >{{ attempt.score }}/{{ attempt.totalPoints }} ({{
-                        attempt.percentage
-                      }}%)</span
-                    >
+                    <span class="font-black text-[#0ABAB5]">
+                      {{ attempt.score }}/{{ attempt.totalPoints }} ({{ attempt.percentage }}%)
+                    </span>
                     &nbsp;&bull;&nbsp;{{ attempt.passed ? '✓ Passed' : '✕ Not passed' }}
                   </p>
                 </div>
               </div>
+
               <app-button variant="secondary" icon="refresh" (btnClick)="startFinalQuiz()">
                 Retake Quiz
               </app-button>
@@ -269,6 +287,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
                   </p>
                 </div>
               </div>
+
               <app-button
                 variant="primary"
                 icon="quiz"
@@ -281,7 +300,6 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
           }
         }
 
-        <!-- Bottom Navigation Bar -->
         @if (hasAccess()) {
           <div
             class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)]"
@@ -301,7 +319,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
                   class="w-3 h-3 rounded-full border-2 border-black transition-colors"
                   [ngClass]="{
                     'bg-[#0ABAB5]': idx <= currentModuleIndex(),
-                    'bg-gray-200': idx > currentModuleIndex(),
+                    'bg-gray-200': idx > currentModuleIndex()
                   }"
                 ></div>
               }
@@ -337,7 +355,6 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
         (closed)="checkoutOpen.set(false)"
       />
 
-      <!-- AI Explanation Modal -->
       <app-modal
         [isOpen]="explanationOpen()"
         title="✨ AI Explanation"
@@ -354,35 +371,46 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
           </div>
         } @else if (store.explanation(); as exp) {
           <div class="max-h-[55vh] overflow-y-auto space-y-4 text-sm text-gray-800 leading-relaxed pr-1">
-            <!-- Header -->
             <div class="flex items-center gap-2 pb-3 border-b-2 border-black/10 sticky top-0 bg-white">
               <span class="material-icons text-[#0ABAB5]">psychology</span>
-              <p class="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">Generated by AI · Not a substitute for the lesson</p>
+              <p class="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">
+                Generated by AI · Not a substitute for the lesson
+              </p>
             </div>
 
-            <!-- Simplified Explanation -->
             <div>
-              <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2">Simplified Explanation</p>
-              <p class="whitespace-pre-wrap text-gray-800" [innerHTML]="boldify(exp.simplified_explanation)"></p>
+              <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2">
+                Simplified Explanation
+              </p>
+              <p
+                class="whitespace-pre-wrap text-gray-800"
+                [innerHTML]="boldify(exp.simplified_explanation)"
+              ></p>
             </div>
 
-            <!-- Analogy -->
             @if (exp.analogy) {
               <div class="rounded-xl border-2 border-[#0ABAB5] bg-[#0ABAB5]/5 p-4">
                 <p class="text-xs font-black uppercase tracking-wider text-[#0ABAB5] mb-2 flex items-center gap-1">
-                  <span class="material-icons text-sm">lightbulb</span> Analogy
+                  <span class="material-icons text-sm">lightbulb</span>
+                  Analogy
                 </p>
-                <p class="whitespace-pre-wrap text-gray-700 m-0" [innerHTML]="boldify(exp.analogy)"></p>
+                <p
+                  class="whitespace-pre-wrap text-gray-700 m-0"
+                  [innerHTML]="boldify(exp.analogy)"
+                ></p>
               </div>
             }
 
-            <!-- Check for Understanding -->
             @if (exp.check_for_understanding_question) {
               <div class="rounded-xl border-2 border-black bg-gray-50 p-4">
                 <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1">
-                  <span class="material-icons text-sm">quiz</span> Check Your Understanding
+                  <span class="material-icons text-sm">quiz</span>
+                  Check Your Understanding
                 </p>
-                <p class="text-gray-800 font-medium m-0" [innerHTML]="boldify(exp.check_for_understanding_question)"></p>
+                <p
+                  class="text-gray-800 font-medium m-0"
+                  [innerHTML]="boldify(exp.check_for_understanding_question)"
+                ></p>
               </div>
             }
           </div>
@@ -395,6 +423,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   store = inject(LessonsStore);
   progressStore = inject(ProgressStore);
   authStore = inject(AuthStore);
+
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
@@ -406,6 +435,32 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   protected readonly explanationOpen = signal(false);
 
   hasAccess = computed(() => true);
+
+  currentModule = computed(() => {
+    const lesson = this.store.currentLesson();
+
+    if (!lesson || !lesson.modules || lesson.modules.length === 0) {
+      return null;
+    }
+
+    const index = this.currentModuleIndex();
+
+    if (index < 0 || index >= lesson.modules.length) {
+      return null;
+    }
+
+    return lesson.modules[index];
+  });
+
+  protected readonly currentMedia = computed<ViewerMedia | null>(() => {
+    const module = this.currentModule();
+
+    if (!module || !this.isMediaModule(module)) {
+      return null;
+    }
+
+    return this.parseMediaContent(module);
+  });
 
   ngOnInit() {
     this.reloadLesson();
@@ -422,6 +477,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   reloadLesson() {
     const id = this.route.snapshot.paramMap.get('id');
+
     if (id) {
       this.lessonId.set(id);
       this.store.loadLesson(id);
@@ -430,14 +486,6 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     }
   }
 
-  currentModule = computed(() => {
-    const lesson = this.store.currentLesson();
-    if (!lesson || !lesson.modules || lesson.modules.length === 0) return null;
-    const index = this.currentModuleIndex();
-    if (index < 0 || index >= lesson.modules.length) return null;
-    return lesson.modules[index];
-  });
-
   selectModule(index: number) {
     this.currentModuleIndex.set(index);
   }
@@ -445,52 +493,55 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   nextModule() {
     const lesson = this.store.currentLesson();
     const module = this.currentModule();
+
     if (lesson && module) {
       this.store.markModuleComplete(lesson.id, module.id);
     }
 
     if (lesson && lesson.modules && this.currentModuleIndex() < lesson.modules.length - 1) {
-      this.currentModuleIndex.update((i) => i + 1);
+      this.currentModuleIndex.update((index) => index + 1);
     }
   }
 
   previousModule() {
     if (this.currentModuleIndex() > 0) {
-      this.currentModuleIndex.update((i) => i - 1);
+      this.currentModuleIndex.update((index) => index - 1);
     }
   }
 
   completeLastModule() {
     const lesson = this.store.currentLesson();
     const module = this.currentModule();
+
     if (lesson) {
       if (module) {
         this.store.markModuleComplete(lesson.id, module.id);
       }
+
       this.startFinalQuiz();
     }
   }
 
   finishLesson() {
     const id = this.lessonId();
-    if (!id) return;
+
+    if (!id) {
+      return;
+    }
 
     const attempts = this.store.finalQuizAttempts() || [];
-    
-    // Daca studentul nu a dat inca final quiz -> redirectezi
+
     if (attempts.length === 0) {
       this.router.navigate(['/student/quiz-player', id]);
       return;
     }
 
-    const hasPassed = attempts.some(a => a.passed === true);
+    const hasPassed = attempts.some((attempt) => attempt.passed === true);
 
-    // Daca a dat quiz si a trecut -> complete lesson
     if (hasPassed) {
       this.store.completeLesson(id);
       this.router.navigate(['/student/lessons']);
     } else {
-      // Daca a dat quiz dar nu a trecut -> afiseaza mesaj
       this.messageService.add({
         severity: 'error',
         summary: 'Test Final Nefinalizat',
@@ -501,6 +552,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   startFinalQuiz() {
     const id = this.lessonId();
+
     if (id) {
       this.router.navigate(['/student/quiz-player', id]);
     }
@@ -510,17 +562,14 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     this.router.navigate(['/student/lessons']);
   }
 
-  /**
-   * Converts **bold** markdown syntax to <strong> HTML and sanitizes.
-   * Safe: content originates from our own AI service, not user input.
-   */
   boldify(text: string): SafeHtml {
     const html = (text ?? '').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    return this.sanitizer.bypassSecurityTrustHtml(html); // NOSONAR
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   explainCurrentModule() {
     const module = this.currentModule();
+
     if (module) {
       this.explanationOpen.set(true);
       this.store.explainBlock(module.id);
@@ -534,16 +583,22 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   getGlobalIndex(sub: Subcapitol, module: Module): number {
     const lesson = this.store.currentLesson();
-    if (!lesson) return -1;
+
+    if (!lesson) {
+      return -1;
+    }
 
     let index = 0;
-    for (const s of lesson.subcapitols ?? []) {
-      if (s.id === sub.id) {
-        const moduleIdx = s.blocks.findIndex((b) => b.id === module.id);
-        return index + moduleIdx;
+
+    for (const currentSubcapitol of lesson.subcapitols ?? []) {
+      if (currentSubcapitol.id === sub.id) {
+        const moduleIndex = currentSubcapitol.blocks.findIndex((block) => block.id === module.id);
+        return index + moduleIndex;
       }
-      index += s.blocks.length;
+
+      index += currentSubcapitol.blocks.length;
     }
+
     return -1;
   }
 
@@ -551,14 +606,85 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     switch (type) {
       case 'video':
         return 'play_circle';
+
+      case 'image':
+        return 'image';
+
+      case 'pdf':
+      case 'file':
+        return 'picture_as_pdf';
+
       case 'text':
         return 'article';
+
       case 'quiz':
         return 'quiz';
+
       case 'interactive':
         return 'touch_app';
+
       default:
         return 'menu_book';
     }
   }
+
+  protected getModuleLabel(type: string): string {
+    if (type === 'pdf' || type === 'file') {
+      return 'PDF';
+    }
+
+    return type;
+  }
+
+  protected isMediaModule(module: Module | null | undefined): boolean {
+  if (!module) {
+    return false;
+  }
+
+  const type = String(module.type);
+
+  return type === 'image' || type === 'video' || type === 'pdf' || type === 'file';
+}
+
+  private parseMediaContent(module: Module): ViewerMedia {
+    const rawContent = module.content || '';
+    const fallbackUrl = module.mediaUrl || '';
+    const fallbackName = module.title || 'Media';
+
+    try {
+      const parsed = JSON.parse(rawContent) as {
+        name?: string;
+        url?: string;
+        type?: ViewerMediaType | 'file';
+        mediaId?: string;
+      };
+
+      return {
+        name: parsed.name || fallbackName,
+        url: parsed.url || fallbackUrl,
+        type: this.normalizeMediaType(parsed.type || module.type),
+        mediaId: parsed.mediaId,
+      };
+    } catch {
+      return {
+        name: fallbackName,
+        url: fallbackUrl || rawContent,
+        type: this.normalizeMediaType(module.type),
+      };
+    }
+  }
+
+  private normalizeMediaType(type: string | undefined): ViewerMediaType {
+  const normalizedType = String(type || '').toLowerCase();
+
+  if (normalizedType === 'video') {
+    return 'video';
+  }
+
+  if (normalizedType === 'pdf' || normalizedType === 'file') {
+    return 'pdf';
+  }
+
+  return 'image';
+}
 }
