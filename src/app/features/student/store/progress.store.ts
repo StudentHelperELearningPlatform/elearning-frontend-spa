@@ -154,6 +154,9 @@ export interface MyHistoryResponseItem {
   startedAt?: string;
   completedAt?: string;
   lessonTitle?: string;
+  lessonName?: string;
+  title?: string;
+  lesson?: { title?: string };
   subject?: string;
   status?: 'not_started' | 'in_progress' | 'completed';
   score?: number | null;
@@ -506,7 +509,7 @@ export const ProgressStore = signalStore(
               next: (history) => {
                 const mappedHistory: HistoryEntry[] = (history || []).map((h: MyHistoryResponseItem) => ({
                   lessonId: h.lessonId || '',
-                  lessonTitle: h.lessonTitle || `Lecția ${h.lessonId ? h.lessonId.substring(0, 8) : ''}`,
+                  lessonTitle: h.lessonTitle || h.lessonName || h.title || h.lesson?.title || 'Untitled lesson',
                   subject: h.subject || 'General',
                   status: h.status || (h.completedAt ? 'completed' : 'in_progress'),
                   score: h.score ?? null,

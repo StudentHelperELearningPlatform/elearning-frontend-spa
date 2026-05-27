@@ -8,10 +8,12 @@ import {
   ElementRef,
   effect,
   signal,
+  untracked,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { ProgressStore } from '../store/progress.store';
+import { LessonsStore } from '../store/lessons.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { StudentProfileStore } from '../store/profile.store';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
@@ -31,6 +33,7 @@ import * as d3 from 'd3';
 })
 export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   progressStore = inject(ProgressStore);
+  lessonsStore = inject(LessonsStore);
   authStore = inject(AuthStore);
   profileStore = inject(StudentProfileStore);
   classService = inject(TeacherClassService);
@@ -94,30 +97,41 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     return new Set(started.map((h) => h.lessonId).filter(Boolean)).size;
   }
 
-  get completedLessonsCount(): number {
-    const dashboardCompleted = this.myDashboard()?.completedLessons;
-    if (dashboardCompleted !== null && dashboardCompleted !== undefined) {
-      return dashboardCompleted;
-    }
+  get latestLessonTitle(): string | null {
+    const latestLessonId = this.latestLessonId;
+    if (!latestLessonId) return null;
 
-    const completed = this.progressStore
+    const fromHistory = this.progressStore
       .myHistory()
-      .filter((h) => h.status === 'completed' || h.dateCompleted != null);
-    return new Set(completed.map((h) => h.lessonId).filter(Boolean)).size;
+      .find(
+        (h) =>
+          h.lessonId === latestLessonId &&
+          !!h.lessonTitle &&
+          h.lessonTitle.trim().toLowerCase() !== 'untitled lesson',
+      )?.lessonTitle;
+    if (fromHistory) return fromHistory;
+
+    const current = this.lessonsStore.currentLesson();
+    if (current && current.id === latestLessonId && current.title) {
+      return current.title;
+    }
+    return null;
   }
 
-  get averageQuizScore(): number | null {
-    const dashboardAverage = this.myDashboard()?.averageScore;
-    if (dashboardAverage !== null && dashboardAverage !== undefined) {
-      return dashboardAverage;
-    }
+  get latestLessonId(): string | null {
+    const history = this.progressStore.myHistory();
+    if (!history.length) return null;
 
-    const scores = this.progressStore
-      .myHistory()
-      .map((h) => h.score)
-      .filter((s): s is number => s !== null && s !== undefined);
-    if (scores.length === 0) return null;
-    return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+    const sorted = [...history].sort((a, b) => {
+      const aTimeRaw = new Date(a.dateCompleted ?? '').getTime();
+      const bTimeRaw = new Date(b.dateCompleted ?? '').getTime();
+      const aTime = Number.isFinite(aTimeRaw) ? aTimeRaw : 0;
+      const bTime = Number.isFinite(bTimeRaw) ? bTimeRaw : 0;
+      return bTime - aTime;
+    });
+
+    const latestWithId = sorted.find((h) => !!h.lessonId);
+    return latestWithId?.lessonId || null;
   }
 
   get streakHasGoldGlow(): boolean {
@@ -165,6 +179,13 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
       const continueLesson = this.progressStore.continueLesson();
       if (continueLesson) {
         this.progressStore.loadMyLessonStats({ lessonId: continueLesson.lessonId });
+      }
+    });
+
+    effect(() => {
+      const latestLessonId = this.latestLessonId;
+      if (latestLessonId) {
+        untracked(() => this.lessonsStore.loadLesson(latestLessonId));
       }
     });
   }

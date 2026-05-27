@@ -588,24 +588,32 @@ describe('ProgressStore', () => {
           lessonId: '',
           subject: 'Science',
         },
+        {
+          lessonId: 'lesson-with-name',
+          lessonName: 'Real Lesson Name',
+        },
       ]);
 
       const history = store.myHistory();
-      expect(history.length).toBe(2);
+      expect(history.length).toBe(3);
 
-      // First item checks: lessonTitle auto formatted, subject default, status based on completedAt
+      // First item checks: fallback title, subject default, status based on completedAt
       expect(history[0].lessonId).toBe('lesson-123456789');
-      expect(history[0].lessonTitle).toBe('Lecția lesson-1');
+      expect(history[0].lessonTitle).toBe('Untitled lesson');
       expect(history[0].subject).toBe('General');
       expect(history[0].status).toBe('completed');
       expect(history[0].dateCompleted).toBe('2026-05-10T10:00:00Z');
 
-      // Second item checks: empty lessonId, lessonTitle auto-formatted, custom subject, status in_progress
+      // Second item checks: empty lessonId, custom subject, status in_progress
       expect(history[1].lessonId).toBe('');
-      expect(history[1].lessonTitle).toBe('Lecția ');
+      expect(history[1].lessonTitle).toBe('Untitled lesson');
       expect(history[1].subject).toBe('Science');
       expect(history[1].status).toBe('in_progress');
       expect(history[1].dateCompleted).toBeNull();
+
+      // Third item checks: lessonName alias is picked as display title
+      expect(history[2].lessonId).toBe('lesson-with-name');
+      expect(history[2].lessonTitle).toBe('Real Lesson Name');
     });
   });
 });

@@ -24,9 +24,9 @@
   </div>
 
   <!-- S6-stats-01: Aggregate Stats (Lessons Started / Completed / Avg Score) -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" data-testid="aggregate-stats">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" data-testid="aggregate-stats">
     @if (progressStore.dashboardLoading()) {
-      @for (i of [1, 2, 3]; track i) {
+      @for (i of [1, 2]; track i) {
         <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <app-skeleton height="1rem" className="w-2/3 mb-2" />
           <app-skeleton height="1.75rem" className="w-1/3" />
@@ -34,7 +34,7 @@
       }
     } @else if (progressStore.dashboardError()) {
       <div
-        class="sm:col-span-3 bg-white border-2 border-red-500 rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-sm text-red-700 font-medium"
+        class="sm:col-span-2 bg-white border-2 border-red-500 rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-sm text-red-700 font-medium"
         role="alert"
       >
         Could not load aggregate stats. {{ progressStore.dashboardError() }}
@@ -45,22 +45,26 @@
         <p class="text-2xl font-black text-black mt-1">{{ startedLessonsCount }}</p>
       </div>
       <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Lessons completed</p>
-        <p class="text-2xl font-black text-[#0ABAB5] mt-1">{{ completedLessonsCount }}</p>
-      </div>
-      <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Average quiz score</p>
+        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Latest lesson</p>
         <p class="text-2xl font-black text-black mt-1">
-          @if (averageQuizScore !== null && averageQuizScore !== undefined) {
-            {{ averageQuizScore }}%
+          @if (latestLessonTitle) {
+            {{ latestLessonTitle }}
           } @else {
             <span class="text-gray-400">—</span>
           }
         </p>
+        @if (latestLessonId) {
+          <a
+            [routerLink]="['/student/lesson-viewer', latestLessonId]"
+            class="inline-block mt-3 px-4 py-1.5 bg-[#0ABAB5] text-white font-black rounded border-2 border-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all"
+          >
+            Go to lesson
+          </a>
+        }
       </div>
     } @else {
       <div
-        class="sm:col-span-3 bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center"
+        class="sm:col-span-2 bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center"
         data-testid="empty-aggregate-stats"
       >
         <p class="text-gray-600 font-medium">You haven't started any lessons yet.</p>
