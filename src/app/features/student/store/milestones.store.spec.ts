@@ -114,6 +114,12 @@ describe('MilestonesStore', () => {
   });
 
   describe('loadMilestoneDetail', () => {
+    it('should reject invalid milestone ID', () => {
+      store.loadMilestoneDetail('undefined');
+      expect(notificationMock.error).toHaveBeenCalledWith('Invalid milestone ID');
+      expect(store.detailLoading()).toBe(false);
+    });
+
     it('should fetch single milestone detail and update state', () => {
       const mockDetail = { id: '5', nume: 'Superstar', descriere: 'desc', type: 'social', achievedAt: '2026-05-25' };
 

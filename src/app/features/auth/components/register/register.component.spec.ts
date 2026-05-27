@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RegisterComponent } from './register.component';
 import { API_URL } from '@core/tokens/api.token';
 import { AuthService } from '@core/services/auth.service';
+import { NotificationService } from '@core/services/notification.service';
 import { createAuthServiceStub } from '../../../../../test-utils/auth-testing';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
@@ -25,9 +26,13 @@ describe('RegisterComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: createAuthServiceStub() },
+        {
+          provide: NotificationService,
+          useValue: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
+        },
         { provide: API_URL, useValue: '/api/v1' },
       ],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
 
     fixture = TestBed.createComponent(RegisterComponent);
@@ -37,6 +42,29 @@ describe('RegisterComponent', () => {
 
   it('should create the component', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('Step Helpers (Number, Title, Progress)', () => {
+    it('returns correct values for ROLE step', () => {
+      component.currentStep.set('ROLE');
+      expect(component.currentStepNumber()).toBe(1);
+      expect(component.stepTitle()).toBe('Choose Your Role');
+      expect(component.progress()).toBeCloseTo(33.33, 1);
+    });
+
+    it('returns correct values for COMMON step', () => {
+      component.currentStep.set('COMMON');
+      expect(component.currentStepNumber()).toBe(2);
+      expect(component.stepTitle()).toBe('Basic Information');
+      expect(component.progress()).toBeCloseTo(66.66, 1);
+    });
+
+    it('returns correct values for SPECIFIC step', () => {
+      component.currentStep.set('SPECIFIC');
+      expect(component.currentStepNumber()).toBe(3);
+      expect(component.stepTitle()).toBe('Final Details');
+      expect(component.progress()).toBe(100);
+    });
   });
 
   describe('Password strength calculation', () => {
@@ -62,7 +90,7 @@ describe('RegisterComponent', () => {
     });
   });
 
-  describe('Email format validation', () => {
+  describe('Email format & availability validation', () => {
     it('marks email invalid when empty', () => {
       component.commonForm.get('email')?.setValue('');
       component.commonForm.get('email')?.markAsTouched();
@@ -75,10 +103,36 @@ describe('RegisterComponent', () => {
       expect(component.commonForm.get('email')?.hasError('email')).toBe(true);
     });
 
-    it('marks email valid for correct format', () => {
-      component.commonForm.get('email')?.setValue('user@example.com');
-      expect(component.commonForm.get('email')?.hasError('email')).toBeFalsy();
-      expect(component.commonForm.get('email')?.hasError('required')).toBeFalsy();
+    it('checks email availability async validator (available)', async () => {
+      vi.useFakeTimers();
+      const authService = TestBed.inject(AuthService);
+      vi.spyOn(authService, 'checkEmailAvailability').mockReturnValue(of({ available: true }));
+
+      const emailCtrl = component.commonForm.get('email');
+      emailCtrl?.setValue('new@example.com');
+      emailCtrl?.updateValueAndValidity(); // triggers async validator
+
+      vi.advanceTimersByTime(300); // Advance Vitest timer by 300ms
+      await Promise.resolve(); // Flush microtasks for the Observable to resolve
+
+      expect(emailCtrl?.hasError('emailTaken')).toBeFalsy();
+      vi.useRealTimers();
+    });
+
+    it('checks email availability async validator (taken)', async () => {
+      vi.useFakeTimers();
+      const authService = TestBed.inject(AuthService);
+      vi.spyOn(authService, 'checkEmailAvailability').mockReturnValue(of({ available: false }));
+
+      const emailCtrl = component.commonForm.get('email');
+      emailCtrl?.setValue('taken@example.com');
+      emailCtrl?.updateValueAndValidity();
+
+      vi.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(emailCtrl?.hasError('emailTaken')).toBe(true);
+      vi.useRealTimers();
     });
   });
 
@@ -116,6 +170,97 @@ describe('RegisterComponent', () => {
 
       component.toggleConfirmPasswordVisibility();
       expect(component.showConfirmPassword()).toBe(false);
+    });
+  });
+
+  describe('Keyboard Interactions (Enter Key)', () => {
+    const createMockEvent = (tagName: string) => {
+      return {
+        target: {
+          tagName,
+          closest: (selector: string) => {
+            const tag = tagName.toLowerCase();
+            return (tag === 'button' && selector === 'button') ||
+              (tag === 'app-button' && selector === 'app-button')
+              ? {}
+              : null;
+          },
+        },
+        preventDefault: vi.fn(),
+      } as unknown as KeyboardEvent;
+    };
+
+    it('onCommonEnter ignores buttons', () => {
+      const event = createMockEvent('BUTTON');
+      const goToNextStepSpy = vi.spyOn(component, 'goToNextStep');
+
+      component.onCommonEnter(event);
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(goToNextStepSpy).not.toHaveBeenCalled();
+    });
+
+    it('onCommonEnter prevents default and navigates if form is valid', () => {
+      const event = createMockEvent('INPUT');
+      const goToNextStepSpy = vi
+        .spyOn(component, 'goToNextStep')
+        .mockImplementation(() => undefined);
+      Object.defineProperty(component.commonForm, 'valid', { get: () => true });
+
+      component.onCommonEnter(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(goToNextStepSpy).toHaveBeenCalled();
+    });
+
+    it('onCommonEnter prevents default but does not navigate if form is invalid', () => {
+      const event = createMockEvent('INPUT');
+      const goToNextStepSpy = vi.spyOn(component, 'goToNextStep');
+      Object.defineProperty(component.commonForm, 'valid', { get: () => false });
+
+      component.onCommonEnter(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(goToNextStepSpy).not.toHaveBeenCalled();
+    });
+
+    it('onSpecificEnter ignores app-buttons', () => {
+      const event = createMockEvent('APP-BUTTON');
+      const onSubmitSpy = vi.spyOn(component, 'onSubmit');
+
+      component.onSpecificEnter(event);
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(onSubmitSpy).not.toHaveBeenCalled();
+    });
+
+    it('onSpecificEnter prevents default and submits if forms are valid', () => {
+      const event = createMockEvent('INPUT');
+      const onSubmitSpy = vi.spyOn(component, 'onSubmit').mockImplementation(() => undefined);
+      component.selectedRole.set('STUDENT');
+
+      Object.defineProperty(component.commonForm, 'valid', { get: () => true });
+      Object.defineProperty(component.specificForm, 'valid', { get: () => true });
+
+      component.onSpecificEnter(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(onSubmitSpy).toHaveBeenCalled();
+    });
+
+    it('onSpecificEnter prevents default but does not submit if invalid', () => {
+      const event = createMockEvent('INPUT');
+      const onSubmitSpy = vi.spyOn(component, 'onSubmit');
+
+      // Specifically simulate commonForm being valid, but specificForm invalid
+      Object.defineProperty(component.commonForm, 'valid', { get: () => true });
+      Object.defineProperty(component.specificForm, 'valid', { get: () => false });
+      component.selectedRole.set('STUDENT'); // Specific validation needed here
+
+      component.onSpecificEnter(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(onSubmitSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -157,7 +302,7 @@ describe('RegisterComponent', () => {
         name: 'John Doe',
         email: 'john@example.com',
         password: 'Password1',
-        confirmPassword: 'Password1'
+        confirmPassword: 'Password1',
       });
       // Force validity for the async validator / controls
       Object.defineProperty(component.commonForm, 'valid', { get: () => true });
@@ -169,12 +314,34 @@ describe('RegisterComponent', () => {
       expect(component.currentStep()).toBe('COMMON');
     });
 
+    it('navigates SPECIFIC -> COMMON on goToPrevStep', () => {
+      component.currentStep.set('SPECIFIC');
+      component.goToPrevStep();
+      expect(component.currentStep()).toBe('COMMON');
+    });
+
     it('manages subject selection for teacher role', () => {
       component.toggleSubject('Math');
       expect(component.isSubjectSelected('Math')).toBe(true);
 
-      component.toggleSubject('Math');
+      component.toggleSubject('Math'); // Should remove it
       expect(component.isSubjectSelected('Math')).toBe(false);
+
+      // Selecting multiple subjects updates specificForm
+      component.toggleSubject('Science');
+      component.toggleSubject('English');
+      expect(component.selectedSubjects()).toEqual(['Science', 'English']);
+      expect(component.specificForm.get('subjects')?.value).toEqual(['Science', 'English']);
+    });
+
+    it('returns early from onSubmit if forms are invalid', () => {
+      const authService = TestBed.inject(AuthService);
+      const registerSpy = vi.spyOn(authService, 'register');
+      Object.defineProperty(component.commonForm, 'valid', { get: () => false });
+
+      component.onSubmit();
+
+      expect(registerSpy).not.toHaveBeenCalled();
     });
 
     it('should complete student registration successfully', () => {
@@ -188,10 +355,10 @@ describe('RegisterComponent', () => {
         name: 'John Doe',
         email: 'john@example.com',
         password: 'Password1',
-        confirmPassword: 'Password1'
+        confirmPassword: 'Password1',
       });
       component.specificForm.patchValue({
-        gradeLevel: '10'
+        gradeLevel: '10',
       });
 
       // Force validity
@@ -205,9 +372,9 @@ describe('RegisterComponent', () => {
 
     it('handles registration conflicts and general errors correctly', () => {
       const authService = TestBed.inject(AuthService);
-      const registerSpy = vi.spyOn(authService, 'register').mockReturnValue(
-        throwError(() => ({ status: 409 }))
-      );
+      const registerSpy = vi
+        .spyOn(authService, 'register')
+        .mockReturnValue(throwError(() => ({ status: 409 })));
 
       component.selectedRole.set('STUDENT');
       // Force validity
@@ -223,4 +390,3 @@ describe('RegisterComponent', () => {
     });
   });
 });
-

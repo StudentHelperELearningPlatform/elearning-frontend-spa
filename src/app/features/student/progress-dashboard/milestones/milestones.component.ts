@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CardComponent } from '../../../../shared/components/card/card.component';
 import { MilestonesStore, Milestone } from '../../store/milestones.store';
 import { AuthStore } from '../../../auth/store/auth.store';
+import { LessonsStore } from '../../store/lessons.store';
 
 @Component({
   selector: 'app-milestones',
@@ -136,6 +137,15 @@ import { AuthStore } from '../../../auth/store/auth.store';
 
                   <p class="text-base font-bold text-gray-600 px-4">{{ detail.description }}</p>
 
+                  @if (detail.lessonId && getLessonTitle(detail.lessonId)) {
+                    <div class="bg-indigo-50 border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left">
+                      <p class="text-xs font-black uppercase text-indigo-500 tracking-wider">Associated Lesson</p>
+                      <p class="text-sm font-black text-indigo-900 mt-1">
+                        {{ getLessonTitle(detail.lessonId) }}
+                      </p>
+                    </div>
+                  }
+
                   @if (detail.earnedAt) {
                     <div class="bg-green-50 border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                       <p class="text-xs font-black uppercase text-gray-500 tracking-wider">Date Achieved</p>
@@ -175,6 +185,7 @@ import { AuthStore } from '../../../auth/store/auth.store';
 export class MilestonesComponent implements OnInit {
   readonly store = inject(MilestonesStore);
   private readonly authStore = inject(AuthStore);
+  private readonly lessonsStore = inject(LessonsStore);
 
   categories = ['ALL', 'learning', 'streak', 'mastery', 'social'];
   selectedCategory = signal('ALL');
@@ -198,5 +209,9 @@ export class MilestonesComponent implements OnInit {
 
   closeModal() {
     this.selectedBadge.set(null);
+  }
+
+  getLessonTitle(lessonId: string): string | undefined {
+    return this.lessonsStore.lessons().find(l => l.id === lessonId)?.title;
   }
 }

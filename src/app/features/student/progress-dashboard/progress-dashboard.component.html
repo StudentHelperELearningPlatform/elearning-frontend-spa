@@ -118,10 +118,6 @@
                   <p class="font-black text-black text-sm">{{ c.name }}</p>
                   <p class="text-xs text-gray-500 font-medium mt-0.5">{{ c.description || 'No description' }}</p>
                 </div>
-                <span class="inline-flex items-center gap-1 text-xs font-bold bg-[#0ABAB5]/10 text-[#0ABAB5] border border-[#0ABAB5] px-2.5 py-0.5 rounded-full flex-shrink-0">
-                  <span class="material-icons text-[12px]" aria-hidden="true">menu_book</span>
-                  {{ c.lessonCount }} lessons
-                </span>
               </div>
             }
           </div>
@@ -254,83 +250,7 @@
 
   </div><!-- /card grid -->
 
-  <!-- Recent Activity Feed -->
-  <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-    <h3 class="text-xl font-black text-black mb-4">Recent Activity</h3>
-    @if (progressStore.loading()) {
-      @for (i of [1, 2, 3]; track i) {
-        <div class="flex items-center gap-4 border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-          <app-skeleton width="2.5rem" height="2.5rem" className="rounded-full flex-shrink-0" />
-          <div class="space-y-2 flex-1">
-            <app-skeleton height="1rem" className="w-1/2" />
-            <app-skeleton height="0.75rem" className="w-1/4" />
-          </div>
-        </div>
-      }
-    } @else if (progressStore.recentActivity().length === 0) {
-      <p class="text-gray-500 font-medium">No recent activity yet.</p>
-    } @else {
-      <ul class="space-y-0">
-        @for (activity of progressStore.recentActivity().slice(0, 5); track activity.id) {
-          <li class="flex items-center gap-4 border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-            <a
-              [routerLink]="getActivityRoute(activity)"
-              class="w-10 h-10 bg-[#0ABAB5]/10 rounded-full flex items-center justify-center border-2 border-black flex-shrink-0 hover:bg-[#0ABAB5]/20 transition-colors"
-              [attr.aria-label]="activity.title"
-            >
-              <span class="material-icons text-[#0ABAB5] text-lg">{{ getActivityIcon(activity) }}</span>
-            </a>
-            <div>
-              <p class="font-bold text-black">{{ activity.title }}</p>
-              <p class="text-xs text-gray-500">{{ activity.timestamp | timeAgo }}</p>
-            </div>
-          </li>
-        }
-      </ul>
-    }
-  </div>
 
-  <!-- Upcoming Quizzes Card -->
-  <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-    <h3 class="text-xl font-black text-black mb-4">Upcoming Quizzes</h3>
-    @if (progressStore.loading()) {
-      @for (i of [1, 2]; track i) {
-        <div class="flex items-center justify-between border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-          <div class="space-y-2 flex-1">
-            <app-skeleton height="1rem" className="w-1/2" />
-            <app-skeleton height="0.75rem" className="w-1/3" />
-          </div>
-          <app-skeleton width="6rem" height="2rem" className="rounded ml-4" />
-        </div>
-      }
-    } @else if (progressStore.upcomingQuizzes().length === 0) {
-      <p class="text-gray-500 font-medium">No upcoming quizzes.</p>
-    } @else {
-      <ul class="space-y-0">
-        @for (quiz of progressStore.upcomingQuizzes(); track quiz.id) {
-          <li class="flex items-center justify-between border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-            <div>
-              <p class="font-bold text-black">{{ quiz.title }}</p>
-              <div class="flex items-center gap-2 mt-1">
-                <span class="text-xs font-bold bg-gray-100 border border-black px-2 py-0.5 rounded">
-                  {{ quiz.subject }}
-                </span>
-                @if (quiz.dueDate) {
-                  <span class="text-xs text-gray-500">Due {{ quiz.dueDate | date:'mediumDate' }}</span>
-                }
-              </div>
-            </div>
-            <a
-              [routerLink]="['/student/quizzes', quiz.id]"
-              class="px-4 py-1.5 bg-[#0ABAB5] text-white font-black rounded border-2 border-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all flex-shrink-0"
-            >
-              Take Quiz
-            </a>
-          </li>
-        }
-      </ul>
-    }
-  </div>
 
 </div>
 
