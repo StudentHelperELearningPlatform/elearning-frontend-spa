@@ -102,7 +102,7 @@ describe('ClassStore', () => {
     expect(store.currentClass()?.name).toBe('Math');
     expect(store.currentClass()?.lessons).toEqual(mockLessons);
     expect(store.currentClass()?.students).toEqual([
-      { id: 's1', name: 'John Doe', email: 'john@example.com' },
+      { id: 's1', studentId: 's1', userId: undefined, name: 'John Doe', email: 'john@example.com' },
     ]);
   });
 

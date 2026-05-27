@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LessonsStore } from '../../store/lessons.store';
 import { ProgressStore } from '../../store/progress.store';
@@ -89,10 +89,16 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             }
           }
           @case ('my-lessons') {
-            @if (lessonsStore.myLessons().length === 0) {
+            @if (lessonsStore.accessibleLessonsLoading()) {
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                @for (i of [1, 2, 3]; track i) {
+                  <div class="bg-gray-200 animate-pulse h-80 rounded-3xl border-4 border-black"></div>
+                }
+              </div>
+            } @else if (lessonsStore.myLessons().length === 0) {
               <app-empty-state
                 [title]="'No active lessons'"
-                [description]="'Start a lesson from the catalog to see it here!'"
+                [description]="'Start or unlock a lesson from the catalog to see it here!'"
                 [icon]="'school'"
               ></app-empty-state>
             } @else {
@@ -127,7 +133,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
     </div>
 
     <ng-template #lessonCard let-lesson let-type="type">
-      <app-card [hoverable]="true" class="h-full flex flex-col transition-all duration-300">
+      <app-card [hoverable]="true" [routerLink]="['/student/lessons', lesson.id]" class="h-full flex flex-col transition-all duration-300">
         <div
           class="-mx-6 -mt-6 mb-6 h-40 bg-[#0ABAB5]/20 border-b-4 border-black flex items-center justify-center relative overflow-hidden"
         >
@@ -188,7 +194,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <app-button
                   variant="primary"
                   size="sm"
-                  [routerLink]="['/student/lesson-viewer', lesson.id]"
+                  [routerLink]="['/student/lessons', lesson.id]"
                 >
                   Continue
                 </app-button>
@@ -197,7 +203,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <app-button
                   variant="secondary"
                   size="sm"
-                  [routerLink]="['/student/lesson-viewer', lesson.id]"
+                  [routerLink]="['/student/lessons', lesson.id]"
                 >
                   Review
                 </app-button>
@@ -206,7 +212,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <app-button
                   variant="primary"
                   size="sm"
-                  [routerLink]="['/student/lesson-viewer', lesson.id]"
+                  [routerLink]="['/student/lessons', lesson.id]"
                 >
                   @if (getLessonStatus(lesson.id) === 'quiz-ready') {
                     Go to Lesson
@@ -235,6 +241,18 @@ export class LessonListComponent implements OnInit {
     const historyIds = new Set(history.map((h) => h.lessonId));
     return this.lessonsStore.publishedLessons().filter((l) => historyIds.has(l.id));
   });
+  
+  constructor() {
+    effect(() => {
+      const lessons = this.lessonsStore.publishedLessons();
+      const studentId = this.authStore.user()?.id;
+      if (lessons.length > 0 && studentId) {
+        untracked(() => {
+          this.lessonsStore.loadAccessibleLessons(studentId);
+        });
+      }
+    });
+  }
 
   ngOnInit() {
     this.lessonsStore.loadLessons();
