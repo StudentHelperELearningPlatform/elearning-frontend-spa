@@ -10,6 +10,7 @@ import {
   AdminUserRaw,
   AdminLessonRaw,
   AdminClassRaw,
+  PaginatedUsersResponse,
 } from '../../../core/services/admin.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
@@ -635,24 +636,33 @@ describe('AdminDashboardComponent', () => {
     // 2. Spy on the service to return different data based on the requested page
     vi.spyOn(adminService, 'getUsers').mockImplementation((page) => {
       if (page === 1)
-        return of({ content: mockUsers, currentPage: 1, totalPages: 3, totalElements: 12 } as any);
+        return of({
+          content: mockUsers,
+          currentPage: 1,
+          totalPages: 3,
+          totalElements: 12,
+        } as PaginatedUsersResponse);
       if (page === 2)
         return of({
           content: extraUsersPage2,
           currentPage: 2,
           totalPages: 3,
           totalElements: 12,
-        } as any);
+        } as PaginatedUsersResponse);
       if (page === 3)
         return of({
           content: extraUsersPage3,
           currentPage: 3,
           totalPages: 3,
           totalElements: 12,
-        } as any);
-      return of({ content: [], currentPage: page, totalPages: 3, totalElements: 12 } as any);
+        } as PaginatedUsersResponse);
+      return of({
+        content: [],
+        currentPage: page,
+        totalPages: 3,
+        totalElements: 12,
+      } as PaginatedUsersResponse);
     });
-
     // 3. Reload page 1 to apply our new spy
     component.userPage.set(1);
     component.loadUsers();
