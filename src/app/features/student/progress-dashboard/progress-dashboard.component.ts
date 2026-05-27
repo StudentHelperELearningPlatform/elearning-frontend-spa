@@ -161,18 +161,7 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     });
 
     effect(() => {
-      let skills = this.progressStore.skillLevels().map(s => ({
-        subject: s.subject,
-        level: s.level,
-      }));
-      if (skills.length === 0) {
-        skills = [
-          { subject: 'Math', level: 0 },
-          { subject: 'Science', level: 0 },
-          { subject: 'Literature', level: 0 },
-          { subject: 'History', level: 0 }
-        ];
-      }
+      const skills = this.currentSkills();
       if (this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }
@@ -199,27 +188,12 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngAfterViewInit() {
-    let skills = this.progressStore.skillLevels().map(s => ({
-      subject: s.subject,
-      level: s.level,
-    }));
-    if (skills.length === 0) {
-      skills = [
-        { subject: 'Math', level: 0 },
-        { subject: 'Science', level: 0 },
-        { subject: 'Literature', level: 0 },
-        { subject: 'History', level: 0 }
-      ];
-    }
     if (this.radarContainer?.nativeElement) {
-      this.renderRadarChart(skills);
+      this.renderRadarChart(this.currentSkills());
     }
 
     this.resizeObserver = new ResizeObserver(() => {
-      const skills = this.progressStore.skillLevels().map(s => ({
-        subject: s.subject,
-        level: s.level,
-      }));
+      const skills = this.currentSkills();
       if (skills.length > 0 && this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }
@@ -231,6 +205,22 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
 
   ngOnDestroy() {
     this.resizeObserver?.disconnect();
+  }
+
+  private currentSkills(): { subject: string; level: number }[] {
+    const skills = this.progressStore.skillLevels().map(s => ({
+      subject: s.subject,
+      level: s.level,
+    }));
+    if (skills.length === 0) {
+      return [
+        { subject: 'Math', level: 0 },
+        { subject: 'Science', level: 0 },
+        { subject: 'Literature', level: 0 },
+        { subject: 'History', level: 0 },
+      ];
+    }
+    return skills;
   }
 
   renderRadarChart(skills: { subject: string; level: number }[]) {
