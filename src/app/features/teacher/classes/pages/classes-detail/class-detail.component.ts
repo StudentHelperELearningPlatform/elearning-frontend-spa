@@ -1,14 +1,15 @@
 import { Component, inject, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { ClassStore } from '../../../state/class.store';
 import { TeacherLessonsStore } from '../../../state/teacher-lessons.store';
-import { USER_PLATFORM_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
+import { ChatStore } from '@features/shared/chat/chat.store';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 export interface StudentRow {
   userId?: string;
@@ -44,26 +45,6 @@ export interface PaginatedUsersResponse {
   totalElements: number;
 }
 
-export interface FinalQuizAttempt {
-  attemptId: string;
-  studentId: string;
-  studentName: string;
-  lessonId: string;
-  lessonTitle: string;
-  score: number;
-  submittedAt: string;
-}
-
-export interface RawQuizAttempt {
-  id?: string;
-  attemptId?: string;
-  studentId?: string;
-  score?: number;
-  totalScore?: number;
-  submittedAt?: string;
-  completedAt?: string;
-}
-
 @Component({
   selector: 'app-class-detail',
   standalone: true,
@@ -73,11 +54,12 @@ export interface RawQuizAttempt {
 })
 export class ClassDetailComponent implements OnInit {
   readonly route = inject(ActivatedRoute);
+  readonly router = inject(Router);
   readonly store = inject(ClassStore);
   readonly lessonsStore = inject(TeacherLessonsStore);
+  readonly chatStore = inject(ChatStore);
   readonly http = inject(HttpClient);
   readonly userApi = inject(USER_PLATFORM_API_URL);
-  readonly contentApi = inject(CONTENT_API_URL);
 
   classId!: string;
 
@@ -122,11 +104,6 @@ export class ClassDetailComponent implements OnInit {
       );
   });
 
-  // ─── Final quiz attempts ──────────────────────────
-  quizAttempts = signal<FinalQuizAttempt[]>([]);
-  quizLoading = signal(false);
-  quizError = signal<string | null>(null);
-
   ngOnInit(): void {
     this.classId = this.route.snapshot.params['classId'];
     this.store.loadClassDetail(this.classId);
@@ -139,6 +116,11 @@ export class ClassDetailComponent implements OnInit {
 
   removeLesson(lessonId: string): void {
     this.store.removeLesson(this.classId, lessonId);
+  }
+
+  startConversation(studentId: string): void {
+    this.chatStore.selectContact(studentId);
+    this.router.navigate(['/teacher/chat']);
   }
 
   openInviteModal(): void {
@@ -240,66 +222,5 @@ export class ClassDetailComponent implements OnInit {
         this.addingLessonId.set(null);
       },
     });
-  }
-
-  loadQuizAttempts(): void {
-    if (this.quizLoading()) return;
-
-    const lessonIds = this.lessons().map((l) => l.id);
-    const studentIds = this.students().map((s) => s.id);
-
-    if (lessonIds.length === 0 || studentIds.length === 0) {
-      this.quizAttempts.set([]);
-      return;
-    }
-
-    this.quizLoading.set(true);
-    this.quizError.set(null);
-
-    const requests = lessonIds.map((lessonId) =>
-      this.http
-        .get<RawQuizAttempt[]>(`${this.contentApi}/lessons/${lessonId}/final-quiz/attempts`)
-        .pipe(map((attempts) => this.mapQuizAttempts(attempts, studentIds, lessonId))),
-    );
-
-    forkJoin(requests).subscribe({
-      next: (results) => {
-        const all = results
-          .flat()
-          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-        this.quizAttempts.set(all);
-        this.quizLoading.set(false);
-      },
-      error: () => {
-        this.quizError.set('Failed to load quiz attempts');
-        this.quizLoading.set(false);
-      },
-    });
-  }
-
-  private mapQuizAttempts(
-    attempts: RawQuizAttempt[],
-    studentIds: string[],
-    lessonId: string,
-  ): FinalQuizAttempt[] {
-    return attempts
-      .filter((a) => a.studentId && studentIds.includes(a.studentId))
-      .map((a) => ({
-        attemptId: a.id ?? a.attemptId ?? '',
-        studentId: a.studentId ?? '',
-        studentName: this.resolveStudentName(a.studentId ?? ''),
-        lessonId,
-        lessonTitle: this.lessons().find((l) => l.id === lessonId)?.title ?? lessonId,
-        score: a.score ?? a.totalScore ?? 0,
-        submittedAt: a.submittedAt ?? a.completedAt ?? '',
-      }));
-  }
-
-  private resolveStudentName(studentId: string): string {
-    const enrolled = this.students().find((s) => s.id === studentId);
-    if (enrolled?.name) return enrolled.name;
-    const cached = this.allStudents().find((s) => s.studentId === studentId);
-    if (cached) return `${cached.firstName} ${cached.lastName}`;
-    return studentId;
   }
 }
