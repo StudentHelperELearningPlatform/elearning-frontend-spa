@@ -102,8 +102,15 @@ describe('ClassDetailComponent', () => {
     comp.openInviteModal();
     expect(comp.showInviteModal()).toBe(true);
 
-    const req = httpTestingController.expectOne('http://mock-api/students');
-    req.flush([{ studentId: 's2', firstName: 'Jane', lastName: 'Smith' }]);
+    const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
+    req.flush({
+      users: [
+        { id: 's2', firstName: 'Jane', lastName: 'Smith', email: 'j@mail.com', role: 'STUDENT' }
+      ],
+      currentPage: 0,
+      totalPages: 1,
+      totalElements: 1
+    });
     expect(comp.allStudents().length).toBe(1);
   });
 
@@ -234,7 +241,7 @@ describe('ClassDetailComponent', () => {
       comp.openInviteModal();
       expect(comp.showInviteModal()).toBe(true);
 
-      const req = httpTestingController.expectOne('http://mock-api/students');
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
       req.flush('Error fetching', { status: 500, statusText: 'Internal Error' });
       expect(comp.allStudents()).toEqual([]);
     });

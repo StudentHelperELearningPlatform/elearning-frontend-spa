@@ -68,7 +68,6 @@
             >
               <div>
                 <p class="font-bold">{{ s.name || '—' }}</p>
-                <p class="text-xs text-gray-400 font-mono">{{ s.id }}</p>
               </div>
               <button
                 (click)="removeStudent(s.id)"
@@ -239,9 +238,13 @@
 
       <div class="overflow-y-auto flex-1">
         @if (filteredStudents().length === 0 && !studentSearch()) {
-          <div class="p-6 text-center text-gray-400 font-medium text-sm">Loading students…</div>
+          @if (loadingMore() && currentPage() === 0) {
+            <div class="p-6 text-center text-gray-400 font-medium text-sm">Loading students…</div>
+          } @else {
+            <div class="p-6 text-center text-gray-400 font-medium text-sm">No students available to invite.</div>
+          }
         }
-        @if (filteredStudents().length === 0 && studentSearch()) {
+        @if (filteredStudents().length === 0 && studentSearch() && !loadingMore()) {
           <div class="p-6 text-center text-gray-400 font-medium text-sm">
             No students found matching "{{ studentSearch() }}"
           </div>
@@ -267,6 +270,22 @@
                 Adding…
               } @else {
                 Add
+              }
+            </button>
+          </div>
+        }
+
+        @if (hasMorePages()) {
+          <div class="p-4 text-center">
+            <button
+              (click)="loadNextPage()"
+              [disabled]="loadingMore()"
+              class="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black font-black rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              @if (loadingMore()) {
+                Loading more…
+              } @else {
+                Load More
               }
             </button>
           </div>

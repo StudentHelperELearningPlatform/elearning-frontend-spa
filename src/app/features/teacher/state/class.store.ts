@@ -24,6 +24,7 @@ import {
 
 interface ClassStudentRaw {
   id?: string;
+  userId?: string;
   studentId?: string;
   firstName?: string;
   lastName?: string;
@@ -118,14 +119,14 @@ export const ClassStore = signalStore(
           const studentMap = new Map(
             allStudents
               .filter((s) => s && typeof s === 'object')
-              .map((s: ClassStudentRaw) => [s.id || s.studentId || '', s])
+              .map((s: ClassStudentRaw) => [s.userId || s.id || s.studentId || '', s])
           );
           patchState(store, {
             currentClass: {
               ...mapClassDetail(detail),
               lessons,
               students: enrolledIds.map((item: string | ClassStudentRaw) => {
-                const id = typeof item === 'string' ? item : (item.id || item.studentId || '');
+                const id = typeof item === 'string' ? item : (item.userId || item.id || item.studentId || '');
                 const s = studentMap.get(id) || (typeof item === 'object' ? item : null);
                 return {
                   id,

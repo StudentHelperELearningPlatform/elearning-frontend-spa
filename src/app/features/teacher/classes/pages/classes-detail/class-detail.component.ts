@@ -28,6 +28,20 @@ export interface RawStudentRow {
   lastActiveAt?: string | null;
 }
 
+export interface PaginatedUsersResponse {
+  users: {
+    firstName: string;
+    lastName: string;
+    id: string;
+    email: string;
+    role: string;
+    profilePictureUrl?: string;
+  }[];
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
+}
+
 export interface FinalQuizAttempt {
   attemptId: string;
   studentId: string;
@@ -74,6 +88,12 @@ export class ClassDetailComponent implements OnInit {
   studentSearch = signal('');
   addingStudentId = signal<string | null>(null);
   addStudentError = signal<string | null>(null);
+
+  // ─── Pagination states ────────────────────────────
+  currentPage = signal(0);
+  totalPages = signal(0);
+  loadingMore = signal(false);
+  hasMorePages = computed(() => this.currentPage() < this.totalPages() - 1);
 
   readonly filteredStudents = computed(() => {
     const q = this.studentSearch().toLowerCase().trim();
@@ -123,22 +143,51 @@ export class ClassDetailComponent implements OnInit {
     this.showInviteModal.set(true);
     this.studentSearch.set('');
     this.addStudentError.set(null);
-    if (this.allStudents().length === 0) {
-      this.http
-        .get<RawStudentRow[]>(`${this.userApi}/students`)
-        .pipe(
-          catchError(() => of([] as RawStudentRow[])),
-          map((rows) =>
-            rows.map((r) => ({
-              studentId: r.studentId || r.id || '',
-              firstName: r.firstName || r.name || '',
-              lastName: r.lastName || '',
-              streakValue: r.streakValue ?? 0,
-              lastActiveAt: r.lastActiveAt || null,
-            }))
-          )
-        )
-        .subscribe((rows) => this.allStudents.set(rows));
+    this.allStudents.set([]);
+    this.currentPage.set(0);
+    this.totalPages.set(0);
+    this.loadStudentsPage(0);
+  }
+
+  loadStudentsPage(page: number): void {
+    this.loadingMore.set(true);
+    this.http
+      .get<PaginatedUsersResponse>(`${this.userApi}/users`, {
+        params: {
+          page: String(page),
+          size: '10',
+          role: 'STUDENT'
+        }
+      })
+      .pipe(
+        catchError(() => of({ users: [], currentPage: 0, totalPages: 0, totalElements: 0 } as PaginatedUsersResponse))
+      )
+      .subscribe((res) => {
+        const studentRows: StudentRow[] = (res.users || [])
+          .filter((u) => u.role === 'STUDENT')
+          .map((u) => ({
+            studentId: u.id || '',
+            firstName: u.firstName || '',
+            lastName: u.lastName || '',
+            streakValue: 0,
+            lastActiveAt: null,
+          }));
+
+        if (page === 0) {
+          this.allStudents.set(studentRows);
+        } else {
+          this.allStudents.update((current) => [...current, ...studentRows]);
+        }
+
+        this.currentPage.set(res.currentPage ?? page);
+        this.totalPages.set(res.totalPages ?? 0);
+        this.loadingMore.set(false);
+      });
+  }
+
+  loadNextPage(): void {
+    if (this.hasMorePages() && !this.loadingMore()) {
+      this.loadStudentsPage(this.currentPage() + 1);
     }
   }
 
