@@ -119,20 +119,20 @@ export const ClassStore = signalStore(
           const studentMap = new Map(
             allStudents
               .filter((s) => s && typeof s === 'object')
-              .map((s: ClassStudentRaw) => [s.id || s.studentId || '', s])
+              .map((s: ClassStudentRaw) => [s.userId || s.id || s.studentId || '', s])
           );
           patchState(store, {
             currentClass: {
               ...mapClassDetail(detail),
               lessons,
               students: enrolledIds.map((item: string | ClassStudentRaw) => {
-                const id = typeof item === 'string' ? item : (item.id || item.studentId || '');
+                const id = typeof item === 'string' ? item : (item.userId || item.id || item.studentId || '');
                 const s = studentMap.get(id) || (typeof item === 'object' ? item : null);
                 return {
                   id,
-                  userId: s?.userId || (typeof item === 'object' ? item.userId : undefined),
-                  studentId: s?.studentId || (typeof item === 'object' ? item.studentId : id),
-                  name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim()) : id,
+                  studentId: typeof item === 'string' ? item : (item.studentId || item.id || ''),
+                  userId: typeof item === 'string' ? undefined : item.userId,
+                  name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim() || id) : id,
                   email: s?.email ?? '',
                 };
               }),

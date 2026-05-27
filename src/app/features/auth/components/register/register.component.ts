@@ -65,10 +65,22 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
 </app-card>
           </div>
           
+          @if (selectedRole() === 'ADMIN') {
+            <div class="mt-8 p-6 bg-[#0ABAB5]/5 border-4 border-black rounded-2xl flex items-center gap-4 animate-fade-in shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <span class="material-icons text-4xl text-[#0ABAB5]">contact_mail</span>
+              <div>
+                <p class="font-black text-black text-lg">To create an administrator account, please get in touch with our team!</p>
+                <a href="mailto:grupaB4@UAIC.ro" class="text-xl font-black text-[#0ABAB5] hover:underline">grupaB4@UAIC.ro</a>
+              </div>
+            </div>
+          }
+          
           <div class="mt-10 flex justify-end">
-            <app-button (click)="goToNextStep()" [disabled]="!selectedRole()" variant="primary" size="lg">
-              Next Step <span class="material-icons ml-2">arrow_forward</span>
-            </app-button>
+            @if (selectedRole() !== 'ADMIN') {
+              <app-button (click)="goToNextStep()" [disabled]="!selectedRole()" variant="primary" size="lg">
+                Next Step <span class="material-icons ml-2">arrow_forward</span>
+              </app-button>
+            }
           </div>
         }
 
@@ -182,18 +194,6 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
               </div>
             }
 
-            @if (selectedRole() === 'ADMIN') {
-              <div class="text-center py-8">
-                <i class="pi pi-shield text-7xl mb-4"
-                   style="color: var(--color-primary)"></i>
-                <h3 class="text-2xl font-black mb-2">Admin Account</h3>
-                <p class="font-bold"
-                   style="color: var(--color-text-secondary, #5f6368)">
-                  Your admin account is ready. No additional setup required.
-                </p>
-              </div>
-            }
-
             <div class="mt-10 flex justify-between">
               <app-button (click)="goToPrevStep()" variant="secondary" size="lg">
                 <span class="material-icons mr-2">arrow_back</span> Back
@@ -203,7 +203,7 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
                   {{ registrationError }}
                 </p>
               }
-              <app-button (click)="onSubmit()" [disabled]="specificForm.invalid && selectedRole() !== 'ADMIN'" variant="primary" size="lg">
+              <app-button (click)="onSubmit()" [disabled]="specificForm.invalid" variant="primary" size="lg">
                 Complete Registration <span class="material-icons ml-2">check_circle</span>
               </app-button>
             </div>
@@ -298,7 +298,7 @@ export class RegisterComponent {
   }
 
   goToNextStep() {
-    if (this.currentStep() === 'ROLE' && this.selectedRole()) {
+    if (this.currentStep() === 'ROLE' && this.selectedRole() && this.selectedRole() !== 'ADMIN') {
       this.currentStep.set('COMMON');
     } else if (this.currentStep() === 'COMMON' && this.commonForm.valid) {
       this.currentStep.set('SPECIFIC');

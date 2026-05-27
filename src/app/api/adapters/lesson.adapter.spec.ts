@@ -135,7 +135,7 @@ describe('mapLessonResponse', () => {
       subcapitols: [
         {
           id: 'sub-1',
-          title: 'Fallback Subcapitol',
+          title: 'Unknown subcapitol',
           orderIndex: 1,
           blocks: [{ id: 'b-1', blockType: 'CUSTOM_WIDGET', content: 'foo' }],
         },
