@@ -1325,9 +1325,13 @@ export class AdminDashboardComponent implements OnInit {
   usersTotalPages = signal<number>(1);
   usersTotalElements = signal<number>(0);
 
-  readonly totalUserPages = computed(() => this.usersTotalPages());
+  readonly totalUserPages = computed(() => {
+    return this.usersTotalPages() || 1;
+  });
 
-  readonly paginatedUsers = computed(() => this.users());
+  readonly paginatedUsers = computed(() => {
+    return this.users();
+  });
 
   userInsights = computed(() => {
     const list = this.allUsersForInsights();
@@ -1653,6 +1657,10 @@ export class AdminDashboardComponent implements OnInit {
             });
 
             this.users.set(mappedUsersList);
+            this.usersCurrentPage.set(paginatedResponse.currentPage ?? this.userPage());
+            this.usersTotalPages.set(paginatedResponse.totalPages ?? 1);
+            this.usersTotalElements.set(paginatedResponse.totalElements ?? mappedUsersList.length);
+
             if (
               paginatedResponse &&
               typeof paginatedResponse === 'object' &&

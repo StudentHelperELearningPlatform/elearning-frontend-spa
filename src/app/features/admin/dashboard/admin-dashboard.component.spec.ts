@@ -421,7 +421,7 @@ describe('AdminDashboardComponent', () => {
     expect(component.safeExtractArray(null)).toEqual([]);
     expect(component.safeExtractArray(undefined)).toEqual([]);
     expect(component.safeExtractArray(123)).toEqual([]);
-    expect(component.safeExtractArray("string")).toEqual([]);
+    expect(component.safeExtractArray('string')).toEqual([]);
   });
 
   it('should successfully parse paginated responses for loadLessons, loadClasses, loadContactMessages, and loadUsers', () => {
@@ -610,36 +610,72 @@ describe('AdminDashboardComponent', () => {
     ]);
   });
 
-  it('should paginate users correctly in pages of 5', () => {
+  it('should paginate users correctly via server-side API calls', () => {
     fixture.detectChanges();
-    expect(component.totalUserPages()).toBe(1);
-    expect(component.paginatedUsers().length).toBe(5);
 
-    const extraUsers = Array.from({ length: 7 }, (_, i) => ({
+    // 1. Create mock chunks of data for pages 2 and 3
+    const extraUsersPage2 = Array.from({ length: 5 }, (_, i) => ({
       id: `u-extra-${i}`,
       name: `User Extra ${i}`,
       email: `extra${i}@example.com`,
-      role: 'STUDENT' as const,
-      status: 'ACTIVE' as const,
+      role: 'STUDENT',
+      status: 'ACTIVE',
       raw: {},
     }));
-    component.users.set([...component.users(), ...extraUsers]);
-    expect(component.totalUserPages()).toBe(3);
 
+    const extraUsersPage3 = Array.from({ length: 2 }, (_, i) => ({
+      id: `u-extra-${i + 5}`,
+      name: `User Extra ${i + 5}`,
+      email: `extra${i + 5}@example.com`,
+      role: 'STUDENT',
+      status: 'ACTIVE',
+      raw: {},
+    }));
+
+    // 2. Spy on the service to return different data based on the requested page
+    vi.spyOn(adminService, 'getUsers').mockImplementation((page) => {
+      if (page === 1)
+        return of({ content: mockUsers, currentPage: 1, totalPages: 3, totalElements: 12 } as any);
+      if (page === 2)
+        return of({
+          content: extraUsersPage2,
+          currentPage: 2,
+          totalPages: 3,
+          totalElements: 12,
+        } as any);
+      if (page === 3)
+        return of({
+          content: extraUsersPage3,
+          currentPage: 3,
+          totalPages: 3,
+          totalElements: 12,
+        } as any);
+      return of({ content: [], currentPage: page, totalPages: 3, totalElements: 12 } as any);
+    });
+
+    // 3. Reload page 1 to apply our new spy
+    component.userPage.set(1);
+    component.loadUsers();
+
+    // Verify Page 1
+    expect(component.totalUserPages()).toBe(3);
     expect(component.userPage()).toBe(1);
     expect(component.paginatedUsers().length).toBe(5);
     expect(component.paginatedUsers()[0].name).toBe('Alice');
 
+    // Verify moving to Page 2
     component.nextUserPage();
     expect(component.userPage()).toBe(2);
     expect(component.paginatedUsers().length).toBe(5);
     expect(component.paginatedUsers()[0].name).toBe('User Extra 0');
 
+    // Verify moving to Page 3
     component.nextUserPage();
     expect(component.userPage()).toBe(3);
     expect(component.paginatedUsers().length).toBe(2);
     expect(component.paginatedUsers()[0].name).toBe('User Extra 5');
 
+    // Verify moving back to Page 2
     component.prevUserPage();
     expect(component.userPage()).toBe(2);
     expect(component.paginatedUsers().length).toBe(5);
@@ -916,14 +952,28 @@ describe('AdminDashboardComponent', () => {
         adminsPct: 0,
         studentsCount: 0,
         teachersCount: 0,
-        adminsCount: 0
+        adminsCount: 0,
       });
     });
 
     it('should return 0 in sortedLessons when sorting key values are equal', () => {
       component.lessons.set([
-        { id: 'l1', title: 'Same Title', subject: 'Math', grade: 10, author: 'Author', status: 'PUBLISHED' },
-        { id: 'l2', title: 'Same Title', subject: 'Math', grade: 10, author: 'Author', status: 'PUBLISHED' },
+        {
+          id: 'l1',
+          title: 'Same Title',
+          subject: 'Math',
+          grade: 10,
+          author: 'Author',
+          status: 'PUBLISHED',
+        },
+        {
+          id: 'l2',
+          title: 'Same Title',
+          subject: 'Math',
+          grade: 10,
+          author: 'Author',
+          status: 'PUBLISHED',
+        },
       ]);
       component.lessonSortKey.set('title');
       component.lessonSortOrder.set('asc');
@@ -932,8 +982,22 @@ describe('AdminDashboardComponent', () => {
 
     it('should filter active users when statusFilter is ACTIVE', () => {
       component.users.set([
-        { id: 'u1', name: 'Alice', email: 'alice@example.com', role: 'STUDENT', status: 'ACTIVE', raw: {} },
-        { id: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'BANNED', raw: {} },
+        {
+          id: 'u1',
+          name: 'Alice',
+          email: 'alice@example.com',
+          role: 'STUDENT',
+          status: 'ACTIVE',
+          raw: {},
+        },
+        {
+          id: 'u2',
+          name: 'Bob',
+          email: 'bob@example.com',
+          role: 'TEACHER',
+          status: 'BANNED',
+          raw: {},
+        },
       ]);
       component.statusFilter.set('ACTIVE');
       const filtered = component.filteredUsers();

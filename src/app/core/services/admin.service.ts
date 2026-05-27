@@ -63,10 +63,10 @@ export interface AdminClassRaw {
 export class AdminService {
   private readonly http = inject(HttpClient);
   private readonly apiBase = inject(USER_PLATFORM_API_URL); // Contains '/api/v1' already!
-  private readonly contentApi = inject(CONTENT_API_URL);     // Contains '/api/v1' already!
+  private readonly contentApi = inject(CONTENT_API_URL); // Contains '/api/v1' already!
 
   // Manage Users (Moisa Admin Controller & User Controller)
-  getUsers(page: number = 0, size: number = 5): Observable<PaginatedUsersResponse> {
+  getUsers(page = 0, size = 5): Observable<PaginatedUsersResponse> {
     const params = { page: page.toString(), size: size.toString() };
     return this.http.get<PaginatedUsersResponse>(`${this.apiBase}/users`, { params });
   }
@@ -115,7 +115,7 @@ export class AdminService {
   }
 
   deleteContactMessage(messageId: string): Observable<void> {
-    return new Observable<void>(observer => {
+    return new Observable<void>((observer) => {
       Object.keys({ messageId });
       observer.next();
       observer.complete();
