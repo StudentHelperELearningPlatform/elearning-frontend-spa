@@ -1,6 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors, AsyncValidatorFn } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+  AsyncValidatorFn,
+} from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { NotificationService } from '@core/services/notification.service';
@@ -18,124 +25,216 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
   imports: [CommonModule, ReactiveFormsModule, RouterModule, ButtonComponent, CardComponent],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-white p-4 font-sans text-black">
-      <div class="w-full max-w-2xl bg-white border-4 border-black rounded-3xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 overflow-hidden">
-        
-        <!-- Header -->
+      <div
+        class="w-full max-w-2xl bg-white border-4 border-black rounded-3xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 overflow-hidden"
+      >
         <div class="mb-10 text-center">
-          <h2 class="text-5xl font-black text-black tracking-tighter mb-2 uppercase italic">Join the Future</h2>
-          <p class="text-gray-600 font-bold text-lg">Step {{ currentStepNumber() }} of 3: {{ stepTitle() }}</p>
-          
-          <!-- Progress Bar -->
+          <h2 class="text-5xl font-black text-black tracking-tighter mb-2 uppercase italic">
+            Join the Future
+          </h2>
+          <p class="text-gray-600 font-bold text-lg">
+            Step {{ currentStepNumber() }} of 3: {{ stepTitle() }}
+          </p>
+
           <div class="mt-6 h-4 bg-gray-100 border-2 border-black rounded-full overflow-hidden">
-            <div class="h-full bg-[#0ABAB5] transition-all duration-500 border-r-2 border-black" [style.width.%]="progress()"></div>
+            <div
+              class="h-full bg-[#0ABAB5] transition-all duration-500 border-r-2 border-black"
+              [style.width.%]="progress()"
+            ></div>
           </div>
         </div>
 
-        <!-- Step 1: Role Selection -->
         @if (currentStep() === 'ROLE') {
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-       <app-card [hoverable]="true" (click)="selectRole('STUDENT')"
-  [selected]="selectedRole() === 'STUDENT'"
-  class="cursor-pointer">
-  <div class="text-center py-4">
-    <i class="pi pi-user text-5xl mb-4" style="color: var(--color-primary)"></i>
-    <h3 class="text-xl font-black mb-2">Student</h3>
-    <p class="text-sm font-bold text-gray-600">Learn at your own pace with AI help.</p>
-  </div>
-</app-card>
+            <app-card
+              [hoverable]="true"
+              (click)="selectRole('STUDENT')"
+              [selected]="selectedRole() === 'STUDENT'"
+              class="cursor-pointer"
+            >
+              <div class="text-center py-4">
+                <i class="pi pi-user text-5xl mb-4" style="color: var(--color-primary)"></i>
+                <h3 class="text-xl font-black mb-2">Student</h3>
+                <p class="text-sm font-bold text-gray-600">Learn at your own pace with AI help.</p>
+              </div>
+            </app-card>
 
-<app-card [hoverable]="true" (click)="selectRole('TEACHER')"
-  [selected]="selectedRole() === 'TEACHER'"
-  class="cursor-pointer">
-  <div class="text-center py-4">
-    <i class="pi pi-book text-5xl mb-4" style="color: var(--color-primary)"></i>
-    <h3 class="text-xl font-black mb-2">Teacher</h3>
-    <p class="text-sm font-bold text-gray-600">Create content and track class progress.</p>
-  </div>
-</app-card>
+            <app-card
+              [hoverable]="true"
+              (click)="selectRole('TEACHER')"
+              [selected]="selectedRole() === 'TEACHER'"
+              class="cursor-pointer"
+            >
+              <div class="text-center py-4">
+                <i class="pi pi-book text-5xl mb-4" style="color: var(--color-primary)"></i>
+                <h3 class="text-xl font-black mb-2">Teacher</h3>
+                <p class="text-sm font-bold text-gray-600">
+                  Create content and track class progress.
+                </p>
+              </div>
+            </app-card>
 
-<app-card [hoverable]="true" (click)="selectRole('ADMIN')"
-  [selected]="selectedRole() === 'ADMIN'"
-  class="cursor-pointer">
-  <div class="text-center py-4">
-    <i class="pi pi-cog text-5xl mb-4" style="color: var(--color-primary)"></i>
-    <h3 class="text-xl font-black mb-2">Admin</h3>
-    <p class="text-sm font-bold text-gray-600">Manage the platform and users</p>
-  </div>
-</app-card>
+            <app-card
+              [hoverable]="true"
+              (click)="selectRole('ADMIN')"
+              [selected]="selectedRole() === 'ADMIN'"
+              class="cursor-pointer"
+            >
+              <div class="text-center py-4">
+                <i class="pi pi-cog text-5xl mb-4" style="color: var(--color-primary)"></i>
+                <h3 class="text-xl font-black mb-2">Admin</h3>
+                <p class="text-sm font-bold text-gray-600">Manage the platform and users</p>
+              </div>
+            </app-card>
           </div>
-          
+
           @if (selectedRole() === 'ADMIN') {
-            <div class="mt-8 p-6 bg-[#0ABAB5]/5 border-4 border-black rounded-2xl flex items-center gap-4 animate-fade-in shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div
+              class="mt-8 p-6 bg-[#0ABAB5]/5 border-4 border-black rounded-2xl flex items-center gap-4 animate-fade-in shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            >
               <span class="material-icons text-4xl text-[#0ABAB5]">contact_mail</span>
               <div>
-                <p class="font-black text-black text-lg">To create an administrator account, please get in touch with our team!</p>
-                <a href="mailto:grupaB4@UAIC.ro" class="text-xl font-black text-[#0ABAB5] hover:underline">grupaB4@UAIC.ro</a>
+                <p class="font-black text-black text-lg">
+                  To create an administrator account, please get in touch with our team!
+                </p>
+                <a
+                  href="mailto:grupaB4@UAIC.ro"
+                  class="text-xl font-black text-[#0ABAB5] hover:underline"
+                  >grupaB4@UAIC.ro</a
+                >
               </div>
             </div>
           }
-          
+
           <div class="mt-10 flex justify-end">
             @if (selectedRole() !== 'ADMIN') {
-              <app-button (click)="goToNextStep()" [disabled]="!selectedRole()" variant="primary" size="lg">
+              <app-button
+                (click)="goToNextStep()"
+                [disabled]="!selectedRole()"
+                variant="primary"
+                size="lg"
+              >
                 Next Step <span class="material-icons ml-2">arrow_forward</span>
               </app-button>
             }
           </div>
         }
 
-        <!-- Step 2: Common Fields -->
         @if (currentStep() === 'COMMON') {
-          <form [formGroup]="commonForm" class="space-y-6">
+          <form [formGroup]="commonForm" class="space-y-6" (keydown.enter)="onCommonEnter($event)">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label for="name" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Full Name</label>
-                <input id="name" type="text" formControlName="name" placeholder="John Doe" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                <label
+                  for="name"
+                  class="block text-lg font-black text-black mb-2 uppercase tracking-tight"
+                  >Full Name</label
+                >
+                <input
+                  id="name"
+                  type="text"
+                  formControlName="name"
+                  placeholder="John Doe"
+                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold"
+                />
               </div>
               <div>
-                <label for="email" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Email Address</label>
-                <input id="email" type="email" formControlName="email" placeholder="john@example.com" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
-                @if (commonForm.get('email')?.hasError('emailTaken')
-                     && !commonForm.get('email')?.pending) {
+                <label
+                  for="email"
+                  class="block text-lg font-black text-black mb-2 uppercase tracking-tight"
+                  >Email Address</label
+                >
+                <input
+                  id="email"
+                  type="email"
+                  formControlName="email"
+                  placeholder="john@example.com"
+                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold"
+                />
+                @if (
+                  commonForm.get('email')?.hasError('emailTaken') &&
+                  !commonForm.get('email')?.pending
+                ) {
                   <span class="text-sm font-bold" style="color: var(--color-error)">
                     This email is already registered
                   </span>
                 }
-                  @if (commonForm.get('email')?.pending) {
-  <span class="text-xs font-bold" style="color: var(--color-primary)">
-    ⏳ Checking availability...
-  </span>}
+                @if (commonForm.get('email')?.pending) {
+                  <span class="text-xs font-bold" style="color: var(--color-primary)">
+                    ⏳ Checking availability...
+                  </span>
+                }
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label for="password" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Password</label>
+                <label
+                  for="password"
+                  class="block text-lg font-black text-black mb-2 uppercase tracking-tight"
+                  >Password</label
+                >
                 <div class="relative">
-                  <input id="password" [type]="showPassword() ? 'text' : 'password'" formControlName="password" placeholder="••••••••" class="w-full pl-4 pr-12 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
-                  <button type="button" (click)="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-black">
-                    <span class="material-icons">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+                  <input
+                    id="password"
+                    [type]="showPassword() ? 'text' : 'password'"
+                    formControlName="password"
+                    placeholder="••••••••"
+                    class="w-full pl-4 pr-12 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold"
+                  />
+                  <button
+                    type="button"
+                    (click)="togglePasswordVisibility()"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-black"
+                  >
+                    <span class="material-icons">{{
+                      showPassword() ? 'visibility_off' : 'visibility'
+                    }}</span>
                   </button>
                 </div>
-                
-                <!-- Password Strength -->
+
                 <div class="mt-2 flex gap-1 h-2">
-                  @for (i of [1,2,3]; track i) {
-                    <div class="flex-1 rounded-full border-2 border-black" [ngClass]="getPasswordStrengthClass(i)"></div>
+                  @for (i of [1, 2, 3]; track i) {
+                    <div
+                      class="flex-1 rounded-full border-2 border-black"
+                      [ngClass]="getPasswordStrengthClass(i)"
+                    ></div>
                   }
                 </div>
-                <p class="text-xs font-bold mt-1 text-gray-500 uppercase">Min 8 chars, 1 uppercase, 1 number</p>
+                <p class="text-xs font-bold mt-1 text-gray-500 uppercase">
+                  Min 8 chars, 1 uppercase, 1 number
+                </p>
               </div>
               <div>
-                <label for="confirmPassword" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Confirm Password</label>
+                <label
+                  for="confirmPassword"
+                  class="block text-lg font-black text-black mb-2 uppercase tracking-tight"
+                  >Confirm Password</label
+                >
                 <div class="relative">
-                  <input id="confirmPassword" [type]="showConfirmPassword() ? 'text' : 'password'" formControlName="confirmPassword" placeholder="••••••••" class="w-full pl-4 pr-12 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
-                  <button type="button" (click)="toggleConfirmPasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-black">
-                    <span class="material-icons">{{ showConfirmPassword() ? 'visibility_off' : 'visibility' }}</span>
+                  <input
+                    id="confirmPassword"
+                    [type]="showConfirmPassword() ? 'text' : 'password'"
+                    formControlName="confirmPassword"
+                    placeholder="••••••••"
+                    class="w-full pl-4 pr-12 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold"
+                  />
+                  <button
+                    type="button"
+                    (click)="toggleConfirmPasswordVisibility()"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-black"
+                  >
+                    <span class="material-icons">{{
+                      showConfirmPassword() ? 'visibility_off' : 'visibility'
+                    }}</span>
                   </button>
                 </div>
-                @if (commonForm.errors?.['passwordMismatch'] && commonForm.get('confirmPassword')?.touched) {
-                  <p class="text-red-500 text-xs font-bold mt-1 uppercase">Passwords do not match</p>
+                @if (
+                  commonForm.errors?.['passwordMismatch'] &&
+                  commonForm.get('confirmPassword')?.touched
+                ) {
+                  <p class="text-red-500 text-xs font-bold mt-1 uppercase">
+                    Passwords do not match
+                  </p>
                 }
               </div>
             </div>
@@ -144,21 +243,36 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
               <app-button (click)="goToPrevStep()" variant="secondary" size="lg">
                 <span class="material-icons mr-2">arrow_back</span> Back
               </app-button>
-              <app-button (click)="goToNextStep()" [disabled]="commonForm.invalid" variant="primary" size="lg">
+              <app-button
+                (click)="goToNextStep()"
+                [disabled]="commonForm.invalid"
+                variant="primary"
+                size="lg"
+              >
                 Next Step <span class="material-icons ml-2">arrow_forward</span>
               </app-button>
             </div>
           </form>
         }
 
-        <!-- Step 3: Role Specific Fields -->
         @if (currentStep() === 'SPECIFIC') {
-          <form [formGroup]="specificForm" class="space-y-6">
-            
+          <form
+            [formGroup]="specificForm"
+            class="space-y-6"
+            (keydown.enter)="onSpecificEnter($event)"
+          >
             @if (selectedRole() === 'STUDENT') {
               <div>
-                <label for="gradeLevel" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Grade Level</label>
-                <select id="gradeLevel" formControlName="gradeLevel" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold bg-white">
+                <label
+                  for="gradeLevel"
+                  class="block text-lg font-black text-black mb-2 uppercase tracking-tight"
+                  >Grade Level</label
+                >
+                <select
+                  id="gradeLevel"
+                  formControlName="gradeLevel"
+                  class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold bg-white"
+                >
                   <option value="">Select Grade</option>
                   @for (grade of grades; track grade) {
                     <option [value]="grade">{{ grade }}</option>
@@ -170,21 +284,38 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
             @if (selectedRole() === 'TEACHER') {
               <div class="space-y-6">
                 <div>
-                  <label for="schoolName" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">School Name</label>
-                  <input id="schoolName" type="text" formControlName="schoolName" placeholder="Lincoln High School" class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold">
+                  <label
+                    for="schoolName"
+                    class="block text-lg font-black text-black mb-2 uppercase tracking-tight"
+                    >School Name</label
+                  >
+                  <input
+                    id="schoolName"
+                    type="text"
+                    formControlName="schoolName"
+                    placeholder="Lincoln High School"
+                    class="w-full px-4 py-3 border-4 border-black rounded-xl focus:outline-none focus:bg-[#0ABAB5]/5 font-bold"
+                  />
                 </div>
                 <div>
-                  <label for="subjects" class="block text-lg font-black text-black mb-2 uppercase tracking-tight">Subjects Taught</label>
+                  <label
+                    for="subjects"
+                    class="block text-lg font-black text-black mb-2 uppercase tracking-tight"
+                    >Subjects Taught</label
+                  >
                   <div id="subjects" class="grid grid-cols-2 gap-4">
                     <div class="flex flex-wrap gap-2">
                       @for (subject of subjects; track subject) {
                         <button
                           type="button"
                           (click)="toggleSubject(subject)"
-                          [style.background-color]="isSubjectSelected(subject) ? 'var(--color-primary)' : 'white'"
+                          [style.background-color]="
+                            isSubjectSelected(subject) ? 'var(--color-primary)' : 'white'
+                          "
                           [style.color]="isSubjectSelected(subject) ? 'white' : 'black'"
                           [style.border-color]="'black'"
-                          class="px-4 py-2 rounded-full border-2 font-bold text-sm">
+                          class="px-4 py-2 rounded-full border-2 font-bold text-sm"
+                        >
                           {{ subject }}
                         </button>
                       }
@@ -203,7 +334,12 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
                   {{ registrationError }}
                 </p>
               }
-              <app-button (click)="onSubmit()" [disabled]="specificForm.invalid" variant="primary" size="lg">
+              <app-button
+                (click)="onSubmit()"
+                [disabled]="specificForm.invalid"
+                variant="primary"
+                size="lg"
+              >
                 Complete Registration <span class="material-icons ml-2">check_circle</span>
               </app-button>
             </div>
@@ -211,11 +347,15 @@ type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
         }
 
         <div class="mt-12 pt-8 border-t-4 border-black/10 text-center">
-          <a routerLink="/auth/login" class="text-black font-black uppercase tracking-widest text-sm hover:text-[#0ABAB5] transition-colors">Already have an account? Log in</a>
+          <a
+            routerLink="/auth/login"
+            class="text-black font-black uppercase tracking-widest text-sm hover:text-[#0ABAB5] transition-colors"
+            >Already have an account? Log in</a
+          >
         </div>
       </div>
     </div>
-  `
+  `,
 })
 export class RegisterComponent {
   private fb = inject(FormBuilder);
@@ -230,48 +370,57 @@ export class RegisterComponent {
   showConfirmPassword = signal(false);
 
   togglePasswordVisibility() {
-    this.showPassword.update(v => !v);
+    this.showPassword.update((v) => !v);
   }
 
   toggleConfirmPasswordVisibility() {
-    this.showConfirmPassword.update(v => !v);
+    this.showConfirmPassword.update((v) => !v);
   }
-  
+
   grades: (string | number)[] = ['K', ...Array.from({ length: 12 }, (_, i) => i + 1)];
   subjects = ['Math', 'Science', 'English', 'History', 'Geography'];
   selectedSubjects = signal<string[]>([]);
   registrationError: string | null = null;
 
-  commonForm = this.fb.group({
-    name: ['', Validators.required],
-    email: this.fb.control('', {
-      validators: [Validators.required, Validators.email],
-      asyncValidators: [this.emailAvailabilityValidator()],
-      updateOn: 'blur',
-    }),
-    password: ['', [Validators.required, Validators.minLength(8), this.passwordValidator]],
-    confirmPassword: ['', Validators.required]
-  }, { validators: this.passwordMatchValidator });
+  commonForm = this.fb.group(
+    {
+      name: ['', Validators.required],
+      email: this.fb.control('', {
+        validators: [Validators.required, Validators.email],
+        asyncValidators: [this.emailAvailabilityValidator()],
+        updateOn: 'blur',
+      }),
+      password: ['', [Validators.required, Validators.minLength(8), this.passwordValidator]],
+      confirmPassword: ['', Validators.required],
+    },
+    { validators: this.passwordMatchValidator },
+  );
 
   specificForm = this.fb.group({
     gradeLevel: [''],
     schoolName: [''],
-    subjects: [[] as string[]]
+    subjects: [[] as string[]],
   });
 
   currentStepNumber() {
     switch (this.currentStep()) {
-      case 'ROLE': return 1;
-      case 'COMMON': return 2;
-      case 'SPECIFIC': return 3;
+      case 'ROLE':
+        return 1;
+      case 'COMMON':
+        return 2;
+      case 'SPECIFIC':
+        return 3;
     }
   }
 
   stepTitle() {
     switch (this.currentStep()) {
-      case 'ROLE': return 'Choose Your Role';
-      case 'COMMON': return 'Basic Information';
-      case 'SPECIFIC': return 'Final Details';
+      case 'ROLE':
+        return 'Choose Your Role';
+      case 'COMMON':
+        return 'Basic Information';
+      case 'SPECIFIC':
+        return 'Final Details';
     }
   }
 
@@ -281,7 +430,7 @@ export class RegisterComponent {
 
   selectRole(role: UserRole) {
     this.selectedRole.set(role);
-    
+
     // Reset specific form based on role
     this.specificForm.reset();
     if (role === 'STUDENT') {
@@ -317,7 +466,7 @@ export class RegisterComponent {
     const value = control.value || '';
     const hasUpperCase = /[A-Z]/.test(value);
     const hasNumber = /[0-9]/.test(value);
-    
+
     if (!hasUpperCase || !hasNumber) {
       return { passwordStrength: true };
     }
@@ -327,7 +476,7 @@ export class RegisterComponent {
   passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
     const password = control.get('password');
     const confirmPassword = control.get('confirmPassword');
-    
+
     if (password && confirmPassword && password.value !== confirmPassword.value) {
       return { passwordMismatch: true };
     }
@@ -338,12 +487,10 @@ export class RegisterComponent {
     return (ctrl: AbstractControl): Observable<{ emailTaken: true } | null> => {
       if (!ctrl.value || typeof ctrl.value !== 'string') return of(null);
       return timer(300).pipe(
-        switchMap(() =>
-          this.authService.checkEmailAvailability(ctrl.value as string)
-        ),
-        map(res => (res.available ? null : { emailTaken: true as const })),
+        switchMap(() => this.authService.checkEmailAvailability(ctrl.value as string)),
+        map((res) => (res.available ? null : { emailTaken: true as const })),
         catchError(() => of(null)),
-        first()
+        first(),
       );
     };
   }
@@ -351,8 +498,8 @@ export class RegisterComponent {
   getPasswordStrengthClass(index: number) {
     const password = this.commonForm.get('password')?.value || '';
     const hasUpper = /[A-Z]/.test(password);
-    const hasNum   = /[0-9]/.test(password);
-    const isLong   = password.length >= 8;
+    const hasNum = /[0-9]/.test(password);
+    const isLong = password.length >= 8;
 
     let strength = 0;
     if (password.length > 0) strength = 1;
@@ -374,16 +521,58 @@ export class RegisterComponent {
   toggleSubject(subject: string) {
     const current = this.selectedSubjects();
     if (current.includes(subject)) {
-      this.selectedSubjects.set(current.filter(s => s !== subject));
+      this.selectedSubjects.set(current.filter((s) => s !== subject));
     } else {
       this.selectedSubjects.set([...current, subject]);
     }
     this.specificForm.patchValue({ subjects: this.selectedSubjects() });
   }
 
+  // Intercept 'Enter' presses for the Step 2 form
+  onCommonEnter(event: Event) {
+    const target = event.target as HTMLElement;
+    // Let buttons still work normally if the user tabbed to one and pressed Enter
+    if (
+      target.tagName.toLowerCase() === 'button' ||
+      target.closest('button') ||
+      target.closest('app-button')
+    ) {
+      return;
+    }
+
+    // Stop the default browser behavior of clicking the "Back" button
+    event.preventDefault();
+
+    // Progress only if everything is correctly filled out
+    if (this.commonForm.valid) {
+      this.goToNextStep();
+    }
+  }
+
+  // Intercept 'Enter' presses for the Step 3 form
+  onSpecificEnter(event: Event) {
+    const target = event.target as HTMLElement;
+    // Let buttons still work normally if the user tabbed to one and pressed Enter
+    if (
+      target.tagName.toLowerCase() === 'button' ||
+      target.closest('button') ||
+      target.closest('app-button')
+    ) {
+      return;
+    }
+
+    // Stop the default browser behavior
+    event.preventDefault();
+
+    const specificOk = this.selectedRole() === 'ADMIN' || this.specificForm.valid;
+    // Complete registration only if everything is valid
+    if (this.commonForm.valid && specificOk) {
+      this.onSubmit();
+    }
+  }
+
   onSubmit() {
-    const specificOk =
-      this.selectedRole() === 'ADMIN' || this.specificForm.valid;
+    const specificOk = this.selectedRole() === 'ADMIN' || this.specificForm.valid;
     if (!this.commonForm.valid || !specificOk) return;
 
     this.registrationError = null;
