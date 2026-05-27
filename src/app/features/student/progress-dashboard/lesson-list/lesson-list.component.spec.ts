@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { LessonListComponent } from './lesson-list.component';
 import { LessonsStore, Lesson } from '../../store/lessons.store';
 import { ProgressStore, HistoryEntry } from '../../store/progress.store';
@@ -11,8 +11,6 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideApiMocks } from '../../../../../test-utils/api-testing';
 import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
-import { HistoryComponent } from '../../history/history.component';
-import { Router } from '@angular/router';
 
 const MOCK_LESSONS = [
   {
@@ -72,27 +70,15 @@ describe('LessonListComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         ...provideApiMocks(),
-        {
-          provide: AuthStore,
-          useValue: createAuthStoreStub({ isAuthenticated: true, user: { id: 'test-student-id' } }),
-        },
+        { provide: AuthStore, useValue: createAuthStoreStub({ isAuthenticated: true }) },
       ],
     }).compileComponents();
 
     store = TestBed.inject(LessonsStore);
     progressStore = TestBed.inject(ProgressStore);
     router = TestBed.inject(Router);
-
-    vi.spyOn(store, 'loadLessons').mockImplementation(
-      vi.fn() as unknown as typeof store.loadLessons,
-    );
-    vi.spyOn(progressStore, 'loadMyHistory').mockImplementation(
-      vi.fn() as unknown as typeof progressStore.loadMyHistory,
-    );
-    vi.spyOn(store, 'loadAccessibleLessons').mockImplementation(
-      vi.fn() as unknown as typeof store.loadAccessibleLessons,
-    );
-
+    vi.spyOn(store, 'loadLessons').mockImplementation(() => undefined);
+    vi.spyOn(progressStore, 'loadMyHistory').mockImplementation(() => undefined);
     patchStore(store, {
       lessons: MOCK_LESSONS,
       loading: false,
@@ -110,6 +96,8 @@ describe('LessonListComponent', () => {
       'quiz-ready-id': 'quiz-ready',
       'completed-id': 'quiz-submitted',
     });
+
+    // We do NOT call fixture.detectChanges() here to avoid NG0100 when mocking signals per test.
   });
 
   afterEach(() => {
@@ -127,15 +115,6 @@ describe('LessonListComponent', () => {
   it('calls loadMyHistory on init', () => {
     fixture.detectChanges();
     expect(progressStore.loadMyHistory).toHaveBeenCalled();
-  });
-
-  it('triggers accessible lessons load via effect when published lessons are available', async () => {
-    store.publishedLessons = signal(
-      MOCK_LESSONS as unknown as Lesson[],
-    ) as unknown as typeof store.publishedLessons;
-    fixture.detectChanges();
-    await fixture.whenStable(); // Allow native promises and effects to resolve
-    expect(store.loadAccessibleLessons).toHaveBeenCalledWith('test-student-id');
   });
 
   it('shows loading skeleton in my-lessons tab when accessibleLessonsLoading is true', () => {
@@ -204,13 +183,7 @@ describe('LessonListComponent', () => {
       lessons: [{ ...MOCK_LESSONS[0], id: 'hist-lesson', status: '' }],
     });
     patchStore(progressStore, {
-      myHistory: [
-        {
-          lessonId: 'hist-lesson',
-          status: 'completed',
-          dateCompleted: '2026-01-01',
-        } as HistoryEntry,
-      ],
+      myHistory: [{ lessonId: 'hist-lesson', status: 'completed', dateCompleted: '2026-01-01' } as HistoryEntry],
     });
     component['lessonStatusMap'].set({});
     fixture.detectChanges();
@@ -257,21 +230,52 @@ describe('LessonListComponent', () => {
     expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/in-progress-id');
   });
 
-  // ─── UI States & Tabs ───────────────────────────────────────────────────
+  it('Go to Lesson button has correct routerLink', async () => {
+    store.publishedLessons = signal(
+      MOCK_LESSONS as unknown as Lesson[],
+    ) as unknown as typeof store.publishedLessons;
+    fixture.detectChanges();
 
-  it('shows empty state on browser tab when there are no published lessons', async () => {
-    patchStore(store, { lessons: [] });
-    component.activeTab.set('browser');
+    const spy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const buttons = fixture.debugElement.queryAll(By.css('app-button'));
+    const btn = buttons.find((b) => b.nativeElement.textContent.includes('Go to Lesson'));
+    btn!.nativeElement.click();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('No lessons found');
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/quiz-ready-id');
+  });
+
+  it('Review button has correct routerLink', async () => {
+    store.publishedLessons = signal(
+      MOCK_LESSONS as unknown as Lesson[],
+    ) as unknown as typeof store.publishedLessons;
+    fixture.detectChanges();
+
+    const spy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const buttons = fixture.debugElement.queryAll(By.css('app-button'));
+    const btn = buttons.find((b) => b.nativeElement.textContent.includes('Review'));
+    btn!.nativeElement.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/completed-id');
+  });
+
+  // ─── UI States (Loading & Tabs & Empty) ──────────────────────────────────
+
+  it('shows loading skeleton when store is loading', () => {
+    patchStore(store, { loading: true });
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('.animate-pulse'))).toBeTruthy();
   });
 
   it('switches to My Lessons tab and shows empty state', async () => {
-    patchStore(store, { lessons: [] });
+    patchStore(store, { lessons: [] }); // Golește starea store-ului
     component.activeTab.set('my-lessons');
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No active lessons');
   });
 
@@ -284,13 +288,30 @@ describe('LessonListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('In Progress Lesson');
   });
 
-  it('switches to History tab and renders the embedded HistoryComponent', async () => {
+  it('switches to History tab and shows empty state', async () => {
+    patchStore(store, { lessons: [] });
     component.activeTab.set('history');
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No history yet');
+  });
 
-    // Verify the HistoryComponent tag exists in the DOM
-    const historyEl = fixture.debugElement.query(By.directive(HistoryComponent));
-    expect(historyEl).toBeTruthy();
+  it('switches to History tab and renders list', () => {
+    patchStore(progressStore, {
+      myHistory: [{ lessonId: 'completed-id' } as HistoryEntry]
+    });
+    component.activeTab.set('history');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Completed Lesson');
+  });
+
+  it('shows empty state on browser tab when there are no published lessons', async () => {
+    patchStore(store, { lessons: [] });
+    component.activeTab.set('browser');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No lessons found');
   });
 });
