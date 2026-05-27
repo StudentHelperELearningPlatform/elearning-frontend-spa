@@ -130,6 +130,8 @@ export const ClassStore = signalStore(
                 const s = studentMap.get(id) || (typeof item === 'object' ? item : null);
                 return {
                   id,
+                  studentId: typeof item === 'string' ? item : (item.studentId || item.id || ''),
+                  userId: typeof item === 'string' ? undefined : item.userId,
                   name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim() || id) : id,
                   email: s?.email ?? '',
                 };
