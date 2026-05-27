@@ -36,6 +36,7 @@ export interface BackendLesson {
   shortDescription?: string;
   authorId?: string;
   subcapitols?: BackendSubcapitol[];
+  progress?: any;
 }
 
 const KNOWN_TYPES: readonly Module['type'][] = [
@@ -79,6 +80,15 @@ export const mapLessonResponse = (backend: BackendLesson): Lesson => {
 
   const modules = subcapitols.flatMap(s => s.blocks);
 
+  let status = backend.status || 'Not Started';
+  if (backend.progress !== null && backend.progress !== undefined) {
+    const p = backend.progress;
+    const isFinished = p.finished === true || p.status === 'COMPLETED' || p.status === 'completed' || p.isFinished === true || p.completed === true;
+    status = isFinished ? 'Finished' : 'In Progress';
+  } else if (backend.status === 'COMPLETED' || backend.status === 'completed' || backend.status === 'FINISHED' || backend.status === 'finished') {
+    status = 'Finished';
+  }
+
   return {
     id: backend.id?.toString() || '',
     title: backend.title || '',
@@ -88,7 +98,7 @@ export const mapLessonResponse = (backend: BackendLesson): Lesson => {
     duration: backend.estimatedDurationMinutes 
       ? `${backend.estimatedDurationMinutes}m` 
       : (backend.duration || ''),
-    status: backend.status || 'Not Started',
+    status,
     description: backend.shortDescription || '',
     subcapitols,
     modules,

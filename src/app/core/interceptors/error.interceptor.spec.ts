@@ -172,4 +172,54 @@ describe('errorInterceptor', () => {
     req.flush(null, { status: 418, statusText: "I'm a teapot" });
     expect(mockNotificationService.error).toHaveBeenCalledWith("I'm a teapot");
   });
+
+  it('should suppress notification and strip header when X-Skip-Error-Notification header is present', () => {
+    httpClient.get('/api/test', { headers: { 'X-Skip-Error-Notification': 'true' } }).subscribe({
+      error: (err) => {
+        expect(err).toBeDefined();
+      }
+    });
+    
+    // The interceptor should have stripped the header, so it won't be in the outgoing request headers.
+    const req = httpMock.expectOne('/api/test');
+    expect(req.request.headers.has('X-Skip-Error-Notification')).toBe(false);
+    expect(req.request.method).toBe('GET');
+    
+    req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+    expect(mockNotificationService.error).not.toHaveBeenCalled();
+  });
+
+  it('should automatically suppress notification for 404 errors on final-quiz and check-quiz endpoints', () => {
+    httpClient.get('/api/v1/lessons/123/final-quiz').subscribe({
+      error: (err) => {
+        expect(err.status).toBe(404);
+      }
+    });
+
+    const req = httpMock.expectOne('/api/v1/lessons/123/final-quiz');
+    req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+    expect(mockNotificationService.error).not.toHaveBeenCalled();
+
+    httpClient.get('/api/v1/subcapitols/456/check-quiz/questions').subscribe({
+      error: (err) => {
+        expect(err.status).toBe(404);
+      }
+    });
+
+    const req2 = httpMock.expectOne('/api/v1/subcapitols/456/check-quiz/questions');
+    req2.flush('Not Found', { status: 404, statusText: 'Not Found' });
+    expect(mockNotificationService.error).not.toHaveBeenCalled();
+  });
+
+  it('should automatically suppress notification for 409 Conflict errors on complete endpoints', () => {
+    httpClient.post('/api/v1/lessons/123/complete', {}).subscribe({
+      error: (err) => {
+        expect(err.status).toBe(409);
+      }
+    });
+
+    const req = httpMock.expectOne('/api/v1/lessons/123/complete');
+    req.flush('Conflict', { status: 409, statusText: 'Conflict' });
+    expect(mockNotificationService.error).not.toHaveBeenCalled();
+  });
 });

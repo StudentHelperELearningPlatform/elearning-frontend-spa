@@ -232,7 +232,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
           }
         </div>
 
-        @if (store.allModulesComplete() && hasAccess()) {
+        @if (store.allModulesComplete() && hasAccess() && store.hasFinalQuiz() !== false) {
           @if (store.lastQuizAttempt(); as attempt) {
             <div
               class="mx-6 mb-4 p-5 rounded-2xl border-4 border-[#0ABAB5] bg-[#0ABAB5]/10 flex flex-col md:flex-row items-center justify-between gap-4"
@@ -469,9 +469,19 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     const module = this.currentModule();
     if (lesson) {
       if (module) {
-        this.store.markModuleCompleteLocally(module.id);
+        this.store.markModuleComplete(lesson.id, module.id);
       }
-      this.startFinalQuiz();
+      if (this.store.hasFinalQuiz() === false) {
+        this.store.completeLesson(lesson.id);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Lesson Completed',
+          detail: 'Congratulations! You have completed this lesson.',
+        });
+        this.router.navigate(['/student/lessons']);
+      } else {
+        this.startFinalQuiz();
+      }
     }
   }
 

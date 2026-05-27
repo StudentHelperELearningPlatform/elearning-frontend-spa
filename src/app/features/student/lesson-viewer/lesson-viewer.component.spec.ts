@@ -222,19 +222,33 @@ describe('LessonViewerComponent', () => {
     expect(component.currentModuleIndex()).toBe(1);
   });
 
-  it('completeLastModule marks the module complete locally and calls progressStore.markLessonComplete', () => {
+  it('completeLastModule marks the module complete and navigates to quiz player if final quiz exists', () => {
     fixture.detectChanges();
-    const locallySpy = vi.spyOn(store, 'markModuleCompleteLocally').mockImplementation(() => {
-      /* mock */
-    });
-    const progressStore = TestBed.inject(ProgressStore);
-    const markCompleteSpy = vi.spyOn(progressStore, 'markLessonComplete').mockImplementation(() => undefined);
+    const markModuleSpy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => undefined);
+    vi.spyOn(store, 'hasFinalQuiz').mockReturnValue(true);
     const routerSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.selectModule(2);
     component.completeLastModule();
-    expect(locallySpy).toHaveBeenCalledWith('m3');
-    expect(markCompleteSpy).not.toHaveBeenCalled();
+    expect(markModuleSpy).toHaveBeenCalledWith('1', 'm3');
     expect(routerSpy).toHaveBeenCalledWith(['/student/quiz-player', '1']);
+  });
+
+  it('completeLastModule marks the module complete, completes the lesson, and navigates to lessons list if no final quiz exists', () => {
+    fixture.detectChanges();
+    const markModuleSpy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => undefined);
+    const completeLessonSpy = vi.spyOn(store, 'completeLesson').mockImplementation(() => undefined);
+    vi.spyOn(store, 'hasFinalQuiz').mockReturnValue(false);
+    const routerSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const msgService = TestBed.inject(MessageService);
+    const toastSpy = vi.spyOn(msgService, 'add');
+
+    component.selectModule(2);
+    component.completeLastModule();
+
+    expect(markModuleSpy).toHaveBeenCalledWith('1', 'm3');
+    expect(completeLessonSpy).toHaveBeenCalledWith('1');
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success', summary: 'Lesson Completed' }));
+    expect(routerSpy).toHaveBeenCalledWith(['/student/lessons']);
   });
 
   // ─── Navigation helpers ────────────────────────────────────────────────────

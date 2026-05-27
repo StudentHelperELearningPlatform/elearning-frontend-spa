@@ -13,6 +13,7 @@ describe('mapLessonResponse', () => {
         {
           id: 'sub-1',
           title: 'What is a fraction?',
+          orderIndex: 1,
           blocks: [
             { id: 'b-1', blockType: 'TEXT', content: '<p>A fraction is…</p>' },
           ],
@@ -48,6 +49,7 @@ describe('mapLessonResponse', () => {
         {
           id: 'sub-1',
           title: 'Photosynthesis',
+          orderIndex: 1,
           blocks: [
             {
               id: 'b-2',
@@ -103,6 +105,7 @@ describe('mapLessonResponse', () => {
         {
           id: 'sub-1',
           title: 'A',
+          orderIndex: 1,
           blocks: [
             { id: 'b-1', blockType: 'TEXT', content: 'a' },
             { id: 'b-2', blockType: 'VIDEO', content: 'v', mediaUrl: 'https://x/v.mp4' },
@@ -111,6 +114,7 @@ describe('mapLessonResponse', () => {
         {
           id: 'sub-2',
           title: 'B',
+          orderIndex: 2,
           blocks: [{ id: 'b-3', blockType: 'AUDIO', content: 'a', mediaUrl: 'https://x/a.mp3' }],
         },
       ],
@@ -130,11 +134,44 @@ describe('mapLessonResponse', () => {
       grade: 5,
       subcapitols: [
         {
+          id: 'sub-1',
+          title: 'Fallback Subcapitol',
+          orderIndex: 1,
           blocks: [{ id: 'b-1', blockType: 'CUSTOM_WIDGET', content: 'foo' }],
         },
       ],
     };
 
     expect(mapLessonResponse(backend).modules[0].type).toBe('text');
+  });
+
+  it('should map status to In Progress if progress is not null, and Finished if progress is completed', () => {
+    const backendInProgress: BackendLesson = {
+      id: 'lesson-progress-1',
+      title: 'In Progress Lesson',
+      progress: {
+        completedModules: 1,
+        status: 'IN_PROGRESS'
+      }
+    };
+
+    const backendFinished: BackendLesson = {
+      id: 'lesson-finished-1',
+      title: 'Finished Lesson',
+      progress: {
+        completedModules: 3,
+        status: 'COMPLETED'
+      }
+    };
+
+    const backendFinishedLegacy: BackendLesson = {
+      id: 'lesson-finished-2',
+      title: 'Finished Lesson Legacy',
+      status: 'COMPLETED'
+    };
+
+    expect(mapLessonResponse(backendInProgress).status).toBe('In Progress');
+    expect(mapLessonResponse(backendFinished).status).toBe('Finished');
+    expect(mapLessonResponse(backendFinishedLegacy).status).toBe('Finished');
   });
 });
