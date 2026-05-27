@@ -37,6 +37,13 @@ export interface PaginatedUsersResponse {
   totalElements: number;
 }
 
+export interface PaginatedClassesResponse {
+  classes: AdminClassRaw[];
+  currentPage?: number;
+  totalPages?: number;
+  totalElements?: number;
+}
+
 export interface AdminLessonRaw {
   id?: string;
   title?: string;
@@ -101,8 +108,12 @@ export class AdminService {
   }
 
   // Manage Classes
-  getClasses(): Observable<AdminClassRaw[]> {
-    return this.http.get<AdminClassRaw[]>(`${this.apiBase}/teachers/classes`);
+  getClasses(page = 0, size = 5): Observable<PaginatedClassesResponse> {
+    const params: Record<string, string> = { 
+      page: page.toString(), 
+      size: size.toString()
+    };
+    return this.http.get<PaginatedClassesResponse>(`${this.apiBase}/teachers/classes`, { params });
   }
 
   deleteClass(classId: string): Observable<void> {

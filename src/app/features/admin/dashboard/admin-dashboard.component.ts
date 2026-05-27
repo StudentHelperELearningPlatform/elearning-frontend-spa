@@ -1053,6 +1053,29 @@ interface AdminClass {
                 </tbody>
               </table>
             </div>
+
+            <!-- Classes Pagination -->
+            @if (classes().length > 0 && !classesLoading() && !classesError()) {
+              <div class="p-4 border-t-4 border-black bg-gray-50 flex justify-between items-center shrink-0">
+                <button
+                  (click)="prevClassPage()"
+                  [disabled]="classesPage() <= 1"
+                  class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
+                >
+                  Previous
+                </button>
+                <span class="text-xs font-black text-black">
+                  Page {{ classesPage() }} of {{ classesTotalPages() }}
+                </span>
+                <button
+                  (click)="nextClassPage()"
+                  [disabled]="classesPage() >= classesTotalPages()"
+                  class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
+                >
+                  Next
+                </button>
+              </div>
+            }
           </app-card>
         </div>
       }
@@ -1331,6 +1354,11 @@ export class AdminDashboardComponent implements OnInit {
   userPage = signal<number>(1);
   userPageSize = signal<number>(5);
 
+  classesPage = signal<number>(1);
+  classesPageSize = signal<number>(5);
+  classesTotalPages = signal<number>(1);
+  classesTotalElements = signal<number>(0);
+
   // Pagination metadata from API
   usersCurrentPage = signal<number>(0);
   usersTotalPages = signal<number>(1);
@@ -1551,6 +1579,20 @@ export class AdminDashboardComponent implements OnInit {
   nextLessonPage() {
     if (this.lessonPage() < this.totalLessonPages()) {
       this.lessonPage.update((p) => p + 1);
+    }
+  }
+
+  prevClassPage() {
+    if (this.classesPage() > 1) {
+      this.classesPage.update((p) => p - 1);
+      this.loadClasses();
+    }
+  }
+
+  nextClassPage() {
+    if (this.classesPage() < this.classesTotalPages()) {
+      this.classesPage.update((p) => p + 1);
+      this.loadClasses();
     }
   }
 
@@ -1826,9 +1868,11 @@ export class AdminDashboardComponent implements OnInit {
   loadClasses() {
     this.classesLoading.set(true);
     this.classesError.set(null);
-    this.adminService.getClasses().subscribe({
+    const pageIndex = Math.max(0, this.classesPage() - 1);
+    this.adminService.getClasses(pageIndex, this.classesPageSize()).subscribe({
       next: (data) => {
-        const mappedClasses = this.safeExtractArray<AdminClassRaw>(data).map(
+        const rawClasses = data.classes || this.safeExtractArray<AdminClassRaw>(data);
+        const mappedClasses = rawClasses.map(
           (c: AdminClassRaw) => ({
             id: c.id || '',
             name: c.name || 'Unnamed Class',
@@ -1838,6 +1882,8 @@ export class AdminDashboardComponent implements OnInit {
           }),
         );
         this.classes.set(mappedClasses);
+        this.classesTotalPages.set(data.totalPages || 1);
+        this.classesTotalElements.set(data.totalElements || mappedClasses.length);
         this.classesLoading.set(false);
       },
       error: (err) => {

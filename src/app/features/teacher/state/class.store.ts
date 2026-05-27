@@ -76,9 +76,10 @@ export const ClassStore = signalStore(
       });
 
       http
-        .get<TeacherClassRaw[]>(`${userApi}/teachers/classes`)
+        .get<TeacherClassRaw[] | { classes?: TeacherClassRaw[], content?: TeacherClassRaw[] }>(`${userApi}/teachers/classes`)
         .subscribe({
-          next: (rawClasses) => {
+          next: (res) => {
+            const rawClasses = Array.isArray(res) ? res : (res.classes || res.content || []);
             patchState(store, {
               classes: rawClasses.map(mapClass),
               loading: false,
