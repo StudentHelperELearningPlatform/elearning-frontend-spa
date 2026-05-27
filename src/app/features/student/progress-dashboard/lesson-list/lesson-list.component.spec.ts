@@ -112,6 +112,18 @@ describe('LessonListComponent', () => {
     expect(store.loadLessons).toHaveBeenCalled();
   });
 
+  it('calls loadMyHistory on init', () => {
+    fixture.detectChanges();
+    expect(progressStore.loadMyHistory).toHaveBeenCalled();
+  });
+
+  it('shows loading skeleton in my-lessons tab when accessibleLessonsLoading is true', () => {
+    component.activeTab.set('my-lessons');
+    patchStore(store, { accessibleLessonsLoading: true });
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('.animate-pulse'))).toBeTruthy();
+  });
+
   it('renders all lesson cards with correct statuses on browser tab', () => {
     store.publishedLessons = signal(
       MOCK_LESSONS as unknown as Lesson[],
@@ -157,7 +169,7 @@ describe('LessonListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0].toString()).toContain('/student/lesson-viewer/not-started-id');
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/not-started-id');
   });
 
   it('Continue button has correct routerLink', async () => {
@@ -173,7 +185,7 @@ describe('LessonListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0].toString()).toContain('/student/lesson-viewer/in-progress-id');
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/in-progress-id');
   });
 
   it('Go to Lesson button has correct routerLink', async () => {
@@ -189,7 +201,7 @@ describe('LessonListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0].toString()).toContain('/student/lesson-viewer/quiz-ready-id');
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/quiz-ready-id');
   });
 
   it('Review button has correct routerLink', async () => {
@@ -205,7 +217,7 @@ describe('LessonListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0].toString()).toContain('/student/lesson-viewer/completed-id');
+    expect(spy.mock.calls[0][0].toString()).toContain('/student/lessons/completed-id');
   });
 
   // ─── UI States (Loading & Tabs & Empty) ──────────────────────────────────

@@ -54,6 +54,8 @@ export interface SkillLevel {
 
 export interface StudentSummary {
   id: string;
+  userId?: string;
+  studentId?: string;
   firstName: string;
   totalLessons: number;
   completedLessons: number;

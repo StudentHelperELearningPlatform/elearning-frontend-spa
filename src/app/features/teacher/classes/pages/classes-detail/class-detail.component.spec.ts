@@ -132,7 +132,7 @@ describe('ClassDetailComponent', () => {
     comp.ngOnInit();
     comp.addStudent({ studentId: 's2', firstName: 'Jane', lastName: 'Smith' });
 
-    expect(mockClassStore.addStudent).toHaveBeenCalledWith('c1', 's2');
+    expect(mockClassStore.addStudent).toHaveBeenCalledWith('c1', 's2', undefined);
     expect(mockClassStore.loadClassDetail).toHaveBeenCalledWith('c1');
     expect(comp.addingStudentId()).toBe(null);
   });

@@ -36,7 +36,7 @@ export default [
     // E2 sprint alias — keep consistent with lesson-viewer/:id
     path: 'lessons/:id',
     loadComponent: () =>
-      import('./lesson-viewer/lesson-viewer.component').then((m) => m.LessonViewerComponent),
+      import('./lesson-overview/lesson-overview.component').then((m) => m.LessonOverviewComponent),
   },
   // quiz-player is NOT directly accessible by URL — only via the lesson viewer's "Start Final Quiz" CTA
   // Navigation: LessonViewerComponent.startFinalQuiz() → router.navigate(['/student/quiz-player', lessonId])
