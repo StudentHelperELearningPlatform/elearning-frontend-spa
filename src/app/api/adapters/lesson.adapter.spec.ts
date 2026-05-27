@@ -13,6 +13,7 @@ describe('mapLessonResponse', () => {
         {
           id: 'sub-1',
           title: 'What is a fraction?',
+          orderIndex: 1,
           blocks: [
             { id: 'b-1', blockType: 'TEXT', content: '<p>A fraction is…</p>' },
           ],
@@ -48,6 +49,7 @@ describe('mapLessonResponse', () => {
         {
           id: 'sub-1',
           title: 'Photosynthesis',
+          orderIndex: 1,
           blocks: [
             {
               id: 'b-2',
@@ -103,6 +105,7 @@ describe('mapLessonResponse', () => {
         {
           id: 'sub-1',
           title: 'A',
+          orderIndex: 1,
           blocks: [
             { id: 'b-1', blockType: 'TEXT', content: 'a' },
             { id: 'b-2', blockType: 'VIDEO', content: 'v', mediaUrl: 'https://x/v.mp4' },
@@ -111,6 +114,7 @@ describe('mapLessonResponse', () => {
         {
           id: 'sub-2',
           title: 'B',
+          orderIndex: 2,
           blocks: [{ id: 'b-3', blockType: 'AUDIO', content: 'a', mediaUrl: 'https://x/a.mp3' }],
         },
       ],
@@ -130,6 +134,9 @@ describe('mapLessonResponse', () => {
       grade: 5,
       subcapitols: [
         {
+          id: 'sub-1',
+          title: 'Unknown subcapitol',
+          orderIndex: 1,
           blocks: [{ id: 'b-1', blockType: 'CUSTOM_WIDGET', content: 'foo' }],
         },
       ],
