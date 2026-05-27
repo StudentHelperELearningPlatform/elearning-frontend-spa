@@ -14,7 +14,7 @@ export interface UploadedMedia {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'audio' | 'pdf';
+  type: 'image' | 'video' | 'pdf';
   progress: number;
   status: 'uploading' | 'complete' | 'error';
   file?: File;
@@ -80,7 +80,7 @@ export interface UploadedMedia {
           id="fileInput"
           class="sr-only"
           multiple
-          accept="image/jpeg,image/png,image/gif,video/mp4,audio/mpeg,audio/wav,audio/ogg,application/pdf"
+          accept="image/jpeg,image/png,image/gif,video/mp4,application/pdf"
           (change)="onFileSelected($event)"
           tabindex="-1"
         />
@@ -261,9 +261,6 @@ export class MediaUploadComponent {
     'image/png',
     'image/gif',
     'video/mp4',
-    'audio/mpeg',
-    'audio/wav',
-    'audio/ogg',
     'application/pdf',
   ];
 
@@ -307,7 +304,7 @@ export class MediaUploadComponent {
 
     for (const file of files) {
       if (!this.ALLOWED_TYPES.includes(file.type)) {
-        errors.push(`Invalid file type: ${file.name}. Only images, videos, audio, and PDFs are allowed.`);
+        errors.push(`Invalid file type: ${file.name}. Only images, videos, and PDFs are allowed.`);
       } else if (file.size > this.MAX_SIZE_BYTES) {
         errors.push(`File too large: ${file.name}. Maximum size is ${this.MAX_SIZE_MB}MB.`);
       } else {
@@ -326,14 +323,12 @@ export class MediaUploadComponent {
   }
 
   uploadFile(file: File, existingId?: string) {
-    let mediaType: 'image' | 'video' | 'audio' | 'pdf';
+    let mediaType: 'image' | 'video' | 'pdf';
 
     if (file.type.startsWith('image/')) {
       mediaType = 'image';
     } else if (file.type.startsWith('video/')) {
       mediaType = 'video';
-    } else if (file.type.startsWith('audio/')) {
-      mediaType = 'audio';
     } else if (file.type === 'application/pdf') {
       mediaType = 'pdf';
     } else {
