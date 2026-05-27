@@ -182,16 +182,16 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
               @if (
                 currentModule()?.type === 'video' ||
                 currentModule()?.type === 'image' ||
-                currentModule()?.type === 'audio'
+                currentModule()?.type === 'pdf'
               ) {
                 <div class="mb-10">
                   <app-media-player
-                    [url]="currentModule()?.mediaUrl || 'https://picsum.photos/seed/lesson/800/450'"
+                    [url]="currentModule()?.mediaUrl || ''"
                     [type]="
                       currentModule()?.type === 'video'
                         ? 'video'
-                        : currentModule()?.type === 'audio'
-                          ? 'audio'
+                        : currentModule()?.type === 'pdf'
+                          ? 'pdf'
                           : 'image'
                     "
                     [title]="currentModule()?.title || 'Media'"
@@ -571,8 +571,10 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
         return 'quiz';
       case 'interactive':
         return 'touch_app';
-      case 'audio':
-        return 'headphones';
+      case 'pdf':
+        return 'picture_as_pdf';
+      case 'image':
+        return 'image';
       default:
         return 'menu_book';
     }

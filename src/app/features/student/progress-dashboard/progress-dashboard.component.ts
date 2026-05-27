@@ -142,26 +142,21 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     effect(() => {
       const profile = this.profileStore.profile();
       if (profile) {
-        const classes = profile.enrolledClasses || [];
-        const firstClassId = classes[0];
-        const dashboardClassId = firstClassId || '00000000-0000-0000-0000-000000000000';
-        this.progressStore.loadMyDashboard({ classId: dashboardClassId });
-
-        if (classes.length > 0) {
-          this.classesLoading.set(true);
-          const requests = classes.map(id =>
-            this.classService.getClassDetail(id).pipe(
-              catchError(() => of(null))
-            )
-          );
-          forkJoin(requests).subscribe(results => {
-            const validClasses = results.filter((c): c is NonNullable<typeof c> => c !== null);
-            this.enrolledClassesList.set(validClasses);
+        this.classesLoading.set(true);
+        
+        untracked(() => {
+          this.classService.getStudentClasses().pipe(
+            catchError(() => of([]))
+          ).subscribe(classes => {
+            this.enrolledClassesList.set(classes);
+            
+            const firstClassId = classes[0]?.id;
+            const dashboardClassId = firstClassId || '00000000-0000-0000-0000-000000000000';
+            this.progressStore.loadMyDashboard({ classId: dashboardClassId });
+            
             this.classesLoading.set(false);
           });
-        } else {
-          this.enrolledClassesList.set([]);
-        }
+        });
       }
     });
 

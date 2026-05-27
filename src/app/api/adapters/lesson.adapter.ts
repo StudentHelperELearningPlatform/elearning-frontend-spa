@@ -49,8 +49,8 @@ const KNOWN_TYPES: readonly Module['type'][] = [
   'text',
   'quiz',
   'interactive',
-  'audio',
   'image',
+  'pdf',
 ];
 
 const normaliseModuleType = (raw: string | null | undefined): Module['type'] => {

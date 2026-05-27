@@ -409,7 +409,8 @@ describe('LessonViewerComponent', () => {
       expect(component.getModuleIcon('text')).toBe('article');
       expect(component.getModuleIcon('quiz')).toBe('quiz');
       expect(component.getModuleIcon('interactive')).toBe('touch_app');
-      expect(component.getModuleIcon('audio')).toBe('headphones');
+      expect(component.getModuleIcon('pdf')).toBe('picture_as_pdf');
+      expect(component.getModuleIcon('image')).toBe('image');
       expect(component.getModuleIcon('unknown_type')).toBe('menu_book');
     });
   });
