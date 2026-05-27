@@ -111,8 +111,8 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
       )?.lessonTitle;
     if (fromHistory) return fromHistory;
 
-    const current = this.lessonsStore.currentLesson();
-    if (current && current.id === latestLessonId && current.title) {
+    const current = this.lessonsStore.lessons().find(l => String(l.id).toLowerCase() === String(latestLessonId).toLowerCase());
+    if (current && current.title) {
       return current.title;
     }
     return null;

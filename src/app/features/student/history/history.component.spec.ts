@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import { HistoryComponent } from './history.component';
 import { ProgressStore, HistoryEntry } from '../store/progress.store';
+import { LessonsStore } from '../store/lessons.store';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 const baseRow = (overrides: Partial<HistoryEntry>): HistoryEntry => ({
@@ -85,5 +86,33 @@ describe('HistoryComponent', () => {
     expect(component['fromDate']).toBe('');
     expect(component['toDate']).toBe('');
     expect(component['page']()).toBe(1);
+  });
+
+  it('maps untitled lesson to lesson store title if available', () => {
+    component.ngOnInit();
+    const req = http.expectOne((r) => r.url.includes('/progress/me/history'));
+    req.flush([
+      baseRow({ lessonId: 'l1', lessonTitle: 'Untitled lesson' }),
+      baseRow({ lessonId: 'l2', lessonTitle: '' }),
+      baseRow({ lessonId: 'l3', lessonTitle: 'Valid Title' })
+    ]);
+
+    const contentReq1 = http.expectOne((r) => r.url.includes('/lessons/l1'));
+    contentReq1.flush({ id: 'l1', title: 'Real Lesson 1' });
+    
+    const contentReq2 = http.expectOne((r) => r.url.includes('/lessons/l2'));
+    contentReq2.flush({ id: 'l2', title: 'Real Lesson 2' });
+
+    const lessonsStore = TestBed.inject(LessonsStore);
+    // @ts-expect-error - we just need to set the state for testing
+    lessonsStore['lessons'] = () => [
+      { id: 'l1', title: 'Real Lesson 1' },
+      { id: 'l2', title: 'Real Lesson 2' }
+    ];
+
+    const paged = component['pagedHistory']();
+    expect(paged[0].lessonTitle).toBe('Real Lesson 1');
+    expect(paged[1].lessonTitle).toBe('Real Lesson 2');
+    expect(paged[2].lessonTitle).toBe('Valid Title');
   });
 });

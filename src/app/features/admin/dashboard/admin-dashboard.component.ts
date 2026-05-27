@@ -466,17 +466,26 @@ interface AdminClass {
                 </button>
               </div>
 
-              <div class="relative flex-1 md:w-72">
-                <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  >search</span
+              <div class="relative flex-1 md:w-96 flex gap-2">
+                <div class="relative flex-1">
+                  <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    >search</span
+                  >
+                  <input
+                    #searchInput
+                    type="text"
+                    [value]="userSearchQuery()"
+                    (keyup.enter)="triggerUserSearch(searchInput.value)"
+                    placeholder="Search by name or email..."
+                    class="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[#0ABAB5] transition-all text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none"
+                  />
+                </div>
+                <button
+                  (click)="triggerUserSearch(searchInput.value)"
+                  class="px-4 py-2.5 bg-[#0ABAB5] text-white border-2 border-black rounded-xl font-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all whitespace-nowrap"
                 >
-                <input
-                  type="text"
-                  [value]="userSearchQuery()"
-                  (input)="updateUserSearch($event)"
-                  placeholder="Search by name or email..."
-                  class="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-black rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[#0ABAB5] transition-all text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none"
-                />
+                  Search
+                </button>
               </div>
             </div>
           </div>
@@ -1508,10 +1517,14 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  updateUserSearch(event: Event) {
-    const value = (event.target as HTMLInputElement).value;
+  triggerUserSearch(value: string) {
     this.userSearchQuery.set(value);
     this.userPage.set(1);
+    if (value.trim().length > 0) {
+      this.userPageSize.set(10000); // size max
+    } else {
+      this.userPageSize.set(5);
+    }
     this.loadUsers();
   }
 
@@ -1674,7 +1687,10 @@ export class AdminDashboardComponent implements OnInit {
           if (finalId) bannedIds.add(finalId);
         });
 
-        this.adminService.getUsers(this.userPage(), this.userPageSize()).subscribe({
+        const queryStr = this.userSearchQuery().trim();
+        const pageIndex = Math.max(0, this.userPage() - 1);
+        
+        this.adminService.getUsers(pageIndex, this.userPageSize(), queryStr).subscribe({
           next: (paginatedResponse: PaginatedUsersResponse) => {
             const rawList = this.safeExtractArray<AdminUserRaw>(paginatedResponse);
             const mappedUsersList = rawList.map((u: AdminUserRaw) => {

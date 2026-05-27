@@ -48,7 +48,7 @@ describe('AdminService', () => {
       expect(response.totalElements).toBe(1);
     });
 
-    const req = httpTestingController.expectOne(`${mockUserApiUrl}/users?page=0&size=5`);
+    const req = httpTestingController.expectOne(`${mockUserApiUrl}/users?page=0&size=5&query=`);
     expect(req.request.method).toBe('GET');
     req.flush(mockResponse);
   });
@@ -73,7 +73,7 @@ describe('AdminService', () => {
       expect(response.totalElements).toBe(25);
     });
 
-    const req = httpTestingController.expectOne(`${mockUserApiUrl}/users?page=2&size=10`);
+    const req = httpTestingController.expectOne(`${mockUserApiUrl}/users?page=2&size=10&query=`);
     expect(req.request.method).toBe('GET');
     req.flush(mockResponse);
   });

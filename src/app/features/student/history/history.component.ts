@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
 import { ProgressStore, HistoryEntry } from '../store/progress.store';
+import { LessonsStore } from '../store/lessons.store';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 
 const PAGE_SIZE = 20;
@@ -165,6 +166,7 @@ const PAGE_SIZE = 20;
 })
 export class HistoryComponent implements OnInit {
   protected readonly progressStore = inject(ProgressStore);
+  protected readonly lessonsStore = inject(LessonsStore);
 
   protected readonly page = signal(1);
   protected readonly fromDateSignal = signal<string | null>(null);
@@ -194,11 +196,25 @@ export class HistoryComponent implements OnInit {
   protected readonly pagedHistory = computed(() => {
     const all = this.filteredHistory();
     const start = (this.page() - 1) * PAGE_SIZE;
-    return all.slice(start, start + PAGE_SIZE);
+    const items = all.slice(start, start + PAGE_SIZE);
+    
+    const lessons = this.lessonsStore.lessons();
+    return items.map(entry => {
+      let title = entry.lessonTitle;
+      if (!title || title.trim().toLowerCase() === 'untitled lesson') {
+        const l = lessons.find(lesson => String(lesson.id).toLowerCase() === String(entry.lessonId).toLowerCase());
+        if (l?.title) title = l.title;
+      }
+      if (!title || title.trim() === '') title = 'Untitled lesson';
+      return { ...entry, lessonTitle: title };
+    });
   });
 
   ngOnInit(): void {
     this.progressStore.loadMyHistory();
+    if (this.lessonsStore.lessons().length === 0) {
+      this.lessonsStore.loadLessons();
+    }
   }
 
   protected onDateChange(): void {

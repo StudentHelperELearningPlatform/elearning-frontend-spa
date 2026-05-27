@@ -594,13 +594,16 @@ describe('ProgressStore', () => {
         },
       ]);
 
+      const contentReq = http.expectOne((r) => r.url.includes('/api/v1/lessons/lesson-123456789'));
+      contentReq.flush({ id: 'lesson-123456789', title: 'Mocked Lesson Title', subject: 'Mocked Subject' });
+
       const history = store.myHistory();
       expect(history.length).toBe(3);
 
-      // First item checks: fallback title, subject default, status based on completedAt
+      // First item checks: fetched from content API
       expect(history[0].lessonId).toBe('lesson-123456789');
-      expect(history[0].lessonTitle).toBe('Untitled lesson');
-      expect(history[0].subject).toBe('General');
+      expect(history[0].lessonTitle).toBe('Mocked Lesson Title');
+      expect(history[0].subject).toBe('Mocked Subject');
       expect(history[0].status).toBe('completed');
       expect(history[0].dateCompleted).toBe('2026-05-10T10:00:00Z');
 

@@ -12,6 +12,7 @@ export interface Milestone {
   earnedAt?: string;
   progress?: number;
   goal?: number;
+  lessonId?: string;
 }
 
 interface BackendMilestone {
@@ -26,6 +27,7 @@ interface BackendMilestone {
   earnedAt?: string;
   progress?: number;
   goal?: number;
+  lessonId?: string;
 }
 
 @Injectable({
@@ -74,8 +76,8 @@ export class MilestonesStore {
       .get<BackendMilestone[]>(`${this.userPlatformApi}/progress/me/milestones`)
       .subscribe({
         next: (data) => {
-          const mapped: Milestone[] = (data || []).map((m) => ({
-            id: String(m.id),
+          const mapped: Milestone[] = (data || []).map((m: BackendMilestone & { uuid?: string, milestoneId?: string }) => ({
+            id: String(m.id || m.uuid || m.milestoneId || ''),
             title: m.nume || m.title || '',
             description: m.descriere || m.description || '',
             category: (m.type || m.category || 'learning') as Milestone['category'],
@@ -83,6 +85,7 @@ export class MilestonesStore {
             icon: this.getIconForCategory(m.type || m.category),
             progress: m.progress ?? undefined,
             goal: m.goal ?? undefined,
+            lessonId: m.lessonId ?? undefined,
           }));
 
           this.milestones.set(mapped);
@@ -107,6 +110,11 @@ export class MilestonesStore {
   }
 
   loadMilestoneDetail(milestoneId: string) {
+    if (!milestoneId || milestoneId === 'undefined' || milestoneId === 'null') {
+      this.notification.error('Invalid milestone ID');
+      return;
+    }
+
     this.detailLoading.set(true);
     this.selectedMilestone.set(null);
 
@@ -124,6 +132,7 @@ export class MilestonesStore {
               icon: this.getIconForCategory(data.type || data.category),
               progress: data.progress ?? undefined,
               goal: data.goal ?? undefined,
+              lessonId: data.lessonId ?? undefined,
             };
             this.selectedMilestone.set(mapped);
           }
