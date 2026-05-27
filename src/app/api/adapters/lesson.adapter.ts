@@ -36,7 +36,12 @@ export interface BackendLesson {
   shortDescription?: string;
   authorId?: string;
   subcapitols?: BackendSubcapitol[];
-  progress?: any;
+  progress?: {
+    finished?: boolean;
+    status?: string;
+    isFinished?: boolean;
+    completed?: boolean;
+  } | null;
 }
 
 const KNOWN_TYPES: readonly Module['type'][] = [

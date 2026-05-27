@@ -14,6 +14,20 @@ export interface Milestone {
   goal?: number;
 }
 
+interface BackendMilestone {
+  id: string | number;
+  nume?: string;
+  title?: string;
+  descriere?: string;
+  description?: string;
+  type?: string;
+  category?: Milestone['category'];
+  achievedAt?: string;
+  earnedAt?: string;
+  progress?: number;
+  goal?: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -44,7 +58,7 @@ export class MilestonesStore {
 
   private readonly userPlatformApi = inject(USER_PLATFORM_API_URL);
 
-  private getIconForCategory(category: string): string {
+  private getIconForCategory(category?: string): string {
     const cat = (category || '').toLowerCase().trim();
     if (cat === 'learning') return 'school';
     if (cat === 'streak') return 'local_fire_department';
@@ -53,18 +67,18 @@ export class MilestonesStore {
     return 'emoji_events';
   }
 
-  loadMilestones(studentId?: string) {
+  loadMilestones() {
     this.loading.set(true);
 
     this.http
-      .get<any[]>(`${this.userPlatformApi}/progress/me/milestones`)
+      .get<BackendMilestone[]>(`${this.userPlatformApi}/progress/me/milestones`)
       .subscribe({
         next: (data) => {
-          const mapped: Milestone[] = (data || []).map(m => ({
-            id: m.id,
+          const mapped: Milestone[] = (data || []).map((m) => ({
+            id: String(m.id),
             title: m.nume || m.title || '',
             description: m.descriere || m.description || '',
-            category: m.type || m.category || 'learning',
+            category: (m.type || m.category || 'learning') as Milestone['category'],
             earnedAt: m.achievedAt || m.earnedAt || undefined,
             icon: this.getIconForCategory(m.type || m.category),
             progress: m.progress ?? undefined,
@@ -97,15 +111,15 @@ export class MilestonesStore {
     this.selectedMilestone.set(null);
 
     this.http
-      .get<any>(`${this.userPlatformApi}/progress/me/milestones/${milestoneId}`)
+      .get<BackendMilestone>(`${this.userPlatformApi}/progress/me/milestones/${milestoneId}`)
       .subscribe({
         next: (data) => {
           if (data) {
             const mapped: Milestone = {
-              id: data.id,
+              id: String(data.id),
               title: data.nume || data.title || '',
               description: data.descriere || data.description || '',
-              category: data.type || data.category || 'learning',
+              category: (data.type || data.category || 'learning') as Milestone['category'],
               earnedAt: data.achievedAt || data.earnedAt || undefined,
               icon: this.getIconForCategory(data.type || data.category),
               progress: data.progress ?? undefined,
