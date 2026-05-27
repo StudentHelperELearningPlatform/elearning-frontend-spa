@@ -1,4 +1,13 @@
-import { Component, signal, inject } from '@angular/core';
+import {
+  Component,
+  signal,
+  inject,
+  Input,
+  Output,
+  EventEmitter,
+  OnChanges,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   CdkDragDrop,
@@ -18,6 +27,7 @@ export interface UploadedMedia {
   progress: number;
   status: 'uploading' | 'complete' | 'error';
   file?: File;
+  mediaBlockId?: string;
 }
 
 @Component({
@@ -32,13 +42,16 @@ export interface UploadedMedia {
         border: none !important;
         border-radius: 0 !important;
       }
+
       ::ng-deep .cdk-drag-placeholder {
         opacity: 0.3 !important;
         border: 2px dashed black !important;
       }
+
       ::ng-deep .cdk-drag-animating {
         transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
       }
+
       .cdk-drop-list-dragging .cdk-drag {
         transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
       }
@@ -54,7 +67,7 @@ export interface UploadedMedia {
         class="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
         [ngClass]="{
           'border-[#0ABAB5] bg-[#0ABAB5]/10': isDragging(),
-          'border-black/30': !isDragging(),
+          'border-black/30': !isDragging()
         }"
         role="button"
         tabindex="0"
@@ -68,12 +81,20 @@ export interface UploadedMedia {
         <span
           class="material-icons text-5xl text-gray-400 mb-2 transition-colors"
           [class.text-[#0ABAB5]]="isDragging()"
-          >cloud_upload</span
         >
-        <p class="text-black font-bold text-lg tracking-tight mb-1">Drag and drop media here</p>
-        <p class="text-sm text-gray-600 font-medium mb-4">Images, Video, Audio, or PDF (Max 50MB)</p>
+          cloud_upload
+        </span>
+
+        <p class="text-black font-bold text-lg tracking-tight mb-1">
+          Drag and drop media here
+        </p>
+
+        <p class="text-sm text-gray-600 font-medium mb-4">
+          Images, Video, Audio, or PDF (Max 50MB)
+        </p>
 
         <label class="sr-only" for="fileInput">Browse files</label>
+
         <input
           #fileInput
           type="file"
@@ -108,7 +129,9 @@ export interface UploadedMedia {
 
       @if (mediaList().length > 0) {
         <div class="mt-5 pt-4 border-t-2 border-black/10">
-          <h4 class="text-sm font-bold text-black tracking-tight mb-3">Attached Media</h4>
+          <h4 class="text-sm font-bold text-black tracking-tight mb-3">
+            Attached Media
+          </h4>
 
           <div
             cdkDropList
@@ -129,13 +152,12 @@ export interface UploadedMedia {
                       <div
                         class="h-24 flex flex-col items-center justify-center !bg-gray-50 !rounded-lg !border-2 !border-dashed !border-gray-300"
                       >
-                        <span class="material-icons animate-spin text-[#0ABAB5] text-3xl !mb-2"
-                          >autorenew</span
-                        >
+                        <span class="material-icons animate-spin text-[#0ABAB5] text-3xl !mb-2">
+                          autorenew
+                        </span>
+
                         <div class="w-full !px-3">
-                          <div
-                            class="h-2 !bg-white !rounded-full overflow-hidden border border-black"
-                          >
+                          <div class="h-2 !bg-white !rounded-full overflow-hidden border border-black">
                             <div
                               class="h-full bg-[#0ABAB5] transition-all duration-200"
                               [style.width.%]="media.progress"
@@ -153,8 +175,7 @@ export interface UploadedMedia {
                           [url]="media.url"
                           [type]="media.type"
                           [title]="media.name"
-                        >
-                        </app-media-player>
+                        ></app-media-player>
                       </div>
                     }
 
@@ -163,6 +184,7 @@ export interface UploadedMedia {
                         class="h-24 flex flex-col items-center justify-center !bg-red-50 !rounded-lg !border-2 !border-solid !border-red-300 !p-2 text-center"
                       >
                         <span class="material-icons text-red-500 !mb-1">error</span>
+
                         <p class="text-[10px] text-red-700 font-bold leading-tight !mb-1">
                           Upload failed. Try again.
                         </p>
@@ -182,9 +204,10 @@ export interface UploadedMedia {
                   <div
                     class="h-24 flex flex-col items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300"
                   >
-                    <span class="material-icons animate-spin text-[#0ABAB5] text-3xl mb-2"
-                      >autorenew</span
-                    >
+                    <span class="material-icons animate-spin text-[#0ABAB5] text-3xl mb-2">
+                      autorenew
+                    </span>
+
                     <div class="w-full px-3">
                       <div class="h-2 bg-white rounded-full overflow-hidden border border-black">
                         <div
@@ -200,8 +223,11 @@ export interface UploadedMedia {
                   <div
                     class="h-24 rounded-lg overflow-hidden relative border border-black/10 bg-black"
                   >
-                    <app-media-player [url]="media.url" [type]="media.type" [title]="media.name">
-                    </app-media-player>
+                    <app-media-player
+                      [url]="media.url"
+                      [type]="media.type"
+                      [title]="media.name"
+                    ></app-media-player>
                   </div>
                 }
 
@@ -210,10 +236,13 @@ export interface UploadedMedia {
                     class="h-24 flex flex-col items-center justify-center bg-red-50 rounded-lg border-2 border-red-300 p-2 text-center"
                   >
                     <span class="material-icons text-red-500 mb-1">error</span>
+
                     <p class="text-[10px] text-red-700 font-bold leading-tight mb-1">
                       Upload failed. Try again.
                     </p>
+
                     <button
+                      type="button"
                       (click)="retryUpload(media.id)"
                       class="text-xs bg-red-100 border border-red-500 text-red-700 px-2 py-1 rounded font-bold hover:bg-red-200 focus:ring-2 focus:ring-red-500 cursor-pointer"
                     >
@@ -223,13 +252,14 @@ export interface UploadedMedia {
                 }
 
                 <button
+                  type="button"
                   class="absolute -top-2 -right-2 bg-white text-red-500 rounded-full w-6 h-6 flex items-center justify-center border-2 border-black opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 z-10 focus:opacity-100"
                   (click)="removeMedia(media.id)"
                   aria-label="Remove media"
                 >
-                  <span class="material-icons text-sm font-black" style="font-size: 14px;"
-                    >close</span
-                  >
+                  <span class="material-icons text-sm font-black" style="font-size: 14px;">
+                    close
+                  </span>
                 </button>
 
                 <p
@@ -246,8 +276,12 @@ export interface UploadedMedia {
     </div>
   `,
 })
-export class MediaUploadComponent {
+export class MediaUploadComponent implements OnChanges {
   private readonly http = inject(HttpClient);
+
+  @Input() media: UploadedMedia[] = [];
+  @Output() mediaChange = new EventEmitter<UploadedMedia[]>();
+  @Output() mediaRemoved = new EventEmitter<UploadedMedia>();
 
   isDragging = signal(false);
   errorMessage = signal<string | null>(null);
@@ -256,6 +290,7 @@ export class MediaUploadComponent {
 
   readonly MAX_SIZE_MB = 50;
   readonly MAX_SIZE_BYTES = this.MAX_SIZE_MB * 1024 * 1024;
+
   readonly ALLOWED_TYPES = [
     'image/jpeg',
     'image/png',
@@ -264,39 +299,46 @@ export class MediaUploadComponent {
     'application/pdf',
   ];
 
-  onDragOver(event: DragEvent) {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['media']) {
+      this.mediaList.set(this.media ?? []);
+    }
+  }
+
+  onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging.set(true);
   }
 
-  onDragLeave(event: DragEvent) {
+  onDragLeave(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging.set(false);
   }
 
-  onDrop(event: DragEvent) {
+  onDrop(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging.set(false);
 
     const files = event.dataTransfer?.files;
+
     if (files && files.length > 0) {
       this.handleFiles(Array.from(files));
     }
   }
 
-  onFileSelected(event: Event) {
+  onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
+
     if (input.files && input.files.length > 0) {
       this.handleFiles(Array.from(input.files));
       input.value = '';
     }
-
   }
 
-  handleFiles(files: File[]) {
+  handleFiles(files: File[]): void {
     this.errorMessage.set(null);
 
     const errors: string[] = [];
@@ -322,27 +364,30 @@ export class MediaUploadComponent {
     }
   }
 
-  uploadFile(file: File, existingId?: string) {
-    let mediaType: 'image' | 'video' | 'pdf';
+  uploadFile(file: File, existingId?: string): void {
+    const mediaType = this.resolveLocalMediaType(file);
 
-    if (file.type.startsWith('image/')) {
-      mediaType = 'image';
-    } else if (file.type.startsWith('video/')) {
-      mediaType = 'video';
-    } else if (file.type === 'application/pdf') {
-      mediaType = 'pdf';
-    } else {
+    if (!mediaType) {
       return;
     }
-    const id = existingId || crypto.randomUUID();
+
+    const tempId = existingId || crypto.randomUUID();
 
     if (existingId) {
       this.mediaList.update((list) =>
-        list.map((m) => (m.id === id ? { ...m, status: 'uploading', progress: 0 } : m)),
+        list.map((media) =>
+          media.id === tempId
+            ? {
+                ...media,
+                status: 'uploading',
+                progress: 0,
+              }
+            : media,
+        ),
       );
     } else {
       const newMedia: UploadedMedia = {
-        id,
+        id: tempId,
         url: '',
         name: file.name,
         type: mediaType,
@@ -350,7 +395,9 @@ export class MediaUploadComponent {
         status: 'uploading',
         file,
       };
+
       this.mediaList.update((list) => [...list, newMedia]);
+      this.emitMediaChange();
     }
 
     const formData = new FormData();
@@ -359,7 +406,13 @@ export class MediaUploadComponent {
     const uploadUrl = `${environment.lessonApiUrl}/api/v1/media/upload`;
 
     this.http
-      .post<{ url: string }>(uploadUrl, formData, {
+      .post<{
+        id: string;
+        url: string;
+        originalFilename: string;
+        mediaType: string;
+        mimeType: string;
+      }>(uploadUrl, formData, {
         reportProgress: true,
         observe: 'events',
       })
@@ -367,48 +420,147 @@ export class MediaUploadComponent {
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress && event.total) {
             const progress = Math.round((100 * event.loaded) / event.total);
+
             this.mediaList.update((list) =>
-              list.map((m) => (m.id === id ? { ...m, progress } : m)),
+              list.map((media) =>
+                media.id === tempId
+                  ? {
+                      ...media,
+                      progress,
+                    }
+                  : media,
+              ),
             );
           } else if (event.type === HttpEventType.Response) {
-            const url = event.body?.url || URL.createObjectURL(file);
+            const body = event.body;
+
+            const backendId = body?.id || tempId;
+            const url = body?.url || URL.createObjectURL(file);
+            const name = body?.originalFilename || file.name;
+            const type = this.resolveBackendMediaType(body?.mimeType, body?.mediaType, name);
+
             this.mediaList.update((list) =>
-              list.map((m) => (m.id === id ? { ...m, status: 'complete', progress: 100, url } : m)),
+              list.map((media) =>
+                media.id === tempId
+                  ? {
+                      ...media,
+                      id: backendId,
+                      status: 'complete',
+                      progress: 100,
+                      url,
+                      name,
+                      type,
+                    }
+                  : media,
+              ),
             );
+
+            this.emitMediaChange();
             this.announceA11y(`Upload complete: ${file.name}`);
           }
         },
+
         error: () => {
           this.mediaList.update((list) =>
-            list.map((m) => (m.id === id ? { ...m, status: 'error' } : m)),
+            list.map((media) =>
+              media.id === tempId
+                ? {
+                    ...media,
+                    status: 'error',
+                  }
+                : media,
+            ),
           );
+
+          this.emitMediaChange();
           this.announceA11y(`Upload failed for ${file.name}`);
         },
       });
   }
 
-  retryUpload(id: string) {
-    const media = this.mediaList().find((m) => m.id === id);
+  retryUpload(id: string): void {
+    const media = this.mediaList().find((item) => item.id === id);
+
     if (media?.file) {
       this.uploadFile(media.file, id);
     }
   }
 
-  removeMedia(id: string) {
-    if (confirm('Are you sure you want to remove this media?')) {
-      this.mediaList.update((list) => list.filter((m) => m.id !== id));
-      this.announceA11y('Media removed');
+  removeMedia(id: string): void {
+    if (!confirm('Are you sure you want to remove this media?')) {
+      return;
     }
+
+    const removedMedia = this.mediaList().find((media) => media.id === id);
+
+    this.mediaList.update((list) => list.filter((media) => media.id !== id));
+
+    if (removedMedia) {
+      this.mediaRemoved.emit(removedMedia);
+    }
+
+    this.emitMediaChange();
+    this.announceA11y('Media removed');
   }
 
-  dropMediaList(event: CdkDragDrop<UploadedMedia[]>) {
+  dropMediaList(event: CdkDragDrop<UploadedMedia[]>): void {
     this.mediaList.update((list) => {
       moveItemInArray(list, event.previousIndex, event.currentIndex);
       return [...list];
     });
+
+    this.emitMediaChange();
   }
 
-  private announceA11y(message: string) {
+  private emitMediaChange(): void {
+    this.mediaChange.emit(this.mediaList());
+  }
+
+  private announceA11y(message: string): void {
     this.a11yMessage.set(message);
+  }
+
+  private resolveLocalMediaType(file: File): 'image' | 'video' | 'pdf' | null {
+    if (file.type.startsWith('image/')) {
+      return 'image';
+    }
+
+    if (file.type.startsWith('video/')) {
+      return 'video';
+    }
+
+    if (file.type === 'application/pdf') {
+      return 'pdf';
+    }
+
+    return null;
+  }
+
+  private resolveBackendMediaType(
+    mimeType?: string,
+    mediaType?: string,
+    filename?: string,
+  ): 'image' | 'video' | 'pdf' {
+    const safeMimeType = (mimeType || '').toLowerCase();
+    const safeMediaType = (mediaType || '').toLowerCase();
+    const safeFilename = (filename || '').toLowerCase();
+
+    if (
+      safeMimeType === 'application/pdf' ||
+      safeMediaType === 'file' ||
+      safeFilename.endsWith('.pdf')
+    ) {
+      return 'pdf';
+    }
+
+    if (
+      safeMimeType.startsWith('video/') ||
+      safeMediaType === 'video' ||
+      safeFilename.endsWith('.mp4')
+    ) {
+      return 'video';
+    }
+
+    return 'image';
   }
 }

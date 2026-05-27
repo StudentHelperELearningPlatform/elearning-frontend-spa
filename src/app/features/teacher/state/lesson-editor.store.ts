@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { CONTENT_API_URL } from '@core/tokens/api.token';
 import { lastValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
+import { UploadedMedia } from '../lesson-editor/media-upload/media-upload.component';
 
 export type ModuleType = 'text' | 'video' | 'image' | 'audio' | 'quiz' | 'interactive';
 export type LessonStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -13,7 +14,7 @@ export interface LessonModuleDraft {
   title: string;
   type: ModuleType;
   content: string;
-  mediaUrls?: string[];
+  media?: UploadedMedia[];
   blockId?: string;
 }
 
@@ -68,10 +69,10 @@ const toCreatePayload = (lesson: LessonDraft) => ({
   shortDescription: lesson.short_description || '',
   subcapitols:
     lesson.modules.length > 0
-      ? lesson.modules.map((m, idx) => ({
-          title: m.title.trim() ? m.title : 'Untitled Module',
-          orderIndex: idx + 1,
-        }))
+      ? lesson.modules.map((module, index) => ({
+        title: module.title.trim() ? module.title : 'Untitled Module',
+        orderIndex: index + 1,
+      }))
       : [{ title: 'Introduction', orderIndex: 1 }],
 });
 
@@ -82,6 +83,66 @@ const toUpdatePayload = (lesson: LessonDraft) => ({
   estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
   shortDescription: lesson.short_description || '',
 });
+
+const getStringValue = (source: Record<string, unknown>, keys: string[], fallback = ''): string => {
+  for (const key of keys) {
+    const value = source[key];
+
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  return fallback;
+};
+
+const resolveMediaType = (data: {
+  mimeType?: string;
+  mediaType?: string;
+  blockType?: string;
+  url?: string;
+  name?: string;
+}): 'image' | 'video' | 'pdf' => {
+  const mimeType = (data.mimeType || '').toLowerCase();
+  const mediaType = (data.mediaType || '').toLowerCase();
+  const blockType = (data.blockType || '').toLowerCase();
+  const url = (data.url || '').toLowerCase();
+  const name = (data.name || '').toLowerCase();
+
+  if (
+    mimeType === 'application/pdf' ||
+    mediaType === 'file' ||
+    blockType === 'file' ||
+    url.endsWith('.pdf') ||
+    name.endsWith('.pdf')
+  ) {
+    return 'pdf';
+  }
+
+  if (
+    mimeType.startsWith('video/') ||
+    mediaType === 'video' ||
+    blockType === 'video' ||
+    url.endsWith('.mp4') ||
+    name.endsWith('.mp4')
+  ) {
+    return 'video';
+  }
+
+  return 'image';
+};
+
+const toBackendBlockType = (media: UploadedMedia): 'IMAGE' | 'VIDEO' | 'FILE' => {
+  if (media.type === 'image') {
+    return 'IMAGE';
+  }
+
+  if (media.type === 'video') {
+    return 'VIDEO';
+  }
+
+  return 'FILE';
+};
 
 const mapFromResponse = (
   saved: Record<string, unknown>,
@@ -98,18 +159,110 @@ const mapFromResponse = (
 
   modules:
     ((saved['subcapitols'] ?? saved['modules']) as Record<string, unknown>[])?.map(
-      (s: Record<string, unknown>, idx: number) => {
-        const fallback = fallbackModules.find((fm) => fm.id === s['id'] || fm.title === s['title']);
-        const textBlock = ((s['blocks'] as Record<string, unknown>[]) || []).find(
-          (b: Record<string, unknown>) => b['blockType'] === 'TEXT' || b['blockType'] === 'text',
+      (subcapitol: Record<string, unknown>, index: number) => {
+        const fallback = fallbackModules.find(
+          (module) => module.id === subcapitol['id'] || module.title === subcapitol['title'],
         );
 
+        const blocks = ((subcapitol['blocks'] as Record<string, unknown>[]) || []) as Record<
+          string,
+          unknown
+        >[];
+
+        const textBlock = blocks.find((block) => {
+          const blockType = block['blockType'] ?? block['block_type'];
+          return blockType === 'TEXT' || blockType === 'text';
+        });
+
+        const mediaBlocks = blocks.filter((block) => {
+          const blockType = block['blockType'] ?? block['block_type'];
+
+          return (
+            blockType === 'IMAGE' ||
+            blockType === 'VIDEO' ||
+            blockType === 'FILE' ||
+            blockType === 'image' ||
+            blockType === 'video' ||
+            blockType === 'file' ||
+            !!block['mediaId'] ||
+            !!block['media_id']
+          );
+        });
+
+        const media = mediaBlocks
+          .map((block) => {
+            const nestedMedia = (block['media'] || block['mediaAsset']) as
+              | Record<string, unknown>
+              | undefined;
+
+            const blockType = getStringValue(block, ['blockType', 'block_type']);
+
+            const mediaId =
+              getStringValue(block, ['mediaId', 'media_id']) ||
+              (nestedMedia ? getStringValue(nestedMedia, ['id']) : '');
+
+            const backendName =
+              getStringValue(block, [
+                'mediaOriginalFilename',
+                'originalFilename',
+                'fileName',
+                'content',
+              ]) ||
+              (nestedMedia ? getStringValue(nestedMedia, ['originalFilename', 'name']) : '') ||
+              'Uploaded media';
+
+            const fallbackMedia = fallback?.media?.find((item) => {
+              return (
+                item.id === mediaId ||
+                item.mediaBlockId === block['id'] ||
+                item.name === backendName
+              );
+            });
+
+            const backendUrl =
+              getStringValue(block, ['mediaUrl', 'url']) ||
+              (nestedMedia ? getStringValue(nestedMedia, ['url']) : '');
+
+            const url = backendUrl || fallbackMedia?.url || '';
+
+            const name = backendName || fallbackMedia?.name || 'Uploaded media';
+
+            const mimeType =
+              getStringValue(block, ['mediaMimeType', 'mimeType']) ||
+              (nestedMedia ? getStringValue(nestedMedia, ['mimeType']) : '');
+
+            const backendMediaType =
+              getStringValue(block, ['mediaType']) ||
+              (nestedMedia ? getStringValue(nestedMedia, ['mediaType']) : '');
+
+            return {
+              id: mediaId || fallbackMedia?.id || '',
+              url,
+              name,
+              type:
+                fallbackMedia?.type ||
+                resolveMediaType({
+                  mimeType,
+                  mediaType: backendMediaType,
+                  blockType,
+                  url,
+                  name,
+                }),
+              progress: 100,
+              status: 'complete' as const,
+              mediaBlockId: (block['id'] as string) || fallbackMedia?.mediaBlockId,
+              file: fallbackMedia?.file,
+            };
+          })
+          .filter((mediaItem) => mediaItem.id.length > 0);
+
         return {
-          id: (s['id'] as string) ?? fallback?.id ?? `module-${idx}`,
-          title: (s['title'] as string) || fallback?.title || '',
+          id: (subcapitol['id'] as string) ?? fallback?.id ?? `module-${index}`,
+          title: (subcapitol['title'] as string) || fallback?.title || '',
           type: 'text' as ModuleType,
           content: (textBlock?.['content'] as string) ?? fallback?.content ?? '',
           blockId: (textBlock?.['id'] as string) ?? fallback?.blockId,
+          media: media.length > 0 ? media : fallback?.media ?? [],
         };
       },
     ) ?? fallbackModules,
@@ -120,18 +273,21 @@ export const LessonEditorStore = signalStore(
   withState<LessonEditorState>(initialState),
   withComputed((state) => ({
     isDirty: computed(() => state.saveState() === 'unsaved'),
+
     canSave: computed(() => {
-      const l = state.lesson();
-      return l.modules.every((m) => (m.content || '').trim().length > 0);
+      const lesson = state.lesson();
+      return lesson.modules.every((module) => (module.content || '').trim().length > 0);
     }),
+
     canPublish: computed(() => {
-      const l = state.lesson();
+      const lesson = state.lesson();
+
       return (
-        (l.title || '').trim().length > 0 &&
-        (l.subject || '').trim().length > 0 &&
-        l.estimated_duration_minutes > 0 &&
-        l.modules.length > 0 &&
-        l.modules.every((m) => (m.content || '').trim().length > 0)
+        (lesson.title || '').trim().length > 0 &&
+        (lesson.subject || '').trim().length > 0 &&
+        lesson.estimated_duration_minutes > 0 &&
+        lesson.modules.length > 0 &&
+        lesson.modules.every((module) => (module.content || '').trim().length > 0)
       );
     }),
   })),
@@ -146,17 +302,32 @@ export const LessonEditorStore = signalStore(
 
       const parseBackendError = (err: unknown): string => {
         if (err instanceof HttpErrorResponse && err.error) {
-          if (err.error.error && typeof err.error.error === 'string') return err.error.error;
+          if (err.error.error && typeof err.error.error === 'string') {
+            return err.error.error;
+          }
+
           if (typeof err.error === 'object' && err.error !== null) {
             const messages = Object.entries(err.error as Record<string, unknown>)
               .filter(([, msg]) => typeof msg === 'string')
               .map(([field, msg]) => `${field}: ${msg}`);
-            if (messages.length > 0) return messages.join(' | ');
+
+            if (messages.length > 0) {
+              return messages.join(' | ');
+            }
           }
-          if (typeof err.error === 'string') return err.error;
+
+          if (typeof err.error === 'string') {
+            return err.error;
+          }
         }
+
         return (err as Error)?.message || 'An unexpected error occurred';
       };
+
+      const hasUploadingMedia = (lesson: LessonDraft): boolean =>
+        lesson.modules.some((module) =>
+          (module.media || []).some((media) => media.status === 'uploading'),
+        );
 
       const persist = async (lessonToSave: LessonDraft): Promise<LessonDraft> => {
         patchState(store, { saveState: 'saving', saveError: null });
@@ -168,12 +339,20 @@ export const LessonEditorStore = signalStore(
           const createRes = (await lastValueFrom(
             http.post(`${apiBase}/lessons`, toCreatePayload(lessonToSave)),
           )) as Record<string, unknown>;
+
           lessonId = createRes['id'] as string;
 
           const createdSubcapitols = (createRes['subcapitols'] as Record<string, unknown>[]) || [];
-          currentModules = currentModules.map((mod, index) => {
-            const matchedSub = createdSubcapitols[index];
-            return matchedSub ? { ...mod, id: matchedSub['id'] as string } : mod;
+
+          currentModules = currentModules.map((module, index) => {
+            const matchedSubcapitol = createdSubcapitols[index];
+
+            return matchedSubcapitol
+              ? {
+                ...module,
+                id: matchedSubcapitol['id'] as string,
+              }
+              : module;
           });
         } else {
           await lastValueFrom(
@@ -183,22 +362,26 @@ export const LessonEditorStore = signalStore(
 
         const updatedModules: LessonModuleDraft[] = [];
 
-        for (const mod of currentModules) {
-          const isNewSubcapitol = mod.id.startsWith('module-');
-          let subcapitolId = mod.id;
-          let blockId = mod.blockId;
-          const safeContent = (mod.content || '').trim().length > 0 ? mod.content : ' ';
-          const safeTitle = (mod.title || '').trim().length > 0 ? mod.title : 'Untitled Module';
+        for (const module of currentModules) {
+          const isNewSubcapitol = module.id.startsWith('module-');
+
+          let subcapitolId = module.id;
+          let blockId = module.blockId;
+
+          const safeContent = (module.content || '').trim().length > 0 ? module.content : ' ';
+          const safeTitle =
+            (module.title || '').trim().length > 0 ? module.title : 'Untitled Module';
 
           if (isNewSubcapitol) {
-            const subRes = (await lastValueFrom(
+            const subcapitolResponse = (await lastValueFrom(
               http.post(`${apiBase}/lessons/${lessonId}/subcapitols`, {
                 title: safeTitle,
               }),
             )) as Record<string, unknown>;
-            subcapitolId = subRes['id'] as string;
 
-            const blockRes = (await lastValueFrom(
+            subcapitolId = subcapitolResponse['id'] as string;
+
+            const blockResponse = (await lastValueFrom(
               http.post(`${apiBase}/subcapitols/${subcapitolId}/blocks`, {
                 blockType: 'TEXT',
                 content: safeContent,
@@ -207,7 +390,8 @@ export const LessonEditorStore = signalStore(
                 codeLanguage: null,
               }),
             )) as Record<string, unknown>;
-            blockId = blockRes['id'] as string;
+
+            blockId = blockResponse['id'] as string;
           } else {
             await lastValueFrom(
               http.put(`${apiBase}/subcapitols/${subcapitolId}`, {
@@ -224,35 +408,77 @@ export const LessonEditorStore = signalStore(
                 }),
               );
             } else {
-              try {
-                const blockRes = (await lastValueFrom(
-                  http.post(`${apiBase}/subcapitols/${subcapitolId}/blocks`, {
-                    blockType: 'TEXT',
-                    content: safeContent,
-                    mediaId: null,
-                    languageTag: 'ro',
-                    codeLanguage: null,
-                  }),
-                )) as Record<string, unknown>;
-                blockId = blockRes['id'] as string;
-              } catch (e) {
-                console.error('Failed to fallback create block', e);
-              }
+              const blockResponse = (await lastValueFrom(
+                http.post(`${apiBase}/subcapitols/${subcapitolId}/blocks`, {
+                  blockType: 'TEXT',
+                  content: safeContent,
+                  mediaId: null,
+                  languageTag: 'ro',
+                  codeLanguage: null,
+                }),
+              )) as Record<string, unknown>;
+
+              blockId = blockResponse['id'] as string;
             }
           }
-          updatedModules.push({ ...mod, id: subcapitolId, blockId });
+
+          const completedMedia = (module.media || []).filter(
+            (media) => media.status === 'complete',
+          );
+
+          const updatedMedia: UploadedMedia[] = [];
+
+          for (const media of completedMedia) {
+            if (media.mediaBlockId) {
+              await lastValueFrom(
+                http.put(`${apiBase}/blocks/${media.mediaBlockId}`, {
+                  content: media.name || '',
+                  codeLanguage: null,
+                  mediaId: media.id,
+                }),
+              );
+
+              updatedMedia.push(media);
+            } else {
+              const mediaBlockResponse = (await lastValueFrom(
+                http.post(`${apiBase}/subcapitols/${subcapitolId}/blocks`, {
+                  blockType: toBackendBlockType(media),
+                  content: media.name || '',
+                  mediaId: media.id,
+                  languageTag: 'ro',
+                  codeLanguage: null,
+                }),
+              )) as Record<string, unknown>;
+
+              updatedMedia.push({
+                ...media,
+                mediaBlockId: mediaBlockResponse['id'] as string,
+              });
+            }
+          }
+
+          updatedModules.push({
+            ...module,
+            id: subcapitolId,
+            blockId,
+            media: updatedMedia,
+          });
         }
 
         if (updatedModules.length > 0) {
-          const orderedIds = updatedModules.map((m) => m.id);
+          const orderedIds = updatedModules.map((module) => module.id);
+
           await lastValueFrom(
-            http.put(`${apiBase}/lessons/${lessonId}/subcapitols/reorder`, { orderedIds }),
+            http.put(`${apiBase}/lessons/${lessonId}/subcapitols/reorder`, {
+              orderedIds,
+            }),
           );
         }
 
         const enrichedLesson = (await lastValueFrom(
           http.get(`${apiBase}/lessons/${lessonId}`),
         )) as Record<string, unknown>;
+
         const finalLessonState = mapFromResponse(enrichedLesson, updatedModules);
 
         patchState(store, {
@@ -260,16 +486,24 @@ export const LessonEditorStore = signalStore(
           saveState: 'saved',
           lastSavedAt: new Date(),
         });
+
         return finalLessonState;
       };
 
       return {
         reset(lesson?: Partial<LessonDraft>) {
-          patchState(store, { ...initialState, lesson: { ...blankLesson, ...(lesson ?? {}) } });
+          patchState(store, {
+            ...initialState,
+            lesson: {
+              ...blankLesson,
+              ...(lesson ?? {}),
+            },
+          });
         },
 
         loadLesson(id: string) {
           patchState(store, { loading: true });
+
           http.get<unknown>(`${apiBase}/lessons/${id}`).subscribe({
             next: (saved) => {
               patchState(store, {
@@ -279,10 +513,15 @@ export const LessonEditorStore = signalStore(
                 lastSavedAt: new Date(),
               });
             },
+
             error: (err: unknown) => {
               const message = parseBackendError(err);
-              patchState(store, { loading: false, saveError: message });
-              // REMOVED messageService call (error interceptor handles this)
+
+              patchState(store, {
+                loading: false,
+                saveError: message,
+                saveState: 'error',
+              });
             },
           });
         },
@@ -299,132 +538,253 @@ export const LessonEditorStore = signalStore(
             >
           >,
         ) {
-          patchState(store, (s) => ({ lesson: { ...s.lesson, ...patch } }));
+          patchState(store, (state) => ({
+            lesson: {
+              ...state.lesson,
+              ...patch,
+            },
+          }));
+
           markUnsaved();
         },
 
         addModule() {
           const id = `module-${crypto.randomUUID()}`;
+
           const newModule: LessonModuleDraft = {
             id,
             title: 'New Module',
             type: 'text',
             content: '',
+            media: [],
             blockId: undefined,
           };
 
-          patchState(store, (s) => ({
-            lesson: { ...s.lesson, modules: [...s.lesson.modules, newModule] },
+          patchState(store, (state) => ({
+            lesson: {
+              ...state.lesson,
+              modules: [...state.lesson.modules, newModule],
+            },
           }));
+
           markUnsaved();
         },
 
         updateModule(id: string, patch: Partial<LessonModuleDraft>) {
-          patchState(store, (s) => ({
+          patchState(store, (state) => ({
             lesson: {
-              ...s.lesson,
-              modules: s.lesson.modules.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+              ...state.lesson,
+              modules: state.lesson.modules.map((module) =>
+                module.id === id
+                  ? {
+                    ...module,
+                    ...patch,
+                  }
+                  : module,
+              ),
             },
           }));
+
+          markUnsaved();
+        },
+
+        async removeMediaBlock(media: UploadedMedia) {
+          if (!media.mediaBlockId) {
+            return;
+          }
+
+          try {
+            await lastValueFrom(http.delete(`${apiBase}/blocks/${media.mediaBlockId}`));
+          } catch (error) {
+            console.error('Failed to delete media block', error);
+          }
+
           markUnsaved();
         },
 
         async removeModule(id: string) {
-          patchState(store, (s) => ({
-            lesson: { ...s.lesson, modules: s.lesson.modules.filter((m) => m.id !== id) },
+          patchState(store, (state) => ({
+            lesson: {
+              ...state.lesson,
+              modules: state.lesson.modules.filter((module) => module.id !== id),
+            },
           }));
+
           if (!id.startsWith('module-')) {
             try {
               await lastValueFrom(http.delete(`${apiBase}/subcapitols/${id}`));
-            } catch (e) {
-              console.error('Failed to delete subcapitol on backend', e);
+            } catch (error) {
+              console.error('Failed to delete subcapitol on backend', error);
             }
           }
+
           markUnsaved();
         },
 
         reorderModules(fromIndex: number, toIndex: number) {
-          patchState(store, (s) => {
-            const next = [...s.lesson.modules];
-            const [item] = next.splice(fromIndex, 1);
-            next.splice(toIndex, 0, item);
-            return { lesson: { ...s.lesson, modules: next } };
+          patchState(store, (state) => {
+            const nextModules = [...state.lesson.modules];
+            const [movedModule] = nextModules.splice(fromIndex, 1);
+
+            nextModules.splice(toIndex, 0, movedModule);
+
+            return {
+              lesson: {
+                ...state.lesson,
+                modules: nextModules,
+              },
+            };
           });
+
           markUnsaved();
         },
 
         async save(onComplete?: (saved: LessonDraft) => void, background = false) {
+          const lesson = store.lesson();
+
+          if (hasUploadingMedia(lesson)) {
+            if (!background) {
+              messageService?.add({
+                severity: 'info',
+                summary: 'Upload in progress',
+                detail: 'Please wait until all media uploads finish before saving.',
+              });
+            }
+
+            return;
+          }
+
           if (!store.canSave()) {
             if (!background) {
               const message = 'Cannot save: All modules must have content.';
-              patchState(store, { saveState: 'error', saveError: message });
+
+              patchState(store, {
+                saveState: 'error',
+                saveError: message,
+              });
+
               messageService?.add({
                 severity: 'warn',
                 summary: 'Validation Error',
                 detail: message,
               });
             }
+
             return;
           }
+
           try {
             const savedLesson = await persist(store.lesson());
+
             messageService?.add({
               severity: 'success',
               summary: 'Saved',
               detail: 'Saved successfully.',
             });
-            if (onComplete) onComplete(savedLesson);
+
+            if (onComplete) {
+              onComplete(savedLesson);
+            }
           } catch (err: unknown) {
             const message = parseBackendError(err);
-            patchState(store, { saveState: 'error', saveError: message });
-            // REMOVED messageService call (error interceptor handles this)
+
+            patchState(store, {
+              saveState: 'error',
+              saveError: message,
+            });
           }
         },
 
         async publish(onComplete?: (saved: LessonDraft) => void) {
+          const lesson = store.lesson();
+
+          if (hasUploadingMedia(lesson)) {
+            messageService?.add({
+              severity: 'info',
+              summary: 'Upload in progress',
+              detail: 'Please wait until all media uploads finish before publishing.',
+            });
+
+            return;
+          }
+
           try {
-            patchState(store, { saveState: 'saving', saveError: null });
+            patchState(store, {
+              saveState: 'saving',
+              saveError: null,
+            });
+
             const savedLesson = await persist(store.lesson());
+
             const published = (await lastValueFrom(
               http.post(`${apiBase}/lessons/${savedLesson.id}/publish`, {}),
             )) as Record<string, unknown>;
 
             const next = mapFromResponse(published, savedLesson.modules);
-            patchState(store, { lesson: next, saveState: 'saved', lastSavedAt: new Date() });
+
+            patchState(store, {
+              lesson: next,
+              saveState: 'saved',
+              lastSavedAt: new Date(),
+            });
 
             messageService?.add({
               severity: 'success',
               summary: 'Published',
               detail: 'Lesson is now visible to students!',
             });
-            if (onComplete) onComplete(next);
+
+            if (onComplete) {
+              onComplete(next);
+            }
           } catch (err: unknown) {
             const message = parseBackendError(err);
-            patchState(store, { saveState: 'error', saveError: message });
-            // REMOVED messageService call (error interceptor handles this)
+
+            patchState(store, {
+              saveState: 'error',
+              saveError: message,
+            });
           }
         },
 
         unpublish(onComplete?: (saved: LessonDraft) => void) {
           const lesson = store.lesson();
-          if (!isPersisted(lesson)) return;
-          patchState(store, { saveState: 'saving', saveError: null });
+
+          if (!isPersisted(lesson)) {
+            return;
+          }
+
+          patchState(store, {
+            saveState: 'saving',
+            saveError: null,
+          });
 
           http.post<unknown>(`${apiBase}/lessons/${lesson.id}/unpublish`, {}).subscribe({
             next: (updated) => {
               const next = mapFromResponse(updated as Record<string, unknown>, lesson.modules);
-              patchState(store, { lesson: next, saveState: 'saved', lastSavedAt: new Date() });
+
+              patchState(store, {
+                lesson: next,
+                saveState: 'saved',
+                lastSavedAt: new Date(),
+              });
+
               messageService?.add({
                 severity: 'info',
                 summary: 'Unpublished',
                 detail: 'Lesson returned to draft status.',
               });
+
               onComplete?.(next);
             },
+
             error: (err: unknown) => {
               const message = parseBackendError(err);
-              patchState(store, { saveState: 'error', saveError: message });
-              // REMOVED messageService call (error interceptor handles this)
+
+              patchState(store, {
+                saveState: 'error',
+                saveError: message,
+              });
             },
           });
         },
