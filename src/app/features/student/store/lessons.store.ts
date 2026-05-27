@@ -345,7 +345,7 @@ export const LessonsStore = signalStore(
           patchState(store, {
             finalQuizAttempts: [],
             attemptsLoading: false,
-            hasFinalQuiz: is404 ? false : true,
+            hasFinalQuiz: !is404,
           });
         },
       });
