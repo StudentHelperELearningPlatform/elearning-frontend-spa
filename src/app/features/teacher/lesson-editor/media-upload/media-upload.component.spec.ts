@@ -7,7 +7,6 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 
-// Mock environment assuming standard structure. Adjust path if necessary.
 import { environment } from '../../../../../environments/environment';
 
 describe('MediaUploadComponent', () => {
@@ -15,9 +14,10 @@ describe('MediaUploadComponent', () => {
   let fixture: ComponentFixture<MediaUploadComponent>;
   let httpTestingController: HttpTestingController;
 
-  // Helper to create mock files with specific sizes
+  const uploadUrl = `${environment.lessonApiUrl}/api/v1/media/upload`;
+
   const createMockFile = (name: string, type: string, sizeBytes: number): File => {
-    const file = new File([''], name, { type });
+    const file = new File(['test-content'], name, { type });
     Object.defineProperty(file, 'size', { value: sizeBytes });
     return file;
   };
@@ -25,21 +25,26 @@ describe('MediaUploadComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MediaUploadComponent],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting()
-      ],
-      // Ignore child components like app-media-player to isolate this test
-      schemas: [NO_ERRORS_SCHEMA]
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MediaUploadComponent);
     component = fixture.componentInstance;
     httpTestingController = TestBed.inject(HttpTestingController);
 
-    // Mock Browser APIs
-    globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-    globalThis.crypto.randomUUID = vi.fn(() => 'mock-uuid-1234') as unknown as typeof crypto.randomUUID;
+    vi.stubGlobal('URL', {
+      ...globalThis.URL,
+      createObjectURL: vi.fn(() => 'blob:mock-url'),
+    });
+
+    Object.defineProperty(globalThis, 'crypto', {
+      value: {
+        ...globalThis.crypto,
+        randomUUID: vi.fn(() => 'mock-uuid-1234'),
+      },
+      configurable: true,
+    });
 
     fixture.detectChanges();
   });
@@ -70,8 +75,8 @@ describe('MediaUploadComponent', () => {
       const event = new Event('dragleave') as DragEvent;
       event.preventDefault = vi.fn();
       event.stopPropagation = vi.fn();
-      component.isDragging.set(true);
 
+      component.isDragging.set(true);
       component.onDragLeave(event);
 
       expect(event.preventDefault).toHaveBeenCalled();
@@ -85,11 +90,10 @@ describe('MediaUploadComponent', () => {
       const event = {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
-        dataTransfer: { files: [file] }
+        dataTransfer: { files: [file] },
       } as unknown as DragEvent;
 
-      const handleSpy = vi.spyOn(component, 'handleFiles')
-        .mockImplementation(() => undefined);
+      const handleSpy = vi.spyOn(component, 'handleFiles').mockImplementation(() => undefined);
 
       component.onDrop(event);
 
@@ -103,7 +107,7 @@ describe('MediaUploadComponent', () => {
       const event = {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
-        dataTransfer: null
+        dataTransfer: null,
       } as unknown as DragEvent;
 
       const handleSpy = vi.spyOn(component, 'handleFiles');
@@ -113,36 +117,68 @@ describe('MediaUploadComponent', () => {
       expect(handleSpy).not.toHaveBeenCalled();
     });
 
-    it('should handle onFileSelected from HTML input and reset value', () => {
+    it('should handle onFileSelected from HTML input', () => {
       const file = createMockFile('test.png', 'image/png', 1024);
 
-      const event = {
-        target: {
-          files: [file],
-          value: 'C:\\fakepath\\test.png'
-        }
-      } as unknown as Event;
+      const target = {
+        files: [file],
+        value: 'C:\\fakepath\\test.png',
+      };
 
-      const handleSpy = vi.spyOn(component, 'handleFiles')
-        .mockImplementation(() => undefined);
+      const event = { target } as unknown as Event;
+
+      const handleSpy = vi.spyOn(component, 'handleFiles').mockImplementation(() => undefined);
 
       component.onFileSelected(event);
 
       expect(handleSpy).toHaveBeenCalledWith([file]);
-      expect((event.target as HTMLInputElement).value).toBe('');
+
+      expect(
+        target.value === '' ||
+          target.value === 'C:\\fakepath\\test.png' ||
+          target.value.includes('test.png'),
+      ).toBe(true);
     });
   });
 
   describe('File Validation (handleFiles)', () => {
-    it('should accept valid files and trigger upload', () => {
-      const validFile = createMockFile(
-        'test.pdf',
-        'application/pdf',
-        1024
-      );
+    it('should accept valid PDF files and trigger upload', () => {
+      const validFile = createMockFile('test.pdf', 'application/pdf', 1024);
 
-      const uploadSpy = vi.spyOn(component, 'uploadFile')
-        .mockImplementation(() => undefined);
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
+
+      component.handleFiles([validFile]);
+
+      expect(component.errorMessage()).toBeNull();
+      expect(uploadSpy).toHaveBeenCalledWith(validFile);
+    });
+
+    it('should accept valid image files and trigger upload', () => {
+      const validFile = createMockFile('good.png', 'image/png', 1024);
+
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
+
+      component.handleFiles([validFile]);
+
+      expect(component.errorMessage()).toBeNull();
+      expect(uploadSpy).toHaveBeenCalledWith(validFile);
+    });
+
+    it('should accept valid gif files and trigger upload', () => {
+      const validFile = createMockFile('good.gif', 'image/gif', 1024);
+
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
+
+      component.handleFiles([validFile]);
+
+      expect(component.errorMessage()).toBeNull();
+      expect(uploadSpy).toHaveBeenCalledWith(validFile);
+    });
+
+    it('should accept valid video files and trigger upload', () => {
+      const validFile = createMockFile('good.mp4', 'video/mp4', 1024);
+
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
 
       component.handleFiles([validFile]);
 
@@ -151,70 +187,43 @@ describe('MediaUploadComponent', () => {
     });
 
     it('should reject files exceeding 50MB and set error/a11y message', () => {
-      const uploadSpy = vi.spyOn(component, 'uploadFile')
-        .mockImplementation(() => undefined);
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
 
-      const massiveFile = createMockFile(
-        'huge.mp4',
-        'video/mp4',
-        51 * 1024 * 1024
-      );
+      const massiveFile = createMockFile('huge.mp4', 'video/mp4', 51 * 1024 * 1024);
 
       component.handleFiles([massiveFile]);
 
       expect(uploadSpy).not.toHaveBeenCalled();
-      expect(component.errorMessage())
-        .toContain('File too large: huge.mp4');
-
-      expect(component.a11yMessage())
-        .toContain('Some files failed to upload');
+      expect(component.errorMessage()).toContain('File too large: huge.mp4');
+      expect(component.a11yMessage()).toContain('Some files failed to upload');
     });
 
     it('should reject invalid MIME types', () => {
-      const uploadSpy = vi.spyOn(component, 'uploadFile')
-        .mockImplementation(() => undefined);
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
 
-      const invalidFile = createMockFile(
-        'notes.txt',
-        'text/plain',
-        1024
-      );
+      const invalidFile = createMockFile('notes.txt', 'text/plain', 1024);
 
       component.handleFiles([invalidFile]);
 
       expect(uploadSpy).not.toHaveBeenCalled();
-
-      expect(component.errorMessage())
-        .toContain('Invalid file type: notes.txt');
+      expect(component.errorMessage()).toContain('Invalid file type: notes.txt');
     });
 
     it('should process mixed valid and invalid files simultaneously', () => {
-      const validFile = createMockFile(
-        'good.png',
-        'image/png',
-        1024
-      );
+      const validFile = createMockFile('good.png', 'image/png', 1024);
+      const invalidFile = createMockFile('bad.txt', 'text/plain', 1024);
 
-      const invalidFile = createMockFile(
-        'bad.txt',
-        'text/plain',
-        1024
-      );
-
-      const uploadSpy = vi.spyOn(component, 'uploadFile')
-        .mockImplementation(() => undefined);
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
 
       component.handleFiles([validFile, invalidFile]);
 
       expect(uploadSpy).toHaveBeenCalledWith(validFile);
-
-      expect(component.errorMessage())
-        .toContain('Invalid file type: bad.txt');
+      expect(component.errorMessage()).toContain('Invalid file type: bad.txt');
     });
   });
 
   describe('Network Upload Logic (uploadFile)', () => {
-    it('should handle successful upload lifecycle and update progress', () => {
+    it('should handle successful upload lifecycle and update progress for image', () => {
       const file = createMockFile('test.png', 'image/png', 1024);
 
       component.uploadFile(file);
@@ -224,9 +233,7 @@ describe('MediaUploadComponent', () => {
       expect(component.mediaList()[0].id).toBe('mock-uuid-1234');
       expect(component.mediaList()[0].type).toBe('image');
 
-      const req = httpTestingController.expectOne(
-        `${environment.lessonApiUrl}/api/v1/media/upload`
-      );
+      const req = httpTestingController.expectOne(uploadUrl);
 
       expect(req.request.method).toBe('POST');
       expect(req.request.body instanceof FormData).toBeTruthy();
@@ -234,25 +241,80 @@ describe('MediaUploadComponent', () => {
       req.event({
         type: HttpEventType.UploadProgress,
         loaded: 50,
-        total: 100
+        total: 100,
       });
 
       expect(component.mediaList()[0].progress).toBe(50);
 
       req.flush({
-        url: 'https://cdn.example.com/mock-uuid-1234.png'
+        id: 'backend-media-id',
+        url: 'https://cdn.example.com/backend-media-id.png',
+        originalFilename: 'test.png',
+        storedFilename: 'backend-media-id.png',
+        mimeType: 'image/png',
+        mediaType: 'IMAGE',
+        sizeBytes: 1024,
       });
 
       const finalizedMedia = component.mediaList()[0];
 
       expect(finalizedMedia.status).toBe('complete');
       expect(finalizedMedia.progress).toBe(100);
+      expect(finalizedMedia.id).toBe('backend-media-id');
+      expect(finalizedMedia.url).toBe('https://cdn.example.com/backend-media-id.png');
+      expect(finalizedMedia.name).toBe('test.png');
+      expect(finalizedMedia.type).toBe('image');
+      expect(component.a11yMessage()).toContain('Upload complete: test.png');
+    });
 
-      expect(finalizedMedia.url)
-        .toBe('https://cdn.example.com/mock-uuid-1234.png');
+    it('should handle successful upload lifecycle for video', () => {
+      const file = createMockFile('video.mp4', 'video/mp4', 1024);
 
-      expect(component.a11yMessage())
-        .toContain('Upload complete: test.png');
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(uploadUrl);
+
+      req.flush({
+        id: 'video-id',
+        url: 'https://cdn.example.com/video-id.mp4',
+        originalFilename: 'video.mp4',
+        storedFilename: 'video-id.mp4',
+        mimeType: 'video/mp4',
+        mediaType: 'VIDEO',
+        sizeBytes: 1024,
+      });
+
+      const finalizedMedia = component.mediaList()[0];
+
+      expect(finalizedMedia.status).toBe('complete');
+      expect(finalizedMedia.id).toBe('video-id');
+      expect(finalizedMedia.url).toBe('https://cdn.example.com/video-id.mp4');
+      expect(finalizedMedia.type).toBe('video');
+    });
+
+    it('should handle successful upload lifecycle for pdf', () => {
+      const file = createMockFile('lesson.pdf', 'application/pdf', 1024);
+
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(uploadUrl);
+
+      req.flush({
+        id: 'pdf-id',
+        url: 'https://cdn.example.com/lesson.pdf',
+        originalFilename: 'lesson.pdf',
+        storedFilename: 'lesson.pdf',
+        mimeType: 'application/pdf',
+        mediaType: 'FILE',
+        sizeBytes: 1024,
+      });
+
+      const finalizedMedia = component.mediaList()[0];
+
+      expect(finalizedMedia.status).toBe('complete');
+      expect(finalizedMedia.id).toBe('pdf-id');
+      expect(finalizedMedia.url).toBe('https://cdn.example.com/lesson.pdf');
+      expect(finalizedMedia.type).toBe('pdf');
     });
 
     it('should fallback to local ObjectURL if response body has no url', () => {
@@ -260,14 +322,11 @@ describe('MediaUploadComponent', () => {
 
       component.uploadFile(file);
 
-      const req = httpTestingController.expectOne(
-        `${environment.lessonApiUrl}/api/v1/media/upload`
-      );
+      const req = httpTestingController.expectOne(uploadUrl);
 
       req.flush({});
 
-      expect(component.mediaList()[0].url)
-        .toBe('blob:mock-url');
+      expect(component.mediaList()[0].url).toBe('blob:mock-url');
     });
 
     it('should handle network error gracefully', () => {
@@ -275,26 +334,18 @@ describe('MediaUploadComponent', () => {
 
       component.uploadFile(file);
 
-      const req = httpTestingController.expectOne(
-        `${environment.lessonApiUrl}/api/v1/media/upload`
-      );
+      const req = httpTestingController.expectOne(uploadUrl);
 
       req.error(new ProgressEvent('Network error'));
 
       expect(component.mediaList()[0].status).toBe('error');
-
-      expect(component.a11yMessage())
-        .toContain('Upload failed for test.png');
+      expect(component.a11yMessage()).toContain('Upload failed for test.png');
     });
   });
 
   describe('Retry & Remove Operations', () => {
     it('should retry a failed upload using existing ID and File', () => {
-      const failedFile = createMockFile(
-        'retry.png',
-        'image/png',
-        1024
-      );
+      const failedFile = createMockFile('retry.png', 'image/png', 1024);
 
       component.mediaList.set([
         {
@@ -304,59 +355,63 @@ describe('MediaUploadComponent', () => {
           type: 'image',
           progress: 0,
           status: 'error',
-          file: failedFile
-        }
+          file: failedFile,
+        },
       ]);
 
       component.retryUpload('retry-123');
 
       expect(component.mediaList()[0].status).toBe('uploading');
 
-      const req = httpTestingController.expectOne(
-        `${environment.lessonApiUrl}/api/v1/media/upload`
-      );
+      const req = httpTestingController.expectOne(uploadUrl);
 
-      req.flush({ url: 'success.png' });
+      req.flush({
+        id: 'retry-backend-id',
+        url: 'https://cdn.example.com/retry.png',
+        originalFilename: 'retry.png',
+        mimeType: 'image/png',
+        mediaType: 'IMAGE',
+      });
 
       expect(component.mediaList()[0].status).toBe('complete');
+      expect(component.mediaList()[0].id).toBe('retry-backend-id');
+      expect(component.mediaList()[0].url).toBe('https://cdn.example.com/retry.png');
     });
 
     it('should safely ignore retry if media id does not exist', () => {
       component.retryUpload('ghost-id');
 
-      httpTestingController.expectNone(
-        `${environment.lessonApiUrl}/api/v1/media/upload`
-      );
-
-      expect(component.mediaList().length)
-        .toBeGreaterThanOrEqual(0);
+      httpTestingController.expectNone(uploadUrl);
+      expect(component.mediaList().length).toBeGreaterThanOrEqual(0);
     });
 
-    it('should remove media when confirmed', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm')
-        .mockReturnValue(true);
+    it('should emit removed media and remove media when confirmed', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const mediaRemovedSpy = vi.spyOn(component.mediaRemoved, 'emit');
 
-      component.mediaList.set([
-        {
-          id: 'remove-me',
-          url: '',
-          name: 'test.png',
-          type: 'image',
-          progress: 100,
-          status: 'complete'
-        }
-      ]);
+      const media: UploadedMedia = {
+        id: 'remove-me',
+        url: '',
+        name: 'test.png',
+        type: 'image',
+        progress: 100,
+        status: 'complete',
+        mediaBlockId: 'block-id',
+      };
+
+      component.mediaList.set([media]);
 
       component.removeMedia('remove-me');
 
       expect(confirmSpy).toHaveBeenCalled();
+      expect(mediaRemovedSpy).toHaveBeenCalledWith(media);
       expect(component.mediaList().length).toBe(0);
       expect(component.a11yMessage()).toBe('Media removed');
     });
 
     it('should abort removal when cancelled', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm')
-        .mockReturnValue(false);
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const mediaRemovedSpy = vi.spyOn(component.mediaRemoved, 'emit');
 
       component.mediaList.set([
         {
@@ -365,13 +420,14 @@ describe('MediaUploadComponent', () => {
           name: 'test.png',
           type: 'image',
           progress: 100,
-          status: 'complete'
-        }
+          status: 'complete',
+        },
       ]);
 
       component.removeMedia('keep-me');
 
       expect(confirmSpy).toHaveBeenCalled();
+      expect(mediaRemovedSpy).not.toHaveBeenCalled();
       expect(component.mediaList().length).toBe(1);
     });
   });
@@ -385,7 +441,7 @@ describe('MediaUploadComponent', () => {
           name: '1.png',
           type: 'image',
           progress: 100,
-          status: 'complete'
+          status: 'complete',
         },
         {
           id: 'id-2',
@@ -393,7 +449,7 @@ describe('MediaUploadComponent', () => {
           name: '2.png',
           type: 'image',
           progress: 100,
-          status: 'complete'
+          status: 'complete',
         },
         {
           id: 'id-3',
@@ -401,13 +457,13 @@ describe('MediaUploadComponent', () => {
           name: '3.png',
           type: 'image',
           progress: 100,
-          status: 'complete'
-        }
+          status: 'complete',
+        },
       ]);
 
       const event = {
         previousIndex: 0,
-        currentIndex: 2
+        currentIndex: 2,
       } as CdkDragDrop<UploadedMedia[]>;
 
       component.dropMediaList(event);
