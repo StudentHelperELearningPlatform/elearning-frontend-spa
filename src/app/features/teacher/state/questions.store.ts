@@ -68,35 +68,16 @@ export const QuestionsStore = signalStore(
                   : service.getFinalQuizQuestions(parentId);
 
               return checkExists$.pipe(
-                tap((quizRes: unknown) => {
-                  patchState(store, { quizExists: true });
-                  const typedQuiz = quizRes as { passThreshold?: number } | null | undefined;
-                  if (typedQuiz && typeof typedQuiz.passThreshold === 'number') {
-                    patchState(store, { passThreshold: typedQuiz.passThreshold });
-                  }
-                }),
+                tap(() => patchState(store, { quizExists: true })),
+                switchMap(() => getQs$),
                 catchError((err: HttpErrorResponse) => {
-                  // If quiz doesn't exist, we mark it and return null to skip fetching questions
+                  // 🪄 GRACEFUL 404: If 404, the quiz entity doesn't exist yet in the database.
+                  // We mark quizExists as false and return an empty array gracefully!
                   if (err.status === 404) {
-                    patchState(store, { quizExists: false });
-                    return of(null);
-                  }
-                  return throwError(() => err);
-                }),
-                switchMap((quizRes) => {
-                  if (quizRes === null) {
-                    // Quiz doesn't exist, so no questions
+                    patchState(store, { quizExists: false, isLoading: false });
                     return of([] as QuestionResponse[]);
                   }
-                  // Quiz exists, now fetch its questions
-                  return getQs$.pipe(
-                    catchError((err: HttpErrorResponse) => {
-                      if (err.status === 404) {
-                        return of([] as QuestionResponse[]);
-                      }
-                      return throwError(() => err);
-                    })
-                  );
+                  return throwError(() => err);
                 }),
                 tapResponse({
                   next: (questions) => patchState(store, { questions, isLoading: false }),
