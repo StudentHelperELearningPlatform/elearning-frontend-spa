@@ -121,7 +121,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
         { provide: LessonsStore, useValue: lessonsStoreMock },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: StudentProfileStore, useValue: studentProfileStoreMock },
-        { provide: TeacherClassService, useValue: { getClassDetail: vi.fn().mockReturnValue(of({ id: 'class-1', name: 'Mock Class', description: 'Mock Class Desc', lessonCount: 2 })) } },
+        { provide: TeacherClassService, useValue: { getStudentClasses: vi.fn().mockReturnValue(of([{ id: 'class-1', name: 'Mock Class', description: 'Mock Class Desc', lessonCount: 2 }])) } },
         { provide: Router, useValue: routerMock },
         ...provideApiMocks(),
       ],
@@ -143,7 +143,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       component.ngOnInit();
     });
     await new Promise(resolve => setTimeout(resolve, 50));
-    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalledWith({ classId: 'class-123' });
+    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalledWith({ classId: 'class-1' });
   });
 
   describe('greeting', () => {
@@ -289,7 +289,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       expect(progressStoreMock.loadMyHistory).toHaveBeenCalled();
     });
 
-    it('should fetch class details if student has enrolled classes', async () => {
+    it('should fetch student classes on init', async () => {
       studentProfileStoreMock.profile.set({
         enrolledClasses: ['class-123'],
       });
@@ -302,6 +302,8 @@ describe('ProgressDashboardComponent (Logic)', () => {
     });
 
     it('should clean enrolledClassesList if student has no classes', async () => {
+      const classService = TestBed.inject(TeacherClassService);
+      vi.spyOn(classService, 'getStudentClasses').mockReturnValue(of([]));
       studentProfileStoreMock.profile.set({
         enrolledClasses: [],
       });
@@ -310,9 +312,9 @@ describe('ProgressDashboardComponent (Logic)', () => {
       expect(component.enrolledClassesList().length).toBe(0);
     });
 
-    it('should handle getClassDetail failure gracefully', async () => {
+    it('should handle getStudentClasses failure gracefully', async () => {
       const classService = TestBed.inject(TeacherClassService);
-      vi.spyOn(classService, 'getClassDetail').mockReturnValue(throwError(() => new Error('Failed')));
+      vi.spyOn(classService, 'getStudentClasses').mockReturnValue(throwError(() => new Error('Failed')));
 
       studentProfileStoreMock.profile.set({
         enrolledClasses: ['class-failed'],

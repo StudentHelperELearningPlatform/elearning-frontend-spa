@@ -16,10 +16,11 @@ export interface FinalQuizAttempt {
   submittedAt: string;
 }
 
+
 export interface Module {
   id: string;
   title: string;
-  type: 'video' | 'text' | 'quiz' | 'interactive' | 'audio' | 'image';
+  type: 'video' | 'text' | 'quiz' | 'interactive' | 'image' | 'pdf';
   content: string;
   mediaUrl?: string;
   blockType?: string;

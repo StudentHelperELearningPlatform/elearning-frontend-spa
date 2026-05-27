@@ -70,21 +70,14 @@ export class ClassDetailComponent implements OnInit {
   showInviteModal = signal(false);
   allStudents = signal<StudentRow[]>([]);
   studentSearch = signal('');
+  isSearching = signal(false);
   addingStudentId = signal<string | null>(null);
   addStudentError = signal<string | null>(null);
 
-  // ─── Pagination states ────────────────────────────
-  currentPage = signal(0);
-  totalPages = signal(0);
-  loadingMore = signal(false);
-  hasMorePages = computed(() => this.currentPage() < this.totalPages() - 1);
-
   readonly filteredStudents = computed(() => {
-    const q = this.studentSearch().toLowerCase().trim();
     const enrolled = new Set(this.students().map((s) => s.id));
     return this.allStudents()
-      .filter((s) => !enrolled.has(s.studentId))
-      .filter((s) => !q || `${s.firstName} ${s.lastName}`.toLowerCase().includes(q));
+      .filter((s) => !enrolled.has(s.studentId));
   });
 
   // ─── Add lesson modal ─────────────────────────────
@@ -128,28 +121,36 @@ export class ClassDetailComponent implements OnInit {
     this.studentSearch.set('');
     this.addStudentError.set(null);
     this.allStudents.set([]);
-    this.currentPage.set(0);
-    this.totalPages.set(0);
-    this.loadStudentsPage(0);
   }
 
-  loadStudentsPage(page: number): void {
-    this.loadingMore.set(true);
+  performSearch(): void {
+    const q = this.studentSearch().trim();
+    if (!q) {
+      this.allStudents.set([]);
+      return;
+    }
+
+    this.isSearching.set(true);
+    
+    interface UserSearchItem {
+      id?: string;
+      firstName?: string;
+      lastName?: string;
+      role?: string;
+    }
+
     this.http
-      .get<PaginatedUsersResponse>(`${this.userApi}/users`, {
-        params: {
-          page: String(page),
-          size: '10',
-          role: 'STUDENT'
-        }
+      .get<UserSearchItem[] | { users: UserSearchItem[] }>(`${this.userApi}/users/search`, {
+        params: { name: q }
       })
       .pipe(
-        catchError(() => of({ users: [], currentPage: 0, totalPages: 0, totalElements: 0 } as PaginatedUsersResponse))
+        catchError(() => of([]))
       )
       .subscribe((res) => {
-        const studentRows: StudentRow[] = (res.users || [])
-          .filter((u) => u.role === 'STUDENT')
-          .map((u) => ({
+        const usersList = Array.isArray(res) ? res : (res.users || []);
+        const studentRows: StudentRow[] = usersList
+          .filter((u: UserSearchItem) => u.role === 'STUDENT')
+          .map((u: UserSearchItem) => ({
             studentId: u.id || '',
             firstName: u.firstName || '',
             lastName: u.lastName || '',
@@ -157,22 +158,9 @@ export class ClassDetailComponent implements OnInit {
             lastActiveAt: null,
           }));
 
-        if (page === 0) {
-          this.allStudents.set(studentRows);
-        } else {
-          this.allStudents.update((current) => [...current, ...studentRows]);
-        }
-
-        this.currentPage.set(res.currentPage ?? page);
-        this.totalPages.set(res.totalPages ?? 0);
-        this.loadingMore.set(false);
+        this.allStudents.set(studentRows);
+        this.isSearching.set(false);
       });
-  }
-
-  loadNextPage(): void {
-    if (this.hasMorePages() && !this.loadingMore()) {
-      this.loadStudentsPage(this.currentPage() + 1);
-    }
   }
 
   closeInviteModal(): void {

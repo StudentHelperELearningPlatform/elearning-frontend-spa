@@ -419,11 +419,11 @@ export const ProgressStore = signalStore(
       )
     ),
 
-    loadStudents: rxMethod<void>(
+    loadStudents: rxMethod<{ classId: string }>(
       pipe(
         tap(() => patchState(store, { studentsLoading: true, studentsError: null })),
-        switchMap(() =>
-          http.get<StudentSummary[]>(`${apiBase}/progress/teacher/students`).pipe(
+        switchMap(({ classId }) =>
+          http.get<StudentSummary[]>(`${apiBase}/progress/teacher/students`, { params: { classId } }).pipe(
             tapResponse({
               next: (students) => patchState(store, { students, studentsLoading: false }),
               error: (err: { message?: string }) => patchState(store, { studentsLoading: false, studentsError: err?.message ?? 'Failed to load students' }),

@@ -6,9 +6,13 @@ import { HttpEventType } from '@angular/common/http';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
+import { AuthStore } from '../../../auth/store/auth.store';
+import { createAuthStoreStub } from '../../../../../test-utils/auth-testing';
 
 // Mock environment assuming standard structure. Adjust path if necessary.
 import { environment } from '../../../../../environments/environment';
+
+const MOCK_USER_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
 describe('MediaUploadComponent', () => {
   let component: MediaUploadComponent;
@@ -27,7 +31,14 @@ describe('MediaUploadComponent', () => {
       imports: [MediaUploadComponent],
       providers: [
         provideHttpClient(),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        {
+          provide: AuthStore,
+          useValue: createAuthStoreStub({
+            isAuthenticated: true,
+            user: { id: MOCK_USER_ID, name: 'Test Teacher', email: 'teacher@test.com', role: 'PROFESSOR', memberSince: '' },
+          }),
+        },
       ],
       // Ignore child components like app-media-player to isolate this test
       schemas: [NO_ERRORS_SCHEMA]
@@ -206,6 +217,7 @@ describe('MediaUploadComponent', () => {
       const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
       expect(req.request.method).toBe('POST');
       expect(req.request.body instanceof FormData).toBeTruthy();
+      expect(req.request.headers.get('X-User-Id')).toBe(MOCK_USER_ID);
 
       // 3. Simulate Progress Event
       req.event({
@@ -215,8 +227,14 @@ describe('MediaUploadComponent', () => {
       });
       expect(component.mediaList()[0].progress).toBe(50);
 
-      // 4. Simulate Success Response
-      req.flush({ url: 'https://cdn.example.com/mock-uuid-1234.png' });
+      // 4. Simulate Success Response (real API shape)
+      req.flush({
+        id: 'server-uuid-abc',
+        url: 'https://cdn.example.com/mock-uuid-1234.png',
+        mediatype: 'IMAGE',
+        mimetype: 'image/png',
+        originalFilename: 'test.png',
+      });
 
       // 5. Check Final State
       const finalizedMedia = component.mediaList()[0];
@@ -224,6 +242,69 @@ describe('MediaUploadComponent', () => {
       expect(finalizedMedia.progress).toBe(100);
       expect(finalizedMedia.url).toBe('https://cdn.example.com/mock-uuid-1234.png');
       expect(component.a11yMessage()).toContain('Upload complete: test.png');
+    });
+
+    it('should send empty X-User-Id header if user is null', () => {
+      const authStore = TestBed.inject(AuthStore);
+      // Simulate no user
+      authStore.user.set(null);
+
+      const file = createMockFile('test.png', 'image/png', 1024);
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      expect(req.request.headers.get('X-User-Id')).toBe('');
+      req.flush({});
+    });
+
+    it('should not modify other media items when updating progress or status', () => {
+      // Add an existing item
+      component.mediaList.set([
+        { id: 'existing-id', file: null, url: 'blob:old', type: 'image', status: 'complete', progress: 100 }
+      ]);
+
+      const file = createMockFile('test.png', 'image/png', 1024);
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      
+      // Simulate Progress Event
+      req.event({
+        type: HttpEventType.UploadProgress,
+        loaded: 50,
+        total: 100
+      });
+
+      // Verify existing item is untouched during progress update
+      expect(component.mediaList()[0].id).toBe('existing-id');
+      expect(component.mediaList()[0].progress).toBe(100);
+      expect(component.mediaList()[1].progress).toBe(50);
+
+      // Simulate Success Response
+      req.flush({ url: 'https://cdn.example.com/mock-uuid-1234.png' });
+
+      // Verify existing item is untouched during completion update
+      expect(component.mediaList()[0].status).toBe('complete');
+      expect(component.mediaList()[0].url).toBe('blob:old');
+      expect(component.mediaList()[1].status).toBe('complete');
+      expect(component.mediaList()[1].url).toBe('https://cdn.example.com/mock-uuid-1234.png');
+    });
+
+    it('should not modify other media items when an upload errors out', () => {
+      // Add an existing item
+      component.mediaList.set([
+        { id: 'existing-id', file: null, url: 'blob:old', type: 'image', status: 'complete', progress: 100 }
+      ]);
+
+      const file = createMockFile('test.png', 'image/png', 1024);
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      req.error(new ProgressEvent('error'));
+
+      // Verify existing item is untouched during error update
+      expect(component.mediaList()[0].status).toBe('complete');
+      expect(component.mediaList()[1].status).toBe('error');
     });
 
     it('should fallback to local ObjectURL if response body has no url', () => {
@@ -249,17 +330,25 @@ describe('MediaUploadComponent', () => {
       expect(component.a11yMessage()).toContain('Upload failed for test.png');
     });
 
-    it('should properly classify video, audio, and pdf files', () => {
+    it('should properly classify video and pdf files', () => {
       component.uploadFile(createMockFile('test.mp4', 'video/mp4', 1024));
-      component.uploadFile(createMockFile('test.mp3', 'audio/mpeg', 1024));
       component.uploadFile(createMockFile('test.pdf', 'application/pdf', 1024));
 
       const reqs = httpTestingController.match(`${environment.lessonApiUrl}/api/v1/media/upload`);
-      expect(reqs.length).toBe(3);
+      expect(reqs.length).toBe(2);
 
       expect(component.mediaList()[0].type).toBe('video');
-      expect(component.mediaList()[1].type).toBe('audio');
-      expect(component.mediaList()[2].type).toBe('pdf');
+      expect(component.mediaList()[1].type).toBe('pdf');
+    });
+
+    it('should reject audio files since backend does not accept them', () => {
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
+      const audioFile = createMockFile('song.mp3', 'audio/mpeg', 1024);
+
+      component.handleFiles([audioFile]);
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+      expect(component.errorMessage()).toContain('Invalid file type: song.mp3');
     });
 
     it('should return early if media type is unsupported in uploadFile', () => {

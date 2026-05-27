@@ -115,14 +115,14 @@ describe('mapLessonResponse', () => {
           id: 'sub-2',
           title: 'B',
           orderIndex: 2,
-          blocks: [{ id: 'b-3', blockType: 'AUDIO', content: 'a', mediaUrl: 'https://x/a.mp3' }],
+          blocks: [{ id: 'b-3', blockType: 'PDF', content: '', mediaUrl: 'https://x/doc.pdf' }],
         },
       ],
     };
 
     const result = mapLessonResponse(backend);
 
-    expect(result.modules.map((m) => m.type)).toEqual(['text', 'video', 'audio']);
+    expect(result.modules.map((m) => m.type)).toEqual(['text', 'video', 'pdf']);
     expect(result.modules.map((m) => m.id)).toEqual(['b-1', 'b-2', 'b-3']);
   });
 
