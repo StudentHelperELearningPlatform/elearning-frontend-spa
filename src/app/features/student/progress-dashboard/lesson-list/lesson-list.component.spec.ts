@@ -164,6 +164,62 @@ describe('LessonListComponent', () => {
 
   // ─── Component Methods ───────────────────────────────────────────────────
 
+  it('getLessonStatus returns quiz-submitted from history if dateCompleted is present, regardless of status', () => {
+    patchStore(store, {
+      lessons: [{ ...MOCK_LESSONS[0], id: 'hist-date-lesson', status: '' }],
+    });
+    patchStore(progressStore, {
+      myHistory: [
+        {
+          lessonId: 'hist-date-lesson',
+          status: 'in_progress', // Status is not completed, but date exists
+          dateCompleted: '2026-05-28',
+        } as unknown as HistoryEntry,
+      ],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('hist-date-lesson')).toBe('quiz-submitted');
+  });
+
+  it('getLessonStatus returns quiz-submitted from history if status is something other than in_progress or not_started', () => {
+    patchStore(store, {
+      lessons: [{ ...MOCK_LESSONS[0], id: 'hist-unknown-lesson', status: '' }],
+    });
+    patchStore(progressStore, {
+      myHistory: [
+        {
+          lessonId: 'hist-unknown-lesson',
+          status: 'archived', // Matches the !== 'in_progress' && !== 'not_started' condition
+        } as unknown as HistoryEntry,
+      ],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('hist-unknown-lesson')).toBe('quiz-submitted');
+  });
+
+  it('getLessonStatus returns in-progress from history as the ultimate fallback', () => {
+    patchStore(store, {
+      lessons: [{ ...MOCK_LESSONS[0], id: 'hist-ip-lesson', status: '' }],
+    });
+    patchStore(progressStore, {
+      myHistory: [
+        {
+          lessonId: 'hist-ip-lesson',
+          status: 'not_started', // Fails all quiz-submitted checks, drops to fallback
+          dateCompleted: null,
+        } as unknown as HistoryEntry,
+      ],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('hist-ip-lesson')).toBe('in-progress');
+  });
+
   it('getLessonStatus returns fallback for unknown lessons', () => {
     fixture.detectChanges();
     expect(component.getLessonStatus('unknown-id')).toBe('not-started');

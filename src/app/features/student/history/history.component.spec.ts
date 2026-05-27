@@ -297,4 +297,51 @@ describe('HistoryComponent', () => {
     expect(component['toDate']).toBe('');
     expect(component['page']()).toBe(1);
   });
+
+  it('pagedHistory maps "Untitled lesson" or empty titles using case-insensitive ID matching and fallbacks', () => {
+    lessonsStore.loadLessons();
+
+    // Mock the lessons so we have something to match against
+    http
+      .expectOne((r) => r.url.includes('/lessons') && !r.url.includes('/progress'))
+      .flush([
+        {
+          id: 'case-test-id',
+          title: 'Found Case Insensitive Title',
+          subject: 'Science',
+          status: 'published',
+        },
+      ]);
+
+    fixture.detectChanges();
+
+    // Mock history entries triggering the uncovered branches
+    http
+      .expectOne((r) => r.url.includes('/progress/me/history'))
+      .flush([
+        baseRow({
+          lessonId: 'CASE-TEST-ID', // Tests case-insensitive ID match
+          lessonTitle: 'untitled lesson', // Tests toLowerCase() check
+        }),
+        baseRow({
+          lessonId: 'unknown-id',
+          lessonTitle: '   ', // Tests the final fallback to 'Untitled lesson' for blank strings
+        }),
+      ]);
+
+    // Drain the individual lesson lookup requests that the progress store attempts
+    http
+      .match((r) => /\/lessons\/\d+/.test(r.url) && !r.url.includes('/progress'))
+      .forEach((req) => req.flush({}));
+
+    fixture.detectChanges();
+
+    const paged = component['pagedHistory']();
+
+    // First row: successfully matched 'CASE-TEST-ID' to 'case-test-id'
+    expect(paged[0].lessonTitle).toBe('Found Case Insensitive Title');
+
+    // Second row: blank title with unknown ID falls back to 'Untitled lesson'
+    expect(paged[1].lessonTitle).toBe('Untitled lesson');
+  });
 });
