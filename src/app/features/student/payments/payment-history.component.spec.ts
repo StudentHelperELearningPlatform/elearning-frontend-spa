@@ -49,7 +49,7 @@ describe('PaymentHistoryComponent', () => {
 
   it('loads history for the current student on init', () => {
     fixture.detectChanges();
-    const req = httpMock.expectOne('/api/v1/payments/history/student-1');
+    const req = httpMock.expectOne('/api/v1/payments/history');
     expect(req.request.method).toBe('GET');
     req.flush(records);
   });
@@ -57,7 +57,7 @@ describe('PaymentHistoryComponent', () => {
   it('does nothing when no student is authenticated', () => {
     (authStub.user as WritableSignal<unknown>).set(null);
     fixture.detectChanges();
-    httpMock.expectNone('/api/v1/payments/history/student-1');
+    httpMock.expectNone('/api/v1/payments/history');
   });
 
   it('formatAmount returns a localized currency string', () => {

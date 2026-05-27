@@ -106,7 +106,7 @@ export class PaymentHistoryComponent implements OnInit {
   ngOnInit() {
     const studentId = this.authStore.user()?.id;
     if (studentId) {
-      this.store.loadHistory(studentId);
+      this.store.loadHistory();
     }
   }
 

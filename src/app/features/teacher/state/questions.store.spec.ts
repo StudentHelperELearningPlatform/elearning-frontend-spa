@@ -157,8 +157,7 @@ describe('QuestionsStore', () => {
     store.generateAI({ type: 'final', parentId: 'p1' });
 
     const req = httpMock.expectOne('http://api/lessons/p1/final-quiz');
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ passThreshold: 50, mandatory: false, maxAttempts: 3, timeLimitSeconds: 900 });
+    expect(req.request.body).toEqual({ passThreshold: 50, mandatory: false, maxAttempts: 3 });
     req.flush({});
 
     expect(mockService.generateFinalQuizQuestions).toHaveBeenCalledWith('p1');

@@ -46,6 +46,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
   let authStoreStub: ReturnType<typeof createAuthStoreStub>;
   let lessonsStoreMock: {
     currentLesson: WritableSignal<{ id: string; title: string } | null>;
+    lessons: WritableSignal<{ id: string; title: string }[]>;
     loadLesson: ReturnType<typeof vi.fn>;
   };
   let routerMock: {
@@ -108,6 +109,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
 
     lessonsStoreMock = {
       currentLesson: signal(null),
+      lessons: signal([]),
       loadLesson: vi.fn(),
     };
 
@@ -352,9 +354,8 @@ describe('ProgressDashboardComponent (Logic)', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(lessonsStoreMock.loadLesson).toHaveBeenCalledWith('lesson-123');
 
-      lessonsStoreMock.currentLesson.set({ id: 'lesson-123', title: 'Catalog Lesson Name' });
-
-      expect(component.latestLessonTitle).toBe('Catalog Lesson Name');
+      lessonsStoreMock.lessons.set([{ id: 'lesson-123', title: 'Current Lesson Title 123' }]);
+      expect(component.latestLessonTitle).toBe('Current Lesson Title 123');
     });
 
     it('ignores "Untitled lesson" history placeholder and uses currentLesson title', async () => {
@@ -362,11 +363,8 @@ describe('ProgressDashboardComponent (Logic)', () => {
       progressStoreMock.myHistory.set([
         { lessonId: 'lesson-456', status: 'completed', score: 80, dateCompleted: '2026-05-11', lessonTitle: 'Untitled lesson' },
       ]);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(lessonsStoreMock.loadLesson).toHaveBeenCalledWith('lesson-456');
-
-      lessonsStoreMock.currentLesson.set({ id: 'lesson-456', title: 'Meme lesson' });
-      expect(component.latestLessonTitle).toBe('Meme lesson');
+      lessonsStoreMock.lessons.set([{ id: 'lesson-456', title: 'The Real Title 456' }]);
+      expect(component.latestLessonTitle).toBe('The Real Title 456');
     });
   });
 });

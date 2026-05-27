@@ -3,8 +3,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { tapResponse } from '@ngrx/operators';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap } from 'rxjs';
-import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
+import { pipe, switchMap, tap, forkJoin, of, catchError, map } from 'rxjs';
+import { USER_PLATFORM_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 
 // ---------------------------------------------------------------------------
 // Domain models (Sprint 6 & Legacy)
@@ -317,7 +317,7 @@ export const ProgressStore = signalStore(
     }),
   })),
 
-  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL), contentApiBase = inject(CONTENT_API_URL)) => ({
     
     // ── Sprint 6 live endpoints ──────────────────────────────────────────────
 
@@ -505,16 +505,42 @@ export const ProgressStore = signalStore(
           }
           
           return http.get<MyHistoryResponseItem[]>(`${apiBase}/progress/me/history`, { params: httpParams }).pipe(
+            switchMap((history) => {
+              const mapped: HistoryEntry[] = (history || []).map((h: MyHistoryResponseItem) => ({
+                lessonId: h.lessonId || '',
+                lessonTitle: h.lessonTitle || h.lessonName || h.title || h.lesson?.title || 'Untitled lesson',
+                subject: h.subject || 'General',
+                status: h.status || (h.completedAt ? 'completed' : 'in_progress'),
+                score: h.score ?? null,
+                dateCompleted: h.dateCompleted || h.completedAt || null,
+              }));
+
+              const missingTitles = mapped.filter(m => m.lessonTitle === 'Untitled lesson' && m.lessonId);
+              if (missingTitles.length === 0) return of(mapped);
+
+              const requests = missingTitles.map(m =>
+                http.get<{ title?: string, subject?: string }>(`${contentApiBase}/lessons/${m.lessonId}`).pipe(
+                  map(res => ({ id: m.lessonId, title: res.title, subject: res.subject })),
+                  catchError(() => of(null))
+                )
+              );
+
+              return forkJoin(requests).pipe(
+                map(results => {
+                  return mapped.map(entry => {
+                    if (entry.lessonTitle === 'Untitled lesson') {
+                      const found = results.find(r => r && String(r.id).toLowerCase() === String(entry.lessonId).toLowerCase());
+                      if (found) {
+                        return { ...entry, lessonTitle: found.title || 'Untitled lesson', subject: found.subject || entry.subject };
+                      }
+                    }
+                    return entry;
+                  });
+                })
+              );
+            }),
             tapResponse({
-              next: (history) => {
-                const mappedHistory: HistoryEntry[] = (history || []).map((h: MyHistoryResponseItem) => ({
-                  lessonId: h.lessonId || '',
-                  lessonTitle: h.lessonTitle || h.lessonName || h.title || h.lesson?.title || 'Untitled lesson',
-                  subject: h.subject || 'General',
-                  status: h.status || (h.completedAt ? 'completed' : 'in_progress'),
-                  score: h.score ?? null,
-                  dateCompleted: h.dateCompleted || h.completedAt || null,
-                }));
+              next: (mappedHistory) => {
                 patchState(store, { myHistory: mappedHistory, myHistoryLoading: false });
               },
               error: (err: { message?: string }) =>

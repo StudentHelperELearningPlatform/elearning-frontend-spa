@@ -46,11 +46,11 @@ export class PaymentStore {
       .reduce((sum, p) => sum + p.amount, 0),
   );
 
-  loadHistory(studentId: string) {
+  loadHistory() {
     this.historyLoading.set(true);
     this.historyError.set(null);
     this.http
-      .get<PaymentRecord[]>(`${this.apiBase}/payments/history/${studentId}`)
+      .get<PaymentRecord[]>(`${this.apiBase}/payments/history`)
       .subscribe({
         next: (data) => {
           this.history.set(Array.isArray(data) ? data : []);

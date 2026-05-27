@@ -66,8 +66,12 @@ export class AdminService {
   private readonly contentApi = inject(CONTENT_API_URL); // Contains '/api/v1' already!
 
   // Manage Users (Moisa Admin Controller & User Controller)
-  getUsers(page = 0, size = 5): Observable<PaginatedUsersResponse> {
-    const params = { page: page.toString(), size: size.toString() };
+  getUsers(page = 0, size = 5, query = ''): Observable<PaginatedUsersResponse> {
+    const params: Record<string, string> = { 
+      page: page.toString(), 
+      size: size.toString(),
+      query: query
+    };
     return this.http.get<PaginatedUsersResponse>(`${this.apiBase}/users`, { params });
   }
 
