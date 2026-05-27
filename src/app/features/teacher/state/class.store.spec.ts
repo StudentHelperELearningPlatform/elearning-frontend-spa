@@ -324,4 +324,36 @@ describe('ClassStore', () => {
     store.removeLesson('1', 'l1');
     httpTestingController.expectNone(`${mockApiUrl}/teachers/classes/1/lessons/l1`);
   });
+
+  it('should correctly map student details with various raw data shapes', () => {
+    const mockDetailRaw = { id: '1', name: 'Math', bio: '', createdAt: '' };
+    const enrolledRaw = [
+      's1',
+      { userId: 'u2' },
+      { id: 's3' },
+      { studentId: 's4' },
+      { id: 's5', name: 'Predefined Name' },
+      { userId: 'u6', firstName: 'Jane', lastName: 'Doe' },
+      {}
+    ];
+    const allStudentsRaw = [
+      { id: 's1', name: 'Alice' },
+      { userId: 'u2', name: 'Bob' },
+      { studentId: 's3', name: 'Charlie' }
+    ];
+
+    store.loadClassDetail('1');
+    flushClassDetail('1', mockDetailRaw, [], enrolledRaw, allStudentsRaw);
+
+    const students = store.currentClass()?.students || [];
+    expect(students.length).toBe(7);
+    expect(students[0]).toEqual({ id: 's1', name: 'Alice', email: '' });
+    expect(students[1]).toEqual({ id: 'u2', name: 'Bob', email: '' });
+    expect(students[2]).toEqual({ id: 's3', name: 'Charlie', email: '' });
+    expect(students[3]).toEqual({ id: 's4', name: 's4', email: '' });
+    expect(students[4]).toEqual({ id: 's5', name: 'Predefined Name', email: '' });
+    expect(students[5]).toEqual({ id: 'u6', name: 'Jane Doe', email: '' });
+    expect(students[6]).toEqual({ id: '', name: '', email: '' });
+  });
 });
+
