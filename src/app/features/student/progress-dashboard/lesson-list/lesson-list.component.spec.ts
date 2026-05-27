@@ -136,7 +136,6 @@ describe('LessonListComponent', () => {
     expect(text).toContain('Quiz Ready Lesson');
     expect(text).toContain('Completed Lesson');
 
-    expect(text).toContain('Not Started');
     expect(text).toContain('In Progress');
     expect(text).toContain('Quiz Ready');
     expect(text).toContain('Completed ✓');

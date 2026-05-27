@@ -143,14 +143,20 @@ describe('AdminService', () => {
     const mockClasses: AdminClassRaw[] = [
       { id: 'c1', name: 'Class A', teacher: 'John Doe', studentCount: 15 }
     ];
+    const mockResponse = {
+      classes: mockClasses,
+      currentPage: 0,
+      totalPages: 1,
+      totalElements: 1
+    };
 
-    service.getClasses().subscribe((classes) => {
-      expect(classes).toEqual(mockClasses);
+    service.getClasses(0, 5).subscribe((res) => {
+      expect(res).toEqual(mockResponse);
     });
 
-    const req = httpTestingController.expectOne(`${mockUserApiUrl}/teachers/classes`);
+    const req = httpTestingController.expectOne(`${mockUserApiUrl}/teachers/classes?page=0&size=5`);
     expect(req.request.method).toBe('GET');
-    req.flush(mockClasses);
+    req.flush(mockResponse);
   });
 
   it('should delete a class', () => {

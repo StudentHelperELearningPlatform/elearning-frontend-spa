@@ -40,6 +40,7 @@ interface AdminLesson {
 interface AdminClass {
   id: string;
   name: string;
+  bio: string;
   teacher: string;
   studentsCount: number;
   subject: string;
@@ -971,7 +972,7 @@ interface AdminClass {
                       Cohort
                     </th>
                     <th class="p-4 font-black text-gray-600 uppercase tracking-wider text-xs">
-                      Primary Teacher
+                      Description
                     </th>
                     <th
                       class="p-4 font-black text-gray-600 uppercase tracking-wider text-xs text-right"
@@ -1031,12 +1032,7 @@ interface AdminClass {
                           </div>
                         </td>
                         <td class="p-4">
-                          <div class="flex flex-col space-y-0.5">
-                            <span class="font-bold text-black text-xs">{{ cls.teacher }}</span>
-                            <span class="text-[9px] text-gray-400 font-bold"
-                              >{{ cls.studentsCount }} Students</span
-                            >
-                          </div>
+                          <span class="text-xs text-gray-600 font-medium">{{ cls.bio || '—' }}</span>
                         </td>
                         <td class="p-4 text-right">
                           <button
@@ -1053,6 +1049,29 @@ interface AdminClass {
                 </tbody>
               </table>
             </div>
+
+            <!-- Classes Pagination -->
+            @if (classes().length > 0 && !classesLoading() && !classesError()) {
+              <div class="p-4 border-t-4 border-black bg-gray-50 flex justify-between items-center shrink-0">
+                <button
+                  (click)="prevClassPage()"
+                  [disabled]="classesPage() <= 1"
+                  class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
+                >
+                  Previous
+                </button>
+                <span class="text-xs font-black text-black">
+                  Page {{ classesPage() }} of {{ classesTotalPages() }}
+                </span>
+                <button
+                  (click)="nextClassPage()"
+                  [disabled]="classesPage() >= classesTotalPages()"
+                  class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
+                >
+                  Next
+                </button>
+              </div>
+            }
           </app-card>
         </div>
       }
@@ -1331,6 +1350,11 @@ export class AdminDashboardComponent implements OnInit {
   userPage = signal<number>(1);
   userPageSize = signal<number>(5);
 
+  classesPage = signal<number>(1);
+  classesPageSize = signal<number>(5);
+  classesTotalPages = signal<number>(1);
+  classesTotalElements = signal<number>(0);
+
   // Pagination metadata from API
   usersCurrentPage = signal<number>(0);
   usersTotalPages = signal<number>(1);
@@ -1551,6 +1575,20 @@ export class AdminDashboardComponent implements OnInit {
   nextLessonPage() {
     if (this.lessonPage() < this.totalLessonPages()) {
       this.lessonPage.update((p) => p + 1);
+    }
+  }
+
+  prevClassPage() {
+    if (this.classesPage() > 1) {
+      this.classesPage.update((p) => p - 1);
+      this.loadClasses();
+    }
+  }
+
+  nextClassPage() {
+    if (this.classesPage() < this.classesTotalPages()) {
+      this.classesPage.update((p) => p + 1);
+      this.loadClasses();
     }
   }
 
@@ -1826,18 +1864,23 @@ export class AdminDashboardComponent implements OnInit {
   loadClasses() {
     this.classesLoading.set(true);
     this.classesError.set(null);
-    this.adminService.getClasses().subscribe({
+    const pageIndex = Math.max(0, this.classesPage() - 1);
+    this.adminService.getClasses(pageIndex, this.classesPageSize()).subscribe({
       next: (data) => {
-        const mappedClasses = this.safeExtractArray<AdminClassRaw>(data).map(
+        const rawClasses = data.classes || this.safeExtractArray<AdminClassRaw>(data);
+        const mappedClasses = rawClasses.map(
           (c: AdminClassRaw) => ({
             id: c.id || '',
             name: c.name || 'Unnamed Class',
-            teacher: c.teacher || c.teacherName || 'Unknown Teacher',
+            bio: c.bio || '',
+            teacher: c.teacher || c.teacherName || c.email || c.teacherEmail || '',
             studentsCount: c.studentsCount || c.studentCount || 0,
             subject: c.subject || 'General',
           }),
         );
         this.classes.set(mappedClasses);
+        this.classesTotalPages.set(data.totalPages || 1);
+        this.classesTotalElements.set(data.totalElements || mappedClasses.length);
         this.classesLoading.set(false);
       },
       error: (err) => {

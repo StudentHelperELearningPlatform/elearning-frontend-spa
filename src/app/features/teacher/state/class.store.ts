@@ -37,6 +37,10 @@ interface ClassState {
   currentClass: TeacherClassDetail | null;
   loading: boolean;
   error: string | null;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalElements: number;
 }
 
 const initialState: ClassState = {
@@ -45,6 +49,11 @@ const initialState: ClassState = {
 
   loading: false,
   error: null,
+  
+  page: 0,
+  pageSize: 9,
+  totalPages: 1,
+  totalElements: 0,
 };
 
 export const ClassStore = signalStore(
@@ -69,19 +78,26 @@ export const ClassStore = signalStore(
     userApi = inject(USER_PLATFORM_API_URL),
   ) => ({
 
-    loadClasses() {
+    loadClasses(pageIndex?: number) {
+      if (pageIndex !== undefined) {
+        patchState(store, { page: pageIndex });
+      }
+
       patchState(store, {
         loading: true,
         error: null,
       });
 
       http
-        .get<TeacherClassRaw[]>(`${userApi}/teachers/classes`)
+        .get<TeacherClassRaw[] | { classes?: TeacherClassRaw[], content?: TeacherClassRaw[], totalPages?: number, totalElements?: number }>(`${userApi}/teachers/classes?page=${store.page()}&size=${store.pageSize()}`)
         .subscribe({
-          next: (rawClasses) => {
+          next: (res) => {
+            const rawClasses = Array.isArray(res) ? res : (res.classes || res.content || []);
             patchState(store, {
               classes: rawClasses.map(mapClass),
               loading: false,
+              totalPages: Array.isArray(res) ? 1 : (res.totalPages ?? 1),
+              totalElements: Array.isArray(res) ? rawClasses.length : (res.totalElements ?? rawClasses.length),
             });
           },
 

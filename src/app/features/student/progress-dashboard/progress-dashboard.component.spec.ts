@@ -237,6 +237,14 @@ describe('ProgressDashboardComponent (Logic)', () => {
       expect(spy).toHaveBeenCalled();
     });
 
+    it('should not call renderRadarChart in ngAfterViewInit when radarContainer is absent', () => {
+      // radarContainer not set → false branch of if (radarContainer?.nativeElement)
+      (component as unknown as { radarContainer: null }).radarContainer = null as unknown as ElementRef;
+      const spy = vi.spyOn(component, 'renderRadarChart');
+      component.ngAfterViewInit();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
     it('should clean up resizeObserver on destroy', () => {
       // Mock ResizeObserver
       const disconnectSpy = vi.fn();
@@ -365,6 +373,83 @@ describe('ProgressDashboardComponent (Logic)', () => {
       ]);
       lessonsStoreMock.lessons.set([{ id: 'lesson-456', title: 'The Real Title 456' }]);
       expect(component.latestLessonTitle).toBe('The Real Title 456');
+    });
+  });
+
+  describe('startedLessonsCount with dashboard data', () => {
+    it('returns totalLessons from dashboard when > 0', () => {
+      progressStoreMock.dashboard.set({ totalLessons: 7, completedLessons: 3 });
+      progressStoreMock.myHistory.set([]);
+      expect(component.startedLessonsCount).toBe(7);
+    });
+
+    it('falls back to history count when dashboard totalLessons is 0', () => {
+      progressStoreMock.dashboard.set({ totalLessons: 0 });
+      progressStoreMock.myHistory.set([
+        { lessonId: 'l1', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+        { lessonId: 'l2', status: 'in_progress', score: null, dateCompleted: null },
+      ]);
+      expect(component.startedLessonsCount).toBe(2);
+    });
+
+    it('falls back to history count when dashboard totalLessons is null', () => {
+      // totalLessons: null means dashboardStarted !== null is false → short-circuits to history
+      progressStoreMock.dashboard.set({ totalLessons: null });
+      progressStoreMock.myHistory.set([
+        { lessonId: 'l1', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+      ]);
+      expect(component.startedLessonsCount).toBe(1);
+    });
+
+    it('returns 0 when history is empty and dashboard is null', () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([]);
+      expect(component.startedLessonsCount).toBe(0);
+    });
+  });
+
+  describe('latestLessonId edge cases', () => {
+    it('returns null when myHistory is empty', () => {
+      progressStoreMock.myHistory.set([]);
+      expect(component.latestLessonId).toBeNull();
+    });
+
+    it('sorts by dateCompleted and returns latest lessonId', () => {
+      progressStoreMock.myHistory.set([
+        { lessonId: 'older', status: 'completed', score: 80, dateCompleted: '2026-04-01' },
+        { lessonId: 'newest', status: 'completed', score: 90, dateCompleted: '2026-05-10' },
+      ]);
+      expect(component.latestLessonId).toBe('newest');
+    });
+
+    it('handles null dateCompleted (treats as 0 time)', () => {
+      progressStoreMock.myHistory.set([
+        { lessonId: 'has-date', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+        { lessonId: 'no-date', status: 'in_progress', score: null, dateCompleted: null },
+      ]);
+      expect(component.latestLessonId).toBe('has-date');
+    });
+
+    it('returns null when no entry has a lessonId', () => {
+      progressStoreMock.myHistory.set([
+        { lessonId: '', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+      ]);
+      expect(component.latestLessonId).toBeNull();
+    });
+  });
+
+  describe('latestLessonTitle edge cases', () => {
+    it('returns null when latestLessonId is null', () => {
+      progressStoreMock.myHistory.set([]);
+      expect(component.latestLessonTitle).toBeNull();
+    });
+
+    it('returns null when no matching lesson found in history or store', () => {
+      progressStoreMock.myHistory.set([
+        { lessonId: 'lesson-xyz', status: 'completed', score: 80, dateCompleted: '2026-05-01', lessonTitle: '' },
+      ]);
+      lessonsStoreMock.lessons.set([]);
+      expect(component.latestLessonTitle).toBeNull();
     });
   });
 });

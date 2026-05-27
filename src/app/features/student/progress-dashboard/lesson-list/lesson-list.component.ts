@@ -182,11 +182,6 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                   >Completed ✓</span
                 >
               }
-              @default {
-                <span class="text-base font-black uppercase tracking-wide text-gray-400"
-                  >Not Started</span
-                >
-              }
             }
 
             @switch (getLessonStatus(lesson.id)) {

@@ -454,6 +454,26 @@ describe('AdminDashboardComponent', () => {
     expect(component.users().length).toBe(5);
   });
 
+  it('should parse paginated classes response with classes, totalPages, and totalElements fields explicitly', () => {
+    const paginatedClasses = { classes: mockClasses, totalPages: 5, totalElements: 50 };
+    vi.spyOn(adminService, 'getClasses').mockReturnValue(of(paginatedClasses as never));
+    
+    component.loadClasses();
+    expect(component.classes().length).toBe(1);
+    expect(component.classesTotalPages()).toBe(5);
+    expect(component.classesTotalElements()).toBe(50);
+  });
+
+  it('should parse paginated classes response with missing pagination fields to fallbacks', () => {
+    const paginatedClasses = { classes: mockClasses };
+    vi.spyOn(adminService, 'getClasses').mockReturnValue(of(paginatedClasses as never));
+    
+    component.loadClasses();
+    expect(component.classes().length).toBe(1);
+    expect(component.classesTotalPages()).toBe(1);
+    expect(component.classesTotalElements()).toBe(1); // mappedClasses.length is 1
+  });
+
   it('should gracefully handle API failure when performBan fails', () => {
     const serviceSpy = vi
       .spyOn(adminService, 'banUser')

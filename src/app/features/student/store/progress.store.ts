@@ -279,7 +279,8 @@ export const ProgressStore = signalStore(
       // Prioritizează datele live din dashboard (S6)
       const dash = store.dashboard();
       if (dash && dash.totalLessons) {
-        return Math.round(((dash.completedLessons ?? 0) / dash.totalLessons) * 100);
+        const completed = Number(dash.completedLessons) || 0;
+        return Math.round((completed / dash.totalLessons) * 100);
       }
       
       // Fallback la datele vechi (student)
@@ -304,7 +305,7 @@ export const ProgressStore = signalStore(
     recentMilestones: computed(() => {
   return [...store.milestones()]
     .filter((m) => m.earnedAt != null)
-    .sort((a, b) => new Date(b.earnedAt ?? '').getTime() - new Date(a.earnedAt ?? '').getTime())
+    .sort((a, b) => new Date(b.earnedAt!).getTime() - new Date(a.earnedAt!).getTime())
     .slice(0, 3);
 }),
 
@@ -326,17 +327,20 @@ export const ProgressStore = signalStore(
         tap(() => patchState(store, { dashboardLoading: true, dashboardError: null, loading: true, error: null })),
         switchMap((params) => {
           const classId = (params && typeof params === 'object' && 'classId' in params ? params.classId : null) || '00000000-0000-0000-0000-000000000000';
-          return http.get<DashboardResponse>(`${apiBase}/progress/me/dashboard`, {
-            params: { classId }
+          return forkJoin({
+            dashboard: http.get<DashboardResponse>(`${apiBase}/progress/me/dashboard`, { params: { classId } }),
+            completedCount: http.get<number>(`${apiBase}/progress/me/completed-lessons/count`).pipe(catchError(() => of(null)))
           }).pipe(
             tapResponse({
-              next: (data) => {
+              next: ({ dashboard: data, completedCount }) => {
+                const actualCompletedLessons = completedCount ?? data?.completedLessons ?? data?.student?.completedLessons ?? 0;
+                
                 const studentInfo = {
                   id: data?.studentId || data?.student?.id || '',
                   firstName: data?.firstName || data?.student?.firstName || '',
                   lastName: data?.lastName || data?.student?.lastName || '',
                   totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
-                  completedLessons: data?.completedLessons ?? data?.student?.completedLessons ?? 0,
+                  completedLessons: actualCompletedLessons,
                 };
                 const mappedSkillLevels = data?.subjects
                   ? data.subjects.map((s: SubjectResponse) => ({
@@ -359,7 +363,7 @@ export const ProgressStore = signalStore(
                   milestones: data?.milestones ?? [],
                   upcomingQuizzes: data?.upcomingQuizzes ?? [],
                   totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
-                  completedLessons: data?.completedLessons ?? data?.student?.completedLessons ?? 0,
+                  completedLessons: actualCompletedLessons,
                   averageScore: 0,
                   lastActive: data?.lastActivityDate ?? data?.streak?.lastActivityDate ?? null,
                 };
@@ -381,9 +385,9 @@ export const ProgressStore = signalStore(
               },
               error: (err: { message?: string }) => patchState(store, {
                 dashboardLoading: false,
-                dashboardError: err?.message ?? 'Failed to load dashboard',
+                dashboardError: err?.message || 'Failed to load dashboard',
                 loading: false,
-                error: err?.message ?? 'Failed to load dashboard'
+                error: err?.message || 'Failed to load dashboard'
               }),
             })
           );
