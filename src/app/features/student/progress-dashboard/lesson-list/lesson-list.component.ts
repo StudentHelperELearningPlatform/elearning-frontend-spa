@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, effect, untracked } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LessonsStore } from '../../store/lessons.store';
 import { ProgressStore } from '../../store/progress.store';
@@ -8,7 +8,6 @@ import { CardComponent } from '../../../../shared/components/card/card.component
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { BadgeComponent } from '../../../../shared/components/badge/badge.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
-import { HistoryComponent } from '../../history/history.component';
 
 @Component({
   selector: 'app-lesson-list',
@@ -20,7 +19,6 @@ import { HistoryComponent } from '../../history/history.component';
     ButtonComponent,
     BadgeComponent,
     EmptyStateComponent,
-    HistoryComponent, // <-- 1. Import the HistoryComponent
   ],
   template: `
     <div class="p-6 max-w-7xl mx-auto space-y-8">
@@ -94,9 +92,7 @@ import { HistoryComponent } from '../../history/history.component';
             @if (lessonsStore.accessibleLessonsLoading()) {
               <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 @for (i of [1, 2, 3]; track i) {
-                  <div
-                    class="bg-gray-200 animate-pulse h-80 rounded-3xl border-4 border-black"
-                  ></div>
+                  <div class="bg-gray-200 animate-pulse h-80 rounded-3xl border-4 border-black"></div>
                 }
               </div>
             } @else if (lessonsStore.myLessons().length === 0) {
@@ -116,20 +112,28 @@ import { HistoryComponent } from '../../history/history.component';
             }
           }
           @case ('history') {
-            <div class="-mx-4 md:-mx-6 -mt-4 md:-mt-6 -mb-6">
-              <app-student-history [showHeader]="false"></app-student-history>
-            </div>
+            @if (completedLessons().length === 0) {
+              <app-empty-state
+                [title]="'No history yet'"
+                [description]="'Finish a lesson to see your achievements here!'"
+                [icon]="'history'"
+              ></app-empty-state>
+            } @else {
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                @for (lesson of completedLessons(); track lesson.id) {
+                  <ng-container
+                    *ngTemplateOutlet="lessonCard; context: { $implicit: lesson, type: 'history' }"
+                  />
+                }
+              </div>
+            }
           }
         }
       }
     </div>
 
     <ng-template #lessonCard let-lesson let-type="type">
-      <app-card
-        [hoverable]="true"
-        [routerLink]="['/student/lessons', lesson.id]"
-        class="h-full flex flex-col transition-all duration-300"
-      >
+      <app-card [hoverable]="true" [routerLink]="['/student/lessons', lesson.id]" class="h-full flex flex-col transition-all duration-300">
         <div
           class="-mx-6 -mt-6 mb-6 h-40 bg-[#0ABAB5]/20 border-b-4 border-black flex items-center justify-center relative overflow-hidden"
         >
@@ -227,6 +231,16 @@ export class LessonListComponent implements OnInit {
 
   private readonly lessonStatusMap = signal<Record<string, string>>({});
 
+  completedLessons = computed(() => {
+    const history = this.progressStore.myHistory();
+    const completedHistoryIds = new Set(
+      history
+        .filter((h) => h.status === 'completed' || h.dateCompleted != null || (h.status !== 'in_progress' && h.status !== 'not_started'))
+        .map((h) => h.lessonId)
+    );
+    return this.lessonsStore.publishedLessons().filter((l) => completedHistoryIds.has(l.id));
+  });
+  
   constructor() {
     effect(() => {
       const lessons = this.lessonsStore.publishedLessons();
@@ -250,7 +264,7 @@ export class LessonListComponent implements OnInit {
       return testMapStatus;
     }
 
-    const lesson = this.lessonsStore.lessons().find((l) => l.id === lessonId);
+    const lesson = this.lessonsStore.lessons().find(l => l.id === lessonId);
     if (lesson) {
       const status = (lesson.status || '').toLowerCase().trim();
       if (status === 'finished' || status === 'completed' || status === 'quiz-submitted') {
@@ -266,13 +280,9 @@ export class LessonListComponent implements OnInit {
 
     // Fallback to history entry if available
     const history = this.progressStore.myHistory();
-    const entry = history.find((h) => h.lessonId === lessonId);
+    const entry = history.find(h => h.lessonId === lessonId);
     if (entry) {
-      if (
-        entry.status === 'completed' ||
-        entry.dateCompleted ||
-        (entry.status !== 'in_progress' && entry.status !== 'not_started')
-      ) {
+      if (entry.status === 'completed' || entry.dateCompleted || (entry.status !== 'in_progress' && entry.status !== 'not_started')) {
         return 'quiz-submitted';
       }
       return 'in-progress';
