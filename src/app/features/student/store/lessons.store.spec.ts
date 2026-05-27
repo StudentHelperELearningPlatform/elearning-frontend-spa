@@ -289,6 +289,15 @@ describe('LessonsStore', () => {
       expect(store.hasFinalQuiz()).toBe(false);
     });
 
+    it('keeps hasFinalQuiz true on non-404 errors', () => {
+      vi.spyOn(http, 'get').mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Server Error' }))
+      );
+      store.loadFinalQuizAttempts('lesson-failure');
+      expect(store.finalQuizAttempts()).toEqual([]);
+      expect(store.hasFinalQuiz()).toBe(true);
+    });
+
     it('lastQuizAttempt returns the last attempt', () => {
       const a1 = { attemptId: 'a1', score: 5, totalPoints: 10, percentage: 50, passed: false, submittedAt: '' };
       const a2 = { attemptId: 'a2', score: 9, totalPoints: 10, percentage: 90, passed: true, submittedAt: '' };

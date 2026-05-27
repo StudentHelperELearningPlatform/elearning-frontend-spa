@@ -80,6 +80,29 @@ describe('MilestonesStore', () => {
       );
     });
 
+    it('should not notify twice for the same earned milestone id', () => {
+      const mockBackend = [
+        { id: '1', nume: 'Achievement', descriere: 'desc', type: 'mastery', achievedAt: '2024-05-05' }
+      ];
+
+      store.loadMilestones();
+      httpMock.expectOne('/api/v1/progress/me/milestones').flush(mockBackend);
+
+      store.loadMilestones();
+      httpMock.expectOne('/api/v1/progress/me/milestones').flush(mockBackend);
+
+      expect(notificationMock.success).toHaveBeenCalledTimes(1);
+    });
+
+    it('should fallback to emoji_events icon for unknown category', () => {
+      store.loadMilestones();
+      httpMock.expectOne('/api/v1/progress/me/milestones').flush([
+        { id: '9', nume: 'Unknown', descriere: 'desc', type: 'custom' }
+      ]);
+
+      expect(store.milestones()[0].icon).toBe('emoji_events');
+    });
+
     it('should handle errors', () => {
       store.loadMilestones();
       const req = httpMock.expectOne('/api/v1/progress/me/milestones');
@@ -110,6 +133,22 @@ describe('MilestonesStore', () => {
         earnedAt: '2026-05-25',
         icon: 'people'
       });
+    });
+
+    it('should keep selectedMilestone null when detail response is empty', () => {
+      store.loadMilestoneDetail('5');
+      httpMock.expectOne('/api/v1/progress/me/milestones/5').flush(null);
+
+      expect(store.detailLoading()).toBe(false);
+      expect(store.selectedMilestone()).toBeNull();
+    });
+
+    it('should report error when detail request fails', () => {
+      store.loadMilestoneDetail('5');
+      httpMock.expectOne('/api/v1/progress/me/milestones/5').error(new ErrorEvent('Network error'));
+
+      expect(store.detailLoading()).toBe(false);
+      expect(notificationMock.error).toHaveBeenCalledWith('Failed to load milestone detail');
     });
   });
 });

@@ -82,6 +82,44 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     return this.progressStore.student()?.totalLessons ?? 0;
   }
 
+  get startedLessonsCount(): number {
+    const dashboardStarted = this.myDashboard()?.totalLessons;
+    if (dashboardStarted !== null && dashboardStarted !== undefined && dashboardStarted > 0) {
+      return dashboardStarted;
+    }
+
+    const started = this.progressStore
+      .myHistory()
+      .filter((h) => h.status === 'in_progress' || h.status === 'completed' || h.dateCompleted != null);
+    return new Set(started.map((h) => h.lessonId).filter(Boolean)).size;
+  }
+
+  get completedLessonsCount(): number {
+    const dashboardCompleted = this.myDashboard()?.completedLessons;
+    if (dashboardCompleted !== null && dashboardCompleted !== undefined) {
+      return dashboardCompleted;
+    }
+
+    const completed = this.progressStore
+      .myHistory()
+      .filter((h) => h.status === 'completed' || h.dateCompleted != null);
+    return new Set(completed.map((h) => h.lessonId).filter(Boolean)).size;
+  }
+
+  get averageQuizScore(): number | null {
+    const dashboardAverage = this.myDashboard()?.averageScore;
+    if (dashboardAverage !== null && dashboardAverage !== undefined) {
+      return dashboardAverage;
+    }
+
+    const scores = this.progressStore
+      .myHistory()
+      .map((h) => h.score)
+      .filter((s): s is number => s !== null && s !== undefined);
+    if (scores.length === 0) return null;
+    return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+  }
+
   get streakHasGoldGlow(): boolean {
     return this.progressStore.activeStreak() >= 7;
   }
@@ -133,6 +171,7 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
 
   ngOnInit() {
     this.profileStore.loadStudentProfile();
+    this.progressStore.loadMyHistory();
   }
 
   ngAfterViewInit() {

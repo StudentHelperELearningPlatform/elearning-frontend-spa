@@ -20,6 +20,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     skillLevels: WritableSignal<unknown[]>;
 
     loadMyDashboard: ReturnType<typeof vi.fn>;
+    loadMyHistory: ReturnType<typeof vi.fn>;
     loadMyLessonStats: ReturnType<typeof vi.fn>;
     loading: WritableSignal<boolean>;
     error: WritableSignal<string | null>;
@@ -32,6 +33,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     dashboard: WritableSignal<unknown>;
     dashboardLoading: WritableSignal<boolean>;
     dashboardError: WritableSignal<string | null>;
+    myHistory: WritableSignal<{ lessonId: string; status: 'not_started' | 'in_progress' | 'completed'; score: number | null; dateCompleted: string | null }[]>;
   };
   let studentProfileStoreMock: {
     profile: WritableSignal<StudentProfile | null>;
@@ -63,6 +65,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       skillLevels: signal([]),
 
       loadMyDashboard: vi.fn(),
+      loadMyHistory: vi.fn(),
       loadMyLessonStats: vi.fn(),
       loading: signal(false),
       error: signal(null),
@@ -75,6 +78,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       dashboard: signal(null),
       dashboardLoading: signal(false),
       dashboardError: signal(null),
+      myHistory: signal([]),
     };
 
     studentProfileStoreMock = {
@@ -271,6 +275,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
         component.ngOnInit();
       });
       expect(studentProfileStoreMock.loadStudentProfile).toHaveBeenCalled();
+      expect(progressStoreMock.loadMyHistory).toHaveBeenCalled();
     });
 
     it('should fetch class details if student has enrolled classes', async () => {
@@ -310,6 +315,21 @@ describe('ProgressDashboardComponent (Logic)', () => {
       progressStoreMock.continueLesson.set({ lessonId: 'lesson-continue', status: 'IN_PROGRESS' });
       await new Promise(resolve => setTimeout(resolve, 50));
       expect(progressStoreMock.loadMyLessonStats).toHaveBeenCalledWith({ lessonId: 'lesson-continue' });
+    });
+  });
+
+  describe('History-based aggregate fallback', () => {
+    it('computes started/completed/average from myHistory when dashboard aggregate is unavailable', () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([
+        { lessonId: 'l1', status: 'in_progress', score: 70, dateCompleted: null },
+        { lessonId: 'l2', status: 'completed', score: 90, dateCompleted: '2026-05-01' },
+        { lessonId: 'l2', status: 'completed', score: 90, dateCompleted: '2026-05-01' },
+      ]);
+
+      expect(component.startedLessonsCount).toBe(2);
+      expect(component.completedLessonsCount).toBe(1);
+      expect(component.averageQuizScore).toBe(83);
     });
   });
 });

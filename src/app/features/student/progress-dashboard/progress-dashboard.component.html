@@ -39,20 +39,20 @@
       >
         Could not load aggregate stats. {{ progressStore.dashboardError() }}
       </div>
-    } @else if (myDashboard() && (myDashboard()!.totalLessons ?? 0) > 0) {
+    } @else if (startedLessonsCount > 0) {
       <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Lessons started</p>
-        <p class="text-2xl font-black text-black mt-1">{{ myDashboard()!.totalLessons ?? 0 }}</p>
+        <p class="text-2xl font-black text-black mt-1">{{ startedLessonsCount }}</p>
       </div>
       <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Lessons completed</p>
-        <p class="text-2xl font-black text-[#0ABAB5] mt-1">{{ myDashboard()!.completedLessons ?? 0 }}</p>
+        <p class="text-2xl font-black text-[#0ABAB5] mt-1">{{ completedLessonsCount }}</p>
       </div>
       <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Average quiz score</p>
         <p class="text-2xl font-black text-black mt-1">
-          @if (myDashboard()!.averageScore !== null && myDashboard()!.averageScore !== undefined) {
-            {{ myDashboard()!.averageScore }}%
+          @if (averageQuizScore !== null && averageQuizScore !== undefined) {
+            {{ averageQuizScore }}%
           } @else {
             <span class="text-gray-400">—</span>
           }
