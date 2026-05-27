@@ -27,6 +27,26 @@ describe('QuestionsService', () => {
     httpMock.verify();
   });
 
+  it('should get check quiz', () => {
+    const mockResponse = { id: 'sub-1', passThreshold: 70 };
+    service.getCheckQuiz('sub-1').subscribe((res) => {
+      expect(res).toEqual(mockResponse);
+    });
+    const req = httpMock.expectOne(`${baseUrl}/subcapitols/sub-1/check-quiz`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
+  });
+
+  it('should get final quiz', () => {
+    const mockResponse = { id: 'les-1', passThreshold: 70 };
+    service.getFinalQuiz('les-1').subscribe((res) => {
+      expect(res).toEqual(mockResponse);
+    });
+    const req = httpMock.expectOne(`${baseUrl}/lessons/les-1/final-quiz`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
+  });
+
   it('should get check quiz questions', () => {
     const mockResponse = [{ id: '1', questionText: 'Q1' } as QuestionResponse];
     service.getCheckQuizQuestions('sub-1').subscribe((res) => {

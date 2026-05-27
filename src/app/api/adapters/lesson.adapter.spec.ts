@@ -144,4 +144,34 @@ describe('mapLessonResponse', () => {
 
     expect(mapLessonResponse(backend).modules[0].type).toBe('text');
   });
+
+  it('should map status to In Progress if progress is not null, and Finished if progress is completed', () => {
+    const backendInProgress: BackendLesson = {
+      id: 'lesson-progress-1',
+      title: 'In Progress Lesson',
+      progress: {
+        completedModules: 1,
+        status: 'IN_PROGRESS'
+      }
+    };
+
+    const backendFinished: BackendLesson = {
+      id: 'lesson-finished-1',
+      title: 'Finished Lesson',
+      progress: {
+        completedModules: 3,
+        status: 'COMPLETED'
+      }
+    };
+
+    const backendFinishedLegacy: BackendLesson = {
+      id: 'lesson-finished-2',
+      title: 'Finished Lesson Legacy',
+      status: 'COMPLETED'
+    };
+
+    expect(mapLessonResponse(backendInProgress).status).toBe('In Progress');
+    expect(mapLessonResponse(backendFinished).status).toBe('Finished');
+    expect(mapLessonResponse(backendFinishedLegacy).status).toBe('Finished');
+  });
 });

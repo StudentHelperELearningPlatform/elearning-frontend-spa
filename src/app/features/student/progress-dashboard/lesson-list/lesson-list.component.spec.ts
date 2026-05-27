@@ -149,6 +149,49 @@ describe('LessonListComponent', () => {
     expect(component.getLessonStatus('unknown-id')).toBe('not-started');
   });
 
+  it('getLessonStatus maps finished/completed statuses from lesson entity', () => {
+    patchStore(store, {
+      lessons: [
+        { ...MOCK_LESSONS[0], id: 'finished-id', status: 'Finished' },
+        { ...MOCK_LESSONS[0], id: 'completed-id-2', status: 'COMPLETED' },
+      ],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('finished-id')).toBe('quiz-submitted');
+    expect(component.getLessonStatus('completed-id-2')).toBe('quiz-submitted');
+  });
+
+  it('getLessonStatus maps in-progress and quiz-ready statuses from lesson entity', () => {
+    patchStore(store, {
+      lessons: [
+        { ...MOCK_LESSONS[0], id: 'ip-1', status: 'In Progress' },
+        { ...MOCK_LESSONS[0], id: 'ip-2', status: 'in-progress' },
+        { ...MOCK_LESSONS[0], id: 'qr-1', status: 'quiz-ready' },
+      ],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('ip-1')).toBe('in-progress');
+    expect(component.getLessonStatus('ip-2')).toBe('in-progress');
+    expect(component.getLessonStatus('qr-1')).toBe('quiz-ready');
+  });
+
+  it('getLessonStatus falls back to history entry when lesson has no explicit status mapping', () => {
+    patchStore(store, {
+      lessons: [{ ...MOCK_LESSONS[0], id: 'hist-lesson', status: '' }],
+    });
+    patchStore(progressStore, {
+      myHistory: [{ lessonId: 'hist-lesson', status: 'completed', dateCompleted: '2026-01-01' } as HistoryEntry],
+    });
+    component['lessonStatusMap'].set({});
+    fixture.detectChanges();
+
+    expect(component.getLessonStatus('hist-lesson')).toBe('quiz-submitted');
+  });
+
   it('hasAccess returns true', () => {
     fixture.detectChanges();
     expect(component.hasAccess()).toBe(true);

@@ -5,7 +5,6 @@ import { LessonsStore } from '../store/lessons.store';
 import { ProgressStore } from '../store/progress.store';
 
 import { ButtonComponent } from '@shared/components/button/button.component';
-import { CardComponent } from '@shared/components/card/card.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
@@ -17,7 +16,6 @@ import { ErrorStateComponent } from '@shared/components/error-state/error-state.
     CommonModule,
     RouterModule,
     ButtonComponent,
-    CardComponent,
     BadgeComponent,
     EmptyStateComponent,
     ErrorStateComponent,

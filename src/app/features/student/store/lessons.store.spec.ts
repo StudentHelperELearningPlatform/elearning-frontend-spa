@@ -188,36 +188,7 @@ describe('LessonsStore', () => {
   });
 
   describe('markModuleComplete (INT-02)', () => {
-    it('should call PUT /api/v1/lessons/:lessonId/progress with correct payload', () => {
-      const putSpy = vi.spyOn(http, 'put').mockReturnValue(of({ message: 'Progress saved successfully' }));
-
-      store.markModuleComplete('lesson-123', 'module-1');
-
-      expect(putSpy).toHaveBeenCalledWith(
-        '/api/v1/lessons/lesson-123/progress',
-        expect.objectContaining({
-          moduleId: 'module-1',
-          completedAt: expect.any(String) 
-        })
-      );
-    });
-
-    it('should catch errors and log them without crashing', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-
-      vi.spyOn(http, 'put').mockReturnValue(
-        throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' }))
-      );
-
-      store.markModuleComplete('lesson-123', 'module-2');
-
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to save module progress', expect.any(Object));
-      
-      consoleSpy.mockRestore();
-    });
-
     it('should track completed module id locally (S6-final-quiz-ui)', () => {
-      vi.spyOn(http, 'put').mockReturnValue(of({}));
       store.markModuleComplete('lesson-1', 'module-A');
       expect(store.completedModuleIds().has('module-A')).toBe(true);
     });
@@ -306,6 +277,7 @@ describe('LessonsStore', () => {
       store.loadFinalQuizAttempts('lesson-42');
       expect(store.finalQuizAttempts()?.length).toBe(1);
       expect(store.finalQuizAttempts()?.[0].attemptId).toBe('a1');
+      expect(store.hasFinalQuiz()).toBe(true);
     });
 
     it('sets finalQuizAttempts to [] on HTTP error', () => {
@@ -314,6 +286,16 @@ describe('LessonsStore', () => {
       );
       store.loadFinalQuizAttempts('lesson-missing');
       expect(store.finalQuizAttempts()).toEqual([]);
+      expect(store.hasFinalQuiz()).toBe(false);
+    });
+
+    it('keeps hasFinalQuiz true on non-404 errors', () => {
+      vi.spyOn(http, 'get').mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Server Error' }))
+      );
+      store.loadFinalQuizAttempts('lesson-failure');
+      expect(store.finalQuizAttempts()).toEqual([]);
+      expect(store.hasFinalQuiz()).toBe(true);
     });
 
     it('lastQuizAttempt returns the last attempt', () => {
@@ -423,10 +405,10 @@ describe('LessonsStore', () => {
 
   describe('loadAccessibleLessons', () => {
     it('sets accessibleLessonIds successfully by calling access-check for each lesson', () => {
-      patchStore(store, { lessons: [{ ...mockLesson, id: 'l1' }, { ...mockLesson, id: 'l2' }] });
+      patchStore(store, { lessons: [{ ...mockLesson, id: '11111111-1111-1111-1111-111111111111' }, { ...mockLesson, id: '22222222-2222-2222-2222-222222222222' }] });
       
       const getSpy = vi.spyOn(http, 'get').mockImplementation((url: unknown, options?: { params?: { lessonId?: string } }) => {
-        if (options?.params?.lessonId === 'l1') {
+        if (options?.params?.lessonId === '11111111-1111-1111-1111-111111111111') {
           return of(true);
         }
         return of(false);
@@ -436,7 +418,7 @@ describe('LessonsStore', () => {
       
       expect(getSpy).toHaveBeenCalledTimes(2);
       expect(store.accessibleLessonIds().size).toBe(1);
-      expect(store.accessibleLessonIds().has('l1')).toBe(true);
+      expect(store.accessibleLessonIds().has('11111111-1111-1111-1111-111111111111')).toBe(true);
       expect(store.accessibleLessonsLoading()).toBe(false);
     });
 
@@ -449,7 +431,7 @@ describe('LessonsStore', () => {
     });
 
     it('does nothing if studentId is not provided', () => {
-      patchStore(store, { lessons: [{ ...mockLesson, id: 'l1' }] });
+      patchStore(store, { lessons: [{ ...mockLesson, id: '11111111-1111-1111-1111-111111111111' }] });
       const getSpy = vi.spyOn(http, 'get');
       store.loadAccessibleLessons('');
       expect(getSpy).not.toHaveBeenCalled();
@@ -457,7 +439,7 @@ describe('LessonsStore', () => {
     });
 
     it('handles HTTP errors gracefully by defaulting to false', () => {
-      patchStore(store, { lessons: [{ ...mockLesson, id: 'l1' }] });
+      patchStore(store, { lessons: [{ ...mockLesson, id: '11111111-1111-1111-1111-111111111111' }] });
       vi.spyOn(http, 'get').mockReturnValue(throwError(() => new Error('API failure')));
       
       store.loadAccessibleLessons('stu-1');

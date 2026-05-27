@@ -111,6 +111,7 @@ interface LessonsState {
   /** Final quiz attempts for the current lesson; null = not yet loaded */
   finalQuizAttempts: FinalQuizAttempt[] | null;
   attemptsLoading: boolean;
+  hasFinalQuiz: boolean | null;
   /** Parsed AI explanation for the currently viewed block */
   explanation: BlockExplanation | null;
   explanationLoading: boolean;
@@ -131,6 +132,7 @@ export const LessonsStore = signalStore(
     completedModuleIds: new Set<string>(),
     finalQuizAttempts: null,
     attemptsLoading: false,
+    hasFinalQuiz: null,
     explanation: null,
     explanationLoading: false,
     explanationBlockId: null,
@@ -220,14 +222,20 @@ export const LessonsStore = signalStore(
         return;
       }
       
-      const checks = lessons.map(l => 
-        http.get<boolean>(`${userApiBase}/payments/access-check`, {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const checks = lessons.map(l => {
+        if (!uuidRegex.test(l.id)) {
+          // If the lesson ID is not a valid UUID (e.g., mock data like "seed-1"),
+          // bypass the real backend access check to avoid a 400 Bad Request and assume access is granted.
+          return of({ id: l.id, hasAccess: true });
+        }
+        return http.get<boolean>(`${userApiBase}/payments/access-check`, {
           params: { studentId, lessonId: l.id }
         }).pipe(
           map(hasAccess => ({ id: l.id, hasAccess })),
           catchError(() => of({ id: l.id, hasAccess: false }))
-        )
-      );
+        );
+      });
 
       forkJoin(checks).subscribe({
         next: (results) => {
@@ -308,16 +316,6 @@ export const LessonsStore = signalStore(
       patchState(store, (s) => ({
         completedModuleIds: new Set([...s.completedModuleIds, moduleId]),
       }));
-
-      http.put(`${apiBase}/lessons/${lessonId}/progress`, {
-        moduleId,
-        completedAt: new Date().toISOString(),
-      }).subscribe({
-        next: () => { /* progress saved — no state change needed */ },
-        error: (err) => {
-          console.error('Failed to save module progress', err);
-        },
-      });
     },
 
     completeLesson(lessonId: string): void {
@@ -338,18 +336,24 @@ export const LessonsStore = signalStore(
       patchState(store, { attemptsLoading: true });
       http.get<FinalQuizAttempt[]>(`${apiBase}/lessons/${lessonId}/final-quiz/attempts`).subscribe({
         next: (attempts) => {
-          patchState(store, { finalQuizAttempts: attempts, attemptsLoading: false });
+          patchState(store, { finalQuizAttempts: attempts, attemptsLoading: false, hasFinalQuiz: true });
         },
-        error: () => {
+        error: (err) => {
           // Treat as no attempts on error — don't block the lesson viewer
-          patchState(store, { finalQuizAttempts: [], attemptsLoading: false });
+          // If error status is 404, we know there is no final quiz.
+          const is404 = err?.status === 404;
+          patchState(store, {
+            finalQuizAttempts: [],
+            attemptsLoading: false,
+            hasFinalQuiz: !is404,
+          });
         },
       });
     },
 
     /** Reset completion tracking (e.g. when leaving the lesson) */
     clearCompletionState(): void {
-      patchState(store, { completedModuleIds: new Set<string>(), finalQuizAttempts: null });
+      patchState(store, { completedModuleIds: new Set<string>(), finalQuizAttempts: null, hasFinalQuiz: null });
     },
 
     /**

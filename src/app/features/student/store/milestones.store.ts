@@ -14,6 +14,20 @@ export interface Milestone {
   goal?: number;
 }
 
+interface BackendMilestone {
+  id: string | number;
+  nume?: string;
+  title?: string;
+  descriere?: string;
+  description?: string;
+  type?: string;
+  category?: Milestone['category'];
+  achievedAt?: string;
+  earnedAt?: string;
+  progress?: number;
+  goal?: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -24,6 +38,10 @@ export class MilestonesStore {
 
   milestones = signal<Milestone[]>([]);
   loading = signal(false);
+
+  // New signals for detail endpoint
+  selectedMilestone = signal<Milestone | null>(null);
+  detailLoading = signal(false);
 
   private readonly lastEarnedIds = new Set<string>();
 
@@ -40,16 +58,36 @@ export class MilestonesStore {
 
   private readonly userPlatformApi = inject(USER_PLATFORM_API_URL);
 
-  loadMilestones(studentId: string) {
+  private getIconForCategory(category?: string): string {
+    const cat = (category || '').toLowerCase().trim();
+    if (cat === 'learning') return 'school';
+    if (cat === 'streak') return 'local_fire_department';
+    if (cat === 'mastery') return 'military_tech';
+    if (cat === 'social') return 'people';
+    return 'emoji_events';
+  }
+
+  loadMilestones() {
     this.loading.set(true);
 
     this.http
-      .get<Milestone[]>(`${this.userPlatformApi}/students/${studentId}/milestones`)
+      .get<BackendMilestone[]>(`${this.userPlatformApi}/progress/me/milestones`)
       .subscribe({
         next: (data) => {
-          this.milestones.set(data);
+          const mapped: Milestone[] = (data || []).map((m) => ({
+            id: String(m.id),
+            title: m.nume || m.title || '',
+            description: m.descriere || m.description || '',
+            category: (m.type || m.category || 'learning') as Milestone['category'],
+            earnedAt: m.achievedAt || m.earnedAt || undefined,
+            icon: this.getIconForCategory(m.type || m.category),
+            progress: m.progress ?? undefined,
+            goal: m.goal ?? undefined,
+          }));
 
-          data.forEach((m) => {
+          this.milestones.set(mapped);
+
+          mapped.forEach((m) => {
             if (m.earnedAt && !this.lastEarnedIds.has(m.id)) {
               this.lastEarnedIds.add(m.id);
 
@@ -64,6 +102,36 @@ export class MilestonesStore {
         error: () => {
           this.loading.set(false);
           this.notification.error('Failed to load milestones');
+        }
+      });
+  }
+
+  loadMilestoneDetail(milestoneId: string) {
+    this.detailLoading.set(true);
+    this.selectedMilestone.set(null);
+
+    this.http
+      .get<BackendMilestone>(`${this.userPlatformApi}/progress/me/milestones/${milestoneId}`)
+      .subscribe({
+        next: (data) => {
+          if (data) {
+            const mapped: Milestone = {
+              id: String(data.id),
+              title: data.nume || data.title || '',
+              description: data.descriere || data.description || '',
+              category: (data.type || data.category || 'learning') as Milestone['category'],
+              earnedAt: data.achievedAt || data.earnedAt || undefined,
+              icon: this.getIconForCategory(data.type || data.category),
+              progress: data.progress ?? undefined,
+              goal: data.goal ?? undefined,
+            };
+            this.selectedMilestone.set(mapped);
+          }
+          this.detailLoading.set(false);
+        },
+        error: () => {
+          this.detailLoading.set(false);
+          this.notification.error('Failed to load milestone detail');
         }
       });
   }

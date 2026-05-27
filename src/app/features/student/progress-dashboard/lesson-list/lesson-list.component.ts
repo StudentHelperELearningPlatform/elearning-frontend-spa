@@ -238,8 +238,12 @@ export class LessonListComponent implements OnInit {
 
   completedLessons = computed(() => {
     const history = this.progressStore.myHistory();
-    const historyIds = new Set(history.map((h) => h.lessonId));
-    return this.lessonsStore.publishedLessons().filter((l) => historyIds.has(l.id));
+    const completedHistoryIds = new Set(
+      history
+        .filter((h) => h.status === 'completed' || h.dateCompleted != null || (h.status !== 'in_progress' && h.status !== 'not_started'))
+        .map((h) => h.lessonId)
+    );
+    return this.lessonsStore.publishedLessons().filter((l) => completedHistoryIds.has(l.id));
   });
   
   constructor() {
@@ -260,7 +264,36 @@ export class LessonListComponent implements OnInit {
   }
 
   getLessonStatus(lessonId: string): string {
-    return this.lessonStatusMap()[lessonId] ?? 'not-started';
+    const testMapStatus = this.lessonStatusMap()[lessonId];
+    if (testMapStatus) {
+      return testMapStatus;
+    }
+
+    const lesson = this.lessonsStore.lessons().find(l => l.id === lessonId);
+    if (lesson) {
+      const status = (lesson.status || '').toLowerCase().trim();
+      if (status === 'finished' || status === 'completed' || status === 'quiz-submitted') {
+        return 'quiz-submitted';
+      }
+      if (status === 'in progress' || status === 'in-progress') {
+        return 'in-progress';
+      }
+      if (status === 'quiz-ready') {
+        return 'quiz-ready';
+      }
+    }
+
+    // Fallback to history entry if available
+    const history = this.progressStore.myHistory();
+    const entry = history.find(h => h.lessonId === lessonId);
+    if (entry) {
+      if (entry.status === 'completed' || entry.dateCompleted || (entry.status !== 'in_progress' && entry.status !== 'not_started')) {
+        return 'quiz-submitted';
+      }
+      return 'in-progress';
+    }
+
+    return 'not-started';
   }
 
   hasAccess(): boolean {
