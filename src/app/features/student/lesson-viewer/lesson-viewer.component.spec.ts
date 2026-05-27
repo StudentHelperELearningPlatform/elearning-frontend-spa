@@ -12,6 +12,8 @@ import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { By } from '@angular/platform-browser';
 import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
 import { MessageService } from 'primeng/api';
+import { HttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
 
 const MOCK_LESSON: Lesson = {
   id: '1',
@@ -411,6 +413,72 @@ describe('LessonViewerComponent', () => {
       expect(component.getModuleIcon('interactive')).toBe('touch_app');
       expect(component.getModuleIcon('audio')).toBe('headphones');
       expect(component.getModuleIcon('unknown_type')).toBe('menu_book');
+    });
+  });
+
+  describe('Subcapitol Check Quizzes', () => {
+    let httpClient: HttpClient;
+
+    beforeEach(() => {
+      httpClient = TestBed.inject(HttpClient);
+    });
+
+    it('loadSubcapitolAttempts loads attempts in parallel and updates subcapitolAttempts signal', () => {
+      const mockAttempts = [
+        { attemptId: 'att1', score: 8, passed: true }
+      ];
+      const getSpy = vi.spyOn(httpClient, 'get').mockReturnValue(of(mockAttempts));
+      
+      component.loadSubcapitolAttempts(MOCK_LESSON.subcapitols!);
+      
+      expect(getSpy).toHaveBeenCalledTimes(MOCK_LESSON.subcapitols!.length);
+      expect(component.subcapitolAttempts()['sub1']).toEqual(mockAttempts);
+    });
+
+    it('getBestAttempt returns the attempt with the highest score', () => {
+      const mockAttempts = [
+        { attemptId: 'att1', score: 5, passed: false },
+        { attemptId: 'att2', score: 9, passed: true },
+        { attemptId: 'att3', score: 7, passed: true }
+      ];
+      component.subcapitolAttempts.set({
+        'sub1': mockAttempts
+      });
+
+      const best = component.getBestAttempt('sub1');
+      expect(best?.attemptId).toBe('att2');
+      expect(best?.score).toBe(9);
+    });
+
+    it('isSubcapitolPassed returns true if passed attempt exists', () => {
+      component.subcapitolAttempts.set({
+        'sub1': [
+          { attemptId: 'att1', score: 5, passed: false },
+          { attemptId: 'att2', score: 8, passed: true }
+        ],
+        'sub2': [
+          { attemptId: 'att3', score: 4, passed: false }
+        ]
+      });
+
+      expect(component.isSubcapitolPassed('sub1')).toBe(true);
+      expect(component.isSubcapitolPassed('sub2')).toBe(false);
+      expect(component.isSubcapitolPassed('sub-nonexistent')).toBe(false);
+    });
+
+    it('startCheckQuiz navigates to quiz player with check type and lessonId', () => {
+      const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      const lessonIdSignal = (component as unknown as { lessonId: { set: (id: string) => void } }).lessonId;
+      lessonIdSignal.set('1');
+
+      component.startCheckQuiz('sub1');
+
+      expect(spy).toHaveBeenCalledWith(['/student/quiz-player', 'sub1'], {
+        queryParams: {
+          type: 'check',
+          lessonId: '1'
+        }
+      });
     });
   });
 });

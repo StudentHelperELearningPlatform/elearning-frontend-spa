@@ -46,7 +46,7 @@ export const QuestionsStore = signalStore(
               passThreshold: 50,
               mandatory: false,
               maxAttempts: 3,
-              timeLimit: 900,
+              timeLimitSeconds: 900,
             });
       };
 
@@ -307,7 +307,7 @@ export const QuestionsStore = signalStore(
                     passThreshold,
                     mandatory: false,
                     maxAttempts: 3,
-                    timeLimit: 900,
+                    timeLimitSeconds: 900,
                   }).pipe(
                     tap(() => patchState(store, { quizExists: true }))
                   );

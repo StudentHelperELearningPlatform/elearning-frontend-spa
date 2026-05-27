@@ -627,5 +627,106 @@ describe('QuizzesStore', () => {
       expect(store.quizExplanationLoading()).toBe(false);
     });
   });
+
+  describe('Subcapitol Check Quiz', () => {
+    it('loadQuiz with check type fetches from subcapitol check-quiz endpoint', () => {
+      const getSpy = vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.loadQuiz('sub-123', 'check');
+
+      expect(store.loading()).toBe(false);
+      expect(store.quizType()).toBe('check');
+      expect(store.currentQuiz()?.title).toBe('Lesson check quizz');
+      expect(getSpy).toHaveBeenCalledWith('/api/subcapitols/sub-123/check-quiz');
+    });
+
+    it('startQuiz with check type calls startQuiz on check endpoint', () => {
+      const getSpy = vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.startQuiz('sub-123', 'check');
+      expect(store.quizType()).toBe('check');
+      expect(store.startedAt()).toBeInstanceOf(Date);
+      expect(getSpy).toHaveBeenCalledWith('/api/subcapitols/sub-123/check-quiz');
+    });
+
+    it('submitQuiz posts to the check-quiz submit endpoint', () => {
+      vi.spyOn(httpClient, 'get').mockReturnValue(of(MOCK_QUIZ_API));
+      store.startQuiz('sub-123', 'check');
+      
+      const postSpy = vi.spyOn(httpClient, 'post').mockReturnValue(
+        of({
+          attemptId: 'check-att-1',
+          score: 10,
+          totalPoints: 10,
+          percentage: 100,
+          passed: true,
+        })
+      );
+
+      store.submitQuiz();
+
+      expect(store.submitted()).toBe(true);
+      expect(postSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/subcapitols/sub-123/check-quiz/submit'),
+        expect.any(Object)
+      );
+    });
+
+    it('loadResultDetail with check type fetches attempts from check-quiz attempts endpoint', () => {
+      const getSpy = vi.spyOn(httpClient, 'get').mockReturnValue(of([{ attemptId: 'check-att-1', score: 10 }]));
+      store.loadResultDetail('sub-123', 'check-att-1', 'check');
+
+      expect(store.resultDetail()?.attemptId).toBe('check-att-1');
+      expect(getSpy).toHaveBeenCalledWith('/api/subcapitols/sub-123/check-quiz/attempts');
+    });
+
+    it('explainQuiz with check type posts to the check-quiz explain endpoint', () => {
+      const postSpy = vi.spyOn(httpClient, 'post').mockReturnValue(of([]));
+      store.explainQuiz('sub-123', [['answer']], 'check');
+
+      expect(postSpy).toHaveBeenCalledWith(
+        '/api/subcapitols/sub-123/check-quiz/explain',
+        expect.any(Object)
+      );
+    });
+
+    it('clearResult clears progress and results while keeping currentQuiz intact', () => {
+      patchStore(store, {
+        result: { score: 10, totalPoints: 10, timeSpent: 5, percentage: 100, passed: true, attemptId: 'att' },
+        submitted: true,
+        startedAt: new Date(),
+        timeRemaining: 100,
+        answers: { q1: 'A' },
+      });
+
+      store.clearResult();
+
+      expect(store.result()).toBeNull();
+      expect(store.submitted()).toBe(false);
+      expect(store.startedAt()).toBeNull();
+      expect(store.timeRemaining()).toBeNull();
+      expect(store.answers()).toEqual({});
+    });
+
+    it('loadResultDetail parallel loads quiz questions if not loaded', () => {
+      const getSpy = vi.spyOn(httpClient, 'get').mockImplementation((url: string) => {
+        if (url.includes('/attempts')) {
+          return of([{ attemptId: 'check-att-1', score: 10, results: [{ questionId: 'q1', submittedAnswer: 'A', correctAnswer: 'A', correct: true }] }]);
+        }
+        if (url.includes('/questions')) {
+          return of([{ id: 'q1', type: 'MULTIPLE_CHOICE', questionText: 'Q1', options: [{ id: 'A', text: 'Option A' }] }]);
+        }
+        // Quiz details GET
+        return of({ id: 'sub-123', title: 'Fetched Sub Quiz', timeLimitSeconds: 600 });
+      });
+
+      patchStore(store, { currentQuiz: null });
+      store.loadResultDetail('sub-123', 'check-att-1', 'check');
+
+      expect(store.currentQuiz()?.id).toBe('sub-123');
+      expect(store.currentQuiz()?.title).toBe('Lesson check quizz');
+      expect(store.resultDetail()?.score).toBe(10);
+      expect(store.resultDetail()?.percentage).toBe(100);
+      expect(getSpy).toHaveBeenCalled();
+    });
+  });
 });
 

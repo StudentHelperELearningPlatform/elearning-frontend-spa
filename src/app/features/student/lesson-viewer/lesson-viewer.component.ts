@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, effect } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -8,6 +8,10 @@ import { AuthStore } from '../../auth/store/auth.store';
 import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
 import { MessageService } from 'primeng/api';
+import { HttpClient } from '@angular/common/http';
+import { QUIZ_API_URL } from '@core/tokens/api.token';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
@@ -16,6 +20,15 @@ import { ErrorStateComponent } from '@shared/components/error-state/error-state.
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { CheckoutModalComponent } from '../payments/checkout-modal.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
+
+interface QuizAttempt {
+  attemptId?: string;
+  id?: string;
+  score?: number;
+  submittedAt?: number | string;
+  passed?: boolean;
+  percentage?: number;
+}
 
 @Component({
   selector: 'app-lesson-viewer',
@@ -69,11 +82,33 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
           } @else {
             @for (sub of store.currentLesson()?.subcapitols; track sub.id) {
               <div class="space-y-3">
-                <h3
-                  class="font-black text-black uppercase tracking-wider text-xs mb-2 px-2 opacity-50"
-                >
-                  {{ sub.title }}
-                </h3>
+                <div class="flex items-center justify-between mb-2 px-2">
+                  <h3 class="font-black text-black uppercase tracking-wider text-xs opacity-75 truncate max-w-[150px]" [title]="sub.title">
+                    {{ sub.title }}
+                  </h3>
+                  
+                  @let exists = subcapitolQuizzesExist()[sub.id] !== false;
+                  @if (exists) {
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      @let bestAttempt = getBestAttempt(sub.id);
+                      @if (bestAttempt) {
+                        <span 
+                          class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wide border bg-gray-100 text-gray-700 border-gray-300"
+                        >
+                          {{ bestAttempt.score ?? 0 }} pts
+                        </span>
+                      }
+                      
+                      <button
+                        (click)="startCheckQuiz(sub.id)"
+                        class="flex items-center justify-center p-1 rounded-lg border-2 border-black bg-white text-black hover:bg-[#0ABAB5]/10 hover:text-[#0ABAB5] active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none duration-150"
+                        [title]="bestAttempt ? 'Retake Check Quiz' : 'Start Check Quiz'"
+                      >
+                        <span class="material-icons text-[14px]">quiz</span>
+                      </button>
+                    </div>
+                  }
+                </div>
 
                 @for (module of sub.blocks; track module.id) {
                   @let globalIdx = getGlobalIndex(sub, module);
@@ -403,6 +438,8 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly messageService = inject(MessageService);
+  private readonly http = inject(HttpClient);
+  private readonly quizApi = inject(QUIZ_API_URL);
 
   currentModuleIndex = signal(0);
   private readonly lessonId = signal<string | null>(null);
@@ -410,6 +447,18 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   protected readonly explanationOpen = signal(false);
 
   hasAccess = computed(() => true);
+
+  subcapitolAttempts = signal<Record<string, QuizAttempt[]>>({});
+  subcapitolQuizzesExist = signal<Record<string, boolean>>({});
+
+  constructor() {
+    effect(() => {
+      const lesson = this.store.currentLesson();
+      if (lesson && lesson.subcapitols) {
+        this.loadSubcapitolAttempts(lesson.subcapitols);
+      }
+    });
+  }
 
   ngOnInit() {
     this.reloadLesson();
@@ -522,6 +571,69 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   goBack() {
     this.router.navigate(['/student/lessons']);
+  }
+
+  loadSubcapitolAttempts(subcapitols: Subcapitol[]) {
+    const requests = subcapitols.map(sub => {
+      const url = `${this.quizApi}/subcapitols/${sub.id}/check-quiz/attempts`;
+      return this.http.get<unknown>(url).pipe(
+        map(res => {
+          let attempts: QuizAttempt[] = [];
+          if (Array.isArray(res)) {
+            attempts = res;
+          } else if (res && typeof res === 'object') {
+            const obj = res as Record<string, unknown>;
+            attempts = (obj['attempts'] || obj['content'] || obj['attemptsList'] || []) as QuizAttempt[];
+          }
+          return { id: sub.id, attempts, exists: true };
+        }),
+        catchError((err: { status?: number }) => {
+          const exists = err?.status !== 404;
+          return of({ id: sub.id, attempts: [], exists });
+        })
+      );
+    });
+
+    if (requests.length > 0) {
+      forkJoin(requests).subscribe({
+        next: (results) => {
+          const nextAttempts: Record<string, QuizAttempt[]> = {};
+          const nextExists: Record<string, boolean> = {};
+          results.forEach(r => {
+            nextAttempts[r.id] = r.attempts;
+            nextExists[r.id] = r.exists ?? true;
+          });
+          this.subcapitolAttempts.set(nextAttempts);
+          this.subcapitolQuizzesExist.set(nextExists);
+        },
+        error: (err) => console.error('[LessonViewerComponent] Failed to load subcapitol attempts:', err)
+      });
+    }
+  }
+
+  getBestAttempt(subcapitolId: string): QuizAttempt | null {
+    const attempts = this.subcapitolAttempts()[subcapitolId] || [];
+    if (attempts.length === 0) return null;
+    return attempts.reduce((best, cur) => {
+      const bestScore = best.score ?? 0;
+      const curScore = cur.score ?? 0;
+      return curScore > bestScore ? cur : best;
+    }, attempts[0]);
+  }
+
+  isSubcapitolPassed(subcapitolId: string): boolean {
+    const attempts = this.subcapitolAttempts()[subcapitolId] || [];
+    return attempts.some(a => a.passed === true);
+  }
+
+  startCheckQuiz(subcapitolId: string) {
+    const lessonId = this.lessonId();
+    this.router.navigate(['/student/quiz-player', subcapitolId], {
+      queryParams: {
+        type: 'check',
+        lessonId: lessonId
+      }
+    });
   }
 
   /**

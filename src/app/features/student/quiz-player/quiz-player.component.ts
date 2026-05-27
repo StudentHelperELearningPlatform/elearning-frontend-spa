@@ -27,6 +27,8 @@ export class QuizPlayerComponent implements OnInit {
   paletteOpen = signal(false);
   showSubmitModal = signal(false);
   quizId = signal('1');
+  quizType = signal<'check' | 'final'>('final');
+  parentLessonId = signal<string | null>(null);
   private readonly resultsNavigated = signal(false);
 
   selectedOptionId = signal<string | null>(null);
@@ -81,21 +83,58 @@ export class QuizPlayerComponent implements OnInit {
       this.resultsNavigated.set(true);
       const targetUrl = ['/student/quizzes', this.quizId(), 'results', attemptId];
       console.log('[QuizPlayerComponent] Navigating to:', targetUrl);
-      this.router.navigate(targetUrl).then(
-        (success) => console.log('[QuizPlayerComponent] Router navigation result:', success),
-        (err) => console.error('[QuizPlayerComponent] Router navigation failed:', err)
-      );
+      
+      const queryParams: Record<string, string> = {};
+      if (this.quizType() === 'check') {
+        queryParams['type'] = 'check';
+      }
+      if (this.parentLessonId()) {
+        queryParams['lessonId'] = this.parentLessonId()!;
+      }
+
+      if (Object.keys(queryParams).length > 0) {
+        this.router.navigate(targetUrl, { queryParams }).then(
+          (success) => console.log('[QuizPlayerComponent] Router navigation result:', success),
+          (err) => console.error('[QuizPlayerComponent] Router navigation failed:', err)
+        );
+      } else {
+        this.router.navigate(targetUrl).then(
+          (success) => console.log('[QuizPlayerComponent] Router navigation result:', success),
+          (err) => console.error('[QuizPlayerComponent] Router navigation failed:', err)
+        );
+      }
     });
   }
 
   ngOnInit() {
+    this.resultsNavigated.set(false);
+    this.store.clearResult();
+    this.store.clearResultDetail();
+    this.store.clearQuizExplanation();
+
     const quizId = this.route.snapshot.paramMap.get('id') ?? '1';
     this.quizId.set(quizId);
-    this.store.loadQuizById(quizId);
+
+    const typeParam = this.route.snapshot.queryParamMap?.get('type');
+    const type: 'check' | 'final' = typeParam === 'check' ? 'check' : 'final';
+    this.quizType.set(type);
+
+    const lessonIdParam = this.route.snapshot.queryParamMap?.get('lessonId');
+    this.parentLessonId.set(lessonIdParam ?? null);
+
+    if (type === 'check') {
+      this.store.loadQuiz(quizId, 'check');
+    } else {
+      this.store.loadQuizById(quizId);
+    }
   }
 
   startQuiz() {
-    this.store.startQuiz(this.quizId());
+    if (this.quizType() === 'check') {
+      this.store.startQuiz(this.quizId(), 'check');
+    } else {
+      this.store.startQuiz(this.quizId());
+    }
     this.started.set(true);
     this.paletteOpen.set(false);
     this.showSubmitModal.set(false);
@@ -163,7 +202,11 @@ export class QuizPlayerComponent implements OnInit {
 
   retryQuiz() {
     this.store.resetQuiz();
-    this.store.loadQuizById(this.quizId());
+    if (this.quizType() === 'check') {
+      this.store.loadQuiz(this.quizId(), 'check');
+    } else {
+      this.store.loadQuizById(this.quizId());
+    }
     this.started.set(false);
     this.paletteOpen.set(false);
     this.showSubmitModal.set(false);
@@ -207,6 +250,11 @@ export class QuizPlayerComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/student/dashboard']);
+    const parentId = this.parentLessonId();
+    if (parentId) {
+      this.router.navigate(['/student/lessons', parentId]);
+    } else {
+      this.router.navigate(['/student/dashboard']);
+    }
   }
 }
