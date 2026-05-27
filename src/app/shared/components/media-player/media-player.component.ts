@@ -27,22 +27,6 @@ import { CommonModule } from '@angular/common';
         </video>
       }
 
-      @if (type() === 'audio') {
-        <div class="w-full h-full bg-[#0ABAB5]/20 flex flex-col items-center justify-center p-8">
-          <div class="w-32 h-32 bg-white rounded-full border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-6 animate-pulse">
-            <span class="material-icons text-[#0ABAB5] text-6xl">
-              music_note
-            </span>
-          </div>
-
-          <audio
-            [src]="url()"
-            controls
-            class="w-full"
-          >
-          </audio>
-        </div>
-      }
 
       @if (type() === 'pdf') {
         <a
@@ -65,6 +49,6 @@ import { CommonModule } from '@angular/common';
 })
 export class MediaPlayerComponent {
   url = input.required<string>();
-  type = input<'image' | 'video' | 'audio' | 'pdf'>('image');
+  type = input<'image' | 'video' | 'pdf'>('image');
   title = input<string>('Media');
 }

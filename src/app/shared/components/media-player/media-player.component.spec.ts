@@ -6,14 +6,14 @@ describe('MediaPlayerComponent', () => {
   let fixture: ComponentFixture<MediaPlayerComponent>;
 
   const mount = (
-    type: 'image' | 'video' | 'audio' | 'pdf',
+    type: 'image' | 'video' | 'pdf',
     url = 'https://example.com/asset',
     title = 'Test Asset'
   ) => {
     (component as unknown as { url: () => string }).url = () => url;
 
     (component as unknown as {
-      type: () => 'image' | 'video' | 'audio' | 'pdf';
+      type: () => 'image' | 'video' | 'pdf';
     }).type = () => type;
 
     (component as unknown as { title: () => string }).title = () => title;
@@ -75,26 +75,6 @@ describe('MediaPlayerComponent', () => {
       .querySelector('video') as HTMLVideoElement;
 
     expect(video.controls).toBe(true);
-  });
-
-  // ─── Audio ─────────────────────────────────────────────
-
-  it('renders a music_note icon for type "audio"', () => {
-    mount('audio', 'https://example.com/track.mp3');
-
-    const text = (fixture.nativeElement as HTMLElement).textContent;
-
-    expect(text).toContain('music_note');
-  });
-
-  it('renders an <audio> element for type "audio"', () => {
-    mount('audio', 'https://example.com/audio.mp3');
-
-    const audio = (fixture.nativeElement as HTMLElement)
-      .querySelector('audio') as HTMLAudioElement;
-
-    expect(audio).toBeTruthy();
-    expect(audio.controls).toBe(true);
   });
 
   // ─── PDF ───────────────────────────────────────────────
