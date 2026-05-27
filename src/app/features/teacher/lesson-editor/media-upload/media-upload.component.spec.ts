@@ -244,6 +244,69 @@ describe('MediaUploadComponent', () => {
       expect(component.a11yMessage()).toContain('Upload complete: test.png');
     });
 
+    it('should send empty X-User-Id header if user is null', () => {
+      const authStore = TestBed.inject(AuthStore);
+      // Simulate no user
+      authStore.user.set(null);
+
+      const file = createMockFile('test.png', 'image/png', 1024);
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      expect(req.request.headers.get('X-User-Id')).toBe('');
+      req.flush({});
+    });
+
+    it('should not modify other media items when updating progress or status', () => {
+      // Add an existing item
+      component.mediaList.set([
+        { id: 'existing-id', file: null, url: 'blob:old', type: 'image', status: 'complete', progress: 100 }
+      ]);
+
+      const file = createMockFile('test.png', 'image/png', 1024);
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      
+      // Simulate Progress Event
+      req.event({
+        type: HttpEventType.UploadProgress,
+        loaded: 50,
+        total: 100
+      });
+
+      // Verify existing item is untouched during progress update
+      expect(component.mediaList()[0].id).toBe('existing-id');
+      expect(component.mediaList()[0].progress).toBe(100);
+      expect(component.mediaList()[1].progress).toBe(50);
+
+      // Simulate Success Response
+      req.flush({ url: 'https://cdn.example.com/mock-uuid-1234.png' });
+
+      // Verify existing item is untouched during completion update
+      expect(component.mediaList()[0].status).toBe('complete');
+      expect(component.mediaList()[0].url).toBe('blob:old');
+      expect(component.mediaList()[1].status).toBe('complete');
+      expect(component.mediaList()[1].url).toBe('https://cdn.example.com/mock-uuid-1234.png');
+    });
+
+    it('should not modify other media items when an upload errors out', () => {
+      // Add an existing item
+      component.mediaList.set([
+        { id: 'existing-id', file: null, url: 'blob:old', type: 'image', status: 'complete', progress: 100 }
+      ]);
+
+      const file = createMockFile('test.png', 'image/png', 1024);
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      req.error(new ProgressEvent('error'));
+
+      // Verify existing item is untouched during error update
+      expect(component.mediaList()[0].status).toBe('complete');
+      expect(component.mediaList()[1].status).toBe('error');
+    });
+
     it('should fallback to local ObjectURL if response body has no url', () => {
       const file = createMockFile('test.png', 'image/png', 1024);
       component.uploadFile(file);

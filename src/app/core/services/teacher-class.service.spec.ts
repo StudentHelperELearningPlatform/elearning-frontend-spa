@@ -105,6 +105,20 @@ describe('TeacherClassService', () => {
     req.flush(mockClasses);
   });
 
+  it('should get student classes', () => {
+    const mockClasses: TeacherClass[] = [
+      { id: '1', name: 'Math', description: 'Math Class', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' },
+    ];
+
+    service.getStudentClasses().subscribe((classes) => {
+      expect(classes).toEqual(mockClasses);
+    });
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/classes`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockClasses);
+  });
+
   it('should create class with description', () => {
     const mockNewClass: TeacherClass = { id: '2', name: 'Science', description: 'Science Class', studentCount: 0, lessonCount: 0, createdAt: '2023-01-01T00:00:00Z' };
     const payload = { name: 'Science', description: 'Science Class' };

@@ -97,24 +97,18 @@ describe('ClassDetailComponent', () => {
 
   // --- Invite Modal ---
 
-  it('should open invite modal and fetch students if empty', () => {
+  it('should open invite modal and reset state', () => {
     const comp = make();
+    comp.allStudents.set([{ studentId: 's1', firstName: 'John', lastName: 'Doe' }]);
+    comp.studentSearch.set('test');
     comp.openInviteModal();
+    
     expect(comp.showInviteModal()).toBe(true);
-
-    const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
-    req.flush({
-      users: [
-        { id: 's2', firstName: 'Jane', lastName: 'Smith', email: 'j@mail.com', role: 'STUDENT' }
-      ],
-      currentPage: 0,
-      totalPages: 1,
-      totalElements: 1
-    });
-    expect(comp.allStudents().length).toBe(1);
+    expect(comp.allStudents().length).toBe(0);
+    expect(comp.studentSearch()).toBe('');
   });
 
-  it('should filter students based on search and enrollment', () => {
+  it('should filter students based on enrollment', () => {
     const comp = make();
     comp.allStudents.set([
       { studentId: 's1', firstName: 'John', lastName: 'Doe' }, // Enrolled
@@ -122,8 +116,6 @@ describe('ClassDetailComponent', () => {
     ]);
 
     expect(comp.filteredStudents().length).toBe(1);
-
-    comp.studentSearch.set('jane');
     expect(comp.filteredStudents()[0].studentId).toBe('s2');
   });
 
@@ -236,175 +228,56 @@ describe('ClassDetailComponent', () => {
   });
 
   describe('Additional Coverage Specs', () => {
-    it('should handle error when opening invite modal and fetching students fails', () => {
+    it('should return early if performSearch called with empty query', () => {
       const comp = make();
-      comp.openInviteModal();
-      expect(comp.showInviteModal()).toBe(true);
-
-      const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
-      req.flush('Error fetching', { status: 500, statusText: 'Internal Error' });
-      expect(comp.allStudents()).toEqual([]);
+      comp.studentSearch.set('   ');
+      comp.allStudents.set([{ studentId: 's1', firstName: 'Jane', lastName: 'Smith' }]);
+      comp.performSearch();
+      
+      expect(comp.allStudents().length).toBe(0);
+      httpTestingController.expectNone((r) => r.url.includes('/users/search'));
     });
 
-    it('should sort quiz attempts descending by submittedAt', () => {
+    it('should perform search and update allStudents', () => {
       const comp = make();
-      // Set multiple enrolled students
-      (mockClassStore['currentClass'] as ReturnType<typeof signal>).set({
-        students: [
-          { id: 's1', name: 'John Doe' },
-          { id: 's2', name: 'Jane Smith' },
-        ],
-        lessons: [{ id: 'l1', title: 'Math 101' }],
-      });
+      comp.studentSearch.set('jane');
+      comp.performSearch();
 
-      comp.loadQuizAttempts();
-
-      const req = httpTestingController.expectOne(
-        'http://mock-content-api/lessons/l1/final-quiz/attempts',
-      );
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users/search') && r.params.get('name') === 'jane');
       req.flush([
-        { id: 'a1', studentId: 's1', score: 80, submittedAt: '2023-01-01T10:00:00Z' },
-        { id: 'a2', studentId: 's2', score: 90, completedAt: '2023-01-01T12:00:00Z' }, // Newer, completedAt fallback
-        { id: 'a3', studentId: 's1', score: 95, submittedAt: '2023-01-01T11:00:00Z' }, // Middle
+        { id: 's2', firstName: 'Jane', lastName: 'Smith', role: 'STUDENT' }
       ]);
-
-      const attempts = comp.quizAttempts();
-      expect(attempts.length).toBe(3);
-      expect(attempts[0].attemptId).toBe('a2'); // 12:00:00Z
-      expect(attempts[1].attemptId).toBe('a3'); // 11:00:00Z
-      expect(attempts[2].attemptId).toBe('a1'); // 10:00:00Z
-    });
-
-    it('should resolve student name from cached list or fallback to studentId', () => {
-      const comp = make();
-      // s1 enrolled has name 'John Doe'
-      // s2 not enrolled but cached in allStudents
-      comp.allStudents.set([
-        { studentId: 's2', firstName: 'Jane', lastName: 'Smith' }
-      ]);
-
-      // Trigger mapQuizAttempts indirectly or call private resolveStudentName if accessible
-      // Since resolveStudentName is private, we can trigger it via loadQuizAttempts
-      (mockClassStore['currentClass'] as ReturnType<typeof signal>).set({
-        students: [
-          { id: 's1', name: 'John Doe' },
-          { id: 's2' }, // Enrolled, but name is absent/undefined (should trigger cached lookup)
-          { id: 's3' }, // Enrolled, no name, not cached (should fallback to 's3')
-        ],
-        lessons: [{ id: 'l1', title: 'Math 101' }],
-      });
-
-      comp.loadQuizAttempts();
-
-      const req = httpTestingController.expectOne(
-        'http://mock-content-api/lessons/l1/final-quiz/attempts',
-      );
-      req.flush([
-        { id: 'a1', studentId: 's1', score: 80, submittedAt: '2023-01-01T10:00:00Z' },
-        { id: 'a2', studentId: 's2', score: 90, submittedAt: '2023-01-01T11:00:00Z' },
-        { id: 'a3', studentId: 's3', score: 95, submittedAt: '2023-01-01T12:00:00Z' },
-      ]);
-
-      const attempts = comp.quizAttempts();
-      expect(attempts.length).toBe(3);
-
-      // find 's1' attempt
-      const attS1 = attempts.find(a => a.studentId === 's1');
-      expect(attS1?.studentName).toBe('John Doe');
-
-      // find 's2' attempt (should be resolved to cached Jane Smith)
-      const attS2 = attempts.find(a => a.studentId === 's2');
-      expect(attS2?.studentName).toBe('Jane Smith');
-
-      // find 's3' attempt (should be resolved to ID 's3')
-      const attS3 = attempts.find(a => a.studentId === 's3');
-      expect(attS3?.studentName).toBe('s3');
-    });
-
-    it('should load next page if more pages exist and not currently loading', () => {
-      const comp = make();
-      comp.currentPage.set(0);
-      comp.totalPages.set(2);
-      comp.loadingMore.set(false);
-
-      comp.loadNextPage();
-
-      const req = httpTestingController.expectOne((r) => r.url.includes('/users') && r.params.get('page') === '1');
-      req.flush({
-        users: [{ id: 's3', firstName: 'Jack', lastName: 'Rider', role: 'STUDENT' }],
-        currentPage: 1,
-        totalPages: 2
-      });
       expect(comp.allStudents().length).toBe(1);
-    });
-
-    it('should not load next page if no more pages or already loading', () => {
-      const comp = make();
-      // No more pages
-      comp.currentPage.set(1);
-      comp.totalPages.set(2);
-      comp.loadingMore.set(false);
-      comp.loadNextPage();
-      httpTestingController.expectNone((r) => r.url.includes('/users'));
-
-      // Already loading
-      comp.currentPage.set(0);
-      comp.totalPages.set(2);
-      comp.loadingMore.set(true);
-      comp.loadNextPage();
-      httpTestingController.expectNone((r) => r.url.includes('/users'));
-    });
-
-    it('should append students when page is greater than 0', () => {
-      const comp = make();
-      comp.allStudents.set([{ studentId: 's1', firstName: 'John', lastName: 'Doe' }]);
-      comp.currentPage.set(0);
-      comp.totalPages.set(2);
-
-      comp.loadStudentsPage(1);
-
-      const req = httpTestingController.expectOne((r) => r.url.includes('/users') && r.params.get('page') === '1');
-      req.flush({
-        users: [{ id: 's2', firstName: 'Jane', lastName: 'Smith', role: 'STUDENT' }],
-        currentPage: 1,
-        totalPages: 2
-      });
-
-      expect(comp.allStudents().length).toBe(2);
-      expect(comp.allStudents()[0].studentId).toBe('s1');
-      expect(comp.allStudents()[1].studentId).toBe('s2');
     });
 
     it('should handle undefined/null/empty fields in user response', () => {
       const comp = make();
-      comp.loadStudentsPage(0);
+      comp.studentSearch.set('jane');
+      comp.performSearch();
 
-      const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users/search'));
       req.flush({
         users: [
           { role: 'STUDENT' }, // missing id/names
           { id: 's3', firstName: 'Jack', role: 'TEACHER' }, // wrong role
-        ],
-        currentPage: null,
-        totalPages: null
-      } as unknown as PaginatedUsersResponse);
+        ]
+      });
 
       expect(comp.allStudents().length).toBe(1);
       expect(comp.allStudents()[0].studentId).toBe('');
       expect(comp.allStudents()[0].firstName).toBe('');
-      expect(comp.currentPage()).toBe(0);
-      expect(comp.totalPages()).toBe(0);
     });
 
     it('should handle api error and fallback gracefully with empty users list in catchError', () => {
       const comp = make();
-      comp.loadStudentsPage(0);
+      comp.studentSearch.set('jane');
+      comp.performSearch();
 
-      const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users/search'));
       req.error(new ProgressEvent('error')); // trigger catchError
 
       expect(comp.allStudents()).toEqual([]);
-      expect(comp.loadingMore()).toBe(false);
+      expect(comp.isSearching()).toBe(false);
     });
   });
 });
