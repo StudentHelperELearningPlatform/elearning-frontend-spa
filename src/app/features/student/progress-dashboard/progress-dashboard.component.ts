@@ -21,7 +21,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
 import { TeacherClassService } from '../../../core/services/teacher-class.service';
 import { TeacherClass } from '../../teacher/models/class.model';
-import { forkJoin, of } from 'rxjs';
+import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import * as d3 from 'd3';
 
