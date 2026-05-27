@@ -1,14 +1,15 @@
 import { vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { ClassDetailComponent } from './class-detail.component';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ClassStore } from '../../../state/class.store';
 import { TeacherLessonsStore } from '../../../state/teacher-lessons.store';
+import { ChatStore } from '@features/shared/chat/chat.store';
 import { signal } from '@angular/core';
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { of, throwError } from 'rxjs';
 
 describe('ClassDetailComponent', () => {
@@ -20,6 +21,14 @@ describe('ClassDetailComponent', () => {
     items: signal([{ id: 'l2', title: 'Science 101', subject: 'Science', status: 'PUBLISHED' }]),
     loading: signal(false),
     load: vi.fn(),
+  };
+
+  const mockChatStore = {
+    selectContact: vi.fn(),
+  };
+
+  const mockRouter = {
+    navigate: vi.fn(),
   };
 
   beforeEach(() => {
@@ -41,13 +50,14 @@ describe('ClassDetailComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: USER_PLATFORM_API_URL, useValue: 'http://mock-api' },
-        { provide: CONTENT_API_URL, useValue: 'http://mock-content-api' },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { params: { classId: 'c1' } } },
         },
+        { provide: Router, useValue: mockRouter },
         { provide: ClassStore, useValue: mockClassStore },
         { provide: TeacherLessonsStore, useValue: mockLessonsStore },
+        { provide: ChatStore, useValue: mockChatStore },
       ],
     });
     injector = TestBed.inject(EnvironmentInjector);
@@ -93,6 +103,15 @@ describe('ClassDetailComponent', () => {
     comp.ngOnInit();
     comp.removeLesson('l1');
     expect(mockClassStore.removeLesson).toHaveBeenCalledWith('c1', 'l1');
+  });
+
+  // --- Start Conversation ---
+
+  it('should preselect the contact and navigate to chat when starting a conversation', () => {
+    const comp = make();
+    comp.startConversation('s1');
+    expect(mockChatStore.selectContact).toHaveBeenCalledWith('s1');
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/teacher/chat']);
   });
 
   // --- Invite Modal ---
@@ -184,49 +203,6 @@ describe('ClassDetailComponent', () => {
     expect(comp.addLessonError()).toBeTruthy();
   });
 
-  // --- Quiz Attempts ---
-
-  it('should return early from loadQuizAttempts if no students or lessons', () => {
-    (mockClassStore['currentClass'] as ReturnType<typeof signal>).set({
-      students: [],
-      lessons: [],
-    });
-    const comp = make();
-    comp.loadQuizAttempts();
-    expect(comp.quizAttempts()).toEqual([]);
-  });
-
-  it('should load quiz attempts and map correctly', () => {
-    const comp = make();
-    comp.loadQuizAttempts();
-
-    const req = httpTestingController.expectOne(
-      'http://mock-content-api/lessons/l1/final-quiz/attempts',
-    );
-    req.flush([
-      { id: 'a1', studentId: 's1', score: 80, submittedAt: '2023-01-01T10:00:00Z' },
-      { id: 'a2', studentId: 's99', score: 50, submittedAt: '2023-01-01T11:00:00Z' }, // Ignored (not enrolled)
-    ]);
-
-    expect(comp.quizAttempts().length).toBe(1);
-    expect(comp.quizAttempts()[0].studentName).toBe('John Doe'); // Resolved name
-    expect(comp.quizAttempts()[0].score).toBe(80);
-    expect(comp.quizLoading()).toBe(false);
-  });
-
-  it('should handle error when loading quiz attempts', () => {
-    const comp = make();
-    comp.loadQuizAttempts();
-
-    const req = httpTestingController.expectOne(
-      'http://mock-content-api/lessons/l1/final-quiz/attempts',
-    );
-    req.error(new ProgressEvent('error')); // Force a hard forkJoin failure
-
-    expect(comp.quizError()).toBeTruthy();
-    expect(comp.quizLoading()).toBe(false);
-  });
-
   describe('Additional Coverage Specs', () => {
     it('should return early if performSearch called with empty query', () => {
       const comp = make();
@@ -281,4 +257,3 @@ describe('ClassDetailComponent', () => {
     });
   });
 });
-
