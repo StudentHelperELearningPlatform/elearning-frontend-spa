@@ -6,6 +6,7 @@ import {
   AdminUserRaw,
   AdminLessonRaw,
   AdminClassRaw,
+  PaginatedUsersResponse,
 } from '../../../core/services/admin.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CardComponent } from '../../../shared/components/card/card.component';
@@ -14,12 +15,14 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { UserRole } from '../../../core/types/user.types';
 
+type UserStatus = 'ACTIVE' | 'BANNED' | 'PENDING';
+
 interface AdminUser {
   id: string;
   name: string;
   email: string;
   role: UserRole;
-  status: 'ACTIVE' | 'BANNED' | 'PENDING';
+  status: UserStatus;
   avatarSeed?: string;
   raw: AdminUserRaw; // Dynamic inspection of all backend fields
 }
@@ -361,7 +364,7 @@ interface AdminClass {
                 </h3>
               </div>
               <div class="p-6">
-                @if (usersLoading()) {
+                @if (usersLoading() || insightsLoading()) {
                   <div class="flex flex-col items-center justify-center py-6 space-y-2">
                     <span class="material-icons animate-spin text-[#0ABAB5] text-3xl">sync</span>
                     <p class="text-xs text-gray-400 font-bold">
@@ -429,7 +432,7 @@ interface AdminClass {
                 class="flex bg-white border-2 border-black rounded-xl p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               >
                 <button
-                  (click)="statusFilter.set('ALL'); userPage.set(1)"
+                  (click)="setStatusFilter('ALL')"
                   [ngClass]="
                     statusFilter() === 'ALL'
                       ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
@@ -440,7 +443,7 @@ interface AdminClass {
                   All
                 </button>
                 <button
-                  (click)="statusFilter.set('ACTIVE'); userPage.set(1)"
+                  (click)="setStatusFilter('ACTIVE')"
                   [ngClass]="
                     statusFilter() === 'ACTIVE'
                       ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
@@ -451,7 +454,7 @@ interface AdminClass {
                   Active
                 </button>
                 <button
-                  (click)="statusFilter.set('BANNED'); userPage.set(1)"
+                  (click)="setStatusFilter('BANNED')"
                   [ngClass]="
                     statusFilter() === 'BANNED'
                       ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
@@ -686,17 +689,17 @@ interface AdminClass {
             >
               <button
                 (click)="prevUserPage()"
-                [disabled]="userPage() === 1"
+                [disabled]="userPage() <= 1"
                 class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
               >
                 Previous
               </button>
               <span class="text-xs font-black text-black">
-                Page {{ userPage() }} of {{ totalUserPages() }} ({{ filteredUsers().length }} total)
+                Page {{ userPage() }} of {{ totalUserPages() }}
               </span>
               <button
                 (click)="nextUserPage()"
-                [disabled]="userPage() === totalUserPages()"
+                [disabled]="userPage() >= totalUserPages()"
                 class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
               >
                 Next
@@ -921,9 +924,7 @@ interface AdminClass {
                   Previous
                 </button>
                 <span class="text-xs font-black text-black">
-                  Page {{ lessonPage() }} of {{ totalLessonPages() }} ({{
-                    sortedLessons().length
-                  }}
+                  Page {{ lessonPage() }} of {{ totalLessonPages() }} ({{ sortedLessons().length }}
                   total)
                 </span>
                 <button
@@ -1319,20 +1320,23 @@ export class AdminDashboardComponent implements OnInit {
   lessonSortOrder = signal<'asc' | 'desc'>('asc');
 
   userPage = signal<number>(1);
+  userPageSize = signal<number>(5);
+
+  // Pagination metadata from API
+  usersCurrentPage = signal<number>(0);
+  usersTotalPages = signal<number>(1);
+  usersTotalElements = signal<number>(0);
 
   readonly totalUserPages = computed(() => {
-    return Math.ceil(this.filteredUsers().length / 5) || 1;
+    return this.usersTotalPages() || 1;
   });
 
   readonly paginatedUsers = computed(() => {
-    const list = this.filteredUsers();
-    const page = this.userPage();
-    const start = (page - 1) * 5;
-    return list.slice(start, start + 5);
+    return this.users();
   });
 
   userInsights = computed(() => {
-    const list = this.users();
+    const list = this.allUsersForInsights();
     const total = list.length;
     if (total === 0) {
       return {
@@ -1361,6 +1365,7 @@ export class AdminDashboardComponent implements OnInit {
 
   // Data lists
   users = signal<AdminUser[]>([]);
+  allUsersForInsights = signal<AdminUser[]>([]);
   lessons = signal<AdminLesson[]>([]);
   classes = signal<AdminClass[]>([]);
   contactMessages = signal<ContactMessage[]>([]);
@@ -1444,6 +1449,7 @@ export class AdminDashboardComponent implements OnInit {
 
   // States
   usersLoading = signal<boolean>(false);
+  insightsLoading = signal<boolean>(false);
   lessonsLoading = signal<boolean>(false);
   classesLoading = signal<boolean>(false);
   inboxLoading = signal<boolean>(false);
@@ -1486,23 +1492,40 @@ export class AdminDashboardComponent implements OnInit {
 
   setActiveTab(tab: 'overview' | 'users' | 'content' | 'inbox') {
     this.activeTab.set(tab);
+    if (tab === 'users') {
+      this.userPage.set(1);
+      this.loadUsers();
+    }
+  }
+
+  setStatusFilter(filter: 'ALL' | 'ACTIVE' | 'BANNED') {
+    this.statusFilter.set(filter);
+    this.userPage.set(1);
+    if (filter === 'BANNED') {
+      this.loadBannedUsersOnly();
+    } else {
+      this.loadUsers();
+    }
   }
 
   updateUserSearch(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.userSearchQuery.set(value);
     this.userPage.set(1);
+    this.loadUsers();
   }
 
   prevUserPage() {
     if (this.userPage() > 1) {
       this.userPage.update((p) => p - 1);
+      this.loadUsers();
     }
   }
 
   nextUserPage() {
     if (this.userPage() < this.totalUserPages()) {
       this.userPage.update((p) => p + 1);
+      this.loadUsers();
     }
   }
 
@@ -1590,8 +1613,50 @@ export class AdminDashboardComponent implements OnInit {
       if (Array.isArray(obj['content'])) {
         return obj['content'] as T[];
       }
+      if (Array.isArray(obj['users'])) {
+        return obj['users'] as T[];
+      }
     }
     return [];
+  }
+
+  private mapRawUserToBanned(u: AdminUserRaw): AdminUser {
+    const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
+    const userName =
+      u.name ||
+      `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
+      u.username ||
+      u.email ||
+      'Banned User';
+    return {
+      id: finalId,
+      name: userName,
+      email: u.email || '',
+      role: (u.role || 'STUDENT').toUpperCase() as UserRole,
+      status: 'BANNED',
+      avatarSeed: u.email || finalId || 'Banned',
+      raw: u,
+    };
+  }
+
+  private mapRawUserToActive(u: AdminUserRaw): AdminUser {
+    const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
+    const userName =
+      u.name ||
+      `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
+      u.username ||
+      u.email ||
+      'User';
+    const status: UserStatus = u.status === 'BANNED' || u.banned === true ? 'BANNED' : 'ACTIVE';
+    return {
+      id: finalId,
+      name: userName,
+      email: u.email || '',
+      role: (u.role || 'STUDENT').toUpperCase() as UserRole,
+      status,
+      avatarSeed: u.email || finalId || 'User',
+      raw: u,
+    };
   }
 
   // Loaders calling actual service HTTP endpoints
@@ -1609,9 +1674,10 @@ export class AdminDashboardComponent implements OnInit {
           if (finalId) bannedIds.add(finalId);
         });
 
-        this.adminService.getUsers().subscribe({
-          next: (allUsersData) => {
-            const mappedUsersList = this.safeExtractArray<AdminUserRaw>(allUsersData).map((u: AdminUserRaw) => {
+        this.adminService.getUsers(this.userPage(), this.userPageSize()).subscribe({
+          next: (paginatedResponse: PaginatedUsersResponse) => {
+            const rawList = this.safeExtractArray<AdminUserRaw>(paginatedResponse);
+            const mappedUsersList = rawList.map((u: AdminUserRaw) => {
               const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
               const isBanned = bannedIds.has(finalId) || u.status === 'BANNED' || u.banned === true;
               const userName =
@@ -1626,13 +1692,17 @@ export class AdminDashboardComponent implements OnInit {
                 name: userName,
                 email: u.email || '',
                 role: (u.role || 'STUDENT').toUpperCase() as UserRole,
-                status: (isBanned ? 'BANNED' : 'ACTIVE') as 'ACTIVE' | 'BANNED' | 'PENDING',
+                status: (isBanned ? 'BANNED' : 'ACTIVE') as UserStatus,
                 avatarSeed: u.email || finalId || 'User',
                 raw: u,
               };
             });
 
             this.users.set(mappedUsersList);
+            this.usersCurrentPage.set(paginatedResponse.currentPage ?? this.userPage());
+            this.usersTotalPages.set(paginatedResponse.totalPages ?? 1);
+            this.usersTotalElements.set(paginatedResponse.totalElements ?? mappedUsersList.length);
+            this.loadAllUsersForInsights();
             this.usersLoading.set(false);
           },
           error: (err) => {
@@ -1640,27 +1710,14 @@ export class AdminDashboardComponent implements OnInit {
               'GET /users failed (backend team might still be working on it), falling back to banned users list:',
               err,
             );
-            const mappedBanned = bannedList.map((u: AdminUserRaw) => {
-              const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
-              const userName =
-                u.name ||
-                `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
-                u.username ||
-                u.email ||
-                'Banned User';
-
-              return {
-                id: finalId,
-                name: userName,
-                email: u.email || '',
-                role: (u.role || 'STUDENT').toUpperCase() as UserRole,
-                status: 'BANNED' as const,
-                avatarSeed: u.email || finalId || 'Banned',
-                raw: u,
-              };
-            });
+            const mappedBanned = bannedList.map((u: AdminUserRaw) =>
+              this.mapRawUserToBanned(u),
+            );
 
             this.users.set(mappedBanned);
+            this.usersCurrentPage.set(0);
+            this.usersTotalPages.set(1);
+            this.usersTotalElements.set(mappedBanned.length);
             this.usersLoading.set(false);
           },
         });
@@ -1670,6 +1727,55 @@ export class AdminDashboardComponent implements OnInit {
         const errorMsg = err.error?.message || err.message || err.statusText || 'Connection failed';
         this.usersError.set(errorMsg);
         this.usersLoading.set(false);
+      },
+    });
+  }
+
+  loadBannedUsersOnly() {
+    this.usersLoading.set(true);
+    this.usersError.set(null);
+
+    this.adminService.getBannedUsers().subscribe({
+      next: (bannedData) => {
+        const bannedList = this.safeExtractArray<AdminUserRaw>(bannedData);
+        const mappedBanned = bannedList.map((u: AdminUserRaw) => this.mapRawUserToBanned(u));
+
+        this.users.set(mappedBanned);
+        this.usersCurrentPage.set(1);
+        this.usersTotalPages.set(1);
+        this.usersTotalElements.set(mappedBanned.length);
+        this.usersLoading.set(false);
+      },
+      error: (err) => {
+        this.users.set([]);
+        const errorMsg = err.error?.message || err.message || err.statusText || 'Connection failed';
+        this.usersError.set(errorMsg);
+        this.usersLoading.set(false);
+      },
+    });
+  }
+
+  loadAllUsersForInsights() {
+    const total = this.usersTotalElements();
+    // If all users already fit in the current page, no extra call needed
+    if (total > 0 && total <= this.userPageSize()) {
+      this.allUsersForInsights.set(this.users());
+      return;
+    }
+    // Use totalElements so we fetch every user in one shot; fall back to a safe cap
+    const pageSize = total > 0 ? total : 10000;
+    this.insightsLoading.set(true);
+    this.adminService.getUsers(0, pageSize).subscribe({
+      next: (paginatedResponse: PaginatedUsersResponse) => {
+        const rawList = this.safeExtractArray<AdminUserRaw>(paginatedResponse);
+        const mapped = rawList.map((u: AdminUserRaw) => this.mapRawUserToActive(u));
+        this.allUsersForInsights.set(mapped);
+        this.insightsLoading.set(false);
+      },
+      error: () => {
+        // Fall back to current page users so insights always show something
+        this.allUsersForInsights.set(this.users());
+        this.insightsLoading.set(false);
       },
     });
   }
@@ -1706,13 +1812,15 @@ export class AdminDashboardComponent implements OnInit {
     this.classesError.set(null);
     this.adminService.getClasses().subscribe({
       next: (data) => {
-        const mappedClasses = this.safeExtractArray<AdminClassRaw>(data).map((c: AdminClassRaw) => ({
-          id: c.id || '',
-          name: c.name || 'Unnamed Class',
-          teacher: c.teacher || c.teacherName || 'Unknown Teacher',
-          studentsCount: c.studentsCount || c.studentCount || 0,
-          subject: c.subject || 'General',
-        }));
+        const mappedClasses = this.safeExtractArray<AdminClassRaw>(data).map(
+          (c: AdminClassRaw) => ({
+            id: c.id || '',
+            name: c.name || 'Unnamed Class',
+            teacher: c.teacher || c.teacherName || 'Unknown Teacher',
+            studentsCount: c.studentsCount || c.studentCount || 0,
+            subject: c.subject || 'General',
+          }),
+        );
         this.classes.set(mappedClasses);
         this.classesLoading.set(false);
       },
@@ -1730,15 +1838,17 @@ export class AdminDashboardComponent implements OnInit {
     this.inboxError.set(null);
     this.adminService.getContactMessages().subscribe({
       next: (messages) => {
-        const mappedMessages = this.safeExtractArray<ContactMessage>(messages).map((m: ContactMessage) => ({
-          id: m.id || '',
-          senderName: m.senderName || 'Anonymous',
-          senderEmail: m.senderEmail || '',
-          subject: m.subject || 'No Subject',
-          message: m.message || '',
-          timestamp: m.timestamp || new Date().toISOString(),
-          read: !!m.read,
-        }));
+        const mappedMessages = this.safeExtractArray<ContactMessage>(messages).map(
+          (m: ContactMessage) => ({
+            id: m.id || '',
+            senderName: m.senderName || 'Anonymous',
+            senderEmail: m.senderEmail || '',
+            subject: m.subject || 'No Subject',
+            message: m.message || '',
+            timestamp: m.timestamp || new Date().toISOString(),
+            read: !!m.read,
+          }),
+        );
         this.contactMessages.set(mappedMessages);
         this.inboxLoading.set(false);
       },
