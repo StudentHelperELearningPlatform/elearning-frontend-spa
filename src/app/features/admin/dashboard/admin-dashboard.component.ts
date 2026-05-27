@@ -40,6 +40,7 @@ interface AdminLesson {
 interface AdminClass {
   id: string;
   name: string;
+  bio: string;
   teacher: string;
   studentsCount: number;
   subject: string;
@@ -971,7 +972,7 @@ interface AdminClass {
                       Cohort
                     </th>
                     <th class="p-4 font-black text-gray-600 uppercase tracking-wider text-xs">
-                      Primary Teacher
+                      Description
                     </th>
                     <th
                       class="p-4 font-black text-gray-600 uppercase tracking-wider text-xs text-right"
@@ -1031,12 +1032,7 @@ interface AdminClass {
                           </div>
                         </td>
                         <td class="p-4">
-                          <div class="flex flex-col space-y-0.5">
-                            <span class="font-bold text-black text-xs">{{ cls.teacher }}</span>
-                            <span class="text-[9px] text-gray-400 font-bold"
-                              >{{ cls.studentsCount }} Students</span
-                            >
-                          </div>
+                          <span class="text-xs text-gray-600 font-medium">{{ cls.bio || '—' }}</span>
                         </td>
                         <td class="p-4 text-right">
                           <button
@@ -1876,7 +1872,8 @@ export class AdminDashboardComponent implements OnInit {
           (c: AdminClassRaw) => ({
             id: c.id || '',
             name: c.name || 'Unnamed Class',
-            teacher: c.teacher || c.teacherName || 'Unknown Teacher',
+            bio: c.bio || '',
+            teacher: c.teacher || c.teacherName || c.email || c.teacherEmail || '',
             studentsCount: c.studentsCount || c.studentCount || 0,
             subject: c.subject || 'General',
           }),

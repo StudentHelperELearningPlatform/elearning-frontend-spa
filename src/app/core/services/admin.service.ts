@@ -59,11 +59,14 @@ export interface AdminLessonRaw {
 export interface AdminClassRaw {
   id?: string;
   name?: string;
+  bio?: string;
   teacher?: string;
   teacherName?: string;
   studentsCount?: number;
   studentCount?: number;
   subject?: string;
+  email?: string;
+  teacherEmail?: string;
 }
 
 @Injectable({ providedIn: 'root' })

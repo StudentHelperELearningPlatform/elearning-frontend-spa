@@ -184,11 +184,6 @@
         <div class="w-full h-64 bg-gray-100 rounded-xl animate-pulse flex items-center justify-center">
           <span class="text-gray-400 font-medium text-sm">Loading chart…</span>
         </div>
-      } @else if (progressStore.skillLevels().length === 0) {
-        <div class="w-full h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center">
-          <span class="material-icons text-gray-400 text-4xl mb-2" aria-hidden="true">analytics</span>
-          <p class="text-gray-500 font-bold text-sm text-center px-4">Complete more lessons to see your skill chart!</p>
-        </div>
       } @else {
         <div #radarContainer class="w-full flex justify-center" aria-label="Skill radar chart"></div>
       }

@@ -58,7 +58,6 @@ import { ErrorStateComponent } from '../../../shared/components/error-state/erro
                   {{ store.draftLessonsCount() }} drafts)
                 </span>
               </p>
-              <p class="font-bold text-lg">{{ store.totalQuizzesCount() }} quizzes</p>
             </div>
           }
         </app-card>

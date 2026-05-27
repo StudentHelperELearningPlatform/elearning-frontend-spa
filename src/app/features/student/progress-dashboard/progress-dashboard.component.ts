@@ -161,11 +161,19 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     });
 
     effect(() => {
-      const skills = this.progressStore.skillLevels().map(s => ({
+      let skills = this.progressStore.skillLevels().map(s => ({
         subject: s.subject,
         level: s.level,
       }));
-      if (skills.length > 0 && this.radarContainer?.nativeElement) {
+      if (skills.length === 0) {
+        skills = [
+          { subject: 'Math', level: 0 },
+          { subject: 'Science', level: 0 },
+          { subject: 'Literature', level: 0 },
+          { subject: 'History', level: 0 }
+        ];
+      }
+      if (this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }
     });
@@ -191,11 +199,19 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngAfterViewInit() {
-    const skills = this.progressStore.skillLevels().map(s => ({
+    let skills = this.progressStore.skillLevels().map(s => ({
       subject: s.subject,
       level: s.level,
     }));
-    if (skills.length > 0 && this.radarContainer?.nativeElement) {
+    if (skills.length === 0) {
+      skills = [
+        { subject: 'Math', level: 0 },
+        { subject: 'Science', level: 0 },
+        { subject: 'Literature', level: 0 },
+        { subject: 'History', level: 0 }
+      ];
+    }
+    if (this.radarContainer?.nativeElement) {
       this.renderRadarChart(skills);
     }
 

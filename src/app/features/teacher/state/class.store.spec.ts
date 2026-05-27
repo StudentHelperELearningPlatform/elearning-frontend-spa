@@ -60,7 +60,7 @@ describe('ClassStore', () => {
     store.loadClasses();
     expect(store.loading()).toBe(true);
 
-    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
     expect(req.request.method).toBe('GET');
     req.flush(mockClasses);
 
@@ -72,7 +72,7 @@ describe('ClassStore', () => {
 
   it('should handle error when loading classes', () => {
     store.loadClasses();
-    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
     expect(store.loading()).toBe(false);
@@ -81,7 +81,7 @@ describe('ClassStore', () => {
 
   it('should load classes from paginated response with classes field', () => {
     store.loadClasses();
-    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
     req.flush({ classes: [{ id: '1', name: 'Math', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' }] });
     expect(store.classes().length).toBe(1);
     expect(store.classes()[0].id).toBe('1');
@@ -89,14 +89,14 @@ describe('ClassStore', () => {
 
   it('should load classes from paginated response with content field', () => {
     store.loadClasses();
-    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
     req.flush({ content: [{ id: '1', name: 'Math', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' }] });
     expect(store.classes().length).toBe(1);
   });
 
   it('should load classes with fallback empty array if paginated response is missing fields', () => {
     store.loadClasses();
-    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
     req.flush({ otherField: [{ id: '1', name: 'Math' }] });
     expect(store.classes().length).toBe(0);
   });
@@ -205,7 +205,7 @@ describe('ClassStore', () => {
     flushClassDetail('1', initialDetailRaw, [], [], []);
 
     store.loadClasses();
-    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`).flush([initialClass]);
+    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`).flush([initialClass]);
 
     const mockUpdatedClass: TeacherClass = { ...initialClass, name: 'New Math', description: 'New Bio' };
     const payload = { name: 'New Math', description: 'New Bio' };
@@ -236,7 +236,7 @@ describe('ClassStore', () => {
   it('should delete class and run filter predicate on classes list', () => {
     // Populate classes list to ensure filter runs
     store.loadClasses();
-    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`).flush([
+    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`).flush([
       { id: '1', name: 'Math', studentCount: 0, lessonCount: 0, createdAt: '' }
     ]);
     expect(store.classes().length).toBe(1);

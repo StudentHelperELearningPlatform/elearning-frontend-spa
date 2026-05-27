@@ -159,6 +159,10 @@ describe('ProgressStore', () => {
         r.url.includes('/progress/me/dashboard'),
       );
       req.flush(mockDashboard);
+      
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(7);
+
       expect(store.dashboard()).toEqual(mockDashboard);
       expect(store.dashboardLoading()).toBe(false);
     });
@@ -169,6 +173,10 @@ describe('ProgressStore', () => {
         r.url.includes('/progress/me/dashboard') && r.params.get('classId') === '3fa85f64-5717-4562-b3fc-2c963f66afa6',
       );
       req.flush(mockDashboard);
+      
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(7);
+
       expect(store.dashboard()).toEqual(mockDashboard);
     });
 
@@ -178,6 +186,10 @@ describe('ProgressStore', () => {
         r.url.includes('/progress/me/dashboard') && r.params.get('classId') === '00000000-0000-0000-0000-000000000000',
       );
       req.flush(mockDashboard);
+      
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(7);
+
       expect(store.dashboard()).toEqual(mockDashboard);
     });
 
@@ -187,6 +199,10 @@ describe('ProgressStore', () => {
         r.url.includes('/progress/me/dashboard'),
       );
       req.flush(mockDashboard);
+      
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(7);
+
       // 7/10 * 100 = 70
       expect(store.completionRate()).toBe(70);
     });
@@ -197,6 +213,12 @@ describe('ProgressStore', () => {
         r.url.includes('/progress/me/dashboard'),
       );
       req.flush('Server error', { status: 500, statusText: 'Server Error' });
+      
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      if (!countReq.cancelled) {
+        countReq.flush(7);
+      }
+
       expect(store.dashboardLoading()).toBe(false);
       expect(store.dashboardError()).toBeTruthy();
     });
@@ -443,12 +465,20 @@ describe('ProgressStore', () => {
       store.loadMyDashboard();
       let req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({ totalLessons: 0, completedLessons: 0 });
+      
+      let countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(0);
+      
       expect(store.completionRate()).toBe(0);
 
       // Reset dashboard to null, set student with totalLessons = 0
       store.loadMyDashboard();
       req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({ studentId: 'stu-1', student: { id: 'stu-1', totalLessons: 0 } });
+      
+      countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(0);
+      
       expect(store.completionRate()).toBe(0);
       expect(store.overallProgressPercent()).toBe(0);
 
@@ -462,6 +492,10 @@ describe('ProgressStore', () => {
           completedLessons: 6,
         }
       });
+      
+      countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(6);
+
       // Now dashboard is null, student is populated. Should fall back to student.
       expect(store.completionRate()).toBe(60);
       expect(store.overallProgressPercent()).toBe(60);
@@ -479,6 +513,9 @@ describe('ProgressStore', () => {
           { id: 'm5', name: 'M5', earnedAt: '2026-05-04T12:00:00Z' },
         ],
       });
+      
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(0);
 
       const milestones = store.recentMilestones();
       expect(milestones.length).toBe(3);
@@ -498,6 +535,9 @@ describe('ProgressStore', () => {
           { lessonId: 'l4', status: 'IN_PROGRESS', lastAccessedAt: '2026-05-02T12:00:00Z' },
         ],
       });
+      
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(0);
 
       const cont = store.continueLesson();
       expect(cont).toBeTruthy();
@@ -525,6 +565,9 @@ describe('ProgressStore', () => {
           lastActivityDate: '2026-05-15T00:00:00Z',
         },
       });
+      
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush(4);
 
       expect(store.student()?.id).toBe('stu-nested');
       expect(store.student()?.firstName).toBe('NestedFirst');
