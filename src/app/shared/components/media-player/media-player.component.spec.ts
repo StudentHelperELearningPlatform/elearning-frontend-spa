@@ -9,7 +9,7 @@ describe('MediaPlayerComponent', () => {
     type: 'image' | 'video' | 'pdf',
     url = 'https://example.com/asset',
     title = 'Test Asset',
-  ) => {
+  ): void => {
     fixture.componentRef.setInput('url', url);
     fixture.componentRef.setInput('type', type);
     fixture.componentRef.setInput('title', title);
@@ -32,13 +32,13 @@ describe('MediaPlayerComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('renders an img element for type image', () => {
+  it('renders an image for type image', () => {
     mount('image', 'https://example.com/photo.jpg', 'A photo');
 
     const img = fixture.nativeElement.querySelector('img') as HTMLImageElement | null;
 
     expect(img).toBeTruthy();
-    expect(img?.src).toContain('photo.jpg');
+    expect(img?.getAttribute('src')).toBe('https://example.com/photo.jpg');
   });
 
   it('sets alt from title for image type', () => {
@@ -47,7 +47,7 @@ describe('MediaPlayerComponent', () => {
     const img = fixture.nativeElement.querySelector('img') as HTMLImageElement | null;
 
     expect(img).toBeTruthy();
-    expect(img?.alt).toBe('Lesson image');
+    expect(img?.getAttribute('alt')).toBe('Lesson image');
   });
 
   it('renders a video element for type video', () => {
@@ -56,7 +56,7 @@ describe('MediaPlayerComponent', () => {
     const video = fixture.nativeElement.querySelector('video') as HTMLVideoElement | null;
 
     expect(video).toBeTruthy();
-    expect(video?.src).toContain('vid.mp4');
+    expect(video?.getAttribute('src')).toBe('https://example.com/vid.mp4');
   });
 
   it('renders video controls for type video', () => {
@@ -74,7 +74,7 @@ describe('MediaPlayerComponent', () => {
     const link = fixture.nativeElement.querySelector('a') as HTMLAnchorElement | null;
 
     expect(link).toBeTruthy();
-    expect(link?.href).toContain('file.pdf');
+    expect(link?.getAttribute('href')).toBe('https://example.com/file.pdf');
   });
 
   it('url input signal is required and sets the media source', () => {

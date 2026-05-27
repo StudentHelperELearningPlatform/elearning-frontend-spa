@@ -18,7 +18,12 @@ describe('MediaUploadComponent', () => {
 
   const createMockFile = (name: string, type: string, sizeBytes: number): File => {
     const file = new File(['test-content'], name, { type });
-    Object.defineProperty(file, 'size', { value: sizeBytes });
+
+    Object.defineProperty(file, 'size', {
+      value: sizeBytes,
+      configurable: true,
+    });
+
     return file;
   };
 
@@ -50,8 +55,8 @@ describe('MediaUploadComponent', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     httpTestingController.verify();
+    vi.restoreAllMocks();
   });
 
   it('should create the component successfully', () => {
@@ -90,7 +95,9 @@ describe('MediaUploadComponent', () => {
       const event = {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
-        dataTransfer: { files: [file] },
+        dataTransfer: {
+          files: [file],
+        },
       } as unknown as DragEvent;
 
       const handleSpy = vi.spyOn(component, 'handleFiles').mockImplementation(() => undefined);
@@ -125,7 +132,9 @@ describe('MediaUploadComponent', () => {
         value: 'C:\\fakepath\\test.png',
       };
 
-      const event = { target } as unknown as Event;
+      const event = {
+        target,
+      } as unknown as Event;
 
       const handleSpy = vi.spyOn(component, 'handleFiles').mockImplementation(() => undefined);
 
