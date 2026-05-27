@@ -687,17 +687,17 @@ interface AdminClass {
             >
               <button
                 (click)="prevUserPage()"
-                [disabled]="userPage() === 0"
+                [disabled]="userPage() <= 1"
                 class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
               >
                 Previous
               </button>
               <span class="text-xs font-black text-black">
-                Page {{ usersCurrentPage() + 1 }} of {{ usersTotalPages() }} ({{ usersTotalElements() }} total)
+                Page {{ userPage() }} of {{ totalUserPages() }}
               </span>
               <button
                 (click)="nextUserPage()"
-                [disabled]="userPage() >= usersTotalPages() - 1"
+                [disabled]="userPage() >= totalUserPages()"
                 class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
               >
                 Next
@@ -922,9 +922,7 @@ interface AdminClass {
                   Previous
                 </button>
                 <span class="text-xs font-black text-black">
-                  Page {{ lessonPage() }} of {{ totalLessonPages() }} ({{
-                    sortedLessons().length
-                  }}
+                  Page {{ lessonPage() }} of {{ totalLessonPages() }} ({{ sortedLessons().length }}
                   total)
                 </span>
                 <button
@@ -1319,7 +1317,7 @@ export class AdminDashboardComponent implements OnInit {
   lessonSortKey = signal<'teacher' | 'status' | 'subject' | 'title'>('title');
   lessonSortOrder = signal<'asc' | 'desc'>('asc');
 
-  userPage = signal<number>(0);
+  userPage = signal<number>(1);
   userPageSize = signal<number>(5);
 
   // Pagination metadata from API
@@ -1332,7 +1330,7 @@ export class AdminDashboardComponent implements OnInit {
   readonly paginatedUsers = computed(() => this.users());
 
   userInsights = computed(() => {
-    const list = this.users();
+    const list = this.allUsersForInsights();
     const total = list.length;
     if (total === 0) {
       return {
@@ -1361,6 +1359,7 @@ export class AdminDashboardComponent implements OnInit {
 
   // Data lists
   users = signal<AdminUser[]>([]);
+  allUsersForInsights = signal<AdminUser[]>([]);
   lessons = signal<AdminLesson[]>([]);
   classes = signal<AdminClass[]>([]);
   contactMessages = signal<ContactMessage[]>([]);
@@ -1487,33 +1486,37 @@ export class AdminDashboardComponent implements OnInit {
   setActiveTab(tab: 'overview' | 'users' | 'content' | 'inbox') {
     this.activeTab.set(tab);
     if (tab === 'users') {
-      this.userPage.set(0);
+      this.userPage.set(1);
       this.loadUsers();
     }
   }
 
   setStatusFilter(filter: 'ALL' | 'ACTIVE' | 'BANNED') {
     this.statusFilter.set(filter);
-    this.userPage.set(0);
-    this.loadUsers();
+    this.userPage.set(1);
+    if (filter === 'BANNED') {
+      this.loadBannedUsersOnly();
+    } else {
+      this.loadUsers();
+    }
   }
 
   updateUserSearch(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.userSearchQuery.set(value);
-    this.userPage.set(0);
+    this.userPage.set(1);
     this.loadUsers();
   }
 
   prevUserPage() {
-    if (this.userPage() > 0) {
+    if (this.userPage() > 1) {
       this.userPage.update((p) => p - 1);
       this.loadUsers();
     }
   }
 
   nextUserPage() {
-    if (this.userPage() < this.totalUserPages() - 1) {
+    if (this.userPage() < this.totalUserPages()) {
       this.userPage.update((p) => p + 1);
       this.loadUsers();
     }
@@ -1603,6 +1606,9 @@ export class AdminDashboardComponent implements OnInit {
       if (Array.isArray(obj['content'])) {
         return obj['content'] as T[];
       }
+      if (Array.isArray(obj['users'])) {
+        return obj['users'] as T[];
+      }
     }
     return [];
   }
@@ -1624,7 +1630,8 @@ export class AdminDashboardComponent implements OnInit {
 
         this.adminService.getUsers(this.userPage(), this.userPageSize()).subscribe({
           next: (paginatedResponse: PaginatedUsersResponse) => {
-            const mappedUsersList = paginatedResponse.content.map((u: AdminUserRaw) => {
+            const rawList = this.safeExtractArray<AdminUserRaw>(paginatedResponse);
+            const mappedUsersList = rawList.map((u: AdminUserRaw) => {
               const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
               const isBanned = bannedIds.has(finalId) || u.status === 'BANNED' || u.banned === true;
               const userName =
@@ -1646,9 +1653,20 @@ export class AdminDashboardComponent implements OnInit {
             });
 
             this.users.set(mappedUsersList);
-            this.usersCurrentPage.set(paginatedResponse.currentPage);
-            this.usersTotalPages.set(paginatedResponse.totalPages);
-            this.usersTotalElements.set(paginatedResponse.totalElements);
+            if (
+              paginatedResponse &&
+              typeof paginatedResponse === 'object' &&
+              !Array.isArray(paginatedResponse)
+            ) {
+              const resp = paginatedResponse as unknown as Record<string, unknown>;
+              if (resp['currentPage'] != null)
+                this.usersCurrentPage.set(resp['currentPage'] as number);
+              if (resp['totalPages'] != null)
+                this.usersTotalPages.set(resp['totalPages'] as number);
+              if (resp['totalElements'] != null)
+                this.usersTotalElements.set(resp['totalElements'] as number);
+            }
+            this.loadAllUsersForInsights();
             this.usersLoading.set(false);
           },
           error: (err) => {
@@ -1693,6 +1711,91 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
+  loadBannedUsersOnly() {
+    this.usersLoading.set(true);
+    this.usersError.set(null);
+
+    this.adminService.getBannedUsers().subscribe({
+      next: (bannedData) => {
+        const bannedList = this.safeExtractArray<AdminUserRaw>(bannedData);
+        const mappedBanned = bannedList.map((u: AdminUserRaw) => {
+          const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
+          const userName =
+            u.name ||
+            `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
+            u.username ||
+            u.email ||
+            'Banned User';
+
+          return {
+            id: finalId,
+            name: userName,
+            email: u.email || '',
+            role: (u.role || 'STUDENT').toUpperCase() as UserRole,
+            status: 'BANNED' as const,
+            avatarSeed: u.email || finalId || 'Banned',
+            raw: u,
+          };
+        });
+
+        this.users.set(mappedBanned);
+        this.usersCurrentPage.set(1);
+        this.usersTotalPages.set(1);
+        this.usersTotalElements.set(mappedBanned.length);
+        this.usersLoading.set(false);
+      },
+      error: (err) => {
+        this.users.set([]);
+        const errorMsg = err.error?.message || err.message || err.statusText || 'Connection failed';
+        this.usersError.set(errorMsg);
+        this.usersLoading.set(false);
+      },
+    });
+  }
+
+  loadAllUsersForInsights() {
+    const total = this.usersTotalElements();
+    // If all users already fit in the current page, no extra call needed
+    if (total > 0 && total <= this.userPageSize()) {
+      this.allUsersForInsights.set(this.users());
+      return;
+    }
+    // Use totalElements so we fetch every user in one shot; fall back to a safe cap
+    const pageSize = total > 0 ? total : 10000;
+    this.adminService.getUsers(1, pageSize).subscribe({
+      next: (paginatedResponse: PaginatedUsersResponse) => {
+        const rawList = this.safeExtractArray<AdminUserRaw>(paginatedResponse);
+        const mapped = rawList.map((u: AdminUserRaw) => {
+          const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
+          const userName =
+            u.name ||
+            `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
+            u.username ||
+            u.email ||
+            'User';
+
+          return {
+            id: finalId,
+            name: userName,
+            email: u.email || '',
+            role: (u.role || 'STUDENT').toUpperCase() as UserRole,
+            status: (u.status === 'BANNED' || u.banned === true ? 'BANNED' : 'ACTIVE') as
+              | 'ACTIVE'
+              | 'BANNED'
+              | 'PENDING',
+            avatarSeed: u.email || finalId || 'User',
+            raw: u,
+          };
+        });
+        this.allUsersForInsights.set(mapped);
+      },
+      error: () => {
+        // Fall back to current page users so insights always show something
+        this.allUsersForInsights.set(this.users());
+      },
+    });
+  }
+
   loadLessons() {
     this.lessonsLoading.set(true);
     this.lessonsError.set(null);
@@ -1725,13 +1828,15 @@ export class AdminDashboardComponent implements OnInit {
     this.classesError.set(null);
     this.adminService.getClasses().subscribe({
       next: (data) => {
-        const mappedClasses = this.safeExtractArray<AdminClassRaw>(data).map((c: AdminClassRaw) => ({
-          id: c.id || '',
-          name: c.name || 'Unnamed Class',
-          teacher: c.teacher || c.teacherName || 'Unknown Teacher',
-          studentsCount: c.studentsCount || c.studentCount || 0,
-          subject: c.subject || 'General',
-        }));
+        const mappedClasses = this.safeExtractArray<AdminClassRaw>(data).map(
+          (c: AdminClassRaw) => ({
+            id: c.id || '',
+            name: c.name || 'Unnamed Class',
+            teacher: c.teacher || c.teacherName || 'Unknown Teacher',
+            studentsCount: c.studentsCount || c.studentCount || 0,
+            subject: c.subject || 'General',
+          }),
+        );
         this.classes.set(mappedClasses);
         this.classesLoading.set(false);
       },
@@ -1749,15 +1854,17 @@ export class AdminDashboardComponent implements OnInit {
     this.inboxError.set(null);
     this.adminService.getContactMessages().subscribe({
       next: (messages) => {
-        const mappedMessages = this.safeExtractArray<ContactMessage>(messages).map((m: ContactMessage) => ({
-          id: m.id || '',
-          senderName: m.senderName || 'Anonymous',
-          senderEmail: m.senderEmail || '',
-          subject: m.subject || 'No Subject',
-          message: m.message || '',
-          timestamp: m.timestamp || new Date().toISOString(),
-          read: !!m.read,
-        }));
+        const mappedMessages = this.safeExtractArray<ContactMessage>(messages).map(
+          (m: ContactMessage) => ({
+            id: m.id || '',
+            senderName: m.senderName || 'Anonymous',
+            senderEmail: m.senderEmail || '',
+            subject: m.subject || 'No Subject',
+            message: m.message || '',
+            timestamp: m.timestamp || new Date().toISOString(),
+            read: !!m.read,
+          }),
+        );
         this.contactMessages.set(mappedMessages);
         this.inboxLoading.set(false);
       },
