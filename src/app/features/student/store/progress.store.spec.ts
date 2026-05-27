@@ -265,9 +265,9 @@ describe('ProgressStore', () => {
 
   describe('loadStudents()', () => {
     it('should load and store students list', () => {
-      store.loadStudents();
+      store.loadStudents({ classId: 'cls-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/teacher/students'),
+        r.url.includes('/progress/teacher/students') && r.params.get('classId') === 'cls-1'
       );
       req.flush(mockStudents);
       expect(store.students()).toEqual(mockStudents);
@@ -275,9 +275,9 @@ describe('ProgressStore', () => {
     });
 
     it('should set studentsError on failure', () => {
-      store.loadStudents();
+      store.loadStudents({ classId: 'cls-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/teacher/students'),
+        r.url.includes('/progress/teacher/students') && r.params.get('classId') === 'cls-1'
       );
       req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
       expect(store.studentsLoading()).toBe(false);
