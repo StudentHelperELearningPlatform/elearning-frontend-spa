@@ -1,16 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RegisterComponent } from './register.component';
 import { API_URL } from '@core/tokens/api.token';
 import { AuthService } from '@core/services/auth.service';
 import { createAuthServiceStub } from '../../../../../test-utils/auth-testing';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
+import { of, throwError } from 'rxjs';
 
 describe('RegisterComponent', () => {
   let component: RegisterComponent;
@@ -117,4 +118,109 @@ describe('RegisterComponent', () => {
       expect(component.showConfirmPassword()).toBe(false);
     });
   });
+
+  describe('Navigation and Role Submission', () => {
+    it('sets validators and resets form when role is chosen', () => {
+      component.selectRole('STUDENT');
+      expect(component.selectedRole()).toBe('STUDENT');
+      expect(component.specificForm.get('gradeLevel')?.validator).toBeTruthy();
+      expect(component.specificForm.get('schoolName')?.validator).toBeFalsy();
+
+      component.selectRole('TEACHER');
+      expect(component.selectedRole()).toBe('TEACHER');
+      expect(component.specificForm.get('schoolName')?.validator).toBeTruthy();
+      expect(component.specificForm.get('gradeLevel')?.validator).toBeFalsy();
+
+      component.selectRole('ADMIN');
+      expect(component.selectedRole()).toBe('ADMIN');
+      expect(component.specificForm.get('gradeLevel')?.validator).toBeFalsy();
+      expect(component.specificForm.get('schoolName')?.validator).toBeFalsy();
+    });
+
+    it('navigates next/prev steps correctly but prevents ADMIN role from moving past step 1', () => {
+      component.currentStep.set('ROLE');
+      component.selectRole('ADMIN');
+      component.goToNextStep();
+      expect(component.currentStep()).toBe('ROLE'); // Blocks admin!
+
+      component.selectRole('STUDENT');
+      component.goToNextStep();
+      expect(component.currentStep()).toBe('COMMON');
+
+      component.goToPrevStep();
+      expect(component.currentStep()).toBe('ROLE');
+    });
+
+    it('navigates to SPECIFIC step if commonForm is valid', () => {
+      component.currentStep.set('COMMON');
+      component.commonForm.patchValue({
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'Password1',
+        confirmPassword: 'Password1'
+      });
+      // Force validity for the async validator / controls
+      Object.defineProperty(component.commonForm, 'valid', { get: () => true });
+
+      component.goToNextStep();
+      expect(component.currentStep()).toBe('SPECIFIC');
+
+      component.goToPrevStep();
+      expect(component.currentStep()).toBe('COMMON');
+    });
+
+    it('manages subject selection for teacher role', () => {
+      component.toggleSubject('Math');
+      expect(component.isSubjectSelected('Math')).toBe(true);
+
+      component.toggleSubject('Math');
+      expect(component.isSubjectSelected('Math')).toBe(false);
+    });
+
+    it('should complete student registration successfully', () => {
+      const authService = TestBed.inject(AuthService);
+      const registerSpy = vi.spyOn(authService, 'register').mockReturnValue(of({}));
+      const router = TestBed.inject(Router);
+      const routerSpy = vi.spyOn(router, 'navigate');
+
+      component.selectedRole.set('STUDENT');
+      component.commonForm.patchValue({
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'Password1',
+        confirmPassword: 'Password1'
+      });
+      component.specificForm.patchValue({
+        gradeLevel: '10'
+      });
+
+      // Force validity
+      Object.defineProperty(component.commonForm, 'valid', { get: () => true });
+      Object.defineProperty(component.specificForm, 'valid', { get: () => true });
+
+      component.onSubmit();
+      expect(registerSpy).toHaveBeenCalled();
+      expect(routerSpy).toHaveBeenCalledWith(['/auth/login']);
+    });
+
+    it('handles registration conflicts and general errors correctly', () => {
+      const authService = TestBed.inject(AuthService);
+      const registerSpy = vi.spyOn(authService, 'register').mockReturnValue(
+        throwError(() => ({ status: 409 }))
+      );
+
+      component.selectedRole.set('STUDENT');
+      // Force validity
+      Object.defineProperty(component.commonForm, 'valid', { get: () => true });
+      Object.defineProperty(component.specificForm, 'valid', { get: () => true });
+
+      component.onSubmit();
+      expect(component.registrationError).toBe('This email is already registered.');
+
+      registerSpy.mockReturnValue(throwError(() => ({ status: 500 })));
+      component.onSubmit();
+      expect(component.registrationError).toBe('Registration failed. Please try again.');
+    });
+  });
 });
+

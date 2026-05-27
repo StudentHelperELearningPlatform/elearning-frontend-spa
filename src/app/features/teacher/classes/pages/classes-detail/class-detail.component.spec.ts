@@ -102,8 +102,15 @@ describe('ClassDetailComponent', () => {
     comp.openInviteModal();
     expect(comp.showInviteModal()).toBe(true);
 
-    const req = httpTestingController.expectOne('http://mock-api/students');
-    req.flush([{ studentId: 's2', firstName: 'Jane', lastName: 'Smith' }]);
+    const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
+    req.flush({
+      users: [
+        { id: 's2', firstName: 'Jane', lastName: 'Smith', email: 'j@mail.com', role: 'STUDENT' }
+      ],
+      currentPage: 0,
+      totalPages: 1,
+      totalElements: 1
+    });
     expect(comp.allStudents().length).toBe(1);
   });
 
@@ -234,7 +241,7 @@ describe('ClassDetailComponent', () => {
       comp.openInviteModal();
       expect(comp.showInviteModal()).toBe(true);
 
-      const req = httpTestingController.expectOne('http://mock-api/students');
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
       req.flush('Error fetching', { status: 500, statusText: 'Internal Error' });
       expect(comp.allStudents()).toEqual([]);
     });
@@ -313,5 +320,92 @@ describe('ClassDetailComponent', () => {
       const attS3 = attempts.find(a => a.studentId === 's3');
       expect(attS3?.studentName).toBe('s3');
     });
+
+    it('should load next page if more pages exist and not currently loading', () => {
+      const comp = make();
+      comp.currentPage.set(0);
+      comp.totalPages.set(2);
+      comp.loadingMore.set(false);
+
+      comp.loadNextPage();
+
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users') && r.params.get('page') === '1');
+      req.flush({
+        users: [{ id: 's3', firstName: 'Jack', lastName: 'Rider', role: 'STUDENT' }],
+        currentPage: 1,
+        totalPages: 2
+      });
+      expect(comp.allStudents().length).toBe(1);
+    });
+
+    it('should not load next page if no more pages or already loading', () => {
+      const comp = make();
+      // No more pages
+      comp.currentPage.set(1);
+      comp.totalPages.set(2);
+      comp.loadingMore.set(false);
+      comp.loadNextPage();
+      httpTestingController.expectNone((r) => r.url.includes('/users'));
+
+      // Already loading
+      comp.currentPage.set(0);
+      comp.totalPages.set(2);
+      comp.loadingMore.set(true);
+      comp.loadNextPage();
+      httpTestingController.expectNone((r) => r.url.includes('/users'));
+    });
+
+    it('should append students when page is greater than 0', () => {
+      const comp = make();
+      comp.allStudents.set([{ studentId: 's1', firstName: 'John', lastName: 'Doe' }]);
+      comp.currentPage.set(0);
+      comp.totalPages.set(2);
+
+      comp.loadStudentsPage(1);
+
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users') && r.params.get('page') === '1');
+      req.flush({
+        users: [{ id: 's2', firstName: 'Jane', lastName: 'Smith', role: 'STUDENT' }],
+        currentPage: 1,
+        totalPages: 2
+      });
+
+      expect(comp.allStudents().length).toBe(2);
+      expect(comp.allStudents()[0].studentId).toBe('s1');
+      expect(comp.allStudents()[1].studentId).toBe('s2');
+    });
+
+    it('should handle undefined/null/empty fields in user response', () => {
+      const comp = make();
+      comp.loadStudentsPage(0);
+
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
+      req.flush({
+        users: [
+          { role: 'STUDENT' }, // missing id/names
+          { id: 's3', firstName: 'Jack', role: 'TEACHER' }, // wrong role
+        ],
+        currentPage: null,
+        totalPages: null
+      } as unknown as PaginatedUsersResponse);
+
+      expect(comp.allStudents().length).toBe(1);
+      expect(comp.allStudents()[0].studentId).toBe('');
+      expect(comp.allStudents()[0].firstName).toBe('');
+      expect(comp.currentPage()).toBe(0);
+      expect(comp.totalPages()).toBe(0);
+    });
+
+    it('should handle api error and fallback gracefully with empty users list in catchError', () => {
+      const comp = make();
+      comp.loadStudentsPage(0);
+
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users'));
+      req.error(new ProgressEvent('error')); // trigger catchError
+
+      expect(comp.allStudents()).toEqual([]);
+      expect(comp.loadingMore()).toBe(false);
+    });
   });
 });
+
