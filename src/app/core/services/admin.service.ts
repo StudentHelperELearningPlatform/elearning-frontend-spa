@@ -30,6 +30,13 @@ export interface AdminUserRaw {
   [key: string]: unknown;
 }
 
+export interface PaginatedUsersResponse {
+  content: AdminUserRaw[];
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
+}
+
 export interface AdminLessonRaw {
   id?: string;
   title?: string;
@@ -59,8 +66,9 @@ export class AdminService {
   private readonly contentApi = inject(CONTENT_API_URL);     // Contains '/api/v1' already!
 
   // Manage Users (Moisa Admin Controller & User Controller)
-  getUsers(): Observable<AdminUserRaw[]> {
-    return this.http.get<AdminUserRaw[]>(`${this.apiBase}/users`);
+  getUsers(page: number = 0, size: number = 5): Observable<PaginatedUsersResponse> {
+    const params = { page: page.toString(), size: size.toString() };
+    return this.http.get<PaginatedUsersResponse>(`${this.apiBase}/users`, { params });
   }
 
   getBannedUsers(): Observable<AdminUserRaw[]> {

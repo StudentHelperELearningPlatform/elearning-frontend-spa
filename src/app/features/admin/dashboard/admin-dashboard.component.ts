@@ -6,6 +6,7 @@ import {
   AdminUserRaw,
   AdminLessonRaw,
   AdminClassRaw,
+  PaginatedUsersResponse,
 } from '../../../core/services/admin.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CardComponent } from '../../../shared/components/card/card.component';
@@ -429,7 +430,7 @@ interface AdminClass {
                 class="flex bg-white border-2 border-black rounded-xl p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               >
                 <button
-                  (click)="statusFilter.set('ALL'); userPage.set(1)"
+                  (click)="setStatusFilter('ALL')"
                   [ngClass]="
                     statusFilter() === 'ALL'
                       ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
@@ -440,7 +441,7 @@ interface AdminClass {
                   All
                 </button>
                 <button
-                  (click)="statusFilter.set('ACTIVE'); userPage.set(1)"
+                  (click)="setStatusFilter('ACTIVE')"
                   [ngClass]="
                     statusFilter() === 'ACTIVE'
                       ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
@@ -451,7 +452,7 @@ interface AdminClass {
                   Active
                 </button>
                 <button
-                  (click)="statusFilter.set('BANNED'); userPage.set(1)"
+                  (click)="setStatusFilter('BANNED')"
                   [ngClass]="
                     statusFilter() === 'BANNED'
                       ? 'bg-[#0ABAB5] text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
@@ -686,17 +687,17 @@ interface AdminClass {
             >
               <button
                 (click)="prevUserPage()"
-                [disabled]="userPage() === 1"
+                [disabled]="userPage() === 0"
                 class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
               >
                 Previous
               </button>
               <span class="text-xs font-black text-black">
-                Page {{ userPage() }} of {{ totalUserPages() }} ({{ filteredUsers().length }} total)
+                Page {{ usersCurrentPage() + 1 }} of {{ usersTotalPages() }} ({{ usersTotalElements() }} total)
               </span>
               <button
                 (click)="nextUserPage()"
-                [disabled]="userPage() === totalUserPages()"
+                [disabled]="userPage() >= usersTotalPages() - 1"
                 class="px-3 py-1.5 rounded-lg border-2 border-black bg-white text-black font-black text-xs hover:bg-gray-50 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-[2px] hover:translate-x-[2px] disabled:opacity-40 disabled:cursor-not-allowed select-none"
               >
                 Next
@@ -1318,18 +1319,17 @@ export class AdminDashboardComponent implements OnInit {
   lessonSortKey = signal<'teacher' | 'status' | 'subject' | 'title'>('title');
   lessonSortOrder = signal<'asc' | 'desc'>('asc');
 
-  userPage = signal<number>(1);
+  userPage = signal<number>(0);
+  userPageSize = signal<number>(5);
 
-  readonly totalUserPages = computed(() => {
-    return Math.ceil(this.filteredUsers().length / 5) || 1;
-  });
+  // Pagination metadata from API
+  usersCurrentPage = signal<number>(0);
+  usersTotalPages = signal<number>(1);
+  usersTotalElements = signal<number>(0);
 
-  readonly paginatedUsers = computed(() => {
-    const list = this.filteredUsers();
-    const page = this.userPage();
-    const start = (page - 1) * 5;
-    return list.slice(start, start + 5);
-  });
+  readonly totalUserPages = computed(() => this.usersTotalPages());
+
+  readonly paginatedUsers = computed(() => this.users());
 
   userInsights = computed(() => {
     const list = this.users();
@@ -1486,23 +1486,36 @@ export class AdminDashboardComponent implements OnInit {
 
   setActiveTab(tab: 'overview' | 'users' | 'content' | 'inbox') {
     this.activeTab.set(tab);
+    if (tab === 'users') {
+      this.userPage.set(0);
+      this.loadUsers();
+    }
+  }
+
+  setStatusFilter(filter: 'ALL' | 'ACTIVE' | 'BANNED') {
+    this.statusFilter.set(filter);
+    this.userPage.set(0);
+    this.loadUsers();
   }
 
   updateUserSearch(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.userSearchQuery.set(value);
-    this.userPage.set(1);
+    this.userPage.set(0);
+    this.loadUsers();
   }
 
   prevUserPage() {
-    if (this.userPage() > 1) {
+    if (this.userPage() > 0) {
       this.userPage.update((p) => p - 1);
+      this.loadUsers();
     }
   }
 
   nextUserPage() {
-    if (this.userPage() < this.totalUserPages()) {
+    if (this.userPage() < this.totalUserPages() - 1) {
       this.userPage.update((p) => p + 1);
+      this.loadUsers();
     }
   }
 
@@ -1609,9 +1622,9 @@ export class AdminDashboardComponent implements OnInit {
           if (finalId) bannedIds.add(finalId);
         });
 
-        this.adminService.getUsers().subscribe({
-          next: (allUsersData) => {
-            const mappedUsersList = this.safeExtractArray<AdminUserRaw>(allUsersData).map((u: AdminUserRaw) => {
+        this.adminService.getUsers(this.userPage(), this.userPageSize()).subscribe({
+          next: (paginatedResponse: PaginatedUsersResponse) => {
+            const mappedUsersList = paginatedResponse.content.map((u: AdminUserRaw) => {
               const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
               const isBanned = bannedIds.has(finalId) || u.status === 'BANNED' || u.banned === true;
               const userName =
@@ -1633,6 +1646,9 @@ export class AdminDashboardComponent implements OnInit {
             });
 
             this.users.set(mappedUsersList);
+            this.usersCurrentPage.set(paginatedResponse.currentPage);
+            this.usersTotalPages.set(paginatedResponse.totalPages);
+            this.usersTotalElements.set(paginatedResponse.totalElements);
             this.usersLoading.set(false);
           },
           error: (err) => {
@@ -1661,6 +1677,9 @@ export class AdminDashboardComponent implements OnInit {
             });
 
             this.users.set(mappedBanned);
+            this.usersCurrentPage.set(0);
+            this.usersTotalPages.set(1);
+            this.usersTotalElements.set(mappedBanned.length);
             this.usersLoading.set(false);
           },
         });
