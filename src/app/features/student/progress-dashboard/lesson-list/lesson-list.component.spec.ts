@@ -112,6 +112,18 @@ describe('LessonListComponent', () => {
     expect(store.loadLessons).toHaveBeenCalled();
   });
 
+  it('calls loadMyHistory on init', () => {
+    fixture.detectChanges();
+    expect(progressStore.loadMyHistory).toHaveBeenCalled();
+  });
+
+  it('shows loading skeleton in my-lessons tab when accessibleLessonsLoading is true', () => {
+    component.activeTab.set('my-lessons');
+    patchStore(store, { accessibleLessonsLoading: true });
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('.animate-pulse'))).toBeTruthy();
+  });
+
   it('renders all lesson cards with correct statuses on browser tab', () => {
     store.publishedLessons = signal(
       MOCK_LESSONS as unknown as Lesson[],

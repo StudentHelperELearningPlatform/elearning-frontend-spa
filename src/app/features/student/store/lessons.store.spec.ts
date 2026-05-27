@@ -150,6 +150,30 @@ describe('LessonsStore', () => {
     expect(store.error()?.kind).not.toBe('unknown');
   });
 
+  it('loadLesson handles { lesson: ... } response wrapper', () => {
+    vi.spyOn(http, 'get').mockReturnValue(of({ lesson: backendFixture }));
+    store.loadLesson('1');
+    expect(store.currentLesson()?.id).toBe('1');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('loadLesson handles { content: ... } (non-array) response wrapper', () => {
+    vi.spyOn(http, 'get').mockReturnValue(of({ content: backendFixture }));
+    store.loadLesson('1');
+    expect(store.currentLesson()?.id).toBe('1');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('loadLesson sets "unknown" error for non-404/non-500 status', () => {
+    vi.spyOn(http, 'get').mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 400, statusText: 'Bad Request' }))
+    );
+    store.loadLesson('bad-req');
+    expect(store.error()?.kind).toBe('unknown');
+    expect(store.error()?.message).toBe('Unknown error');
+    expect(store.loading()).toBe(false);
+  });
+
   describe('markModuleCompleteLocally', () => {
     it('should mark module complete in local state without API call', () => {
       const putSpy = vi.spyOn(http, 'put');

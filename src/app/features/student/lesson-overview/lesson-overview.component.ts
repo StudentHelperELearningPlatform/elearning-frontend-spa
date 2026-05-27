@@ -163,8 +163,8 @@ import { ErrorStateComponent } from '@shared/components/error-state/error-state.
 export class LessonOverviewComponent implements OnInit, OnDestroy {
   lessonsStore = inject(LessonsStore);
   progressStore = inject(ProgressStore);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   private lessonId: string | null = null;
 

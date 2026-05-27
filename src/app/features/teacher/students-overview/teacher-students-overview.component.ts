@@ -22,6 +22,7 @@ import { ProgressStore } from '../../student/store/progress.store';
 
 // Tipul local pentru teacher — câmpurile reale din backend S6
 interface TeacherStudentSummary {
+  userId?: string;
   studentId: string;
   studentName: string;
   classesEnrolled: number;
