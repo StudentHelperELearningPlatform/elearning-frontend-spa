@@ -11,6 +11,7 @@ import { TeacherLessonsStore } from '../../../state/teacher-lessons.store';
 import { USER_PLATFORM_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 
 export interface StudentRow {
+  userId?: string;
   studentId: string;
   firstName: string;
   lastName: string;
@@ -20,6 +21,7 @@ export interface StudentRow {
 
 export interface RawStudentRow {
   id?: string;
+  userId?: string;
   studentId?: string;
   firstName?: string;
   name?: string;
@@ -130,6 +132,7 @@ export class ClassDetailComponent implements OnInit {
           catchError(() => of([] as RawStudentRow[])),
           map((rows) =>
             rows.map((r) => ({
+              userId: r.userId,
               studentId: r.studentId || r.id || '',
               firstName: r.firstName || r.name || '',
               lastName: r.lastName || '',
@@ -151,7 +154,7 @@ export class ClassDetailComponent implements OnInit {
   addStudent(student: StudentRow): void {
     this.addingStudentId.set(student.studentId);
     this.addStudentError.set(null);
-    this.store.addStudent(this.classId, student.studentId).subscribe({
+    this.store.addStudent(this.classId, student.studentId, student.userId).subscribe({
       next: () => {
         this.store.loadClassDetail(this.classId);
         this.addingStudentId.set(null);

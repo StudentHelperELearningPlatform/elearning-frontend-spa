@@ -16,6 +16,7 @@ export interface ClassStatsSummary {
 }
 
 export interface StudentProgressRow {
+  userId?: string;
   studentId: string;
   studentName: string;
   lessonsCompleted: number;
@@ -32,6 +33,7 @@ export interface LessonBreakdown {
 }
 
 export interface StudentDetail {
+  userId?: string;
   studentId: string;
   studentName: string;
   totalLessonsCompleted: number;

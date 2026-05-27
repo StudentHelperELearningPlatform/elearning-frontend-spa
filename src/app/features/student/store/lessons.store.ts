@@ -2,6 +2,8 @@
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { CONTENT_API_URL, USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { BackendLesson, mapLessonResponse } from '../../../api/adapters/lesson.adapter';
 
@@ -114,6 +116,9 @@ interface LessonsState {
   explanationLoading: boolean;
   /** Block ID for which the explanation was last requested */
   explanationBlockId: string | null;
+  /** Set of lesson IDs the user has access to */
+  accessibleLessonIds: Set<string>;
+  accessibleLessonsLoading: boolean;
 }
 
 export const LessonsStore = signalStore(
@@ -129,13 +134,18 @@ export const LessonsStore = signalStore(
     explanation: null,
     explanationLoading: false,
     explanationBlockId: null,
+    accessibleLessonIds: new Set<string>(),
+    accessibleLessonsLoading: false,
   }),
 
   withComputed((state) => ({
     publishedLessons: computed(() => state.lessons()),
     lessonCount: computed(() => state.lessons().length),
     completedLessons: computed(() => [] as Lesson[]),
-    myLessons: computed(() => state.lessons()),
+    myLessons: computed(() => {
+      const ids = state.accessibleLessonIds();
+      return state.lessons().filter((l) => ids.has(l.id));
+    }),
 
     /** True when every module in the current lesson has been marked complete */
     allModulesComplete: computed(() => {
@@ -199,6 +209,34 @@ export const LessonsStore = signalStore(
           console.error('[LessonsStore] Failed to load lessons:', err);
           patchState(store, { loading: false });
         },
+      });
+    },
+
+    loadAccessibleLessons(studentId: string): void {
+      patchState(store, { accessibleLessonsLoading: true });
+      const lessons = store.lessons();
+      if (!lessons.length || !studentId) {
+        patchState(store, { accessibleLessonsLoading: false });
+        return;
+      }
+      
+      const checks = lessons.map(l => 
+        http.get<boolean>(`${userApiBase}/payments/access-check`, {
+          params: { studentId, lessonId: l.id }
+        }).pipe(
+          map(hasAccess => ({ id: l.id, hasAccess })),
+          catchError(() => of({ id: l.id, hasAccess: false }))
+        )
+      );
+
+      forkJoin(checks).subscribe({
+        next: (results) => {
+          const accessibleIds = new Set(results.filter(r => r.hasAccess).map(r => r.id));
+          patchState(store, { accessibleLessonIds: accessibleIds, accessibleLessonsLoading: false });
+        },
+        error: () => {
+          patchState(store, { accessibleLessonsLoading: false });
+        }
       });
     },
 

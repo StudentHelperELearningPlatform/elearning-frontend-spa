@@ -24,6 +24,7 @@ import {
 
 interface ClassStudentRaw {
   id?: string;
+  userId?: string;
   studentId?: string;
   firstName?: string;
   lastName?: string;
@@ -109,7 +110,7 @@ export const ClassStore = signalStore(
           .get<(string | ClassStudentRaw)[]>(`${userApi}/teachers/classes/${classId}/students`)
           .pipe(catchError(() => of([]))),
         allStudents: http
-          .get<{ id: string; firstName: string; lastName: string; email?: string }[]>(
+          .get<{ id: string; userId?: string; studentId?: string; firstName: string; lastName: string; email?: string }[]>(
             `${userApi}/teachers/classes/${classId}/students`,
           )
           .pipe(catchError(() => of([]))),
@@ -129,6 +130,8 @@ export const ClassStore = signalStore(
                 const s = studentMap.get(id) || (typeof item === 'object' ? item : null);
                 return {
                   id,
+                  userId: s?.userId || (typeof item === 'object' ? item.userId : undefined),
+                  studentId: s?.studentId || (typeof item === 'object' ? item.studentId : id),
                   name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim()) : id,
                   email: s?.email ?? '',
                 };
@@ -252,10 +255,13 @@ export const ClassStore = signalStore(
     .subscribe();
 },
 
-    addStudent(classId: string, studentId: string) {
-      return http.post(
-        `${userApi}/teachers/classes/${classId}/students/${studentId}`,
-        {},
+    addStudent(classId: string, studentId: string, userId?: string) {
+      const req = http.post(`${userApi}/teachers/classes/${classId}/students/${studentId}`, {});
+      if (!userId || userId === studentId) {
+        return req;
+      }
+      return req.pipe(
+        catchError(() => http.post(`${userApi}/teachers/classes/${classId}/students/${userId}`, {}))
       );
     },
 
