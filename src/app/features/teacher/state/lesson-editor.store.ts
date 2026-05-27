@@ -70,9 +70,9 @@ const toCreatePayload = (lesson: LessonDraft) => ({
   subcapitols:
     lesson.modules.length > 0
       ? lesson.modules.map((module, index) => ({
-        title: module.title.trim() ? module.title : 'Untitled Module',
-        orderIndex: index + 1,
-      }))
+          title: module.title.trim() ? module.title : 'Untitled Module',
+          orderIndex: index + 1,
+        }))
       : [{ title: 'Introduction', orderIndex: 1 }],
 });
 
@@ -144,6 +144,52 @@ const toBackendBlockType = (media: UploadedMedia): 'IMAGE' | 'VIDEO' | 'FILE' =>
   return 'FILE';
 };
 
+const serializeMediaContent = (media: UploadedMedia): string => {
+  return JSON.stringify({
+    name: media.name,
+    url: media.url,
+    type: media.type,
+    mediaId: media.id,
+  });
+};
+
+const parseMediaContent = (
+  content: unknown,
+): {
+  name: string;
+  url: string;
+  type?: 'image' | 'video' | 'pdf';
+  mediaId?: string;
+} => {
+  if (typeof content !== 'string') {
+    return {
+      name: 'Uploaded media',
+      url: '',
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(content) as {
+      name?: string;
+      url?: string;
+      type?: 'image' | 'video' | 'pdf';
+      mediaId?: string;
+    };
+
+    return {
+      name: parsed.name || 'Uploaded media',
+      url: parsed.url || '',
+      type: parsed.type,
+      mediaId: parsed.mediaId,
+    };
+  } catch {
+    return {
+      name: content,
+      url: '',
+    };
+  }
+};
+
 const mapFromResponse = (
   saved: Record<string, unknown>,
   fallbackModules: LessonModuleDraft[],
@@ -195,37 +241,39 @@ const mapFromResponse = (
               | Record<string, unknown>
               | undefined;
 
+            const parsedContent = parseMediaContent(block['content']);
             const blockType = getStringValue(block, ['blockType', 'block_type']);
 
             const mediaId =
               getStringValue(block, ['mediaId', 'media_id']) ||
+              parsedContent.mediaId ||
               (nestedMedia ? getStringValue(nestedMedia, ['id']) : '');
 
-            const backendName =
+            const fallbackMedia = fallback?.media?.find((item) => {
+              return (
+                item.id === mediaId ||
+                item.mediaBlockId === block['id'] ||
+                item.name === parsedContent.name
+              );
+            });
+
+            const backendUrl =
+              getStringValue(block, ['mediaUrl', 'url']) ||
+              parsedContent.url ||
+              (nestedMedia ? getStringValue(nestedMedia, ['url']) : '');
+
+            const url = backendUrl || fallbackMedia?.url || '';
+
+            const name =
+              parsedContent.name ||
               getStringValue(block, [
                 'mediaOriginalFilename',
                 'originalFilename',
                 'fileName',
                 'content',
               ]) ||
-              (nestedMedia ? getStringValue(nestedMedia, ['originalFilename', 'name']) : '') ||
+              fallbackMedia?.name ||
               'Uploaded media';
-
-            const fallbackMedia = fallback?.media?.find((item) => {
-              return (
-                item.id === mediaId ||
-                item.mediaBlockId === block['id'] ||
-                item.name === backendName
-              );
-            });
-
-            const backendUrl =
-              getStringValue(block, ['mediaUrl', 'url']) ||
-              (nestedMedia ? getStringValue(nestedMedia, ['url']) : '');
-
-            const url = backendUrl || fallbackMedia?.url || '';
-
-            const name = backendName || fallbackMedia?.name || 'Uploaded media';
 
             const mimeType =
               getStringValue(block, ['mediaMimeType', 'mimeType']) ||
@@ -240,6 +288,7 @@ const mapFromResponse = (
               url,
               name,
               type:
+                parsedContent.type ||
                 fallbackMedia?.type ||
                 resolveMediaType({
                   mimeType,
@@ -349,9 +398,9 @@ export const LessonEditorStore = signalStore(
 
             return matchedSubcapitol
               ? {
-                ...module,
-                id: matchedSubcapitol['id'] as string,
-              }
+                  ...module,
+                  id: matchedSubcapitol['id'] as string,
+                }
               : module;
           });
         } else {
@@ -432,7 +481,7 @@ export const LessonEditorStore = signalStore(
             if (media.mediaBlockId) {
               await lastValueFrom(
                 http.put(`${apiBase}/blocks/${media.mediaBlockId}`, {
-                  content: media.name || '',
+                  content: serializeMediaContent(media),
                   codeLanguage: null,
                   mediaId: media.id,
                 }),
@@ -443,7 +492,7 @@ export const LessonEditorStore = signalStore(
               const mediaBlockResponse = (await lastValueFrom(
                 http.post(`${apiBase}/subcapitols/${subcapitolId}/blocks`, {
                   blockType: toBackendBlockType(media),
-                  content: media.name || '',
+                  content: serializeMediaContent(media),
                   mediaId: media.id,
                   languageTag: 'ro',
                   codeLanguage: null,
@@ -577,9 +626,9 @@ export const LessonEditorStore = signalStore(
               modules: state.lesson.modules.map((module) =>
                 module.id === id
                   ? {
-                    ...module,
-                    ...patch,
-                  }
+                      ...module,
+                      ...patch,
+                    }
                   : module,
               ),
             },
