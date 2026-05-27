@@ -92,6 +92,9 @@ export class AuthService {
       email: payload['email'],
       password: payload['password'],
       role: payload['role'] === 'TEACHER' ? 'PROFESSOR' : payload['role'],
+      schoolName: (payload['schoolName'] as string) || '',
+      subjects: (payload['subjects'] as string[]) || [],
+      gradeLevel: payload['gradeLevel'] !== undefined && payload['gradeLevel'] !== null ? String(payload['gradeLevel']) : '',
     };
 
     return this.http.post(`${this.authApi}/register`, moisaPayload);
