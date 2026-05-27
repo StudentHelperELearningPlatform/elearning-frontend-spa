@@ -279,7 +279,8 @@ export const ProgressStore = signalStore(
       // Prioritizează datele live din dashboard (S6)
       const dash = store.dashboard();
       if (dash && dash.totalLessons) {
-        return Math.round(((dash.completedLessons ?? 0) / dash.totalLessons) * 100);
+        const completed = Number(dash.completedLessons) || 0;
+        return Math.round((completed / dash.totalLessons) * 100);
       }
       
       // Fallback la datele vechi (student)
@@ -304,7 +305,7 @@ export const ProgressStore = signalStore(
     recentMilestones: computed(() => {
   return [...store.milestones()]
     .filter((m) => m.earnedAt != null)
-    .sort((a, b) => new Date(b.earnedAt ?? '').getTime() - new Date(a.earnedAt ?? '').getTime())
+    .sort((a, b) => new Date(b.earnedAt!).getTime() - new Date(a.earnedAt!).getTime())
     .slice(0, 3);
 }),
 
@@ -384,9 +385,9 @@ export const ProgressStore = signalStore(
               },
               error: (err: { message?: string }) => patchState(store, {
                 dashboardLoading: false,
-                dashboardError: err?.message ?? 'Failed to load dashboard',
+                dashboardError: err?.message || 'Failed to load dashboard',
                 loading: false,
-                error: err?.message ?? 'Failed to load dashboard'
+                error: err?.message || 'Failed to load dashboard'
               }),
             })
           );

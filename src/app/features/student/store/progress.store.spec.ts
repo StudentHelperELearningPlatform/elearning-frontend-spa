@@ -222,6 +222,34 @@ describe('ProgressStore', () => {
       expect(store.dashboardLoading()).toBe(false);
       expect(store.dashboardError()).toBeTruthy();
     });
+
+    it('should still load dashboard when completed-lessons/count endpoint fails (catchError branch)', () => {
+      store.loadMyDashboard();
+      const dashReq = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      dashReq.flush({ totalLessons: 8, completedLessons: 4 });
+
+      // Simulate the count endpoint failing — catchError(() => of(null)) kicks in
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush('Not Found', { status: 404, statusText: 'Not Found' });
+
+      // Dashboard should still be set; completedLessons falls back to data.completedLessons = 4
+      expect(store.dashboard()).toBeTruthy();
+      expect(store.dashboard()?.completedLessons).toBe(4);
+      expect(store.dashboardLoading()).toBe(false);
+    });
+
+    it('uses fallback error message when err has no message property', () => {
+      store.loadMyDashboard();
+      const dashReq = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      // flush with status 0 (network error) which produces HttpErrorResponse with empty statusText
+      dashReq.error(new ProgressEvent('error'));
+
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      if (!countReq.cancelled) countReq.flush(0);
+
+      expect(store.dashboardLoading()).toBe(false);
+      expect(store.dashboardError()).toBeTruthy();
+    });
   });
 
 

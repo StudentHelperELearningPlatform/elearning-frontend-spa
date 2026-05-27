@@ -237,6 +237,14 @@ describe('ProgressDashboardComponent (Logic)', () => {
       expect(spy).toHaveBeenCalled();
     });
 
+    it('should not call renderRadarChart in ngAfterViewInit when radarContainer is absent', () => {
+      // radarContainer not set → false branch of if (radarContainer?.nativeElement)
+      (component as unknown as { radarContainer: null }).radarContainer = null as unknown as ElementRef;
+      const spy = vi.spyOn(component, 'renderRadarChart');
+      component.ngAfterViewInit();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
     it('should clean up resizeObserver on destroy', () => {
       // Mock ResizeObserver
       const disconnectSpy = vi.fn();
@@ -382,6 +390,15 @@ describe('ProgressDashboardComponent (Logic)', () => {
         { lessonId: 'l2', status: 'in_progress', score: null, dateCompleted: null },
       ]);
       expect(component.startedLessonsCount).toBe(2);
+    });
+
+    it('falls back to history count when dashboard totalLessons is null', () => {
+      // totalLessons: null means dashboardStarted !== null is false → short-circuits to history
+      progressStoreMock.dashboard.set({ totalLessons: null });
+      progressStoreMock.myHistory.set([
+        { lessonId: 'l1', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+      ]);
+      expect(component.startedLessonsCount).toBe(1);
     });
 
     it('returns 0 when history is empty and dashboard is null', () => {
