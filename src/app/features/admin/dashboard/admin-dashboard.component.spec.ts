@@ -1015,4 +1015,138 @@ describe('AdminDashboardComponent', () => {
       expect(filtered[0].id).toBe('u1');
     });
   });
+
+  // ── insightsLoading & loadAllUsersForInsights tests ───────────────────────
+  describe('loadAllUsersForInsights', () => {
+    it('should set allUsersForInsights from current page users when total fits in one page', () => {
+      fixture.detectChanges();
+      // After detectChanges, total elements equals users loaded (5) which is <= pageSize default
+      // So the early-return path fires and allUsersForInsights mirrors users()
+      expect(component.allUsersForInsights().length).toBe(component.users().length);
+    });
+
+    it('should set insightsLoading true then false when fetching all users for insights', () => {
+      // Override getUsers so total > pageSize, forcing the HTTP path
+      vi.spyOn(adminService, 'getUsers').mockReturnValue(
+        of({
+          content: mockUsers,
+          currentPage: 1,
+          totalPages: 2,
+          totalElements: 100,
+        } as PaginatedUsersResponse),
+      );
+      vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(of([]));
+
+      component.loadUsers();
+
+      expect(component.insightsLoading()).toBe(false);
+      expect(component.allUsersForInsights().length).toBeGreaterThan(0);
+    });
+
+    it('should fall back to current page users when insights API call fails', () => {
+      // First set totalElements > pageSize so the HTTP call is triggered
+      component.usersTotalElements.set(10000);
+      let callCount = 0;
+      vi.spyOn(adminService, 'getUsers').mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          // insights call
+          return throwError(() => new Error('Insights API Error'));
+        }
+        return of([] as unknown as PaginatedUsersResponse);
+      });
+
+      component.users.set([
+        {
+          id: 'fallback-u1',
+          name: 'Fallback User',
+          email: 'f@example.com',
+          role: 'STUDENT',
+          status: 'ACTIVE',
+          raw: {},
+        },
+      ]);
+
+      component.loadAllUsersForInsights();
+
+      expect(component.insightsLoading()).toBe(false);
+      expect(component.allUsersForInsights()[0].name).toBe('Fallback User');
+    });
+
+    it('should mark banned users correctly via mapRawUserToActive when banned flag is set', () => {
+      component.usersTotalElements.set(10000);
+      const bannedRaw: AdminUserRaw = {
+        id: 'b1',
+        name: 'Banned Person',
+        email: 'banned@example.com',
+        role: 'STUDENT',
+        banned: true,
+      };
+      vi.spyOn(adminService, 'getUsers').mockReturnValue(
+        of({
+          content: [bannedRaw],
+          currentPage: 1,
+          totalPages: 1,
+          totalElements: 1,
+        } as PaginatedUsersResponse),
+      );
+
+      component.loadAllUsersForInsights();
+
+      expect(component.allUsersForInsights()[0].status).toBe('BANNED');
+    });
+  });
+
+  // ── loadBannedUsersOnly tests ─────────────────────────────────────────────
+  describe('loadBannedUsersOnly', () => {
+    it('should load and map banned users correctly', () => {
+      vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(of(mockBannedUsers));
+      component.loadBannedUsersOnly();
+
+      expect(component.usersLoading()).toBe(false);
+      expect(component.users().every((u) => u.status === 'BANNED')).toBe(true);
+    });
+
+    it('should handle API failure gracefully', () => {
+      vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(
+        throwError(() => new Error('Banned only API Error')),
+      );
+      component.loadBannedUsersOnly();
+
+      expect(component.usersLoading()).toBe(false);
+      expect(component.usersError()).toBe('Banned only API Error');
+    });
+  });
+
+  // ── setStatusFilter / setActiveTab reload paths ───────────────────────────
+  describe('setStatusFilter', () => {
+    it('should call loadBannedUsersOnly when filter is set to BANNED', () => {
+      const bannedSpy = vi.spyOn(component, 'loadBannedUsersOnly');
+      component.setStatusFilter('BANNED');
+      expect(bannedSpy).toHaveBeenCalled();
+      expect(component.statusFilter()).toBe('BANNED');
+    });
+
+    it('should call loadUsers when filter is set to ACTIVE', () => {
+      const loadSpy = vi.spyOn(component, 'loadUsers');
+      component.setStatusFilter('ACTIVE');
+      expect(loadSpy).toHaveBeenCalled();
+      expect(component.statusFilter()).toBe('ACTIVE');
+    });
+  });
+
+  describe('setActiveTab', () => {
+    it('should reload users when switching to users tab', () => {
+      const loadSpy = vi.spyOn(component, 'loadUsers');
+      component.setActiveTab('users');
+      expect(loadSpy).toHaveBeenCalled();
+      expect(component.activeTab()).toBe('users');
+    });
+
+    it('should reset user page to 1 when switching to users tab', () => {
+      component.userPage.set(3);
+      component.setActiveTab('users');
+      expect(component.userPage()).toBe(1);
+    });
+  });
 });

@@ -15,12 +15,14 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { UserRole } from '../../../core/types/user.types';
 
+type UserStatus = 'ACTIVE' | 'BANNED' | 'PENDING';
+
 interface AdminUser {
   id: string;
   name: string;
   email: string;
   role: UserRole;
-  status: 'ACTIVE' | 'BANNED' | 'PENDING';
+  status: UserStatus;
   avatarSeed?: string;
   raw: AdminUserRaw; // Dynamic inspection of all backend fields
 }
@@ -362,7 +364,7 @@ interface AdminClass {
                 </h3>
               </div>
               <div class="p-6">
-                @if (usersLoading()) {
+                @if (usersLoading() || insightsLoading()) {
                   <div class="flex flex-col items-center justify-center py-6 space-y-2">
                     <span class="material-icons animate-spin text-[#0ABAB5] text-3xl">sync</span>
                     <p class="text-xs text-gray-400 font-bold">
@@ -1447,6 +1449,7 @@ export class AdminDashboardComponent implements OnInit {
 
   // States
   usersLoading = signal<boolean>(false);
+  insightsLoading = signal<boolean>(false);
   lessonsLoading = signal<boolean>(false);
   classesLoading = signal<boolean>(false);
   inboxLoading = signal<boolean>(false);
@@ -1617,6 +1620,45 @@ export class AdminDashboardComponent implements OnInit {
     return [];
   }
 
+  private mapRawUserToBanned(u: AdminUserRaw): AdminUser {
+    const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
+    const userName =
+      u.name ||
+      `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
+      u.username ||
+      u.email ||
+      'Banned User';
+    return {
+      id: finalId,
+      name: userName,
+      email: u.email || '',
+      role: (u.role || 'STUDENT').toUpperCase() as UserRole,
+      status: 'BANNED',
+      avatarSeed: u.email || finalId || 'Banned',
+      raw: u,
+    };
+  }
+
+  private mapRawUserToActive(u: AdminUserRaw): AdminUser {
+    const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
+    const userName =
+      u.name ||
+      `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
+      u.username ||
+      u.email ||
+      'User';
+    const status: UserStatus = u.status === 'BANNED' || u.banned === true ? 'BANNED' : 'ACTIVE';
+    return {
+      id: finalId,
+      name: userName,
+      email: u.email || '',
+      role: (u.role || 'STUDENT').toUpperCase() as UserRole,
+      status,
+      avatarSeed: u.email || finalId || 'User',
+      raw: u,
+    };
+  }
+
   // Loaders calling actual service HTTP endpoints
   loadUsers() {
     this.usersLoading.set(true);
@@ -1650,7 +1692,7 @@ export class AdminDashboardComponent implements OnInit {
                 name: userName,
                 email: u.email || '',
                 role: (u.role || 'STUDENT').toUpperCase() as UserRole,
-                status: (isBanned ? 'BANNED' : 'ACTIVE') as 'ACTIVE' | 'BANNED' | 'PENDING',
+                status: (isBanned ? 'BANNED' : 'ACTIVE') as UserStatus,
                 avatarSeed: u.email || finalId || 'User',
                 raw: u,
               };
@@ -1660,20 +1702,6 @@ export class AdminDashboardComponent implements OnInit {
             this.usersCurrentPage.set(paginatedResponse.currentPage ?? this.userPage());
             this.usersTotalPages.set(paginatedResponse.totalPages ?? 1);
             this.usersTotalElements.set(paginatedResponse.totalElements ?? mappedUsersList.length);
-
-            if (
-              paginatedResponse &&
-              typeof paginatedResponse === 'object' &&
-              !Array.isArray(paginatedResponse)
-            ) {
-              const resp = paginatedResponse as unknown as Record<string, unknown>;
-              if (resp['currentPage'] != null)
-                this.usersCurrentPage.set(resp['currentPage'] as number);
-              if (resp['totalPages'] != null)
-                this.usersTotalPages.set(resp['totalPages'] as number);
-              if (resp['totalElements'] != null)
-                this.usersTotalElements.set(resp['totalElements'] as number);
-            }
             this.loadAllUsersForInsights();
             this.usersLoading.set(false);
           },
@@ -1682,25 +1710,9 @@ export class AdminDashboardComponent implements OnInit {
               'GET /users failed (backend team might still be working on it), falling back to banned users list:',
               err,
             );
-            const mappedBanned = bannedList.map((u: AdminUserRaw) => {
-              const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
-              const userName =
-                u.name ||
-                `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
-                u.username ||
-                u.email ||
-                'Banned User';
-
-              return {
-                id: finalId,
-                name: userName,
-                email: u.email || '',
-                role: (u.role || 'STUDENT').toUpperCase() as UserRole,
-                status: 'BANNED' as const,
-                avatarSeed: u.email || finalId || 'Banned',
-                raw: u,
-              };
-            });
+            const mappedBanned = bannedList.map((u: AdminUserRaw) =>
+              this.mapRawUserToBanned(u),
+            );
 
             this.users.set(mappedBanned);
             this.usersCurrentPage.set(0);
@@ -1726,25 +1738,7 @@ export class AdminDashboardComponent implements OnInit {
     this.adminService.getBannedUsers().subscribe({
       next: (bannedData) => {
         const bannedList = this.safeExtractArray<AdminUserRaw>(bannedData);
-        const mappedBanned = bannedList.map((u: AdminUserRaw) => {
-          const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
-          const userName =
-            u.name ||
-            `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
-            u.username ||
-            u.email ||
-            'Banned User';
-
-          return {
-            id: finalId,
-            name: userName,
-            email: u.email || '',
-            role: (u.role || 'STUDENT').toUpperCase() as UserRole,
-            status: 'BANNED' as const,
-            avatarSeed: u.email || finalId || 'Banned',
-            raw: u,
-          };
-        });
+        const mappedBanned = bannedList.map((u: AdminUserRaw) => this.mapRawUserToBanned(u));
 
         this.users.set(mappedBanned);
         this.usersCurrentPage.set(1);
@@ -1770,36 +1764,18 @@ export class AdminDashboardComponent implements OnInit {
     }
     // Use totalElements so we fetch every user in one shot; fall back to a safe cap
     const pageSize = total > 0 ? total : 10000;
-    this.adminService.getUsers(1, pageSize).subscribe({
+    this.insightsLoading.set(true);
+    this.adminService.getUsers(0, pageSize).subscribe({
       next: (paginatedResponse: PaginatedUsersResponse) => {
         const rawList = this.safeExtractArray<AdminUserRaw>(paginatedResponse);
-        const mapped = rawList.map((u: AdminUserRaw) => {
-          const finalId = this.extractUserUuid(u) || u.userId || u.id || '';
-          const userName =
-            u.name ||
-            `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
-            u.username ||
-            u.email ||
-            'User';
-
-          return {
-            id: finalId,
-            name: userName,
-            email: u.email || '',
-            role: (u.role || 'STUDENT').toUpperCase() as UserRole,
-            status: (u.status === 'BANNED' || u.banned === true ? 'BANNED' : 'ACTIVE') as
-              | 'ACTIVE'
-              | 'BANNED'
-              | 'PENDING',
-            avatarSeed: u.email || finalId || 'User',
-            raw: u,
-          };
-        });
+        const mapped = rawList.map((u: AdminUserRaw) => this.mapRawUserToActive(u));
         this.allUsersForInsights.set(mapped);
+        this.insightsLoading.set(false);
       },
       error: () => {
         // Fall back to current page users so insights always show something
         this.allUsersForInsights.set(this.users());
+        this.insightsLoading.set(false);
       },
     });
   }
