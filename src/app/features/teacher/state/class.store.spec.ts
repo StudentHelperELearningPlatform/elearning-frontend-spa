@@ -79,6 +79,28 @@ describe('ClassStore', () => {
     expect(store.error()).toContain('Http failure response');
   });
 
+  it('should load classes from paginated response with classes field', () => {
+    store.loadClasses();
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    req.flush({ classes: [{ id: '1', name: 'Math', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' }] });
+    expect(store.classes().length).toBe(1);
+    expect(store.classes()[0].id).toBe('1');
+  });
+
+  it('should load classes from paginated response with content field', () => {
+    store.loadClasses();
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    req.flush({ content: [{ id: '1', name: 'Math', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' }] });
+    expect(store.classes().length).toBe(1);
+  });
+
+  it('should load classes with fallback empty array if paginated response is missing fields', () => {
+    store.loadClasses();
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    req.flush({ otherField: [{ id: '1', name: 'Math' }] });
+    expect(store.classes().length).toBe(0);
+  });
+
   it('should load class detail', () => {
     const mockDetailRaw = {
       id: '1',
