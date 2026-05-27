@@ -9,12 +9,13 @@ import {
 import { HttpClient, HttpEventType } from '@angular/common/http';
 import { MediaPlayerComponent } from '../../../../shared/components/media-player/media-player.component';
 import { environment } from '../../../../../environments/environment';
+import { AuthStore } from '../../../auth/store/auth.store';
 
 export interface UploadedMedia {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'audio' | 'pdf';
+  type: 'image' | 'video' | 'pdf';
   progress: number;
   status: 'uploading' | 'complete' | 'error';
   file?: File;
@@ -71,7 +72,7 @@ export interface UploadedMedia {
           >cloud_upload</span
         >
         <p class="text-black font-bold text-lg tracking-tight mb-1">Drag and drop media here</p>
-        <p class="text-sm text-gray-600 font-medium mb-4">Images, Video, Audio, or PDF (Max 50MB)</p>
+        <p class="text-sm text-gray-600 font-medium mb-4">Images, Video, or PDF (Max 50MB)</p>
 
         <label class="sr-only" for="fileInput">Browse files</label>
         <input
@@ -80,7 +81,7 @@ export interface UploadedMedia {
           id="fileInput"
           class="sr-only"
           multiple
-          accept="image/jpeg,image/png,image/gif,video/mp4,audio/mpeg,audio/wav,audio/ogg,application/pdf"
+          accept="image/jpeg,image/png,image/gif,video/mp4,application/pdf"
           (change)="onFileSelected($event)"
           tabindex="-1"
         />
@@ -248,6 +249,7 @@ export interface UploadedMedia {
 })
 export class MediaUploadComponent {
   private readonly http = inject(HttpClient);
+  private readonly authStore = inject(AuthStore);
 
   isDragging = signal(false);
   errorMessage = signal<string | null>(null);
@@ -261,9 +263,6 @@ export class MediaUploadComponent {
     'image/png',
     'image/gif',
     'video/mp4',
-    'audio/mpeg',
-    'audio/wav',
-    'audio/ogg',
     'application/pdf',
   ];
 
@@ -332,8 +331,6 @@ export class MediaUploadComponent {
       mediaType = 'image';
     } else if (file.type.startsWith('video/')) {
       mediaType = 'video';
-    } else if (file.type.startsWith('audio/')) {
-      mediaType = 'audio';
     } else if (file.type === 'application/pdf') {
       mediaType = 'pdf';
     } else {
@@ -362,12 +359,18 @@ export class MediaUploadComponent {
     formData.append('file', file);
 
     const uploadUrl = `${environment.lessonApiUrl}/api/v1/media/upload`;
+    const userId = this.authStore.user()?.id ?? '';
 
     this.http
-      .post<{ url: string }>(uploadUrl, formData, {
-        reportProgress: true,
-        observe: 'events',
-      })
+      .post<{ id: string; url: string; mediatype: string; mimetype: string; originalFilename: string }>(
+        uploadUrl,
+        formData,
+        {
+          reportProgress: true,
+          observe: 'events',
+          headers: { 'X-User-Id': userId },
+        },
+      )
       .subscribe({
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress && event.total) {
