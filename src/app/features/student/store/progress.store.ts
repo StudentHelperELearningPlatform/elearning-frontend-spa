@@ -515,29 +515,7 @@ export const ProgressStore = signalStore(
                 dateCompleted: h.dateCompleted || h.completedAt || null,
               }));
 
-              const missingTitles = mapped.filter(m => m.lessonTitle === 'Untitled lesson' && m.lessonId);
-              if (missingTitles.length === 0) return of(mapped);
-
-              const requests = missingTitles.map(m =>
-                http.get<{ title?: string, subject?: string }>(`${contentApiBase}/lessons/${m.lessonId}`).pipe(
-                  map(res => ({ id: m.lessonId, title: res.title, subject: res.subject })),
-                  catchError(() => of(null))
-                )
-              );
-
-              return forkJoin(requests).pipe(
-                map(results => {
-                  return mapped.map(entry => {
-                    if (entry.lessonTitle === 'Untitled lesson') {
-                      const found = results.find(r => r && String(r.id).toLowerCase() === String(entry.lessonId).toLowerCase());
-                      if (found) {
-                        return { ...entry, lessonTitle: found.title || 'Untitled lesson', subject: found.subject || entry.subject };
-                      }
-                    }
-                    return entry;
-                  });
-                })
-              );
+              return fetchMissingTitles(mapped, http, contentApiBase);
             }),
             tapResponse({
               next: (mappedHistory) => {
@@ -555,3 +533,27 @@ export const ProgressStore = signalStore(
     ),
   }))
 );
+
+function fetchMissingTitles(mapped: HistoryEntry[], http: HttpClient, contentApiBase: string) {
+  const missingTitles = mapped.filter(m => m.lessonTitle === 'Untitled lesson' && m.lessonId);
+  if (missingTitles.length === 0) return of(mapped);
+
+  const requests = missingTitles.map(m =>
+    http.get<{ title?: string, subject?: string }>(`${contentApiBase}/lessons/${m.lessonId}`).pipe(
+      map(res => ({ id: m.lessonId, title: res.title, subject: res.subject })),
+      catchError(() => of(null))
+    )
+  );
+
+  return forkJoin(requests).pipe(
+    map(results => mapped.map(entry => {
+      if (entry.lessonTitle === 'Untitled lesson') {
+        const found = results.find(r => r && String(r.id).toLowerCase() === String(entry.lessonId).toLowerCase());
+        if (found) {
+          return { ...entry, lessonTitle: found.title || 'Untitled lesson', subject: found.subject || entry.subject };
+        }
+      }
+      return entry;
+    }))
+  );
+}

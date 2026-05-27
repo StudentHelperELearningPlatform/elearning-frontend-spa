@@ -203,7 +203,7 @@ export class HistoryComponent implements OnInit {
       let title = entry.lessonTitle;
       if (!title || title.trim().toLowerCase() === 'untitled lesson') {
         const l = lessons.find(lesson => String(lesson.id).toLowerCase() === String(entry.lessonId).toLowerCase());
-        if (l && l.title) title = l.title;
+        if (l?.title) title = l.title;
       }
       if (!title || title.trim() === '') title = 'Untitled lesson';
       return { ...entry, lessonTitle: title };
