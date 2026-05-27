@@ -50,6 +50,22 @@ export const QuestionsStore = signalStore(
             });
       };
 
+      const fetchQuestions$ = (type: 'check' | 'final', parentId: string) => {
+        const req$ =
+          type === 'check'
+            ? service.getCheckQuizQuestions(parentId)
+            : service.getFinalQuizQuestions(parentId);
+
+        return req$.pipe(
+          catchError((err: HttpErrorResponse) => {
+            if (err.status === 404) {
+              return of([] as QuestionResponse[]);
+            }
+            return throwError(() => err);
+          })
+        );
+      };
+
       return {
         // --- LOAD QUESTIONS (WITH LAZY QUIZ DETECT) ---
         loadQuestions: rxMethod<{ type: 'check' | 'final'; parentId: string }>(
@@ -61,11 +77,6 @@ export const QuestionsStore = signalStore(
                 type === 'check'
                   ? service.getCheckQuiz(parentId)
                   : service.getFinalQuiz(parentId);
-
-              const getQs$ =
-                type === 'check'
-                  ? service.getCheckQuizQuestions(parentId)
-                  : service.getFinalQuizQuestions(parentId);
 
               return checkExists$.pipe(
                 tap((quizRes: unknown) => {
@@ -89,14 +100,7 @@ export const QuestionsStore = signalStore(
                     return of([] as QuestionResponse[]);
                   }
                   // Quiz exists, now fetch its questions
-                  return getQs$.pipe(
-                    catchError((err: HttpErrorResponse) => {
-                      if (err.status === 404) {
-                        return of([] as QuestionResponse[]);
-                      }
-                      return throwError(() => err);
-                    })
-                  );
+                  return fetchQuestions$(type, parentId);
                 }),
                 tapResponse({
                   next: (questions) => patchState(store, { questions, isLoading: false }),
