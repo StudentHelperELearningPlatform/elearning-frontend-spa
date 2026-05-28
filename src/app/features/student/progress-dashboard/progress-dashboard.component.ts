@@ -48,6 +48,8 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   @ViewChild('radarContainer') radarContainer!: ElementRef<HTMLDivElement>;
 
   private resizeObserver: ResizeObserver | null = null;
+  private lastDispatchedClassId: string | null = null;
+  private lastDispatchedLessonId: string | null = null;
 
   readonly motivationalMessages = [
     'Keep up the great work!',
@@ -152,8 +154,12 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
             
             const firstClassId = classes[0]?.id;
             const dashboardClassId = firstClassId || '00000000-0000-0000-0000-000000000000';
-            this.progressStore.loadMyDashboard({ classId: dashboardClassId });
-            
+
+            if (dashboardClassId !== this.lastDispatchedClassId) {
+              this.lastDispatchedClassId = dashboardClassId;
+              this.progressStore.loadMyDashboard({ classId: dashboardClassId });
+            }
+
             this.classesLoading.set(false);
           });
         });
@@ -176,7 +182,8 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
 
     effect(() => {
       const latestLessonId = this.latestLessonId;
-      if (latestLessonId) {
+      if (latestLessonId && latestLessonId !== this.lastDispatchedLessonId) {
+        this.lastDispatchedLessonId = latestLessonId;
         untracked(() => this.lessonsStore.loadLesson(latestLessonId));
       }
     });
