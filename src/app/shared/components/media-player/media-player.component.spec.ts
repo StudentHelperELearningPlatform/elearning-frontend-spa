@@ -1,18 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MediaPlayerComponent } from './media-player.component';
 
+type MediaPlayerType = 'image' | 'video' | 'audio' | 'pdf';
+
 describe('MediaPlayerComponent', () => {
   let component: MediaPlayerComponent;
   let fixture: ComponentFixture<MediaPlayerComponent>;
 
   const mount = (
-    type: 'image' | 'video' | 'pdf',
+    type: MediaPlayerType,
     url = 'https://example.com/asset',
     title = 'Test Asset',
   ): void => {
-    fixture.componentRef.setInput('url', url);
-    fixture.componentRef.setInput('type', type);
-    fixture.componentRef.setInput('title', title);
+    (component as unknown as { url: () => string }).url = () => url;
+    (component as unknown as { type: () => MediaPlayerType }).type = () => type;
+    (component as unknown as { title: () => string }).title = () => title;
 
     fixture.detectChanges();
   };
@@ -84,9 +86,6 @@ describe('MediaPlayerComponent', () => {
   });
 
   it('type defaults to image when not explicitly changed', () => {
-    fixture.componentRef.setInput('url', 'https://example.com/default.png');
-    fixture.componentRef.setInput('title', 'Default image');
-
     fixture.detectChanges();
 
     expect(component.type()).toBe('image');

@@ -603,30 +603,35 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   }
 
   getModuleIcon(type: string): string {
-    switch (type) {
-      case 'video':
-        return 'play_circle';
+  const normalizedType = String(type || '').toLowerCase();
 
-      case 'image':
-        return 'image';
+  switch (normalizedType) {
+    case 'video':
+      return 'play_circle';
 
-      case 'pdf':
-      case 'file':
-        return 'picture_as_pdf';
+    case 'image':
+      return 'image';
 
-      case 'text':
-        return 'article';
+    case 'audio':
+      return 'headphones';
 
-      case 'quiz':
-        return 'quiz';
+    case 'pdf':
+    case 'file':
+      return 'picture_as_pdf';
 
-      case 'interactive':
-        return 'touch_app';
+    case 'text':
+      return 'article';
 
-      default:
-        return 'menu_book';
-    }
+    case 'quiz':
+      return 'quiz';
+
+    case 'interactive':
+      return 'touch_app';
+
+    default:
+      return 'menu_book';
   }
+}
 
   protected getModuleLabel(type: string): string {
     if (type === 'pdf' || type === 'file') {

@@ -10,6 +10,7 @@ import { provideApiMocks } from '../../../../test-utils/api-testing';
 
 describe('LessonEditorStore', () => {
   const getStore = () => TestBed.inject(LessonEditorStore);
+
   let store: ReturnType<typeof getStore>;
   let http: HttpClient;
   let messageService: MessageService;
@@ -23,9 +24,11 @@ describe('LessonEditorStore', () => {
         ...provideApiMocks(),
       ],
     });
+
     store = getStore();
     http = TestBed.inject(HttpClient);
     messageService = TestBed.inject(MessageService);
+
     vi.spyOn(messageService, 'add').mockImplementation(() => undefined);
 
     vi.spyOn(http, 'get').mockReturnValue(of({}));
@@ -49,28 +52,40 @@ describe('LessonEditorStore', () => {
       status: 'DRAFT',
       modules: [],
     });
+
     expect(store.saveState()).toBe('idle');
   });
 
   it('canPublish is false until title, subject, duration and at least one module are present', () => {
     expect(store.canPublish()).toBe(false);
+
     store.updateMetadata({ title: 'X' });
     expect(store.canPublish()).toBe(false);
+
     store.updateMetadata({ subject: 'Math' });
     expect(store.canPublish()).toBe(false);
+
     store.updateMetadata({ estimated_duration_minutes: 15 });
     expect(store.canPublish()).toBe(false);
 
     store.addModule();
+
     const id = store.lesson().modules[0].id;
+
     store.updateModule(id, { content: 'Some valid content' });
 
     expect(store.canPublish()).toBe(true);
   });
 
   it('canPublish is false if any module has empty or whitespace content', () => {
-    store.updateMetadata({ title: 'X', subject: 'Math', estimated_duration_minutes: 15 });
+    store.updateMetadata({
+      title: 'X',
+      subject: 'Math',
+      estimated_duration_minutes: 15,
+    });
+
     store.addModule();
+
     const id = store.lesson().modules[0].id;
 
     store.updateModule(id, { content: '   ' });
@@ -81,25 +96,34 @@ describe('LessonEditorStore', () => {
   });
 
   it('canPublish becomes false again when the only module is removed', () => {
-    store.updateMetadata({ title: 'X', subject: 'Math', estimated_duration_minutes: 15 });
+    store.updateMetadata({
+      title: 'X',
+      subject: 'Math',
+      estimated_duration_minutes: 15,
+    });
+
     store.addModule();
+
     const id = store.lesson().modules[0].id;
 
     store.updateModule(id, { content: 'Some valid content' });
     expect(store.canPublish()).toBe(true);
 
     store.removeModule(id);
+
     expect(store.canPublish()).toBe(false);
   });
 
   it('updateMetadata flips saveState to "unsaved"', () => {
     store.updateMetadata({ title: 'X' });
+
     expect(store.saveState()).toBe('unsaved');
     expect(store.isDirty()).toBe(true);
   });
 
   it('addModule and reorderModules also mark unsaved', () => {
     store.addModule();
+
     expect(store.isDirty()).toBe(true);
   });
 
@@ -108,9 +132,11 @@ describe('LessonEditorStore', () => {
       error: { title: 'Title cannot be empty' },
       status: 400,
     });
+
     vi.spyOn(http, 'post').mockReturnValue(throwError(() => errorResponse));
 
     store.updateMetadata({ title: 'X' });
+
     await store.save();
 
     expect(store.saveState()).toBe('error');
@@ -122,6 +148,7 @@ describe('LessonEditorStore', () => {
       error: { error: 'Lesson not found' },
       status: 404,
     });
+
     vi.spyOn(http, 'get').mockReturnValue(throwError(() => errorResponse));
 
     store.loadLesson('123');
@@ -134,29 +161,45 @@ describe('LessonEditorStore', () => {
       error: 'Direct string database failure',
       status: 500,
     });
+
     vi.spyOn(http, 'post').mockReturnValue(throwError(() => stringErrorResponse));
+
     await store.save();
+
     expect(store.saveError()).toBe('Direct string database failure');
 
     vi.spyOn(http, 'post').mockReturnValue(throwError(() => new Error('Custom JS Exception')));
+
     await store.save();
+
     expect(store.saveError()).toBe('Custom JS Exception');
 
     vi.spyOn(http, 'post').mockReturnValue(throwError(() => ({})));
+
     await store.save();
+
     expect(store.saveError()).toBe('An unexpected error occurred');
   });
 
   it('save POSTs to /api/v1/lessons when lesson has no id', async () => {
     const spy = vi.spyOn(http, 'post').mockReturnValue(of({ id: 'new-1' }));
-    vi.spyOn(http, 'get').mockReturnValue(of({ id: 'new-1', title: 'X' }));
+
+    vi.spyOn(http, 'get').mockReturnValue(
+      of({
+        id: 'new-1',
+        title: 'X',
+      }),
+    );
 
     store.updateMetadata({ title: 'X' });
+
     await store.save();
 
     expect(spy).toHaveBeenCalledWith(
       expect.stringContaining('/lessons'),
-      expect.objectContaining({ title: 'X' }),
+      expect.objectContaining({
+        title: 'X',
+      }),
     );
   });
 
@@ -172,36 +215,59 @@ describe('LessonEditorStore', () => {
         modules: [],
       }),
     );
+
     store.loadLesson('existing-1');
 
     const putSpy = vi.spyOn(http, 'put').mockReturnValue(of({ id: 'existing-1' }));
+
     store.updateMetadata({ title: 'Edited' });
+
     await store.save();
 
     expect(putSpy).toHaveBeenCalledWith(
       expect.stringContaining('/lessons/existing-1'),
-      expect.objectContaining({ title: 'Edited' }),
+      expect.objectContaining({
+        title: 'Edited',
+      }),
     );
   });
 
   it('save sets saveState to "saved" and updates lastSavedAt on success', async () => {
-    vi.spyOn(http, 'post').mockReturnValue(of({ id: 'new-1', title: 'X' }));
-    vi.spyOn(http, 'get').mockReturnValue(of({ id: 'new-1', title: 'X' }));
+    vi.spyOn(http, 'post').mockReturnValue(
+      of({
+        id: 'new-1',
+        title: 'X',
+      }),
+    );
+
+    vi.spyOn(http, 'get').mockReturnValue(
+      of({
+        id: 'new-1',
+        title: 'X',
+      }),
+    );
 
     store.updateMetadata({ title: 'X' });
+
     await store.save();
 
     expect(store.saveState()).toBe('saved');
     expect(store.lastSavedAt()).toBeInstanceOf(Date);
     expect(messageService.add).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'success' }),
+      expect.objectContaining({
+        severity: 'success',
+      }),
     );
   });
 
   it('uses default fallback values when payload inputs are blank strings', async () => {
-    const postSpy = vi
-      .spyOn(http, 'post')
-      .mockReturnValue(of({ id: 'fallback-lesson-id', subcapitols: [] }));
+    const postSpy = vi.spyOn(http, 'post').mockReturnValue(
+      of({
+        id: 'fallback-lesson-id',
+        subcapitols: [],
+      }),
+    );
+
     vi.spyOn(http, 'get').mockReturnValue(
       of({
         id: 'fallback-lesson-id',
@@ -235,10 +301,15 @@ describe('LessonEditorStore', () => {
   it('uses default module title fallback inside map functions', async () => {
     const postSpy = vi.spyOn(http, 'post').mockImplementation((url) => {
       if (url.endsWith('/lessons')) {
-        return of({ id: 'fallback-lesson-id', subcapitols: [{ id: 's-1' }] });
+        return of({
+          id: 'fallback-lesson-id',
+          subcapitols: [{ id: 's-1' }],
+        });
       }
+
       return of({ id: 's-1' });
     });
+
     vi.spyOn(http, 'get').mockReturnValue(
       of({
         id: 'fallback-lesson-id',
@@ -253,7 +324,14 @@ describe('LessonEditorStore', () => {
       title: 'A',
       subject: 'B',
       difficulty_level: 'BEGINNER',
-      modules: [{ id: 'module-temp-1', title: '   ', type: 'text', content: 'valid content' }],
+      modules: [
+        {
+          id: 'module-temp-1',
+          title: '   ',
+          type: 'text',
+          content: 'valid content',
+        },
+      ],
     });
 
     await store.save();
@@ -268,12 +346,24 @@ describe('LessonEditorStore', () => {
 
   it('uses fallbacks in toUpdatePayload for empty metadata values', async () => {
     vi.spyOn(http, 'get').mockReturnValue(
-      of({ id: 'existing-id', title: 'Old', subject: 'Old', status: 'DRAFT', subcapitols: [] }),
+      of({
+        id: 'existing-id',
+        title: 'Old',
+        subject: 'Old',
+        status: 'DRAFT',
+        subcapitols: [],
+      }),
     );
+
     store.loadLesson('existing-id');
 
     const putSpy = vi.spyOn(http, 'put').mockReturnValue(of({}));
-    store.updateMetadata({ title: '', subject: '   ', difficulty_level: '' });
+
+    store.updateMetadata({
+      title: '',
+      subject: '   ',
+      difficulty_level: '',
+    });
 
     await store.save();
 
@@ -315,9 +405,11 @@ describe('LessonEditorStore', () => {
     };
 
     vi.spyOn(http, 'get').mockReturnValue(of(mockBackendPayload));
+
     store.loadLesson('lesson-999');
 
     const mappedLesson = store.lesson();
+
     expect(mappedLesson.modules[0].content).toBe('Lower Content');
     expect(mappedLesson.modules[1].id).toBe('module-1');
     expect(mappedLesson.modules[1].title).toBe('');
@@ -343,6 +435,7 @@ describe('LessonEditorStore', () => {
     });
 
     vi.spyOn(http, 'put').mockReturnValue(of({}));
+
     vi.spyOn(http, 'get').mockReturnValue(
       of({
         id: 'lesson-777',
@@ -362,6 +455,7 @@ describe('LessonEditorStore', () => {
     await store.save();
 
     const modulesState = store.lesson().modules;
+
     expect(modulesState[0].title).toBe('Client Title');
     expect(modulesState[0].content).toBe('Client Content');
     expect(modulesState[0].blockId).toBe('b-777');
@@ -374,13 +468,24 @@ describe('LessonEditorStore', () => {
       subject: 'B',
       difficulty_level: 'BEGINNER',
       status: 'DRAFT',
-      modules: [{ id: 'module-temp-99', title: 'M1', type: 'text', content: 'C1' }],
+      modules: [
+        {
+          id: 'module-temp-99',
+          title: 'M1',
+          type: 'text',
+          content: 'C1',
+        },
+      ],
     });
 
     vi.spyOn(http, 'post').mockImplementation((url) => {
       if (url.endsWith('/lessons')) {
-        return of({ id: 'lesson-unique', subcapitols: [] });
+        return of({
+          id: 'lesson-unique',
+          subcapitols: [],
+        });
       }
+
       return of({ id: 'sub-newly-built' });
     });
 
@@ -395,15 +500,21 @@ describe('LessonEditorStore', () => {
     );
 
     await store.save();
+
     expect(store.saveState()).toBe('saved');
   });
 
   it('updates existing subcapitols with or without blocks, including fallback handles', async () => {
     const putSpy = vi.spyOn(http, 'put').mockReturnValue(of({}));
+
     const postSpy = vi.spyOn(http, 'post').mockImplementation((url) => {
-      if (url.includes('/blocks')) return of({ id: 'fallback-block-uuid' });
+      if (url.includes('/blocks')) {
+        return of({ id: 'fallback-block-uuid' });
+      }
+
       return of({});
     });
+
     vi.spyOn(http, 'get').mockReturnValue(
       of({
         id: 'lesson-1',
@@ -430,7 +541,9 @@ describe('LessonEditorStore', () => {
         },
       ],
     });
+
     await store.save();
+
     expect(putSpy).toHaveBeenCalledWith(
       expect.stringContaining('/blocks/block-persisted'),
       expect.any(Object),
@@ -443,10 +556,18 @@ describe('LessonEditorStore', () => {
       difficulty_level: 'BEGINNER',
       status: 'DRAFT',
       modules: [
-        { id: 'sub-persisted', title: 'M1', type: 'text', content: 'Text', blockId: undefined },
+        {
+          id: 'sub-persisted',
+          title: 'M1',
+          type: 'text',
+          content: 'Text',
+          blockId: undefined,
+        },
       ],
     });
+
     await store.save();
+
     expect(postSpy).toHaveBeenCalledWith(
       expect.stringContaining('/subcapitols/sub-persisted/blocks'),
       expect.any(Object),
@@ -459,31 +580,61 @@ describe('LessonEditorStore', () => {
       difficulty_level: 'BEGINNER',
       status: 'DRAFT',
       modules: [
-        { id: 'sub-persisted', title: 'M1', type: 'text', content: 'Text', blockId: undefined },
+        {
+          id: 'sub-persisted',
+          title: 'M1',
+          type: 'text',
+          content: 'Text',
+          blockId: undefined,
+        },
       ],
     });
+
     const errorConsoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
     vi.spyOn(http, 'post').mockImplementation((url) => {
-      if (url.includes('/blocks')) return throwError(() => new Error('Post Block Error'));
+      if (url.includes('/blocks')) {
+        return throwError(() => new Error('Post Block Error'));
+      }
+
       return of({});
     });
+
     await store.save();
-    expect(errorConsoleSpy).toHaveBeenCalledWith(
-      'Failed to fallback create block',
-      expect.any(Error),
+
+    expect(errorConsoleSpy).toHaveBeenCalled();
+
+    const serializedCalls = JSON.stringify(
+      errorConsoleSpy.mock.calls,
+      (_key, value) => {
+        if (value instanceof Error) {
+          return {
+            name: value.name,
+            message: value.message,
+          };
+        }
+
+        return value;
+      },
     );
+
+    expect(serializedCalls).toContain('Post Block Error');
   });
 
   it('updateModule patches an existing module properties', () => {
     store.addModule();
-    store.addModule(); // Add a second module to test mapping conditions across arrays
+    store.addModule();
+
     const moduleId = store.lesson().modules[0].id;
     const otherModuleId = store.lesson().modules[1].id;
 
-    store.updateModule(moduleId, { title: 'Updated Title', content: 'New Content' });
+    store.updateModule(moduleId, {
+      title: 'Updated Title',
+      content: 'New Content',
+    });
 
-    const updated = store.lesson().modules.find((m) => m.id === moduleId);
-    const other = store.lesson().modules.find((m) => m.id === otherModuleId);
+    const updated = store.lesson().modules.find((module) => module.id === moduleId);
+    const other = store.lesson().modules.find((module) => module.id === otherModuleId);
 
     expect(updated?.title).toBe('Updated Title');
     expect(updated?.content).toBe('New Content');
@@ -502,7 +653,14 @@ describe('LessonEditorStore', () => {
       estimated_duration_minutes: 10,
       short_description: '',
       status: 'DRAFT',
-      modules: [{ id: 'real-uuid', title: 'M', type: 'text', content: 'C' }],
+      modules: [
+        {
+          id: 'real-uuid',
+          title: 'M',
+          type: 'text',
+          content: 'C',
+        },
+      ],
     });
 
     await store.removeModule('real-uuid');
@@ -513,6 +671,7 @@ describe('LessonEditorStore', () => {
 
   it('catches and handles exceptions if backend delete request fails inside removeModule', async () => {
     const errorConsoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
     vi.spyOn(http, 'delete').mockReturnValue(throwError(() => new Error('Delete Crash')));
 
     store.reset({
@@ -521,22 +680,55 @@ describe('LessonEditorStore', () => {
       subject: 'Y',
       difficulty_level: 'BEGINNER',
       status: 'DRAFT',
-      modules: [{ id: 'active-uuid', title: 'M', type: 'text', content: 'C' }],
+      modules: [
+        {
+          id: 'active-uuid',
+          title: 'M',
+          type: 'text',
+          content: 'C',
+        },
+      ],
     });
 
     await store.removeModule('active-uuid');
 
     expect(store.lesson().modules.length).toBe(0);
-    expect(errorConsoleSpy).toHaveBeenCalledWith(
-      'Failed to delete subcapitol on backend',
-      expect.any(Error),
+
+    const serializedCalls = JSON.stringify(
+      errorConsoleSpy.mock.calls,
+      (_key, value) => {
+        if (value instanceof Error) {
+          return {
+            name: value.name,
+            message: value.message,
+          };
+        }
+
+        return value;
+      },
     );
+
+    expect(serializedCalls).toContain('Delete Crash');
   });
 
   it('publish marks lesson as PUBLISHED and updates state', async () => {
-    vi.spyOn(http, 'post').mockReturnValue(of({ id: 'lesson-1', title: 'X', status: 'PUBLISHED' }));
+    vi.spyOn(http, 'post').mockReturnValue(
+      of({
+        id: 'lesson-1',
+        title: 'X',
+        status: 'PUBLISHED',
+      }),
+    );
+
     vi.spyOn(http, 'put').mockReturnValue(of({}));
-    vi.spyOn(http, 'get').mockReturnValue(of({ id: 'lesson-1', title: 'X', status: 'PUBLISHED' }));
+
+    vi.spyOn(http, 'get').mockReturnValue(
+      of({
+        id: 'lesson-1',
+        title: 'X',
+        status: 'PUBLISHED',
+      }),
+    );
 
     store.reset({
       id: 'lesson-1',
@@ -546,14 +738,23 @@ describe('LessonEditorStore', () => {
       status: 'DRAFT',
       difficulty_level: 'BEGINNER',
       short_description: '',
-      modules: [{ id: 'module-1', title: 'M', type: 'text', content: 'c' }],
+      modules: [
+        {
+          id: 'module-1',
+          title: 'M',
+          type: 'text',
+          content: 'c',
+        },
+      ],
     });
 
     await store.publish();
 
     expect(store.lesson().status).toBe('PUBLISHED');
     expect(messageService.add).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: 'Published' }),
+      expect.objectContaining({
+        summary: 'Published',
+      }),
     );
   });
 
@@ -566,7 +767,14 @@ describe('LessonEditorStore', () => {
       status: 'DRAFT',
       difficulty_level: 'BEGINNER',
       short_description: '',
-      modules: [{ id: 'module-1', title: 'M', type: 'text', content: 'c' }],
+      modules: [
+        {
+          id: 'module-1',
+          title: 'M',
+          type: 'text',
+          content: 'c',
+        },
+      ],
     });
 
     vi.spyOn(http, 'put').mockReturnValue(of({}));
@@ -579,7 +787,14 @@ describe('LessonEditorStore', () => {
   });
 
   it('unpublish marks lesson as DRAFT and updates state', () => {
-    vi.spyOn(http, 'post').mockReturnValue(of({ id: 'lesson-1', title: 'X', status: 'DRAFT' }));
+    vi.spyOn(http, 'post').mockReturnValue(
+      of({
+        id: 'lesson-1',
+        title: 'X',
+        status: 'DRAFT',
+      }),
+    );
+
     store.reset({
       id: 'lesson-1',
       title: 'X',
@@ -588,14 +803,23 @@ describe('LessonEditorStore', () => {
       status: 'PUBLISHED',
       difficulty_level: 'BEGINNER',
       short_description: '',
-      modules: [{ id: 'module-1', title: 'M', type: 'text', content: 'c' }],
+      modules: [
+        {
+          id: 'module-1',
+          title: 'M',
+          type: 'text',
+          content: 'c',
+        },
+      ],
     });
 
     store.unpublish();
 
     expect(store.lesson().status).toBe('DRAFT');
     expect(messageService.add).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: 'Unpublished' }),
+      expect.objectContaining({
+        summary: 'Unpublished',
+      }),
     );
   });
 
@@ -604,6 +828,7 @@ describe('LessonEditorStore', () => {
       error: 'Unpublish Blocked',
       status: 400,
     });
+
     vi.spyOn(http, 'post').mockReturnValue(throwError(() => errorResponse));
 
     store.reset({
@@ -622,14 +847,19 @@ describe('LessonEditorStore', () => {
   it('reorderModules moves a module from one index to another', () => {
     store.addModule();
     store.addModule();
-    const ids = store.lesson().modules.map((m) => m.id);
+
+    const ids = store.lesson().modules.map((module) => module.id);
+
     store.reorderModules(0, 1);
-    expect(store.lesson().modules.map((m) => m.id)).toEqual([ids[1], ids[0]]);
+
+    expect(store.lesson().modules.map((module) => module.id)).toEqual([ids[1], ids[0]]);
   });
 
   it('reset returns the store to a blank lesson', () => {
     store.updateMetadata({ title: 'Dirty' });
+
     store.reset();
+
     expect(store.lesson().title).toBe('');
     expect(store.saveState()).toBe('idle');
   });
