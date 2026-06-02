@@ -3,9 +3,11 @@ import { LessonOverviewComponent } from './lesson-overview.component';
 import { provideRouter, ActivatedRoute, Router } from '@angular/router';
 import { LessonsStore } from '../store/lessons.store';
 import { ProgressStore } from '../store/progress.store';
+import { AuthStore } from '../../auth/store/auth.store';
 import { patchStore } from '../../../../test-utils/patch-store';
 import { provideHttpClient } from '@angular/common/http';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
+import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { By } from '@angular/platform-browser';
 
 const MOCK_LESSON = {
@@ -17,6 +19,8 @@ const MOCK_LESSON = {
   duration: '10m',
   status: 'Active',
   description: 'Desc',
+  priceInCents: null,
+  currency: 'RON',
   subcapitols: [
     {
       id: 'sub-1',
@@ -49,6 +53,13 @@ describe('LessonOverviewComponent', () => {
         provideHttpClient(),
         ...provideApiMocks(),
         {
+          provide: AuthStore,
+          useValue: createAuthStoreStub({
+            isAuthenticated: true,
+            user: { id: 'student-1', email: 's@test.com', roles: ['STUDENT'] },
+          }),
+        },
+        {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: { get: () => 'test-1' } },
@@ -64,6 +75,7 @@ describe('LessonOverviewComponent', () => {
 
     // Prevent actual HTTP calls from ngOnInit
     vi.spyOn(lessonsStore, 'loadLesson').mockImplementation(() => undefined);
+    vi.spyOn(lessonsStore, 'loadAccessibleLessons').mockImplementation(() => undefined);
     vi.spyOn(progressStore, 'loadMyLessonStats').mockImplementation(() => undefined);
   });
 

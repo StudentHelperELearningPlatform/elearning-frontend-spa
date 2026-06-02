@@ -45,6 +45,9 @@ export interface Lesson {
   description: string;
   subcapitols?: Subcapitol[];
   modules: Module[];
+  /** Price in smallest currency unit (e.g. bani for RON). null = free */
+  priceInCents: number | null;
+  currency: string;
 }
 
 export interface LessonHistoryItem {
@@ -70,6 +73,8 @@ const SEED_LESSONS: Lesson[] = [
     status: 'Not Started',
     description: 'Learn the basics of fractions, including numerators and denominators.',
     modules: [],
+    priceInCents: null,
+    currency: 'RON',
   },
   {
     id: 'seed-2',
@@ -81,6 +86,8 @@ const SEED_LESSONS: Lesson[] = [
     status: 'Not Started',
     description: 'Explore how water moves through our planet in this engaging science lesson.',
     modules: [],
+    priceInCents: null,
+    currency: 'RON',
   },
   {
     id: 'seed-3',
@@ -92,6 +99,8 @@ const SEED_LESSONS: Lesson[] = [
     status: 'Not Started',
     description: 'A comprehensive look at the key events and figures of the second World War.',
     modules: [],
+    priceInCents: null,
+    currency: 'RON',
   },
 ];
 

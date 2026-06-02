@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ContentEditorComponent } from './content-editor.component';
 import { ContentStore, ContentItem } from '../state/content.store';
+import { TeacherBundleStore, TeacherBundle } from '../state/teacher-bundle.store';
 import { provideRouter } from '@angular/router';
 import { signal, WritableSignal } from '@angular/core';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -33,6 +34,13 @@ describe('ContentEditorComponent', () => {
     deleteLesson: ReturnType<typeof vi.fn>;
   };
 
+  let mockBundleStore: {
+    bundles: WritableSignal<TeacherBundle[]>;
+    loading: WritableSignal<boolean>;
+    loadBundles: ReturnType<typeof vi.fn>;
+    deleteBundle: ReturnType<typeof vi.fn>;
+  };
+
   beforeEach(async () => {
     mockContentStore = {
       lessons: signal(mockLessons),
@@ -41,11 +49,19 @@ describe('ContentEditorComponent', () => {
       deleteLesson: vi.fn(),
     };
 
+    mockBundleStore = {
+      bundles: signal([]),
+      loading: signal(false),
+      loadBundles: vi.fn(),
+      deleteBundle: vi.fn(),
+    };
+
     await TestBed.configureTestingModule({
       imports: [ContentEditorComponent],
       providers: [
         provideRouter([]),
         { provide: ContentStore, useValue: mockContentStore },
+        { provide: TeacherBundleStore, useValue: mockBundleStore },
       ],
     }).compileComponents();
 
@@ -57,10 +73,11 @@ describe('ContentEditorComponent', () => {
     vi.restoreAllMocks();
   });
 
-  it('creates component successfully and loads content', () => {
+  it('creates component successfully and loads content and bundles', () => {
     fixture.detectChanges();
     expect(component).toBeTruthy();
     expect(mockContentStore.loadContent).toHaveBeenCalled();
+    expect(mockBundleStore.loadBundles).toHaveBeenCalled();
   });
 
   it('defaults to grid viewMode and saves preference', () => {

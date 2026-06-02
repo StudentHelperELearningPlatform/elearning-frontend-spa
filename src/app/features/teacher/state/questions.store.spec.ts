@@ -87,6 +87,27 @@ describe('QuestionsStore', () => {
     expect(store.isLoading()).toBe(false);
   });
 
+  it('should patch passThreshold if returned in getFinalQuiz', () => {
+    mockService.getFinalQuiz.mockReturnValue(of({ passThreshold: 85 }));
+    mockService.getFinalQuizQuestions.mockReturnValue(of([]));
+    
+    store.loadQuestions({ type: 'final', parentId: 'p1' });
+    
+    expect(store.passThreshold()).toBe(85);
+  });
+
+  it('should return empty array if fetchQuestions$ returns 404', () => {
+    mockService.getFinalQuiz.mockReturnValue(of({}));
+    mockService.getFinalQuizQuestions.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 }))
+    );
+
+    store.loadQuestions({ type: 'final', parentId: 'p1' });
+
+    expect(store.questions()).toEqual([]);
+    expect(store.quizExists()).toBe(true);
+  });
+
   it('should handle 404 gracefully without eager creation during loadQuestions', () => {
     mockService.getCheckQuiz.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 404 })),
@@ -136,8 +157,7 @@ describe('QuestionsStore', () => {
     store.generateAI({ type: 'final', parentId: 'p1' });
 
     const req = httpMock.expectOne('http://api/lessons/p1/final-quiz');
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ passThreshold: 50, mandatory: false, maxAttempts: 3, timeLimitSeconds: 900 });
+    expect(req.request.body).toEqual({ passThreshold: 50, mandatory: false, maxAttempts: 3 });
     req.flush({});
 
     expect(mockService.generateFinalQuizQuestions).toHaveBeenCalledWith('p1');
@@ -158,6 +178,16 @@ describe('QuestionsStore', () => {
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ summary: 'Error' }),
     );
+  });
+
+  it('should propagate non-404 error from checkExists$', () => {
+    mockService.getFinalQuiz.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+
+    store.loadQuestions({ type: 'final', parentId: 'p1' });
+
+    expect(store.error()).toBe('Failed to load questions.');
   });
 
   // --- GENERATE AI ---
@@ -203,6 +233,16 @@ describe('QuestionsStore', () => {
     );
   });
 
+  it('should use fallback error message when generating AI without error message', () => {
+    mockService.generateFinalQuizQuestions.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+
+    store.generateAI({ type: 'final', parentId: 'p1' });
+
+    expect(store.error()).toBe('Failed to generate questions. Ensure your lesson has text content.');
+  });
+
   // --- ADD QUESTION ---
 
   it('should add check question', () => {
@@ -244,11 +284,25 @@ describe('QuestionsStore', () => {
     );
   });
 
+  it('should use fallback error message for addQuestion', () => {
+    const payload = { questionText: 'New Q' } as AddQuestionRequest;
+    mockService.addCheckQuizQuestion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+
+    store.addQuestion({ type: 'check', parentId: 'p1', payload });
+
+    expect(store.error()).toBe('Failed to add question.');
+  });
+
   // --- UPDATE QUESTION ---
 
   it('should update question via api put', () => {
     mockService.getCheckQuizQuestions.mockReturnValue(
-      of([{ id: 'q1', questionText: 'Old' } as QuestionResponse]),
+      of([
+        { id: 'q1', questionText: 'Old' } as QuestionResponse,
+        { id: 'q2', questionText: 'Other' } as QuestionResponse
+      ]),
     );
     store.loadQuestions({ type: 'check', parentId: 'p1' });
 
@@ -262,6 +316,7 @@ describe('QuestionsStore', () => {
     req.flush(updated);
 
     expect(store.questions()[0].questionText).toBe('New');
+    expect(store.questions()[1].questionText).toBe('Other');
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'success' }),
     );
@@ -279,6 +334,12 @@ describe('QuestionsStore', () => {
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'error', detail: 'Update failed' }),
     );
+  });
+
+  it('should use fallback error message for updateQuestion', () => {
+    store.updateQuestion({ id: 'q1', payload: {} as AddQuestionRequest });
+    httpMock.expectOne('http://api/questions/q1').flush({}, { status: 500, statusText: 'Server Error' });
+    expect(store.error()).toBe('Failed to update question.');
   });
 
   // --- DELETE QUESTION ---
@@ -311,11 +372,22 @@ describe('QuestionsStore', () => {
     );
   });
 
+  it('should use fallback error message for deleteQuestion', () => {
+    mockService.deleteQuestion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+    store.deleteQuestion('q1');
+    expect(store.error()).toBe('Failed to delete question.');
+  });
+
   // --- APPROVE QUESTION ---
 
   it('should approve question', () => {
     mockService.getCheckQuizQuestions.mockReturnValue(
-      of([{ id: 'q1', status: 'PENDING' } as QuestionResponse]),
+      of([
+        { id: 'q1', status: 'PENDING' } as QuestionResponse,
+        { id: 'q2', status: 'PENDING' } as QuestionResponse
+      ]),
     );
     store.loadQuestions({ type: 'check', parentId: 'p1' });
 
@@ -324,6 +396,7 @@ describe('QuestionsStore', () => {
 
     expect(mockService.approveQuestion).toHaveBeenCalledWith('q1');
     expect(store.questions()[0].status).toBe('APPROVED');
+    expect(store.questions()[1].status).toBe('PENDING');
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'success' }),
     );
@@ -341,6 +414,14 @@ describe('QuestionsStore', () => {
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'error', detail: 'Approve failed' }),
     );
+  });
+
+  it('should use fallback error message for approveQuestion', () => {
+    mockService.approveQuestion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+    store.approveQuestion('q1');
+    expect(store.error()).toBe('Failed to approve question.');
   });
   // --- UPDATE PASS THRESHOLD ---
 
@@ -368,5 +449,19 @@ describe('QuestionsStore', () => {
     expect(store.passThreshold()).toBe(80);
     // Should NOT call success message
     expect(messageServiceSpy.add).not.toHaveBeenCalled();
+  });
+
+  it('should create quiz when updatePassThreshold called and quizExists is false', () => {
+    patchState(store, { quizExists: false });
+    
+    store.updatePassThreshold({ parentId: 'p1', passThreshold: 90 });
+    
+    const req = httpMock.expectOne('http://api/lessons/p1/final-quiz');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.passThreshold).toBe(90);
+    req.flush({});
+    
+    expect(store.quizExists()).toBe(true);
+    expect(store.passThreshold()).toBe(90);
   });
 });

@@ -51,10 +51,10 @@ describe('PaymentStore', () => {
 
   describe('loadHistory', () => {
     it('fetches history and tallies total spent', () => {
-      store.loadHistory('s1');
+      store.loadHistory();
       expect(store.historyLoading()).toBe(true);
 
-      const req = httpMock.expectOne('/api/v1/payments/history/s1');
+      const req = httpMock.expectOne('/api/v1/payments/history');
       expect(req.request.method).toBe('GET');
       req.flush(records);
 
@@ -64,15 +64,17 @@ describe('PaymentStore', () => {
     });
 
     it('coerces non-array responses to empty', () => {
-      store.loadHistory('s1');
-      httpMock.expectOne('/api/v1/payments/history/s1').flush(null);
+      store.loadHistory();
+
+      httpMock.expectOne('/api/v1/payments/history').flush(null);
       expect(store.history()).toEqual([]);
     });
 
     it('sets error on failure', () => {
-      store.loadHistory('s1');
+      store.loadHistory();
+
       httpMock
-        .expectOne('/api/v1/payments/history/s1')
+        .expectOne('/api/v1/payments/history')
         .error(new ErrorEvent('boom'));
       expect(store.historyError()).toBe('Failed to load payment history');
     });
@@ -135,8 +137,8 @@ describe('PaymentStore', () => {
 
   describe('hasPurchased', () => {
     it('returns true only for SUCCESS records with matching itemId', () => {
-      store.loadHistory('s1');
-      httpMock.expectOne('/api/v1/payments/history/s1').flush(records);
+      store.loadHistory();
+      httpMock.expectOne('/api/v1/payments/history').flush(records);
 
       expect(store.hasPurchased('l1')).toBe(true);
       expect(store.hasPurchased('b1')).toBe(false); // PENDING

@@ -105,6 +105,36 @@ describe('TeacherClassService', () => {
     req.flush(mockClasses);
   });
 
+  it('should get classes from paginated response with classes field', () => {
+    const mockClasses: TeacherClass[] = [
+      { id: '1', name: 'Math', description: 'Math Class', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' },
+    ];
+    service.getClasses().subscribe((classes) => {
+      expect(classes).toEqual(mockClasses);
+    });
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    req.flush({ classes: mockClasses });
+  });
+
+  it('should get classes from paginated response with content field', () => {
+    const mockClasses: TeacherClass[] = [
+      { id: '1', name: 'Math', description: 'Math Class', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' },
+    ];
+    service.getClasses().subscribe((classes) => {
+      expect(classes).toEqual(mockClasses);
+    });
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    req.flush({ content: mockClasses });
+  });
+
+  it('should fallback to empty array when paginated response is empty for classes', () => {
+    service.getClasses().subscribe((classes) => {
+      expect(classes).toEqual([]);
+    });
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    req.flush({ otherField: [] });
+  });
+
   it('should get student classes', () => {
     const mockClasses: TeacherClass[] = [
       { id: '1', name: 'Math', description: 'Math Class', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' },
@@ -117,6 +147,36 @@ describe('TeacherClassService', () => {
     const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/classes`);
     expect(req.request.method).toBe('GET');
     req.flush(mockClasses);
+  });
+
+  it('should get student classes from paginated response with classes field', () => {
+    const mockClasses: TeacherClass[] = [
+      { id: '1', name: 'Math', description: 'Math Class', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' },
+    ];
+    service.getStudentClasses().subscribe((classes) => {
+      expect(classes).toEqual(mockClasses);
+    });
+    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/classes`);
+    req.flush({ classes: mockClasses });
+  });
+
+  it('should get student classes from paginated response with content field', () => {
+    const mockClasses: TeacherClass[] = [
+      { id: '1', name: 'Math', description: 'Math Class', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' },
+    ];
+    service.getStudentClasses().subscribe((classes) => {
+      expect(classes).toEqual(mockClasses);
+    });
+    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/classes`);
+    req.flush({ content: mockClasses });
+  });
+
+  it('should fallback to empty array when paginated response is empty for student classes', () => {
+    service.getStudentClasses().subscribe((classes) => {
+      expect(classes).toEqual([]);
+    });
+    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/classes`);
+    req.flush({ otherField: [] });
   });
 
   it('should create class with description', () => {

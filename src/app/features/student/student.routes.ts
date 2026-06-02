@@ -48,6 +48,16 @@ export default [
     loadComponent: () =>
       import('./payments/payment-history.component').then((m) => m.PaymentHistoryComponent),
   },
+  {
+    path: 'payments/success',
+    loadComponent: () =>
+      import('./payments/payment-success.component').then((m) => m.PaymentSuccessComponent),
+  },
+  {
+    path: 'payments/cancel',
+    loadComponent: () =>
+      import('./payments/payment-cancel.component').then((m) => m.PaymentCancelComponent),
+  },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
    {
     path: 'skills/:subject',

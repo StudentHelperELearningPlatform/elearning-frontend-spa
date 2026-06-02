@@ -16,9 +16,11 @@ export interface PaymentRecord {
   createdAt: string;
 }
 
-interface CheckoutSession {
+export interface CheckoutSession {
+  transactionId: string;
+  status: string;
   checkoutUrl: string;
-  sessionId: string;
+  errorMessage?: string;
 }
 
 interface CheckoutParams {
@@ -46,11 +48,11 @@ export class PaymentStore {
       .reduce((sum, p) => sum + p.amount, 0),
   );
 
-  loadHistory(studentId: string) {
+  loadHistory() {
     this.historyLoading.set(true);
     this.historyError.set(null);
     this.http
-      .get<PaymentRecord[]>(`${this.apiBase}/payments/history/${studentId}`)
+      .get<PaymentRecord[]>(`${this.apiBase}/payments/history`)
       .subscribe({
         next: (data) => {
           this.history.set(Array.isArray(data) ? data : []);

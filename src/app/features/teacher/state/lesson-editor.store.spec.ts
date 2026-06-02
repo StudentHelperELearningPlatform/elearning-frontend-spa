@@ -48,6 +48,7 @@ describe('LessonEditorStore', () => {
       short_description: '',
       status: 'DRAFT',
       modules: [],
+      priceInCents: null,
     });
     expect(store.saveState()).toBe('idle');
   });

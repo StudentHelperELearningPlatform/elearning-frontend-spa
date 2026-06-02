@@ -170,9 +170,8 @@ describe('AdminDashboardComponent', () => {
   });
 
   it('should update search query correctly', () => {
-    const inputEvent = { target: { value: 'Jane' } } as unknown as Event;
-    component.updateUserSearch(inputEvent);
-    expect(component.userSearchQuery()).toBe('Jane');
+    component.triggerUserSearch('search query');
+    expect(component.userSearchQuery()).toBe('search query');
   });
 
   it('should compute user distribution insights correctly', () => {
@@ -455,6 +454,26 @@ describe('AdminDashboardComponent', () => {
     expect(component.users().length).toBe(5);
   });
 
+  it('should parse paginated classes response with classes, totalPages, and totalElements fields explicitly', () => {
+    const paginatedClasses = { classes: mockClasses, totalPages: 5, totalElements: 50 };
+    vi.spyOn(adminService, 'getClasses').mockReturnValue(of(paginatedClasses as never));
+    
+    component.loadClasses();
+    expect(component.classes().length).toBe(1);
+    expect(component.classesTotalPages()).toBe(5);
+    expect(component.classesTotalElements()).toBe(50);
+  });
+
+  it('should parse paginated classes response with missing pagination fields to fallbacks', () => {
+    const paginatedClasses = { classes: mockClasses };
+    vi.spyOn(adminService, 'getClasses').mockReturnValue(of(paginatedClasses as never));
+    
+    component.loadClasses();
+    expect(component.classes().length).toBe(1);
+    expect(component.classesTotalPages()).toBe(1);
+    expect(component.classesTotalElements()).toBe(1); // mappedClasses.length is 1
+  });
+
   it('should gracefully handle API failure when performBan fails', () => {
     const serviceSpy = vi
       .spyOn(adminService, 'banUser')
@@ -635,21 +654,21 @@ describe('AdminDashboardComponent', () => {
 
     // 2. Spy on the service to return different data based on the requested page
     vi.spyOn(adminService, 'getUsers').mockImplementation((page) => {
-      if (page === 1)
+      if (page === 0)
         return of({
           content: mockUsers,
           currentPage: 1,
           totalPages: 3,
           totalElements: 12,
         } as PaginatedUsersResponse);
-      if (page === 2)
+      if (page === 1)
         return of({
           content: extraUsersPage2,
           currentPage: 2,
           totalPages: 3,
           totalElements: 12,
         } as PaginatedUsersResponse);
-      if (page === 3)
+      if (page === 2)
         return of({
           content: extraUsersPage3,
           currentPage: 3,
@@ -911,8 +930,7 @@ describe('AdminDashboardComponent', () => {
 
     it('should reset user page to 1 when a new search query is updated', () => {
       component.userPage.set(2);
-      const inputEvent = { target: { value: 'Jane' } } as unknown as Event;
-      component.updateUserSearch(inputEvent);
+      component.triggerUserSearch('newSearchQuery');
       expect(component.userPage()).toBe(1);
     });
 

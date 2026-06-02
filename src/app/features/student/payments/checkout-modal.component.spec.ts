@@ -84,7 +84,7 @@ describe('CheckoutModalComponent', () => {
 
     const checkoutSpy = vi
       .spyOn(store, 'checkout')
-      .mockResolvedValue({ checkoutUrl: 'https://pay.example/x', sessionId: 's1' });
+      .mockResolvedValue({ transactionId: 'tx-1', status: 'PENDING', checkoutUrl: 'https://pay.example/x' });
 
     await component.proceed();
 
@@ -92,7 +92,7 @@ describe('CheckoutModalComponent', () => {
       studentId: 'student-1',
       itemType: 'LESSON',
       itemId: 'lesson-1',
-      bundleId: 'lesson-1',
+      bundleId: undefined,
     });
     expect(globalThis.location.href).toBe('https://pay.example/x');
   });

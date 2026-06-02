@@ -48,6 +48,8 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   @ViewChild('radarContainer') radarContainer!: ElementRef<HTMLDivElement>;
 
   private resizeObserver: ResizeObserver | null = null;
+  private lastDispatchedClassId: string | null = null;
+  private lastDispatchedLessonId: string | null = null;
 
   readonly motivationalMessages = [
     'Keep up the great work!',
@@ -111,8 +113,8 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
       )?.lessonTitle;
     if (fromHistory) return fromHistory;
 
-    const current = this.lessonsStore.currentLesson();
-    if (current && current.id === latestLessonId && current.title) {
+    const current = this.lessonsStore.lessons().find(l => String(l.id).toLowerCase() === String(latestLessonId).toLowerCase());
+    if (current && current.title) {
       return current.title;
     }
     return null;
@@ -152,8 +154,12 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
             
             const firstClassId = classes[0]?.id;
             const dashboardClassId = firstClassId || '00000000-0000-0000-0000-000000000000';
-            this.progressStore.loadMyDashboard({ classId: dashboardClassId });
-            
+
+            if (dashboardClassId !== this.lastDispatchedClassId) {
+              this.lastDispatchedClassId = dashboardClassId;
+              this.progressStore.loadMyDashboard({ classId: dashboardClassId });
+            }
+
             this.classesLoading.set(false);
           });
         });
@@ -161,11 +167,8 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     });
 
     effect(() => {
-      const skills = this.progressStore.skillLevels().map(s => ({
-        subject: s.subject,
-        level: s.level,
-      }));
-      if (skills.length > 0 && this.radarContainer?.nativeElement) {
+      const skills = this.currentSkills();
+      if (this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }
     });
@@ -179,7 +182,8 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
 
     effect(() => {
       const latestLessonId = this.latestLessonId;
-      if (latestLessonId) {
+      if (latestLessonId && latestLessonId !== this.lastDispatchedLessonId) {
+        this.lastDispatchedLessonId = latestLessonId;
         untracked(() => this.lessonsStore.loadLesson(latestLessonId));
       }
     });
@@ -191,19 +195,12 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngAfterViewInit() {
-    const skills = this.progressStore.skillLevels().map(s => ({
-      subject: s.subject,
-      level: s.level,
-    }));
-    if (skills.length > 0 && this.radarContainer?.nativeElement) {
-      this.renderRadarChart(skills);
+    if (this.radarContainer?.nativeElement) {
+      this.renderRadarChart(this.currentSkills());
     }
 
     this.resizeObserver = new ResizeObserver(() => {
-      const skills = this.progressStore.skillLevels().map(s => ({
-        subject: s.subject,
-        level: s.level,
-      }));
+      const skills = this.currentSkills();
       if (skills.length > 0 && this.radarContainer?.nativeElement) {
         this.renderRadarChart(skills);
       }
@@ -215,6 +212,22 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
 
   ngOnDestroy() {
     this.resizeObserver?.disconnect();
+  }
+
+  private currentSkills(): { subject: string; level: number }[] {
+    const skills = this.progressStore.skillLevels().map(s => ({
+      subject: s.subject,
+      level: s.level,
+    }));
+    if (skills.length === 0) {
+      return [
+        { subject: 'Math', level: 0 },
+        { subject: 'Science', level: 0 },
+        { subject: 'Literature', level: 0 },
+        { subject: 'History', level: 0 },
+      ];
+    }
+    return skills;
   }
 
   renderRadarChart(skills: { subject: string; level: number }[]) {

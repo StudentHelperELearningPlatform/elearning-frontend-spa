@@ -3,8 +3,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { tapResponse } from '@ngrx/operators';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap } from 'rxjs';
-import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
+import { pipe, switchMap, tap, forkJoin, of, catchError, map } from 'rxjs';
+import { USER_PLATFORM_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
 
 // ---------------------------------------------------------------------------
 // Domain models (Sprint 6 & Legacy)
@@ -279,7 +279,8 @@ export const ProgressStore = signalStore(
       // Prioritizează datele live din dashboard (S6)
       const dash = store.dashboard();
       if (dash && dash.totalLessons) {
-        return Math.round(((dash.completedLessons ?? 0) / dash.totalLessons) * 100);
+        const completed = Number(dash.completedLessons) || 0;
+        return Math.round((completed / dash.totalLessons) * 100);
       }
       
       // Fallback la datele vechi (student)
@@ -304,7 +305,7 @@ export const ProgressStore = signalStore(
     recentMilestones: computed(() => {
   return [...store.milestones()]
     .filter((m) => m.earnedAt != null)
-    .sort((a, b) => new Date(b.earnedAt ?? '').getTime() - new Date(a.earnedAt ?? '').getTime())
+    .sort((a, b) => new Date(b.earnedAt!).getTime() - new Date(a.earnedAt!).getTime())
     .slice(0, 3);
 }),
 
@@ -317,7 +318,7 @@ export const ProgressStore = signalStore(
     }),
   })),
 
-  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL)) => ({
+  withMethods((store, http = inject(HttpClient), apiBase = inject(USER_PLATFORM_API_URL), contentApiBase = inject(CONTENT_API_URL)) => ({
     
     // ── Sprint 6 live endpoints ──────────────────────────────────────────────
 
@@ -326,17 +327,20 @@ export const ProgressStore = signalStore(
         tap(() => patchState(store, { dashboardLoading: true, dashboardError: null, loading: true, error: null })),
         switchMap((params) => {
           const classId = (params && typeof params === 'object' && 'classId' in params ? params.classId : null) || '00000000-0000-0000-0000-000000000000';
-          return http.get<DashboardResponse>(`${apiBase}/progress/me/dashboard`, {
-            params: { classId }
+          return forkJoin({
+            dashboard: http.get<DashboardResponse>(`${apiBase}/progress/me/dashboard`, { params: { classId } }),
+            completedCount: http.get<number>(`${apiBase}/progress/me/completed-lessons/count`).pipe(catchError(() => of(null)))
           }).pipe(
             tapResponse({
-              next: (data) => {
+              next: ({ dashboard: data, completedCount }) => {
+                const actualCompletedLessons = completedCount ?? data?.completedLessons ?? data?.student?.completedLessons ?? 0;
+                
                 const studentInfo = {
                   id: data?.studentId || data?.student?.id || '',
                   firstName: data?.firstName || data?.student?.firstName || '',
                   lastName: data?.lastName || data?.student?.lastName || '',
                   totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
-                  completedLessons: data?.completedLessons ?? data?.student?.completedLessons ?? 0,
+                  completedLessons: actualCompletedLessons,
                 };
                 const mappedSkillLevels = data?.subjects
                   ? data.subjects.map((s: SubjectResponse) => ({
@@ -359,7 +363,7 @@ export const ProgressStore = signalStore(
                   milestones: data?.milestones ?? [],
                   upcomingQuizzes: data?.upcomingQuizzes ?? [],
                   totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
-                  completedLessons: data?.completedLessons ?? data?.student?.completedLessons ?? 0,
+                  completedLessons: actualCompletedLessons,
                   averageScore: 0,
                   lastActive: data?.lastActivityDate ?? data?.streak?.lastActivityDate ?? null,
                 };
@@ -381,9 +385,9 @@ export const ProgressStore = signalStore(
               },
               error: (err: { message?: string }) => patchState(store, {
                 dashboardLoading: false,
-                dashboardError: err?.message ?? 'Failed to load dashboard',
+                dashboardError: err?.message || 'Failed to load dashboard',
                 loading: false,
-                error: err?.message ?? 'Failed to load dashboard'
+                error: err?.message || 'Failed to load dashboard'
               }),
             })
           );
@@ -505,16 +509,20 @@ export const ProgressStore = signalStore(
           }
           
           return http.get<MyHistoryResponseItem[]>(`${apiBase}/progress/me/history`, { params: httpParams }).pipe(
+            switchMap((history) => {
+              const mapped: HistoryEntry[] = (history || []).map((h: MyHistoryResponseItem) => ({
+                lessonId: h.lessonId || '',
+                lessonTitle: h.lessonTitle || h.lessonName || h.title || h.lesson?.title || 'Untitled lesson',
+                subject: h.subject || 'General',
+                status: h.status || (h.completedAt ? 'completed' : 'in_progress'),
+                score: h.score ?? null,
+                dateCompleted: h.dateCompleted || h.completedAt || null,
+              }));
+
+              return fetchMissingTitles(mapped, http, contentApiBase);
+            }),
             tapResponse({
-              next: (history) => {
-                const mappedHistory: HistoryEntry[] = (history || []).map((h: MyHistoryResponseItem) => ({
-                  lessonId: h.lessonId || '',
-                  lessonTitle: h.lessonTitle || h.lessonName || h.title || h.lesson?.title || 'Untitled lesson',
-                  subject: h.subject || 'General',
-                  status: h.status || (h.completedAt ? 'completed' : 'in_progress'),
-                  score: h.score ?? null,
-                  dateCompleted: h.dateCompleted || h.completedAt || null,
-                }));
+              next: (mappedHistory) => {
                 patchState(store, { myHistory: mappedHistory, myHistoryLoading: false });
               },
               error: (err: { message?: string }) =>
@@ -529,3 +537,27 @@ export const ProgressStore = signalStore(
     ),
   }))
 );
+
+function fetchMissingTitles(mapped: HistoryEntry[], http: HttpClient, contentApiBase: string) {
+  const missingTitles = mapped.filter(m => m.lessonTitle === 'Untitled lesson' && m.lessonId);
+  if (missingTitles.length === 0) return of(mapped);
+
+  const requests = missingTitles.map(m =>
+    http.get<{ title?: string, subject?: string }>(`${contentApiBase}/lessons/${m.lessonId}`).pipe(
+      map(res => ({ id: m.lessonId, title: res.title, subject: res.subject })),
+      catchError(() => of(null))
+    )
+  );
+
+  return forkJoin(requests).pipe(
+    map(results => mapped.map(entry => {
+      if (entry.lessonTitle === 'Untitled lesson') {
+        const found = results.find(r => r && String(r.id).toLowerCase() === String(entry.lessonId).toLowerCase());
+        if (found) {
+          return { ...entry, lessonTitle: found.title || 'Untitled lesson', subject: found.subject || entry.subject };
+        }
+      }
+      return entry;
+    }))
+  );
+}
