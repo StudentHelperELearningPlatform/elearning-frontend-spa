@@ -36,6 +36,9 @@ export interface BackendLesson {
   shortDescription?: string;
   authorId?: string;
   subcapitols?: BackendSubcapitol[];
+  /** Price in smallest currency unit (e.g. bani). null/undefined = free */
+  priceInCents?: number | null;
+  currency?: string | null;
   progress?: {
     finished?: boolean;
     status?: string;
@@ -107,6 +110,8 @@ export const mapLessonResponse = (backend: BackendLesson): Lesson => {
     description: backend.shortDescription || '',
     subcapitols,
     modules,
+    priceInCents: backend.priceInCents ?? null,
+    currency: backend.currency || 'RON',
   };
 };
 

@@ -256,6 +256,24 @@ interface QuizAttempt {
                 </div>
               }
             </div>
+          } @else if (!hasAccess()) {
+            <!-- Locked state in viewer -->
+            <div class="h-full flex items-center justify-center p-8">
+              <div class="max-w-md w-full text-center">
+                <div class="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-violet-100 border-4 border-black mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <span class="material-icons text-5xl text-violet-500">lock</span>
+                </div>
+                <h2 class="text-2xl font-black text-black mb-3">This lesson is locked</h2>
+                <p class="text-gray-600 font-medium mb-6">Purchase access to view and interact with all modules.</p>
+                <button
+                  (click)="checkoutOpen.set(true)"
+                  class="inline-flex items-center gap-2 px-8 py-4 bg-[#FFD700] text-black font-black rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+                >
+                  <span class="material-icons">shopping_cart</span>
+                  Unlock Lesson
+                </button>
+              </div>
+            </div>
           } @else {
             <div class="h-full flex items-center justify-center">
               <app-empty-state
@@ -446,7 +464,13 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   protected readonly checkoutOpen = signal(false);
   protected readonly explanationOpen = signal(false);
 
-  hasAccess = computed(() => true);
+  hasAccess = computed(() => {
+    const id = this.lessonId();
+    if (!id) return true;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) return true; // seed/mock lessons always accessible
+    return this.store.accessibleLessonIds().has(id);
+  });
 
   subcapitolAttempts = signal<Record<string, QuizAttempt[]>>({});
   subcapitolQuizzesExist = signal<Record<string, boolean>>({});
@@ -480,6 +504,11 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
       this.store.loadLesson(id);
       this.store.loadFinalQuizAttempts(id);
       this.progressStore.loadMyLessonStats({ lessonId: id });
+      // Ensure access-check is current for this lesson
+      const studentId = this.authStore.user()?.id;
+      if (studentId) {
+        this.store.loadAccessibleLessons(studentId);
+      }
     }
   }
 

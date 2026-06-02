@@ -16,9 +16,11 @@ export interface PaymentRecord {
   createdAt: string;
 }
 
-interface CheckoutSession {
+export interface CheckoutSession {
+  transactionId: string;
+  status: string;
   checkoutUrl: string;
-  sessionId: string;
+  errorMessage?: string;
 }
 
 interface CheckoutParams {
