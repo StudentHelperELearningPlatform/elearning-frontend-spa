@@ -1,24 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { AuthStore } from '../../../features/auth/store/auth.store';
+import { SidebarComponent } from '../../shared/components/sidebar/sidebar.component';
+import { HeaderComponent } from '../../shared/components/header/header.component';
 
 @Component({
   selector: 'app-gdpr',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, SidebarComponent, HeaderComponent],
   template: `
-    <div class="min-h-screen bg-white font-sans text-black">
-      <nav class="flex items-center justify-between px-6 py-6 border-b-4 border-black bg-white sticky top-0 z-50">
-        <div class="flex items-center gap-2" routerLink="/">
-          <div class="w-10 h-10 bg-[#0ABAB5] border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center">
-            <span class="material-icons text-white font-black">school</span>
-          </div>
-          <span class="text-2xl font-black uppercase tracking-tighter italic cursor-pointer">E-Tutor</span>
-        </div>
-        <a routerLink="/" class="font-black uppercase text-sm tracking-widest hover:text-[#0ABAB5] transition-colors">Back to Home</a>
-      </nav>
-
-      <div class="max-w-4xl mx-auto px-6 py-16">
+    <ng-template #contentTemplate>
+      <div class="max-w-4xl mx-auto">
         <h1 class="text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-8">
           GDPR &<br><span class="text-[#0ABAB5]">Privacy Policy</span>
         </h1>
@@ -361,19 +354,51 @@ import { RouterModule } from '@angular/router';
           <p class="text-sm text-gray-500 font-bold">Last updated: June 2026</p>
         </div>
       </div>
+    </ng-template>
 
-      <footer class="px-6 py-8 border-t-4 border-black bg-white">
-        <div class="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-[#0ABAB5] border-2 border-black flex items-center justify-center">
-              <span class="material-icons text-white text-sm">school</span>
-            </div>
-            <span class="text-xl font-black uppercase tracking-tighter italic">E-Tutor</span>
-          </div>
-          <p class="font-bold text-gray-500">© 2026 E-Learning Adaptive Tutor. All rights reserved.</p>
+    @if (authStore.isAuthenticated()) {
+      <div class="h-screen bg-gray-50 flex flex-col overflow-hidden">
+        <app-header class="shrink-0" />
+        <div class="flex flex-1 overflow-hidden">
+          <app-sidebar class="h-full shrink-0" />
+          <main class="flex-1 overflow-y-auto p-6">
+            <ng-container *ngTemplateOutlet="contentTemplate" />
+          </main>
         </div>
-      </footer>
-    </div>
+      </div>
+    } @else {
+      <div class="min-h-screen bg-white font-sans text-black">
+        <nav class="flex items-center justify-between px-6 py-6 border-b-4 border-black bg-white sticky top-0 z-50">
+          <div class="flex items-center gap-2" routerLink="/">
+            <div class="w-10 h-10 bg-[#0ABAB5] border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center">
+              <span class="material-icons text-white font-black">school</span>
+            </div>
+            <span class="text-2xl font-black uppercase tracking-tighter italic cursor-pointer">E-Tutor</span>
+          </div>
+          <a routerLink="/" class="font-black uppercase text-sm tracking-widest hover:text-[#0ABAB5] transition-colors">Back to Home</a>
+        </nav>
+
+        <div class="overflow-y-auto">
+          <div class="max-w-4xl mx-auto px-6 py-16">
+            <ng-container *ngTemplateOutlet="contentTemplate" />
+          </div>
+        </div>
+
+        <footer class="px-6 py-8 border-t-4 border-black bg-white">
+          <div class="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 bg-[#0ABAB5] border-2 border-black flex items-center justify-center">
+                <span class="material-icons text-white text-sm">school</span>
+              </div>
+              <span class="text-xl font-black uppercase tracking-tighter italic">E-Tutor</span>
+            </div>
+            <p class="font-bold text-gray-500">© 2026 E-Learning Adaptive Tutor. All rights reserved.</p>
+          </div>
+        </footer>
+      </div>
+    }
   `,
 })
-export class GdprComponent {}
+export class GdprComponent {
+  protected authStore = inject(AuthStore);
+}
