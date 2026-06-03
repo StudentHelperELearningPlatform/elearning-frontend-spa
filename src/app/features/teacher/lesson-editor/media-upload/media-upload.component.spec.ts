@@ -184,8 +184,8 @@ describe('MediaUploadComponent', () => {
 
       expect(
         target.value === '' ||
-          target.value === 'C:\\fakepath\\test.png' ||
-          target.value.includes('test.png'),
+        target.value === 'C:\\fakepath\\test.png' ||
+        target.value.includes('test.png'),
       ).toBe(true);
     });
   });
