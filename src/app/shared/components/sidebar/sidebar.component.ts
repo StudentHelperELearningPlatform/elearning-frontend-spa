@@ -68,6 +68,13 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
             <span>Platform Settings</span>
           </a>
         }
+
+        <div class="border-t-2 border-gray-200 pt-4 mt-4">
+          <a routerLink="/gdpr" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">verified_user</span>
+            <span>GDPR & Privacy</span>
+          </a>
+        </div>
       </nav>
     </aside>
   `

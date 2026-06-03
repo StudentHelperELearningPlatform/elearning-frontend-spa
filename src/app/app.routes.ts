@@ -68,6 +68,13 @@ export const routes: Routes = [
   },
 
 
+  // GDPR / Privacy page (public)
+  {
+    path: 'gdpr',
+    loadComponent: () =>
+      import('./features/shared/gdpr/gdpr.component').then((m) => m.GdprComponent),
+  },
+
   // Unauthorized page
   {
     path: 'unauthorized',

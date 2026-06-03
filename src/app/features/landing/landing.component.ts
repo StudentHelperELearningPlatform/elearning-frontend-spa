@@ -210,7 +210,7 @@ import { ButtonComponent } from '../../shared/components/button/button.component
             © 2026 E-Learning Adaptive Tutor. All rights reserved.
           </p>
           <div class="flex gap-6 font-black uppercase text-xs tracking-widest">
-            <a href="#" class="hover:text-[#0ABAB5]">Privacy</a>
+            <a routerLink="/gdpr" class="hover:text-[#0ABAB5]">Privacy</a>
             <a href="#" class="hover:text-[#0ABAB5]">Terms</a>
             <a href="#" class="hover:text-[#0ABAB5]">Contact</a>
           </div>
