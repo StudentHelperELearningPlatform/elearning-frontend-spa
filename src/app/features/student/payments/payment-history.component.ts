@@ -59,15 +59,17 @@ import { PaymentRecord, PaymentStore } from './payment.store';
               <tr class="text-left">
                 <th scope="col" class="p-3 font-black">Type</th>
                 <th scope="col" class="p-3 font-black">Amount</th>
+                <th scope="col" class="p-3 font-black">Status</th>
                 <th scope="col" class="p-3 font-black">Date</th>
               </tr>
             </thead>
             <tbody>
-              @for (p of store.history(); track p.purchaseId) {
+              @for (p of store.history(); track p.id) {
                 <tr class="border-b-2 border-black/10 hover:bg-[#0ABAB5]/5">
                   <td class="p-3 font-bold uppercase">{{ p.itemType }}</td>
-                  <td class="p-3 font-bold">{{ formatAmount(p.amountPaid) }}</td>
-                  <td class="p-3 text-sm">{{ p.purchasedAt | date: 'mediumDate' }}</td>
+                  <td class="p-3 font-bold">{{ formatAmount(p.amount, p.currency) }}</td>
+                  <td class="p-3 text-sm">{{ statusLabel(p.status) }}</td>
+                  <td class="p-3 text-sm">{{ p.createdAt | date: 'mediumDate' }}</td>
                 </tr>
               }
             </tbody>
@@ -91,14 +93,21 @@ export class PaymentHistoryComponent implements OnInit {
   }
 
   formatAmount(value: number, currency = 'RON'): string {
+    const major = value / 100;
     try {
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value);
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(major);
     } catch {
-      return `${value.toFixed(2)} ${currency}`;
+      return `${major.toFixed(2)} ${currency}`;
     }
   }
 
+  statusLabel(status: string): string {
+    if (!status) return '';
+    const lower = status.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+
   protected trackById(_: number, p: PaymentRecord) {
-    return p.purchaseId;
+    return p.id;
   }
 }
