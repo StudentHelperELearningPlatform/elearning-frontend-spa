@@ -2,17 +2,16 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
-export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
-export type PaymentItemType = 'LESSON' | 'BUNDLE' | 'SUBSCRIPTION';
+export type PaymentStatus = 'SUCCESS' | 'PENDING' | 'FAILED' | 'REFUNDED';
 
 export interface PaymentRecord {
   id: string;
-  itemType: PaymentItemType;
+  itemType: string;
   itemId: string;
   itemTitle: string;
   amount: number;
   currency: string;
-  status: PaymentStatus;
+  status: PaymentStatus | string;
   createdAt: string;
 }
 
@@ -25,7 +24,7 @@ export interface CheckoutSession {
 
 interface CheckoutParams {
   studentId: string;
-  itemType: PaymentItemType;
+  itemType: string;
   itemId: string;
   bundleId?: string;
 }
@@ -97,6 +96,8 @@ export class PaymentStore {
   }
 
   hasPurchased(itemId: string): boolean {
-    return this.history().some((p) => p.itemId === itemId && p.status === 'SUCCESS');
+    return this.history().some(
+      (p) => p.itemId === itemId && p.status === 'SUCCESS',
+    );
   }
 }
