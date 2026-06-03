@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CardComponent } from '@shared/components/card/card.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
@@ -117,7 +117,7 @@ import { MyClassesStore } from '../store/my-classes.store';
                   <span class="text-xs font-bold uppercase tracking-wide text-gray-500">
                     Joined {{ cls.createdAt | date: 'mediumDate' }}
                   </span>
-                  <app-button variant="primary" size="sm">View Class</app-button>
+                  <app-button variant="primary" size="sm" (btnClick)="openClass(cls.id)">View Class</app-button>
                 </div>
               </div>
             </app-card>
@@ -129,9 +129,14 @@ import { MyClassesStore } from '../store/my-classes.store';
 })
 export class MyClassesComponent implements OnInit {
   protected readonly store = inject(MyClassesStore);
+  private readonly router = inject(Router);
   protected readonly skeletonItems = [1, 2, 3];
 
   ngOnInit(): void {
     this.store.loadMyClasses();
+  }
+
+  openClass(classId: string): void {
+    this.router.navigate(['/student/dashboard'], { queryParams: { classId } });
   }
 }

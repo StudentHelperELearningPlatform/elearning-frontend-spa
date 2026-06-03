@@ -3,15 +3,16 @@ import {
   inject,
   OnInit,
   OnDestroy,
-  AfterViewInit,
-  ViewChild,
   ElementRef,
   effect,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs/operators';
 import { ProgressStore } from '../store/progress.store';
 import { LessonsStore } from '../store/lessons.store';
 import { AuthStore } from '../../auth/store/auth.store';
@@ -31,21 +32,30 @@ import * as d3 from 'd3';
   imports: [CommonModule, RouterModule, SkeletonComponent, TimeAgoPipe],
   templateUrl: './progress-dashboard.component.html',
 })
-export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
+export class ProgressDashboardComponent implements OnInit, OnDestroy {
   progressStore = inject(ProgressStore);
   lessonsStore = inject(LessonsStore);
   authStore = inject(AuthStore);
   profileStore = inject(StudentProfileStore);
   classService = inject(TeacherClassService);
   router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   enrolledClassesList = signal<TeacherClass[]>([]);
   classesLoading = signal(false);
 
+  // Reactive read of ?classId= so navigation from "My Classes → View Class" scopes the dashboard.
+  private readonly classIdFromQuery = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('classId'))),
+    { initialValue: this.route.snapshot.queryParamMap.get('classId') },
+  );
+
   // S6-stats-01: expose live dashboard signal for the aggregate stats card
   protected readonly myDashboard = this.progressStore.dashboard;
 
-  @ViewChild('radarContainer') radarContainer!: ElementRef<HTMLDivElement>;
+  // Signal-based viewChild so the render effect re-fires when the chart container
+  // mounts (it lives inside an @if branch that flips from loading → loaded).
+  readonly radarContainer = viewChild<ElementRef<HTMLDivElement>>('radarContainer');
 
   private resizeObserver: ResizeObserver | null = null;
   private lastDispatchedClassId: string | null = null;
@@ -143,34 +153,53 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   constructor() {
     effect(() => {
       const profile = this.profileStore.profile();
-      if (profile) {
-        this.classesLoading.set(true);
-        
-        untracked(() => {
-          this.classService.getStudentClasses().pipe(
-            catchError(() => of([]))
-          ).subscribe(classes => {
-            this.enrolledClassesList.set(classes);
-            
-            const firstClassId = classes[0]?.id;
-            const dashboardClassId = firstClassId || '00000000-0000-0000-0000-000000000000';
+      const queryClassId = this.classIdFromQuery();
+      if (!profile) {
+        return;
+      }
+      this.classesLoading.set(true);
 
-            if (dashboardClassId !== this.lastDispatchedClassId) {
-              this.lastDispatchedClassId = dashboardClassId;
-              this.progressStore.loadMyDashboard({ classId: dashboardClassId });
-            }
+      untracked(() => {
+        this.classService.getStudentClasses().pipe(
+          catchError(() => of([]))
+        ).subscribe(classes => {
+          this.enrolledClassesList.set(classes);
 
-            this.classesLoading.set(false);
-          });
+          const firstClassId = classes[0]?.id;
+          const dashboardClassId = queryClassId || firstClassId || '00000000-0000-0000-0000-000000000000';
+
+          if (dashboardClassId !== this.lastDispatchedClassId) {
+            this.lastDispatchedClassId = dashboardClassId;
+            this.progressStore.loadMyDashboard({ classId: dashboardClassId });
+          }
+
+          this.classesLoading.set(false);
         });
+      });
+    });
+
+    // Re-runs when skills change OR when the container ref becomes available.
+    effect(() => {
+      const skills = this.currentSkills();
+      const containerRef = this.radarContainer();
+      if (containerRef?.nativeElement) {
+        this.renderRadarChart(skills);
       }
     });
 
-    effect(() => {
-      const skills = this.currentSkills();
-      if (this.radarContainer?.nativeElement) {
-        this.renderRadarChart(skills);
+    // Attach the ResizeObserver as soon as the container mounts.
+    effect((onCleanup) => {
+      const containerRef = this.radarContainer();
+      const el = containerRef?.nativeElement;
+      if (!el) {
+        return;
       }
+      const observer = new ResizeObserver(() => {
+        this.renderRadarChart(this.currentSkills());
+      });
+      observer.observe(el);
+      this.resizeObserver = observer;
+      onCleanup(() => observer.disconnect());
     });
 
     effect(() => {
@@ -194,22 +223,6 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
     this.progressStore.loadMyHistory();
   }
 
-  ngAfterViewInit() {
-    if (this.radarContainer?.nativeElement) {
-      this.renderRadarChart(this.currentSkills());
-    }
-
-    this.resizeObserver = new ResizeObserver(() => {
-      const skills = this.currentSkills();
-      if (skills.length > 0 && this.radarContainer?.nativeElement) {
-        this.renderRadarChart(skills);
-      }
-    });
-    if (this.radarContainer?.nativeElement) {
-      this.resizeObserver.observe(this.radarContainer.nativeElement);
-    }
-  }
-
   ngOnDestroy() {
     this.resizeObserver?.disconnect();
   }
@@ -231,7 +244,7 @@ export class ProgressDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   renderRadarChart(skills: { subject: string; level: number }[]) {
-    const el = this.radarContainer?.nativeElement;
+    const el = this.radarContainer()?.nativeElement;
     if (!el) return;
 
     d3.select(el).selectAll('*').remove();

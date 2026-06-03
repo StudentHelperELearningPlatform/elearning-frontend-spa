@@ -95,6 +95,9 @@ jobs:
     name: SonarCloud Scan
     runs-on: ubuntu-latest
     needs: test
+    # Non-blocking: SonarCloud failures (auth, config, network) should not gate the rest of CI.
+    # Flip back to default once the underlying SonarCloud project config is stable.
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -118,12 +121,46 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+      # Pre-flight: directly hit SonarCloud with the token so a bad token / wrong org
+      # surfaces as a concrete HTTP status instead of a bare HttpException later.
+      - name: Pre-flight SonarCloud auth + project lookup
+        run: |
+          set +e
+          echo "── /api/authentication/validate ──"
+          AUTH_STATUS=$(curl -s -o /tmp/auth.json -w "%{http_code}" \
+            -u "${SONAR_TOKEN}:" \
+            https://sonarcloud.io/api/authentication/validate)
+          echo "HTTP ${AUTH_STATUS}"
+          cat /tmp/auth.json; echo
+
+          echo "── /api/project_analyses/search?project=${SONAR_PROJECT_KEY} ──"
+          PROJ_STATUS=$(curl -s -o /tmp/proj.json -w "%{http_code}" \
+            -u "${SONAR_TOKEN}:" \
+            "https://sonarcloud.io/api/project_analyses/search?project=${SONAR_PROJECT_KEY}")
+          echo "HTTP ${PROJ_STATUS}"
+          cat /tmp/proj.json; echo
+
+          if [ "${AUTH_STATUS}" != "200" ]; then
+            echo "::warning::SonarCloud token did not validate (HTTP ${AUTH_STATUS}). Rotate SONAR_TOKEN in GitHub repo secrets."
+          fi
+          if [ "${PROJ_STATUS}" = "404" ]; then
+            echo "::warning::SonarCloud project '${SONAR_PROJECT_KEY}' not found. Check sonar.projectKey / sonar.organization in sonar-project.properties."
+          fi
+          # Never fail the workflow on pre-flight — diagnostics only.
+          exit 0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: StudentHelperELearningPlatform_elearning-frontend-spa
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
         with:
+          # -X enables debug logging so future HttpExceptions print the actual
+          # HTTP status code and response body instead of a bare stack trace.
           args: >
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.scanner.skipJreProvisioning=true
+            -X
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
