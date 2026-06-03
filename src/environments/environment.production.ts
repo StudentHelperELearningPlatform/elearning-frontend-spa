@@ -1,8 +1,8 @@
 // src/environments/environment.production.ts
 export const environment = {
   production: true,
-  quizApiUrl: 'https://e-learning-backend-team1-api-gateway.onrender.com',
-  lessonApiUrl: 'https://e-learning-backend-team1-api-gateway.onrender.com',
+  quizApiUrl: ' https://e-learning-backend-team1-api-gateway-s9dn.onrender.com/',
+  lessonApiUrl: ' https://e-learning-backend-team1-api-gateway-s9dn.onrender.com/',
   userPlatformApiUrl: 'https://e-learning-backend-team1-api-gateway-s9dn.onrender.com',
 
   keycloak: {
