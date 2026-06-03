@@ -60,9 +60,19 @@ export interface Bundle {
   subjects: string[];
 }
 
-/** Referință minimă la o lecție — conține doar id-ul până când /bundles/{id} va returna obiecte complete */
+/**
+ * Referință la o lecție în interiorul unui bundle.
+ * `id` e singurul câmp garantat azi — câmpurile de afișare sunt opționale și
+ * vor fi populate când /bundles/{id} va returna obiecte complete. Template-ul
+ * de pe bundles-page le citește cu siguranță (`?? ''`).
+ */
 export interface BundleLessonRef {
   id: string;
+  title?: string;
+  subject?: string;
+  duration?: string;
+  difficulty?: string;
+  grade?: number;
 }
 
 /** Mapează răspunsul brut al API-ului la modelul intern */

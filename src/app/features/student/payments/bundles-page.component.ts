@@ -316,7 +316,7 @@ export class BundlesPageComponent implements OnInit {
     return 'bg-[#0ABAB5] text-white';
   }
 
-  getDifficultyIcon(difficulty: string): string {
+  getDifficultyIcon(difficulty: string | undefined): string {
     switch (difficulty?.toLowerCase()) {
       case 'easy': case 'beginner': return 'emoji_nature';
       case 'medium': case 'intermediate': return 'trending_up';
@@ -325,7 +325,7 @@ export class BundlesPageComponent implements OnInit {
     }
   }
 
-  getDifficultyIconColor(difficulty: string): string {
+  getDifficultyIconColor(difficulty: string | undefined): string {
     switch (difficulty?.toLowerCase()) {
       case 'easy': case 'beginner': return 'text-green-500';
       case 'medium': case 'intermediate': return 'text-amber-500';
@@ -334,7 +334,7 @@ export class BundlesPageComponent implements OnInit {
     }
   }
 
-  getDifficultyBadgeClass(difficulty: string): string {
+  getDifficultyBadgeClass(difficulty: string | undefined): string {
     switch (difficulty?.toLowerCase()) {
       case 'easy': case 'beginner':
         return 'bg-green-100 text-green-700 border-green-300';
