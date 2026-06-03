@@ -7,7 +7,7 @@ import { HeaderComponent } from '../../shared/components/header/header.component
 @Component({
   selector: 'app-gdpr',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, SidebarComponent, HeaderComponent],
   template: `
     <div class="h-screen bg-gray-50 flex flex-col overflow-hidden">
       <app-header class="shrink-0" />
@@ -362,5 +362,4 @@ import { HeaderComponent } from '../../shared/components/header/header.component
     </div>
   `,
 })
-export class GdprComponent {}
 export class GdprComponent {}
