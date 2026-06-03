@@ -18,7 +18,7 @@ if (typeof Storage === 'undefined') {
 
 if (typeof Storage !== 'undefined') {
   const storeMap = new WeakMap<object, Record<string, string>>();
-  
+
   const getStore = (ctx: object): Record<string, string> => {
     let s = storeMap.get(ctx);
     if (!s) {
@@ -63,7 +63,7 @@ if (typeof window !== 'undefined') {
     writable: true,
     configurable: true,
   });
-  
+
   const sessionStore = Object.create(Storage.prototype);
   Object.defineProperty(window, 'sessionStorage', {
     value: sessionStore,
@@ -92,8 +92,16 @@ import 'zone.js';
 import 'zone.js/testing';
 import { getTestBed } from '@angular/core/testing';
 import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from '@angular/platform-browser-dynamic/testing';
+import { TestBed, type TestModuleMetadata } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 getTestBed().initTestEnvironment(
   BrowserDynamicTestingModule,
   platformBrowserDynamicTesting(),
 );
+// Note: we intentionally avoid globally overriding TestBed.configureTestingModule
+// because wrapping it can interfere with Angular's internal "instantiated" checks
+// and cause errors like "Cannot configure the test module when the test module
+// has already been instantiated." Tests that need NO_ERRORS_SCHEMA should add
+// it explicitly in their TestBed configuration.
+

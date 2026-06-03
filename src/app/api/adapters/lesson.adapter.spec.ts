@@ -149,9 +149,9 @@ describe('mapLessonResponse', () => {
     const backendInProgress: BackendLesson = {
       id: 'lesson-progress-1',
       title: 'In Progress Lesson',
+      // progress uses a small shape in the adapter; use allowed properties
       progress: {
-        completedModules: 1,
-        status: 'IN_PROGRESS'
+        status: 'IN_PROGRESS',
       }
     };
 
@@ -159,8 +159,7 @@ describe('mapLessonResponse', () => {
       id: 'lesson-finished-1',
       title: 'Finished Lesson',
       progress: {
-        completedModules: 3,
-        status: 'COMPLETED'
+        status: 'COMPLETED',
       }
     };
 

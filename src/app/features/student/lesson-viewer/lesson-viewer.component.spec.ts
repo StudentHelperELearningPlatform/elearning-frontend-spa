@@ -24,6 +24,9 @@ const MOCK_LESSON: Lesson = {
   duration: '15 min',
   status: 'Not Started',
   description: 'A mock lesson description',
+  // Add pricing fields required by Lesson type
+  priceInCents: null,
+  currency: 'RON',
   subcapitols: [
     {
       id: 'sub1',
@@ -93,10 +96,10 @@ describe('LessonViewerComponent', () => {
     store = TestBed.inject(LessonsStore);
     router = TestBed.inject(Router);
     const progressStore = TestBed.inject(ProgressStore);
-    vi.spyOn(store, 'loadLesson').mockImplementation(() => undefined);
-    vi.spyOn(store, 'loadFinalQuizAttempts').mockImplementation(() => undefined);
-    vi.spyOn(progressStore, 'loadMyLessonStats').mockImplementation(() => undefined);
-    vi.spyOn(progressStore, 'markLessonComplete').mockImplementation(() => undefined);
+    vi.spyOn(store, 'loadLesson').mockImplementation(() => void 0);
+    vi.spyOn(store, 'loadFinalQuizAttempts').mockImplementation(() => void 0);
+    vi.spyOn(progressStore as any, 'loadMyLessonStats').mockImplementation(() => void 0);
+    vi.spyOn(progressStore as any, 'markLessonComplete').mockImplementation(() => void 0);
     patchStore(store, { currentLesson: MOCK_LESSON, loading: false });
 
     patchStore(store, {
@@ -225,7 +228,7 @@ describe('LessonViewerComponent', () => {
   it('nextModule marks module complete and advances index', () => {
     fixture.detectChanges();
 
-    const spy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => undefined);
+    const spy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => void 0);
 
     component.selectModule(0);
     component.nextModule();
@@ -236,7 +239,7 @@ describe('LessonViewerComponent', () => {
   it('nextModule marks module complete but does not advance past last module', () => {
     fixture.detectChanges();
 
-    const spy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => undefined);
+    const spy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => void 0);
 
     component.selectModule(2);
     component.nextModule();
@@ -253,21 +256,19 @@ describe('LessonViewerComponent', () => {
 
   it('completeLastModule marks the module complete and navigates to quiz player if final quiz exists', () => {
     fixture.detectChanges();
-    const markModuleSpy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => undefined);
+    const markModuleSpy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => void 0);
     vi.spyOn(store, 'hasFinalQuiz').mockReturnValue(true);
     const routerSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.selectModule(2);
     component.completeLastModule();
     expect(markModuleSpy).toHaveBeenCalledWith('1', 'm3');
-
-    expect(spy).toHaveBeenCalledWith('1', 'm3');
     expect(routerSpy).toHaveBeenCalledWith(['/student/quiz-player', '1']);
   });
 
   it('completeLastModule marks the module complete, completes the lesson, and navigates to lessons list if no final quiz exists', () => {
     fixture.detectChanges();
-    const markModuleSpy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => undefined);
-    const completeLessonSpy = vi.spyOn(store, 'completeLesson').mockImplementation(() => undefined);
+    const markModuleSpy = vi.spyOn(store, 'markModuleComplete').mockImplementation(() => void 0);
+    const completeLessonSpy = vi.spyOn(store, 'completeLesson').mockImplementation(() => void 0);
     vi.spyOn(store, 'hasFinalQuiz').mockReturnValue(false);
     const routerSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const msgService = TestBed.inject(MessageService);
@@ -424,7 +425,7 @@ describe('LessonViewerComponent', () => {
 
     it('explainCurrentModule calls explainBlock on the store and opens the modal', () => {
       fixture.detectChanges();
-      const spy = vi.spyOn(store, 'explainBlock').mockImplementation(() => undefined);
+          const spy = vi.spyOn(store, 'explainBlock').mockImplementation(() => void 0);
       component.selectModule(0);
       component.explainCurrentModule();
       expect(spy).toHaveBeenCalledWith('m1');
@@ -437,7 +438,7 @@ describe('LessonViewerComponent', () => {
 
     it('explainCurrentModule does nothing if no module is selected', () => {
       fixture.detectChanges();
-      const spy = vi.spyOn(store, 'explainBlock').mockImplementation(() => undefined);
+      const spy = vi.spyOn(store, 'explainBlock').mockImplementation(() => void 0);
 
       patchStore(store, {
         currentLesson: {
@@ -452,7 +453,7 @@ describe('LessonViewerComponent', () => {
 
     it('closeExplanation closes the modal and clears explanation', () => {
       fixture.detectChanges();
-      const spy = vi.spyOn(store, 'clearExplanation').mockImplementation(() => undefined);
+      const spy = vi.spyOn(store, 'clearExplanation').mockImplementation(() => void 0);
       const explanationOpen = (
         component as unknown as { explanationOpen: { (): boolean; set: (value: boolean) => void } }
       ).explanationOpen;

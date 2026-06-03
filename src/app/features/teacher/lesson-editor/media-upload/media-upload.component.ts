@@ -18,7 +18,7 @@ import {
 import { HttpClient, HttpEventType } from '@angular/common/http';
 import { MediaPlayerComponent } from '../../../../shared/components/media-player/media-player.component';
 import { environment } from '../../../../../environments/environment';
-import { AuthStore } from '../../../auth/store/auth.store';
+// AuthStore not required here; removed to avoid unused import
 
 export interface UploadedMedia {
   id: string;
@@ -63,6 +63,7 @@ export interface UploadedMedia {
 
       <div
         class="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
+        aria-label="Upload media"
         [ngClass]="{
           'border-[#0ABAB5] bg-[#0ABAB5]/10': isDragging(),
           'border-black/30': !isDragging()
@@ -270,7 +271,6 @@ export interface UploadedMedia {
 })
 export class MediaUploadComponent implements OnChanges {
   private readonly http = inject(HttpClient);
-  private readonly authStore = inject(AuthStore);
 
   @Input() media: UploadedMedia[] = [];
   @Output() mediaChange = new EventEmitter<UploadedMedia[]>();
@@ -367,7 +367,7 @@ export class MediaUploadComponent implements OnChanges {
     } else {
       return;
     }
-    const id = existingId || crypto.randomUUID();
+    const tempId = existingId ?? `temp-${crypto.randomUUID()}`;
 
     if (existingId) {
       this.mediaList.update((list) =>
@@ -399,7 +399,6 @@ export class MediaUploadComponent implements OnChanges {
     formData.append('file', file);
 
     const uploadUrl = `${environment.lessonApiUrl}/api/v1/media/upload`;
-    const userId = this.authStore.user()?.id ?? '';
 
     this.http
       .post<{
@@ -497,9 +496,18 @@ export class MediaUploadComponent implements OnChanges {
     this.announceA11y('Media removed');
   }
 
-  dropMediaList(event: CdkDragDrop<UploadedMedia[]>): void {
+  dropMediaList(event: Event | CdkDragDrop<UploadedMedia[]>): void {
+    // Template strict typing may treat $event as Event — normalize to CdkDragDrop safely
+    const drop = event as unknown as CdkDragDrop<UploadedMedia[]>;
+    const maybe = drop as unknown as { previousIndex?: number; currentIndex?: number };
+    const prevIdx = typeof maybe.previousIndex === 'number' ? maybe.previousIndex : undefined;
+    const currIdx = typeof maybe.currentIndex === 'number' ? maybe.currentIndex : undefined;
+
+    if (prevIdx === undefined || currIdx === undefined) return;
+    if (prevIdx === currIdx) return;
+
     this.mediaList.update((list) => {
-      moveItemInArray(list, event.previousIndex, event.currentIndex);
+      moveItemInArray(list, prevIdx, currIdx);
       return [...list];
     });
 

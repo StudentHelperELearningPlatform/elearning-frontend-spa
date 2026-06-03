@@ -58,6 +58,5 @@
     "workerDirectory": [
       "public"
     ]
-    "vitest": "^4.0.0"
   }
 }
