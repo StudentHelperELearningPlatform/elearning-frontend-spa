@@ -1,11 +1,33 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { PaymentStore } from './payment.store';
 import { AuthStore } from '@features/auth/store/auth.store';
 
-// ─── Models ──────────────────────────────────────────────────────────────────
+// ─── API response shape (ce vine efectiv din backend) ─────────────────────────
+
+export interface BundleApiItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;           // RON cu zecimale, NU în cenți
+  teacherId: string;
+  lessonIds: string[];
+}
+
+interface PagedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;         // pageNumber curent
+  size: number;
+  last: boolean;
+  first: boolean;
+  empty: boolean;
+}
+
+// ─── Model intern (folosit în UI) ─────────────────────────────────────────────
 
 export interface BundleLesson {
   id: string;
@@ -20,17 +42,44 @@ export interface Bundle {
   id: string;
   name: string;
   description: string;
-  priceInCents: number;
-  currency: string;
-  /** If true, show a "Most Popular" ribbon */
+  price: number;           // RON cu zecimale
+  teacherId: string;
+  lessonIds: string[];
+  // câmpuri opționale care pot veni ulterior din API sau rămân cu default
   isPopular: boolean;
   grade: number | null;
   subjects: string[];
-  lessons: BundleLesson[];
 }
 
-export type CreateBundlePayload = Omit<Bundle, 'id'>;
-export type UpdateBundlePayload = Partial<Omit<Bundle, 'id'>>;
+/** Mapează răspunsul brut al API-ului la modelul intern */
+function mapBundle(item: BundleApiItem): Bundle {
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    teacherId: item.teacherId,
+    lessonIds: item.lessonIds ?? [],
+    isPopular: false,
+    grade: null,
+    subjects: [],
+  };
+}
+
+export type CreateBundlePayload = Pick<Bundle, 'name' | 'description' | 'price'> & {
+  lessonIds?: string[];
+};
+export type UpdateBundlePayload = Partial<CreateBundlePayload>;
+
+// ─── Pagination state ─────────────────────────────────────────────────────────
+
+export interface BundlePage {
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  isLast: boolean;
+}
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -44,8 +93,9 @@ export class BundleStore {
   bundles = signal<Bundle[]>([]);
   loading = signal(false);
   error = signal<string | null>(null);
+  pagination = signal<BundlePage | null>(null);
 
-  /** Bundle IDs the student has already purchased */
+  /** Bundle IDs pe care studentul le-a cumpărat deja */
   private readonly purchasedBundleIds = computed(() =>
     new Set(
       this.paymentStore
@@ -61,47 +111,73 @@ export class BundleStore {
 
   // ─── GET /api/v1/bundles ────────────────────────────────────────────────────
 
-  loadBundles(): void {
+  loadBundles(page = 0, size = 10): void {
     this.loading.set(true);
     this.error.set(null);
 
-    this.http.get<Bundle[]>(`${this.apiBase}/bundles`).subscribe({
-      next: (data) => {
-        this.bundles.set(Array.isArray(data) ? data : []);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.loading.set(false);
-        this.error.set('Failed to load bundles. Please try again.');
-      },
-    });
+    this.http
+      .get<PagedResponse<BundleApiItem>>(`${this.apiBase}/bundles`, {
+        params: { page: String(page), size: String(size) },
+      })
+      .subscribe({
+        next: (res) => {
+          // extrage array-ul din wrapper-ul paginat
+          const items = Array.isArray(res.content) ? res.content : [];
+          this.bundles.set(items.map(mapBundle));
+          this.pagination.set({
+            totalElements: res.totalElements,
+            totalPages: res.totalPages,
+            currentPage: res.number,
+            pageSize: res.size,
+            isLast: res.last,
+          });
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loading.set(false);
+          this.error.set('Failed to load bundles. Please try again.');
+        },
+      });
   }
 
   // ─── GET /api/v1/bundles/my ─────────────────────────────────────────────────
 
-  loadMyBundles(): void {
+  loadMyBundles(page = 0, size = 10): void {
     this.loading.set(true);
     this.error.set(null);
 
-    this.http.get<Bundle[]>(`${this.apiBase}/bundles/my`).subscribe({
-      next: (data) => {
-        this.bundles.set(Array.isArray(data) ? data : []);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.loading.set(false);
-        this.error.set('Failed to load your bundles. Please try again.');
-      },
-    });
+    this.http
+      .get<PagedResponse<BundleApiItem>>(`${this.apiBase}/bundles/my`, {
+        params: { page: String(page), size: String(size) },
+      })
+      .subscribe({
+        next: (res) => {
+          const items = Array.isArray(res.content) ? res.content : [];
+          this.bundles.set(items.map(mapBundle));
+          this.pagination.set({
+            totalElements: res.totalElements,
+            totalPages: res.totalPages,
+            currentPage: res.number,
+            pageSize: res.size,
+            isLast: res.last,
+          });
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loading.set(false);
+          this.error.set('Failed to load your bundles. Please try again.');
+        },
+      });
   }
 
   // ─── GET /api/v1/bundles/{id} ───────────────────────────────────────────────
 
   async getBundle(bundleId: string): Promise<Bundle | null> {
     try {
-      return await firstValueFrom(
-        this.http.get<Bundle>(`${this.apiBase}/bundles/${bundleId}`),
+      const item = await firstValueFrom(
+        this.http.get<BundleApiItem>(`${this.apiBase}/bundles/${bundleId}`),
       );
+      return mapBundle(item);
     } catch {
       this.error.set('Failed to fetch bundle.');
       return null;
@@ -115,9 +191,10 @@ export class BundleStore {
     this.error.set(null);
 
     try {
-      const created = await firstValueFrom(
-        this.http.post<Bundle>(`${this.apiBase}/bundles`, payload),
+      const item = await firstValueFrom(
+        this.http.post<BundleApiItem>(`${this.apiBase}/bundles`, payload),
       );
+      const created = mapBundle(item);
       this.bundles.update((list) => [...list, created]);
       return created;
     } catch {
@@ -135,9 +212,10 @@ export class BundleStore {
     this.error.set(null);
 
     try {
-      const updated = await firstValueFrom(
-        this.http.put<Bundle>(`${this.apiBase}/bundles/${bundleId}`, payload),
+      const item = await firstValueFrom(
+        this.http.put<BundleApiItem>(`${this.apiBase}/bundles/${bundleId}`, payload),
       );
+      const updated = mapBundle(item);
       this.bundles.update((list) =>
         list.map((b) => (b.id === bundleId ? updated : b)),
       );
@@ -190,12 +268,11 @@ export class BundleStore {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  formatPrice(priceInCents: number, currency = 'RON'): string {
-    const value = priceInCents / 100;
+  formatPrice(price: number, currency = 'RON'): string {
     try {
-      return new Intl.NumberFormat('ro-RO', { style: 'currency', currency }).format(value);
+      return new Intl.NumberFormat('ro-RO', { style: 'currency', currency }).format(price);
     } catch {
-      return `${value.toFixed(2)} ${currency}`;
+      return `${price.toFixed(2)} ${currency}`;
     }
   }
 }
