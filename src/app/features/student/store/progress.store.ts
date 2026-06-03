@@ -104,35 +104,26 @@ export interface SubjectResponse {
   confidence?: number;
 }
 
+// Mirrors backend StudentDashboardResponse exactly (flat shape).
 export interface DashboardResponse {
   firstName?: string;
   lastName?: string;
   studentId?: string;
-  subjects?: SubjectResponse[];
-  currentStreak?: number;
-  
-  // Legacy / mock fields
-  student?: {
-    id?: string;
-    firstName?: string;
-    lastName?: string;
-    totalLessons?: number;
-    completedLessons?: number;
-  };
   totalLessons?: number;
   completedLessons?: number;
-  skillLevels?: SkillLevel[];
-  streak?: {
-    currentStreak?: number;
-    longestStreak?: number;
-    lastActivityDate?: string | null;
-  };
+  currentStreak?: number;
   longestStreak?: number;
   lastActivityDate?: string | null;
+  subjects?: SubjectResponse[];
   progressRecords?: ProgressRecord[];
   recentActivity?: ActivityItem[];
   milestones?: Milestone[];
   upcomingQuizzes?: UpcomingQuiz[];
+}
+
+// Mirrors backend CompletedLessonsCountResponse.
+export interface CompletedLessonsCountResponse {
+  completedLessonsCount: number;
 }
 
 export interface MyLessonStatsResponse {
@@ -329,43 +320,54 @@ export const ProgressStore = signalStore(
           const classId = (params && typeof params === 'object' && 'classId' in params ? params.classId : null) || '00000000-0000-0000-0000-000000000000';
           return forkJoin({
             dashboard: http.get<DashboardResponse>(`${apiBase}/progress/me/dashboard`, { params: { classId } }),
-            completedCount: http.get<number>(`${apiBase}/progress/me/completed-lessons/count`).pipe(catchError(() => of(null)))
+            completedCount: http
+              .get<CompletedLessonsCountResponse>(`${apiBase}/progress/me/completed-lessons/count`)
+              .pipe(catchError(() => of<CompletedLessonsCountResponse | null>(null)))
           }).pipe(
             tapResponse({
               next: ({ dashboard: data, completedCount }) => {
-                const actualCompletedLessons = completedCount ?? data?.completedLessons ?? data?.student?.completedLessons ?? 0;
-                
-                const studentInfo = {
-                  id: data?.studentId || data?.student?.id || '',
-                  firstName: data?.firstName || data?.student?.firstName || '',
-                  lastName: data?.lastName || data?.student?.lastName || '',
-                  totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
+                const actualCompletedLessons =
+                  completedCount?.completedLessonsCount ?? data?.completedLessons ?? 0;
+
+                const studentInfo: StudentSummary = {
+                  id: data?.studentId ?? '',
+                  firstName: data?.firstName ?? '',
+                  lastName: data?.lastName ?? '',
+                  totalLessons: data?.totalLessons ?? 0,
                   completedLessons: actualCompletedLessons,
                 };
-                const mappedSkillLevels = data?.subjects
-                  ? data.subjects.map((s: SubjectResponse) => ({
-                      subject: s.subjectName || s.subjectId || '',
-                      level: s.skillLevel ?? 0,
-                    }))
-                  : (data?.skillLevels ?? []);
-                const mappedStreak = {
-                  currentStreak: data?.currentStreak ?? data?.streak?.currentStreak ?? 0,
-                  longestStreak: data?.longestStreak ?? data?.streak?.longestStreak ?? 0,
-                  lastActivityDate: data?.lastActivityDate ?? data?.streak?.lastActivityDate ?? '',
+                const mappedSkillLevels: SkillLevel[] = (data?.subjects ?? []).map((s) => ({
+                  subject: s.subjectName || s.subjectId || '',
+                  level: s.skillLevel ?? 0,
+                }));
+                const mappedStreak: StreakData = {
+                  currentStreak: data?.currentStreak ?? 0,
+                  longestStreak: data?.longestStreak ?? 0,
+                  lastActivityDate: data?.lastActivityDate ?? '',
                 };
+
+                const progressRecords = data?.progressRecords ?? [];
+                const scoredRecords = progressRecords.filter(
+                  (r) => typeof r.score === 'number' && !Number.isNaN(r.score),
+                );
+                const averageScore = scoredRecords.length
+                  ? Math.round(
+                      scoredRecords.reduce((sum, r) => sum + r.score, 0) / scoredRecords.length,
+                    )
+                  : 0;
 
                 const dashboard: DashboardData = {
                   student: studentInfo,
                   skillLevels: mappedSkillLevels,
                   streak: mappedStreak,
-                  progressRecords: data?.progressRecords ?? [],
+                  progressRecords,
                   recentActivity: data?.recentActivity ?? [],
                   milestones: data?.milestones ?? [],
                   upcomingQuizzes: data?.upcomingQuizzes ?? [],
-                  totalLessons: data?.totalLessons ?? data?.student?.totalLessons ?? 0,
+                  totalLessons: data?.totalLessons ?? 0,
                   completedLessons: actualCompletedLessons,
-                  averageScore: 0,
-                  lastActive: data?.lastActivityDate ?? data?.streak?.lastActivityDate ?? null,
+                  averageScore,
+                  lastActive: data?.lastActivityDate ?? null,
                 };
 
                 patchState(store, {
