@@ -18,7 +18,6 @@ import { LessonsStore } from '../store/lessons.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { StudentProfileStore } from '../store/profile.store';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
-import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
 import { TeacherClassService } from '../../../core/services/teacher-class.service';
 import { TeacherClass } from '../../teacher/models/class.model';
@@ -29,7 +28,7 @@ import * as d3 from 'd3';
 @Component({
   selector: 'app-progress-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, SkeletonComponent, TimeAgoPipe],
+  imports: [CommonModule, RouterModule, SkeletonComponent],
   templateUrl: './progress-dashboard.component.html',
 })
 export class ProgressDashboardComponent implements OnInit, OnDestroy {

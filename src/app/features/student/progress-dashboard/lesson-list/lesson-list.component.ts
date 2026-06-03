@@ -4,7 +4,6 @@ import { LessonsStore, Lesson } from '../../store/lessons.store';
 import { ProgressStore } from '../../store/progress.store';
 import { AuthStore } from '../../../auth/store/auth.store';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
-import { CardComponent } from '../../../../shared/components/card/card.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { BadgeComponent } from '../../../../shared/components/badge/badge.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
@@ -21,7 +20,6 @@ type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles';
   imports: [
     CommonModule,
     RouterModule,
-    CardComponent,
     ButtonComponent,
     BadgeComponent,
     EmptyStateComponent,
