@@ -42,24 +42,44 @@ export interface Bundle {
   id: string;
   name: string;
   description: string;
-  price: number;           // RON cu zecimale
+  price: number;           // RON cu zecimale (ex: 150.00)
   teacherId: string;
   lessonIds: string[];
-  // câmpuri opționale care pot veni ulterior din API sau rămân cu default
+
+  // ── Câmpuri de compatibilitate cu componenta existentă ──────────────────────
+  /** price × 100, pentru logica de tier din bundles-page (≥ 4000, ≥ 6000 cenți) */
+  priceInCents: number;
+  /** Mereu 'RON' — backend-ul nu returnează currency, dar componenta îl cere */
+  currency: string;
+  /** Alias pentru lessonIds — componenta iterează bundle.lessons */
+  lessons: BundleLessonRef[];
+
+  // ── Câmpuri opționale / viitor ───────────────────────────────────────────────
   isPopular: boolean;
   grade: number | null;
   subjects: string[];
 }
 
+/** Referință minimă la o lecție — conține doar id-ul până când /bundles/{id} va returna obiecte complete */
+export interface BundleLessonRef {
+  id: string;
+}
+
 /** Mapează răspunsul brut al API-ului la modelul intern */
 function mapBundle(item: BundleApiItem): Bundle {
+  const lessonIds = item.lessonIds ?? [];
   return {
     id: item.id,
     name: item.name,
     description: item.description,
     price: item.price,
     teacherId: item.teacherId,
-    lessonIds: item.lessonIds ?? [],
+    lessonIds,
+    // ── câmpuri de compatibilitate ───────────────────────────────────────────
+    priceInCents: Math.round(item.price * 100),
+    currency: 'RON',
+    lessons: lessonIds.map((id) => ({ id })),
+    // ── valori default ───────────────────────────────────────────────────────
     isPopular: false,
     grade: null,
     subjects: [],
@@ -268,11 +288,17 @@ export class BundleStore {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  formatPrice(price: number, currency = 'RON'): string {
+  /**
+   * Formatează prețul pentru afișare.
+   * Acceptă atât `bundle.price` (RON zecimale) cât și `bundle.priceInCents` (cenți).
+   * Dacă valoarea e > 500 se presupune că e în cenți și se împarte la 100 automat.
+   */
+  formatPrice(priceOrCents: number, currency = 'RON'): string {
+    const value = priceOrCents > 500 ? priceOrCents / 100 : priceOrCents;
     try {
-      return new Intl.NumberFormat('ro-RO', { style: 'currency', currency }).format(price);
+      return new Intl.NumberFormat('ro-RO', { style: 'currency', currency }).format(value);
     } catch {
-      return `${price.toFixed(2)} ${currency}`;
+      return `${value.toFixed(2)} ${currency}`;
     }
   }
 }
