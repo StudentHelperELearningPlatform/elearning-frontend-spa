@@ -14,6 +14,11 @@ export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
   { path: 'profile', loadComponent: () => import('./profile/student-profile.component').then((m) => m.StudentProfileComponent) },
   { path: 'lessons', component: LessonListComponent },
+  {
+    path: 'my-classes',
+    loadComponent: () =>
+      import('./my-classes/my-classes.component').then((m) => m.MyClassesComponent),
+  },
   { path: 'milestones', component: MilestonesComponent },
   {
     path: 'history',
