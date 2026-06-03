@@ -10,6 +10,7 @@ export interface ProgressRecord {
   totalModules: number;
   lastAccessedAt: string;
   thumbnailGradient?: string;
+  score: number;
 }
 
 export interface StreakData {
@@ -54,7 +55,10 @@ export interface SkillLevel {
 
 export interface StudentSummary {
   id: string;
+  userId?: string;
+  studentId?: string;
   firstName: string;
+  lastName: string;
   totalLessons: number;
   completedLessons: number;
 }

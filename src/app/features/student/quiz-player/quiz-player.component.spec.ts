@@ -6,7 +6,8 @@ import { QuizzesStore } from '../store/quizzes.store';
 import { computed, EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QuizPlayerComponent } from './quiz-player.component';
-import { QUIZ_API_URL } from '@core/tokens/api.token';
+import { QUIZ_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
+
 
 const MOCK_QUIZ = {
   id: 'quiz-1',
@@ -51,6 +52,7 @@ describe('QuizPlayerComponent', () => {
         provideHttpClient(),
         provideRouter([]),
         { provide: QUIZ_API_URL, useValue: '/api' },
+        { provide: CONTENT_API_URL, useValue: '/api' },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'quiz-1' } } },

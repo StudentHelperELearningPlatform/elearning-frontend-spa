@@ -24,9 +24,9 @@
   </div>
 
   <!-- S6-stats-01: Aggregate Stats (Lessons Started / Completed / Avg Score) -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" data-testid="aggregate-stats">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" data-testid="aggregate-stats">
     @if (progressStore.dashboardLoading()) {
-      @for (i of [1, 2, 3]; track i) {
+      @for (i of [1, 2]; track i) {
         <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <app-skeleton height="1rem" className="w-2/3 mb-2" />
           <app-skeleton height="1.75rem" className="w-1/3" />
@@ -34,33 +34,37 @@
       }
     } @else if (progressStore.dashboardError()) {
       <div
-        class="sm:col-span-3 bg-white border-2 border-red-500 rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-sm text-red-700 font-medium"
+        class="sm:col-span-2 bg-white border-2 border-red-500 rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-sm text-red-700 font-medium"
         role="alert"
       >
         Could not load aggregate stats. {{ progressStore.dashboardError() }}
       </div>
-    } @else if (myDashboard() && (myDashboard()!.totalLessons ?? 0) > 0) {
+    } @else if (startedLessonsCount > 0) {
       <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Lessons started</p>
-        <p class="text-2xl font-black text-black mt-1">{{ myDashboard()!.totalLessons ?? 0 }}</p>
+        <p class="text-2xl font-black text-black mt-1">{{ startedLessonsCount }}</p>
       </div>
       <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Lessons completed</p>
-        <p class="text-2xl font-black text-[#0ABAB5] mt-1">{{ myDashboard()!.completedLessons ?? 0 }}</p>
-      </div>
-      <div class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Average quiz score</p>
+        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Latest lesson</p>
         <p class="text-2xl font-black text-black mt-1">
-          @if (myDashboard()!.averageScore !== null && myDashboard()!.averageScore !== undefined) {
-            {{ myDashboard()!.averageScore }}%
+          @if (latestLessonTitle) {
+            {{ latestLessonTitle }}
           } @else {
             <span class="text-gray-400">—</span>
           }
         </p>
+        @if (latestLessonId) {
+          <a
+            [routerLink]="['/student/lesson-viewer', latestLessonId]"
+            class="inline-block mt-3 px-4 py-1.5 bg-[#0ABAB5] text-white font-black rounded border-2 border-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all"
+          >
+            Go to lesson
+          </a>
+        }
       </div>
     } @else {
       <div
-        class="sm:col-span-3 bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center"
+        class="sm:col-span-2 bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center"
         data-testid="empty-aggregate-stats"
       >
         <p class="text-gray-600 font-medium">You haven't started any lessons yet.</p>
@@ -107,17 +111,13 @@
             <p class="text-gray-500 font-bold mt-2 text-sm">Not enrolled in any classes yet</p>
           </div>
         } @else {
-          <div class="space-y-3">
+          <div class="space-y-3 max-h-64 overflow-y-auto pr-2">
             @for (c of enrolledClassesList(); track c.id) {
               <div class="p-3 border-2 border-black rounded-xl bg-gray-50 hover:bg-[#0ABAB5]/5 transition-colors flex items-center justify-between">
                 <div>
                   <p class="font-black text-black text-sm">{{ c.name }}</p>
                   <p class="text-xs text-gray-500 font-medium mt-0.5">{{ c.description || 'No description' }}</p>
                 </div>
-                <span class="inline-flex items-center gap-1 text-xs font-bold bg-[#0ABAB5]/10 text-[#0ABAB5] border border-[#0ABAB5] px-2.5 py-0.5 rounded-full flex-shrink-0">
-                  <span class="material-icons text-[12px]" aria-hidden="true">menu_book</span>
-                  {{ c.lessonCount }} lessons
-                </span>
               </div>
             }
           </div>
@@ -250,83 +250,7 @@
 
   </div><!-- /card grid -->
 
-  <!-- Recent Activity Feed -->
-  <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-    <h3 class="text-xl font-black text-black mb-4">Recent Activity</h3>
-    @if (progressStore.loading()) {
-      @for (i of [1, 2, 3]; track i) {
-        <div class="flex items-center gap-4 border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-          <app-skeleton width="2.5rem" height="2.5rem" className="rounded-full flex-shrink-0" />
-          <div class="space-y-2 flex-1">
-            <app-skeleton height="1rem" className="w-1/2" />
-            <app-skeleton height="0.75rem" className="w-1/4" />
-          </div>
-        </div>
-      }
-    } @else if (progressStore.recentActivity().length === 0) {
-      <p class="text-gray-500 font-medium">No recent activity yet.</p>
-    } @else {
-      <ul class="space-y-0">
-        @for (activity of progressStore.recentActivity().slice(0, 5); track activity.id) {
-          <li class="flex items-center gap-4 border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-            <a
-              [routerLink]="getActivityRoute(activity)"
-              class="w-10 h-10 bg-[#0ABAB5]/10 rounded-full flex items-center justify-center border-2 border-black flex-shrink-0 hover:bg-[#0ABAB5]/20 transition-colors"
-              [attr.aria-label]="activity.title"
-            >
-              <span class="material-icons text-[#0ABAB5] text-lg">{{ getActivityIcon(activity) }}</span>
-            </a>
-            <div>
-              <p class="font-bold text-black">{{ activity.title }}</p>
-              <p class="text-xs text-gray-500">{{ activity.timestamp | timeAgo }}</p>
-            </div>
-          </li>
-        }
-      </ul>
-    }
-  </div>
 
-  <!-- Upcoming Quizzes Card -->
-  <div class="bg-white border-2 border-black rounded-xl p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-    <h3 class="text-xl font-black text-black mb-4">Upcoming Quizzes</h3>
-    @if (progressStore.loading()) {
-      @for (i of [1, 2]; track i) {
-        <div class="flex items-center justify-between border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-          <div class="space-y-2 flex-1">
-            <app-skeleton height="1rem" className="w-1/2" />
-            <app-skeleton height="0.75rem" className="w-1/3" />
-          </div>
-          <app-skeleton width="6rem" height="2rem" className="rounded ml-4" />
-        </div>
-      }
-    } @else if (progressStore.upcomingQuizzes().length === 0) {
-      <p class="text-gray-500 font-medium">No upcoming quizzes.</p>
-    } @else {
-      <ul class="space-y-0">
-        @for (quiz of progressStore.upcomingQuizzes(); track quiz.id) {
-          <li class="flex items-center justify-between border-b-2 border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-            <div>
-              <p class="font-bold text-black">{{ quiz.title }}</p>
-              <div class="flex items-center gap-2 mt-1">
-                <span class="text-xs font-bold bg-gray-100 border border-black px-2 py-0.5 rounded">
-                  {{ quiz.subject }}
-                </span>
-                @if (quiz.dueDate) {
-                  <span class="text-xs text-gray-500">Due {{ quiz.dueDate | date:'mediumDate' }}</span>
-                }
-              </div>
-            </div>
-            <a
-              [routerLink]="['/student/quizzes', quiz.id]"
-              class="px-4 py-1.5 bg-[#0ABAB5] text-white font-black rounded border-2 border-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all flex-shrink-0"
-            >
-              Take Quiz
-            </a>
-          </li>
-        }
-      </ul>
-    }
-  </div>
 
 </div>
 

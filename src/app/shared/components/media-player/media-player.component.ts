@@ -60,10 +60,10 @@ import { CommonModule } from '@angular/common';
         </a>
       }
     </div>
-  `,
+  `
 })
 export class MediaPlayerComponent {
-  url = input<string>('');
+  url = input.required<string>();
   type = input<'image' | 'video' | 'audio' | 'pdf'>('image');
   title = input<string>('Media');
 }

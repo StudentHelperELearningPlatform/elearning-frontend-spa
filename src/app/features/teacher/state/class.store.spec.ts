@@ -60,7 +60,7 @@ describe('ClassStore', () => {
     store.loadClasses();
     expect(store.loading()).toBe(true);
 
-    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
     expect(req.request.method).toBe('GET');
     req.flush(mockClasses);
 
@@ -72,11 +72,33 @@ describe('ClassStore', () => {
 
   it('should handle error when loading classes', () => {
     store.loadClasses();
-    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`);
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
     expect(store.loading()).toBe(false);
     expect(store.error()).toContain('Http failure response');
+  });
+
+  it('should load classes from paginated response with classes field', () => {
+    store.loadClasses();
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
+    req.flush({ classes: [{ id: '1', name: 'Math', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' }] });
+    expect(store.classes().length).toBe(1);
+    expect(store.classes()[0].id).toBe('1');
+  });
+
+  it('should load classes from paginated response with content field', () => {
+    store.loadClasses();
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
+    req.flush({ content: [{ id: '1', name: 'Math', studentCount: 10, lessonCount: 5, createdAt: '2023-01-01T00:00:00Z' }] });
+    expect(store.classes().length).toBe(1);
+  });
+
+  it('should load classes with fallback empty array if paginated response is missing fields', () => {
+    store.loadClasses();
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
+    req.flush({ otherField: [{ id: '1', name: 'Math' }] });
+    expect(store.classes().length).toBe(0);
   });
 
   it('should load class detail', () => {
@@ -102,7 +124,7 @@ describe('ClassStore', () => {
     expect(store.currentClass()?.name).toBe('Math');
     expect(store.currentClass()?.lessons).toEqual(mockLessons);
     expect(store.currentClass()?.students).toEqual([
-      { id: 's1', name: 'John Doe', email: 'john@example.com' },
+      { id: 's1', studentId: 's1', userId: undefined, name: 'John Doe', email: 'john@example.com' },
     ]);
   });
 
@@ -183,7 +205,7 @@ describe('ClassStore', () => {
     flushClassDetail('1', initialDetailRaw, [], [], []);
 
     store.loadClasses();
-    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`).flush([initialClass]);
+    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`).flush([initialClass]);
 
     const mockUpdatedClass: TeacherClass = { ...initialClass, name: 'New Math', description: 'New Bio' };
     const payload = { name: 'New Math', description: 'New Bio' };
@@ -214,7 +236,7 @@ describe('ClassStore', () => {
   it('should delete class and run filter predicate on classes list', () => {
     // Populate classes list to ensure filter runs
     store.loadClasses();
-    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes`).flush([
+    httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`).flush([
       { id: '1', name: 'Math', studentCount: 0, lessonCount: 0, createdAt: '' }
     ]);
     expect(store.classes().length).toBe(1);
@@ -323,5 +345,74 @@ describe('ClassStore', () => {
   it('should return early when removing lesson if no current class', () => {
     store.removeLesson('1', 'l1');
     httpTestingController.expectNone(`${mockApiUrl}/teachers/classes/1/lessons/l1`);
+  });
+
+  it('should correctly map student details with various raw data shapes', () => {
+    const mockDetailRaw = { id: '1', name: 'Math', bio: '', createdAt: '' };
+    const enrolledRaw = [
+      's1',
+      { userId: 'u2' },
+      { id: 's3' },
+      { studentId: 's4' },
+      { id: 's5', name: 'Predefined Name' },
+      { userId: 'u6', firstName: 'Jane', lastName: 'Doe' },
+      {}
+    ];
+    const allStudentsRaw = [
+      { id: 's1', name: 'Alice' },
+      { userId: 'u2', name: 'Bob' },
+      { studentId: 's3', name: 'Charlie' }
+    ];
+
+    store.loadClassDetail('1');
+    flushClassDetail('1', mockDetailRaw, [], enrolledRaw, allStudentsRaw);
+
+    const students = store.currentClass()?.students || [];
+    expect(students.length).toBe(7);
+    expect(students[0]).toEqual({ id: 's1', studentId: 's1', userId: undefined, name: 'Alice', email: '' });
+    expect(students[1]).toEqual({ id: 'u2', studentId: '', userId: 'u2', name: 'Bob', email: '' });
+    expect(students[2]).toEqual({ id: 's3', studentId: 's3', userId: undefined, name: 'Charlie', email: '' });
+    expect(students[3]).toEqual({ id: 's4', studentId: 's4', userId: undefined, name: 's4', email: '' });
+    expect(students[4]).toEqual({ id: 's5', studentId: 's5', userId: undefined, name: 'Predefined Name', email: '' });
+    expect(students[5]).toEqual({ id: 'u6', studentId: '', userId: 'u6', name: 'Jane Doe', email: '' });
+    expect(students[6]).toEqual({ id: '', studentId: '', userId: undefined, name: '', email: '' });
+  });
+
+  it('should add student to class with userId fallback when primary request fails', () => {
+    store.addStudent('1', 's1', 'u1').subscribe();
+
+    const primaryReq = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1/students/s1`);
+    expect(primaryReq.request.method).toBe('POST');
+    primaryReq.flush('Error', { status: 500, statusText: 'Error' });
+
+    const fallbackReq = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1/students/u1`);
+    expect(fallbackReq.request.method).toBe('POST');
+    fallbackReq.flush({});
+  });
+
+  it('should skip userId fallback when userId equals studentId', () => {
+    store.addStudent('1', 's1', 's1').subscribe();
+
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes/1/students/s1`);
+    req.flush({});
+  });
+
+  it('should load classes with explicit pageIndex', () => {
+    store.loadClasses(2);
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=2&size=9`);
+    req.flush([]);
+    expect(store.loading()).toBe(false);
+  });
+
+  it('should set totalPages and totalElements from paginated response', () => {
+    store.loadClasses();
+    const req = httpTestingController.expectOne(`${mockApiUrl}/teachers/classes?page=0&size=9`);
+    req.flush({
+      classes: [{ id: '1', name: 'Math', studentCount: 5, lessonCount: 2, createdAt: '' }],
+      totalPages: 4,
+      totalElements: 36,
+    });
+    expect(store.totalPages()).toBe(4);
+    expect(store.totalElements()).toBe(36);
   });
 });

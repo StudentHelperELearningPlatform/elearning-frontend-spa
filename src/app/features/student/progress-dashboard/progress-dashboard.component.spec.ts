@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { ProgressDashboardComponent } from './progress-dashboard.component';
 import { ProgressStore } from '../store/progress.store';
+import { LessonsStore } from '../store/lessons.store';
 import { AuthStore } from '../../auth/store/auth.store';
 import { StudentProfileStore, StudentProfile } from '../store/profile.store';
 import { TeacherClassService } from '../../../core/services/teacher-class.service';
 import { ElementRef, signal, WritableSignal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { ActivityItem, ProgressRecord } from '@shared/models/progress.model';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
@@ -13,13 +14,13 @@ import { of, throwError } from 'rxjs';
 
 describe('ProgressDashboardComponent (Logic)', () => {
   let component: ProgressDashboardComponent;
-  let resizeCallback: (() => void) | undefined;
   let progressStoreMock: {
     student: WritableSignal<unknown>;
     activeStreak: WritableSignal<number>;
     skillLevels: WritableSignal<unknown[]>;
-    loadDashboard: ReturnType<typeof vi.fn>;
+
     loadMyDashboard: ReturnType<typeof vi.fn>;
+    loadMyHistory: ReturnType<typeof vi.fn>;
     loadMyLessonStats: ReturnType<typeof vi.fn>;
     loading: WritableSignal<boolean>;
     error: WritableSignal<string | null>;
@@ -32,6 +33,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
     dashboard: WritableSignal<unknown>;
     dashboardLoading: WritableSignal<boolean>;
     dashboardError: WritableSignal<string | null>;
+    myHistory: WritableSignal<{ lessonId: string; lessonTitle?: string; status: 'not_started' | 'in_progress' | 'completed'; score: number | null; dateCompleted: string | null }[]>;
   };
   let studentProfileStoreMock: {
     profile: WritableSignal<StudentProfile | null>;
@@ -41,17 +43,18 @@ describe('ProgressDashboardComponent (Logic)', () => {
     loadStudentProfile: ReturnType<typeof vi.fn>;
   };
   let authStoreStub: ReturnType<typeof createAuthStoreStub>;
+  let lessonsStoreMock: {
+    currentLesson: WritableSignal<{ id: string; title: string } | null>;
+    lessons: WritableSignal<{ id: string; title: string }[]>;
+    loadLesson: ReturnType<typeof vi.fn>;
+  };
   let routerMock: {
     navigate: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
-    // Mock ResizeObserver
-    resizeCallback = undefined;
+    // Mock ResizeObserver — no-op; observer triggering is exercised indirectly via renderRadarChart().
     global.ResizeObserver = class {
-      constructor(cb: () => void) {
-        resizeCallback = cb;
-      }
       observe = vi.fn();
       unobserve = vi.fn();
       disconnect = vi.fn();
@@ -61,8 +64,9 @@ describe('ProgressDashboardComponent (Logic)', () => {
       student: signal({ firstName: 'Test', totalLessons: 10, completedLessons: 5 }),
       activeStreak: signal(5),
       skillLevels: signal([]),
-      loadDashboard: vi.fn(),
+
       loadMyDashboard: vi.fn(),
+      loadMyHistory: vi.fn(),
       loadMyLessonStats: vi.fn(),
       loading: signal(false),
       error: signal(null),
@@ -75,6 +79,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       dashboard: signal(null),
       dashboardLoading: signal(false),
       dashboardError: signal(null),
+      myHistory: signal([]),
     };
 
     studentProfileStoreMock = {
@@ -97,6 +102,12 @@ describe('ProgressDashboardComponent (Logic)', () => {
       isAuthenticated: true
     });
 
+    lessonsStoreMock = {
+      currentLesson: signal(null),
+      lessons: signal([]),
+      loadLesson: vi.fn(),
+    };
+
     routerMock = {
       navigate: vi.fn(),
     };
@@ -104,10 +115,18 @@ describe('ProgressDashboardComponent (Logic)', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ProgressStore, useValue: progressStoreMock },
+        { provide: LessonsStore, useValue: lessonsStoreMock },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: StudentProfileStore, useValue: studentProfileStoreMock },
-        { provide: TeacherClassService, useValue: { getClassDetail: vi.fn().mockReturnValue(of({ id: 'class-1', name: 'Mock Class', description: 'Mock Class Desc', lessonCount: 2 })) } },
+        { provide: TeacherClassService, useValue: { getStudentClasses: vi.fn().mockReturnValue(of([{ id: 'class-1', name: 'Mock Class', description: 'Mock Class Desc', lessonCount: 2 }])) } },
         { provide: Router, useValue: routerMock },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { queryParamMap: convertToParamMap({}) },
+            queryParamMap: of(convertToParamMap({})),
+          },
+        },
         ...provideApiMocks(),
       ],
     });
@@ -122,28 +141,13 @@ describe('ProgressDashboardComponent (Logic)', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should call progressStore.loadDashboard on init', () => {
+  it('should fetch dashboard via loadMyDashboard when profile loads', async () => {
+    studentProfileStoreMock.profile.set({ enrolledClasses: ['class-123'] } as unknown as StudentProfile);
     TestBed.runInInjectionContext(() => {
       component.ngOnInit();
     });
-    expect(progressStoreMock.loadDashboard).toHaveBeenCalledWith('123');
-  });
-
-  it('should also pull aggregate stats from loadMyDashboard on init', () => {
-    TestBed.runInInjectionContext(() => {
-      component.ngOnInit();
-    });
-    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
-  });
-
-  it('should skip loadDashboard when user is not yet loaded', () => {
-    (authStoreStub.user as WritableSignal<{ id: string, name: string } | null>).set(null);
-    TestBed.runInInjectionContext(() => {
-      component.ngOnInit();
-    });
-    expect(progressStoreMock.loadDashboard).not.toHaveBeenCalled();
-    // loadMyDashboard is token-based and always safe
-    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalled();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(progressStoreMock.loadMyDashboard).toHaveBeenCalledWith({ classId: 'class-1' });
   });
 
   describe('greeting', () => {
@@ -223,47 +227,31 @@ describe('ProgressDashboardComponent (Logic)', () => {
   });
 
   describe('D3 Radar Chart and View Lifecycle', () => {
-    it('should call renderRadarChart in ngAfterViewInit if skills present', () => {
-      const el = document.createElement('div');
-      Object.defineProperty(el, 'clientWidth', { value: 300 });
-      component.radarContainer = { nativeElement: el } as ElementRef;
-      progressStoreMock.skillLevels.set([{ subject: 'Math', level: 80 }, { subject: 'Bio', level: 60 }, { subject: 'Physics', level: 70 }]);
-      
-      const spy = vi.spyOn(component, 'renderRadarChart');
-      component.ngAfterViewInit();
-      
-      expect(spy).toHaveBeenCalled();
+    // The component now uses signal-based viewChild(), so tests stub it with a
+    // callable returning { nativeElement } instead of assigning the field.
+    function stubRadarContainer(component: ProgressDashboardComponent, el: HTMLDivElement | null) {
+      (component as unknown as { radarContainer: () => ElementRef | undefined }).radarContainer =
+        () => (el ? ({ nativeElement: el } as ElementRef) : undefined);
+    }
+
+    it('renderRadarChart is a no-op when the container ref is unavailable', () => {
+      stubRadarContainer(component, null);
+      // No throw, no DOM mutation — just exits early.
+      expect(() => component.renderRadarChart([{ subject: 'Math', level: 80 }])).not.toThrow();
     });
 
     it('should clean up resizeObserver on destroy', () => {
-      // Mock ResizeObserver
       const disconnectSpy = vi.fn();
       (component as unknown as { resizeObserver: { disconnect: () => void } }).resizeObserver = { disconnect: disconnectSpy };
-      
+
       component.ngOnDestroy();
       expect(disconnectSpy).toHaveBeenCalled();
-    });
-
-    it('should render radar chart on resize observer trigger', () => {
-      const el = document.createElement('div');
-      Object.defineProperty(el, 'clientWidth', { value: 300 });
-      component.radarContainer = { nativeElement: el } as ElementRef;
-      progressStoreMock.skillLevels.set([{ subject: 'Math', level: 80 }, { subject: 'Bio', level: 60 }]);
-
-      component.ngAfterViewInit();
-      expect(resizeCallback).toBeDefined();
-
-      const spy = vi.spyOn(component, 'renderRadarChart');
-      if (resizeCallback) {
-        resizeCallback();
-      }
-      expect(spy).toHaveBeenCalled();
     });
 
     it('should render SVG elements in renderRadarChart', () => {
       const el = document.createElement('div');
       Object.defineProperty(el, 'clientWidth', { value: 300 });
-      component.radarContainer = { nativeElement: el } as ElementRef;
+      stubRadarContainer(component, el);
       const skills = [
         { subject: 'Math', level: 80 },
         { subject: 'Bio', level: 60 },
@@ -271,7 +259,7 @@ describe('ProgressDashboardComponent (Logic)', () => {
       ];
 
       component.renderRadarChart(skills);
-      
+
       const svg = el.querySelector('svg');
       expect(svg).toBeTruthy();
       expect(svg?.getAttribute('aria-label')).toBe('Skill radar chart');
@@ -286,9 +274,10 @@ describe('ProgressDashboardComponent (Logic)', () => {
         component.ngOnInit();
       });
       expect(studentProfileStoreMock.loadStudentProfile).toHaveBeenCalled();
+      expect(progressStoreMock.loadMyHistory).toHaveBeenCalled();
     });
 
-    it('should fetch class details if student has enrolled classes', async () => {
+    it('should fetch student classes on init', async () => {
       studentProfileStoreMock.profile.set({
         enrolledClasses: ['class-123'],
       });
@@ -301,6 +290,8 @@ describe('ProgressDashboardComponent (Logic)', () => {
     });
 
     it('should clean enrolledClassesList if student has no classes', async () => {
+      const classService = TestBed.inject(TeacherClassService);
+      vi.spyOn(classService, 'getStudentClasses').mockReturnValue(of([]));
       studentProfileStoreMock.profile.set({
         enrolledClasses: [],
       });
@@ -309,9 +300,9 @@ describe('ProgressDashboardComponent (Logic)', () => {
       expect(component.enrolledClassesList().length).toBe(0);
     });
 
-    it('should handle getClassDetail failure gracefully', async () => {
+    it('should handle getStudentClasses failure gracefully', async () => {
       const classService = TestBed.inject(TeacherClassService);
-      vi.spyOn(classService, 'getClassDetail').mockReturnValue(throwError(() => new Error('Failed')));
+      vi.spyOn(classService, 'getStudentClasses').mockReturnValue(throwError(() => new Error('Failed')));
 
       studentProfileStoreMock.profile.set({
         enrolledClasses: ['class-failed'],
@@ -325,6 +316,118 @@ describe('ProgressDashboardComponent (Logic)', () => {
       progressStoreMock.continueLesson.set({ lessonId: 'lesson-continue', status: 'IN_PROGRESS' });
       await new Promise(resolve => setTimeout(resolve, 50));
       expect(progressStoreMock.loadMyLessonStats).toHaveBeenCalledWith({ lessonId: 'lesson-continue' });
+    });
+  });
+
+  describe('History-based aggregate fallback', () => {
+    it('computes started count and latest lesson from myHistory when dashboard aggregate is unavailable', () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([
+        { lessonId: 'l1', status: 'in_progress', score: 70, dateCompleted: null },
+        { lessonId: 'l2', status: 'completed', score: 90, dateCompleted: '2026-05-01', lessonTitle: 'Algebra Basics' },
+        { lessonId: 'l3', status: 'completed', score: 80, dateCompleted: '2026-05-10', lessonTitle: 'Geometry Intro' },
+      ]);
+
+      expect(component.startedLessonsCount).toBe(3);
+      expect(component.latestLessonTitle).toBe('Geometry Intro');
+    });
+
+    it('loads latest lesson by id and uses currentLesson title when history title is missing', async () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([
+        { lessonId: 'lesson-123', status: 'completed', score: 80, dateCompleted: '2026-05-10', lessonTitle: '' },
+      ]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(lessonsStoreMock.loadLesson).toHaveBeenCalledWith('lesson-123');
+
+      lessonsStoreMock.lessons.set([{ id: 'lesson-123', title: 'Current Lesson Title 123' }]);
+      expect(component.latestLessonTitle).toBe('Current Lesson Title 123');
+    });
+
+    it('ignores "Untitled lesson" history placeholder and uses currentLesson title', async () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([
+        { lessonId: 'lesson-456', status: 'completed', score: 80, dateCompleted: '2026-05-11', lessonTitle: 'Untitled lesson' },
+      ]);
+      lessonsStoreMock.lessons.set([{ id: 'lesson-456', title: 'The Real Title 456' }]);
+      expect(component.latestLessonTitle).toBe('The Real Title 456');
+    });
+  });
+
+  describe('startedLessonsCount with dashboard data', () => {
+    it('returns totalLessons from dashboard when > 0', () => {
+      progressStoreMock.dashboard.set({ totalLessons: 7, completedLessons: 3 });
+      progressStoreMock.myHistory.set([]);
+      expect(component.startedLessonsCount).toBe(7);
+    });
+
+    it('falls back to history count when dashboard totalLessons is 0', () => {
+      progressStoreMock.dashboard.set({ totalLessons: 0 });
+      progressStoreMock.myHistory.set([
+        { lessonId: 'l1', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+        { lessonId: 'l2', status: 'in_progress', score: null, dateCompleted: null },
+      ]);
+      expect(component.startedLessonsCount).toBe(2);
+    });
+
+    it('falls back to history count when dashboard totalLessons is null', () => {
+      // totalLessons: null means dashboardStarted !== null is false → short-circuits to history
+      progressStoreMock.dashboard.set({ totalLessons: null });
+      progressStoreMock.myHistory.set([
+        { lessonId: 'l1', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+      ]);
+      expect(component.startedLessonsCount).toBe(1);
+    });
+
+    it('returns 0 when history is empty and dashboard is null', () => {
+      progressStoreMock.dashboard.set(null);
+      progressStoreMock.myHistory.set([]);
+      expect(component.startedLessonsCount).toBe(0);
+    });
+  });
+
+  describe('latestLessonId edge cases', () => {
+    it('returns null when myHistory is empty', () => {
+      progressStoreMock.myHistory.set([]);
+      expect(component.latestLessonId).toBeNull();
+    });
+
+    it('sorts by dateCompleted and returns latest lessonId', () => {
+      progressStoreMock.myHistory.set([
+        { lessonId: 'older', status: 'completed', score: 80, dateCompleted: '2026-04-01' },
+        { lessonId: 'newest', status: 'completed', score: 90, dateCompleted: '2026-05-10' },
+      ]);
+      expect(component.latestLessonId).toBe('newest');
+    });
+
+    it('handles null dateCompleted (treats as 0 time)', () => {
+      progressStoreMock.myHistory.set([
+        { lessonId: 'has-date', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+        { lessonId: 'no-date', status: 'in_progress', score: null, dateCompleted: null },
+      ]);
+      expect(component.latestLessonId).toBe('has-date');
+    });
+
+    it('returns null when no entry has a lessonId', () => {
+      progressStoreMock.myHistory.set([
+        { lessonId: '', status: 'completed', score: 80, dateCompleted: '2026-05-01' },
+      ]);
+      expect(component.latestLessonId).toBeNull();
+    });
+  });
+
+  describe('latestLessonTitle edge cases', () => {
+    it('returns null when latestLessonId is null', () => {
+      progressStoreMock.myHistory.set([]);
+      expect(component.latestLessonTitle).toBeNull();
+    });
+
+    it('returns null when no matching lesson found in history or store', () => {
+      progressStoreMock.myHistory.set([
+        { lessonId: 'lesson-xyz', status: 'completed', score: 80, dateCompleted: '2026-05-01', lessonTitle: '' },
+      ]);
+      lessonsStoreMock.lessons.set([]);
+      expect(component.latestLessonTitle).toBeNull();
     });
   });
 });

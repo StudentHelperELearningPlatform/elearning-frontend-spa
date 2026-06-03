@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, effect } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -8,6 +8,10 @@ import { AuthStore } from '../../auth/store/auth.store';
 import { MediaPlayerComponent } from '../../../shared/components/media-player/media-player.component';
 import { ModuleContentComponent } from './module-content/module-content.component';
 import { MessageService } from 'primeng/api';
+import { HttpClient } from '@angular/common/http';
+import { QUIZ_API_URL } from '@core/tokens/api.token';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { CardComponent } from '@shared/components/card/card.component';
@@ -24,6 +28,15 @@ interface ViewerMedia {
   url: string;
   type: ViewerMediaType;
   mediaId?: string;
+}
+
+interface QuizAttempt {
+  attemptId?: string;
+  id?: string;
+  score?: number;
+  submittedAt?: number | string;
+  passed?: boolean;
+  percentage?: number;
 }
 
 @Component({
@@ -43,6 +56,7 @@ interface ViewerMedia {
   ],
   template: `
     <div class="h-auto md:h-[calc(100vh-80px)] flex flex-col md:flex-row bg-gray-50 overflow-y-auto md:overflow-hidden">
+      <!-- Sidebar / Modules List -->
       <div
         class="w-full md:w-80 bg-white border-r-4 border-black flex flex-col h-auto md:h-full z-10 shadow-[4px_0px_0px_0px_rgba(0,0,0,1)]"
       >
@@ -54,11 +68,9 @@ interface ViewerMedia {
             <span class="material-icons mr-2">arrow_back</span>
             Back to Lessons
           </button>
-
           <h2 class="text-2xl font-black text-black leading-tight">
             {{ store.currentLesson()?.title || 'Loading...' }}
           </h2>
-
           <div class="flex items-center mt-3 space-x-2">
             <app-badge variant="primary" icon="category">
               {{ store.currentLesson()?.subject }}
@@ -80,15 +92,36 @@ interface ViewerMedia {
           } @else {
             @for (sub of store.currentLesson()?.subcapitols; track sub.id) {
               <div class="space-y-3">
-                <h3
-                  class="font-black text-black uppercase tracking-wider text-xs mb-2 px-2 opacity-50"
-                >
-                  {{ sub.title }}
-                </h3>
+                <div class="flex items-center justify-between mb-2 px-2">
+                  <h3 class="font-black text-black uppercase tracking-wider text-xs opacity-75 truncate max-w-[150px]" [title]="sub.title">
+                    {{ sub.title }}
+                  </h3>
+
+                  @let exists = subcapitolQuizzesExist()[sub.id] !== false;
+                  @if (exists) {
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      @let bestAttempt = getBestAttempt(sub.id);
+                      @if (bestAttempt) {
+                        <span
+                          class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wide border bg-gray-100 text-gray-700 border-gray-300"
+                        >
+                          {{ bestAttempt.score ?? 0 }} pts
+                        </span>
+                      }
+
+                      <button
+                        (click)="startCheckQuiz(sub.id)"
+                        class="flex items-center justify-center p-1 rounded-lg border-2 border-black bg-white text-black hover:bg-[#0ABAB5]/10 hover:text-[#0ABAB5] active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none duration-150"
+                        [title]="bestAttempt ? 'Retake Check Quiz' : 'Start Check Quiz'"
+                      >
+                        <span class="material-icons text-[14px]">quiz</span>
+                      </button>
+                    </div>
+                  }
+                </div>
 
                 @for (module of sub.blocks; track module.id) {
                   @let globalIdx = getGlobalIndex(sub, module);
-
                   <div
                     (click)="selectModule(globalIdx)"
                     (keydown.enter)="selectModule(globalIdx)"
@@ -122,7 +155,6 @@ interface ViewerMedia {
                       >
                         {{ module.title }}
                       </h4>
-
                       <div
                         class="flex items-center mt-1 text-xs font-medium opacity-80"
                         [ngClass]="{
@@ -145,6 +177,7 @@ interface ViewerMedia {
       </div>
 
       <div class="flex-1 flex flex-col h-auto md:h-full overflow-y-auto md:overflow-hidden bg-white relative">
+        <!-- Decorative Background Pattern -->
         <div
           class="absolute inset-0 opacity-5 pointer-events-none"
           style="background-image: radial-gradient(#000 2px, transparent 2px); background-size: 30px 30px;"
@@ -236,6 +269,24 @@ interface ViewerMedia {
                 </div>
               }
             </div>
+          } @else if (!hasAccess()) {
+            <!-- Locked state in viewer -->
+            <div class="h-full flex items-center justify-center p-8">
+              <div class="max-w-md w-full text-center">
+                <div class="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-violet-100 border-4 border-black mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <span class="material-icons text-5xl text-violet-500">lock</span>
+                </div>
+                <h2 class="text-2xl font-black text-black mb-3">This lesson is locked</h2>
+                <p class="text-gray-600 font-medium mb-6">Purchase access to view and interact with all modules.</p>
+                <button
+                  (click)="checkoutOpen.set(true)"
+                  class="inline-flex items-center gap-2 px-8 py-4 bg-[#FFD700] text-black font-black rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+                >
+                  <span class="material-icons">shopping_cart</span>
+                  Unlock Lesson
+                </button>
+              </div>
+            </div>
           } @else {
             <div class="h-full flex items-center justify-center">
               <app-empty-state
@@ -247,7 +298,7 @@ interface ViewerMedia {
           }
         </div>
 
-        @if (store.allModulesComplete() && hasAccess()) {
+        @if (store.allModulesComplete() && hasAccess() && store.hasFinalQuiz() !== false) {
           @if (store.lastQuizAttempt(); as attempt) {
             <div
               class="mx-6 mb-4 p-5 rounded-2xl border-4 border-[#0ABAB5] bg-[#0ABAB5]/10 flex flex-col md:flex-row items-center justify-between gap-4"
@@ -266,7 +317,6 @@ interface ViewerMedia {
                   </p>
                 </div>
               </div>
-
               <app-button variant="secondary" icon="refresh" (btnClick)="startFinalQuiz()">
                 Retake Quiz
               </app-button>
@@ -287,7 +337,6 @@ interface ViewerMedia {
                   </p>
                 </div>
               </div>
-
               <app-button
                 variant="primary"
                 icon="quiz"
@@ -300,6 +349,7 @@ interface ViewerMedia {
           }
         }
 
+        <!-- Bottom Navigation Bar -->
         @if (hasAccess()) {
           <div
             class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)]"
@@ -355,6 +405,7 @@ interface ViewerMedia {
         (closed)="checkoutOpen.set(false)"
       />
 
+      <!-- AI Explanation Modal -->
       <app-modal
         [isOpen]="explanationOpen()"
         title="✨ AI Explanation"
@@ -371,6 +422,7 @@ interface ViewerMedia {
           </div>
         } @else if (store.explanation(); as exp) {
           <div class="max-h-[55vh] overflow-y-auto space-y-4 text-sm text-gray-800 leading-relaxed pr-1">
+            <!-- Header -->
             <div class="flex items-center gap-2 pb-3 border-b-2 border-black/10 sticky top-0 bg-white">
               <span class="material-icons text-[#0ABAB5]">psychology</span>
               <p class="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">
@@ -378,6 +430,7 @@ interface ViewerMedia {
               </p>
             </div>
 
+            <!-- Simplified Explanation -->
             <div>
               <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2">
                 Simplified Explanation
@@ -388,6 +441,7 @@ interface ViewerMedia {
               ></p>
             </div>
 
+            <!-- Analogy -->
             @if (exp.analogy) {
               <div class="rounded-xl border-2 border-[#0ABAB5] bg-[#0ABAB5]/5 p-4">
                 <p class="text-xs font-black uppercase tracking-wider text-[#0ABAB5] mb-2 flex items-center gap-1">
@@ -401,6 +455,7 @@ interface ViewerMedia {
               </div>
             }
 
+            <!-- Check for Understanding -->
             @if (exp.check_for_understanding_question) {
               <div class="rounded-xl border-2 border-black bg-gray-50 p-4">
                 <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1">
@@ -423,18 +478,37 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   store = inject(LessonsStore);
   progressStore = inject(ProgressStore);
   authStore = inject(AuthStore);
-
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly messageService = inject(MessageService);
+  private readonly http = inject(HttpClient);
+  private readonly quizApi = inject(QUIZ_API_URL);
 
   currentModuleIndex = signal(0);
   private readonly lessonId = signal<string | null>(null);
   protected readonly checkoutOpen = signal(false);
   protected readonly explanationOpen = signal(false);
 
-  hasAccess = computed(() => true);
+  hasAccess = computed(() => {
+    const id = this.lessonId();
+    if (!id) return true;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) return true; // seed/mock lessons always accessible
+    return this.store.accessibleLessonIds().has(id);
+  });
+
+  subcapitolAttempts = signal<Record<string, QuizAttempt[]>>({});
+  subcapitolQuizzesExist = signal<Record<string, boolean>>({});
+
+  constructor() {
+    effect(() => {
+      const lesson = this.store.currentLesson();
+      if (lesson && lesson.subcapitols) {
+        this.loadSubcapitolAttempts(lesson.subcapitols);
+      }
+    });
+  }
 
   currentModule = computed(() => {
     const lesson = this.store.currentLesson();
@@ -477,12 +551,16 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   reloadLesson() {
     const id = this.route.snapshot.paramMap.get('id');
-
     if (id) {
       this.lessonId.set(id);
       this.store.loadLesson(id);
       this.store.loadFinalQuizAttempts(id);
       this.progressStore.loadMyLessonStats({ lessonId: id });
+      // Ensure access-check is current for this lesson
+      const studentId = this.authStore.user()?.id;
+      if (studentId) {
+        this.store.loadAccessibleLessons(studentId);
+      }
     }
   }
 
@@ -493,7 +571,6 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   nextModule() {
     const lesson = this.store.currentLesson();
     const module = this.currentModule();
-
     if (lesson && module) {
       this.store.markModuleComplete(lesson.id, module.id);
     }
@@ -512,13 +589,21 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   completeLastModule() {
     const lesson = this.store.currentLesson();
     const module = this.currentModule();
-
     if (lesson) {
       if (module) {
         this.store.markModuleComplete(lesson.id, module.id);
       }
-
-      this.startFinalQuiz();
+      if (this.store.hasFinalQuiz() === false) {
+        this.store.completeLesson(lesson.id);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Lesson Completed',
+          detail: 'Congratulations! You have completed this lesson.',
+        });
+        this.router.navigate(['/student/lessons']);
+      } else {
+        this.startFinalQuiz();
+      }
     }
   }
 
@@ -538,10 +623,12 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
     const hasPassed = attempts.some((attempt) => attempt.passed === true);
 
+    // Daca a dat quiz si a trecut -> complete lesson
     if (hasPassed) {
       this.store.completeLesson(id);
       this.router.navigate(['/student/lessons']);
     } else {
+      // Daca a dat quiz dar nu a trecut -> afiseaza mesaj
       this.messageService.add({
         severity: 'error',
         summary: 'Test Final Nefinalizat',
@@ -552,7 +639,6 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   startFinalQuiz() {
     const id = this.lessonId();
-
     if (id) {
       this.router.navigate(['/student/quiz-player', id]);
     }
@@ -562,6 +648,73 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     this.router.navigate(['/student/lessons']);
   }
 
+  loadSubcapitolAttempts(subcapitols: Subcapitol[]) {
+    const requests = subcapitols.map(sub => {
+      const url = `${this.quizApi}/subcapitols/${sub.id}/check-quiz/attempts`;
+      return this.http.get<unknown>(url).pipe(
+        map(res => {
+          let attempts: QuizAttempt[] = [];
+          if (Array.isArray(res)) {
+            attempts = res;
+          } else if (res && typeof res === 'object') {
+            const obj = res as Record<string, unknown>;
+            attempts = (obj['attempts'] || obj['content'] || obj['attemptsList'] || []) as QuizAttempt[];
+          }
+          return { id: sub.id, attempts, exists: true };
+        }),
+        catchError((err: { status?: number }) => {
+          const exists = err?.status !== 404;
+          return of({ id: sub.id, attempts: [], exists });
+        })
+      );
+    });
+
+    if (requests.length > 0) {
+      forkJoin(requests).subscribe({
+        next: (results) => {
+          const nextAttempts: Record<string, QuizAttempt[]> = {};
+          const nextExists: Record<string, boolean> = {};
+          results.forEach(r => {
+            nextAttempts[r.id] = r.attempts;
+            nextExists[r.id] = r.exists ?? true;
+          });
+          this.subcapitolAttempts.set(nextAttempts);
+          this.subcapitolQuizzesExist.set(nextExists);
+        },
+        error: (err) => console.error('[LessonViewerComponent] Failed to load subcapitol attempts:', err)
+      });
+    }
+  }
+
+  getBestAttempt(subcapitolId: string): QuizAttempt | null {
+    const attempts = this.subcapitolAttempts()[subcapitolId] || [];
+    if (attempts.length === 0) return null;
+    return attempts.reduce((best, cur) => {
+      const bestScore = best.score ?? 0;
+      const curScore = cur.score ?? 0;
+      return curScore > bestScore ? cur : best;
+    }, attempts[0]);
+  }
+
+  isSubcapitolPassed(subcapitolId: string): boolean {
+    const attempts = this.subcapitolAttempts()[subcapitolId] || [];
+    return attempts.some(a => a.passed === true);
+  }
+
+  startCheckQuiz(subcapitolId: string) {
+    const lessonId = this.lessonId();
+    this.router.navigate(['/student/quiz-player', subcapitolId], {
+      queryParams: {
+        type: 'check',
+        lessonId: lessonId
+      }
+    });
+  }
+
+  /**
+   * Converts **bold** markdown syntax to <strong> HTML and sanitizes.
+   * Safe: content originates from our own AI service, not user input.
+   */
   boldify(text: string): SafeHtml {
     const html = (text ?? '').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     return this.sanitizer.bypassSecurityTrustHtml(html);
@@ -569,7 +722,6 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   explainCurrentModule() {
     const module = this.currentModule();
-
     if (module) {
       this.explanationOpen.set(true);
       this.store.explainBlock(module.id);
@@ -598,40 +750,39 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
       index += currentSubcapitol.blocks.length;
     }
-
     return -1;
   }
 
   getModuleIcon(type: string): string {
-  const normalizedType = String(type || '').toLowerCase();
+    const normalizedType = String(type || '').toLowerCase();
 
-  switch (normalizedType) {
-    case 'video':
-      return 'play_circle';
+    switch (normalizedType) {
+      case 'video':
+        return 'play_circle';
 
-    case 'image':
-      return 'image';
+      case 'image':
+        return 'image';
 
-    case 'audio':
-      return 'headphones';
+      case 'audio':
+        return 'headphones';
 
-    case 'pdf':
-    case 'file':
-      return 'picture_as_pdf';
+      case 'pdf':
+      case 'file':
+        return 'picture_as_pdf';
 
-    case 'text':
-      return 'article';
+      case 'text':
+        return 'article';
 
-    case 'quiz':
-      return 'quiz';
+      case 'quiz':
+        return 'quiz';
 
-    case 'interactive':
-      return 'touch_app';
+      case 'interactive':
+        return 'touch_app';
 
-    default:
-      return 'menu_book';
+      default:
+        return 'menu_book';
+    }
   }
-}
 
   protected getModuleLabel(type: string): string {
     if (type === 'pdf' || type === 'file') {
@@ -642,14 +793,14 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   }
 
   protected isMediaModule(module: Module | null | undefined): boolean {
-  if (!module) {
-    return false;
+    if (!module) {
+      return false;
+    }
+
+    const type = String(module.type);
+
+    return type === 'image' || type === 'video' || type === 'pdf' || type === 'file';
   }
-
-  const type = String(module.type);
-
-  return type === 'image' || type === 'video' || type === 'pdf' || type === 'file';
-}
 
   private parseMediaContent(module: Module): ViewerMedia {
     const rawContent = module.content || '';
@@ -680,16 +831,16 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
   }
 
   private normalizeMediaType(type: string | undefined): ViewerMediaType {
-  const normalizedType = String(type || '').toLowerCase();
+    const normalizedType = String(type || '').toLowerCase();
 
-  if (normalizedType === 'video') {
-    return 'video';
+    if (normalizedType === 'video') {
+      return 'video';
+    }
+
+    if (normalizedType === 'pdf' || normalizedType === 'file') {
+      return 'pdf';
+    }
+
+    return 'image';
   }
-
-  if (normalizedType === 'pdf' || normalizedType === 'file') {
-    return 'pdf';
-  }
-
-  return 'image';
-}
 }

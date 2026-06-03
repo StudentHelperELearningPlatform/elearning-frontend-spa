@@ -109,6 +109,9 @@ describe('AuthService', () => {
         email: 'new@test.com',
         password: 'password123',
         role: undefined,
+        schoolName: '',
+        subjects: [],
+        gradeLevel: '',
       };
       const req = httpMock.expectOne(req => req.url.includes('/api/v1/auth/register'));
       expect(req.request.method).toBe('POST');

@@ -6,7 +6,8 @@ import { HttpEventType } from '@angular/common/http';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
-
+const MOCK_USER_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+// Mock environment assuming standard structure. Adjust path if necessary.
 import { environment } from '../../../../../environments/environment';
 
 describe('MediaUploadComponent', () => {
@@ -30,8 +31,19 @@ describe('MediaUploadComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MediaUploadComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
-      schemas: [NO_ERRORS_SCHEMA],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: AuthStore,
+          useValue: createAuthStoreStub({
+            isAuthenticated: true,
+            user: { id: MOCK_USER_ID, name: 'Test Teacher', email: 'teacher@test.com', role: 'PROFESSOR', memberSince: '' },
+          }),
+        },
+      ],
+      // Ignore child components like app-media-player to isolate this test
+      schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
 
     fixture = TestBed.createComponent(MediaUploadComponent);
@@ -55,6 +67,7 @@ describe('MediaUploadComponent', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     httpTestingController.verify();
     vi.restoreAllMocks();
   });
@@ -80,8 +93,8 @@ describe('MediaUploadComponent', () => {
       const event = new Event('dragleave') as DragEvent;
       event.preventDefault = vi.fn();
       event.stopPropagation = vi.fn();
-
       component.isDragging.set(true);
+
       component.onDragLeave(event);
 
       expect(event.preventDefault).toHaveBeenCalled();
@@ -91,7 +104,6 @@ describe('MediaUploadComponent', () => {
 
     it('should handle onDrop, extract files, and reset dragging state', () => {
       const file = createMockFile('test.png', 'image/png', 1024);
-
       const event = {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
@@ -99,7 +111,6 @@ describe('MediaUploadComponent', () => {
           files: [file],
         },
       } as unknown as DragEvent;
-
       const handleSpy = vi.spyOn(component, 'handleFiles').mockImplementation(() => undefined);
 
       component.onDrop(event);
@@ -114,17 +125,38 @@ describe('MediaUploadComponent', () => {
       const event = {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
-        dataTransfer: null,
+        dataTransfer: null
       } as unknown as DragEvent;
-
       const handleSpy = vi.spyOn(component, 'handleFiles');
 
       component.onDrop(event);
-
       expect(handleSpy).not.toHaveBeenCalled();
     });
 
     it('should handle onFileSelected from HTML input', () => {
+    it('should safely ignore onDrop if files array is empty', () => {
+      const event = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        dataTransfer: { files: [] }
+      } as unknown as DragEvent;
+      const handleSpy = vi.spyOn(component, 'handleFiles');
+
+      component.onDrop(event);
+      expect(handleSpy).not.toHaveBeenCalled();
+    });
+
+    it('should safely ignore onFileSelected if files is null', () => {
+      const event = {
+        target: { files: null, value: 'C:\\fakepath\\test.png' }
+      } as unknown as Event;
+      const handleSpy = vi.spyOn(component, 'handleFiles');
+
+      component.onFileSelected(event);
+      expect(handleSpy).not.toHaveBeenCalled();
+    });
+
+    it('should handle onFileSelected from HTML input and reset value', () => {
       const file = createMockFile('test.png', 'image/png', 1024);
 
       const target = {
@@ -135,7 +167,6 @@ describe('MediaUploadComponent', () => {
       const event = {
         target,
       } as unknown as Event;
-
       const handleSpy = vi.spyOn(component, 'handleFiles').mockImplementation(() => undefined);
 
       component.onFileSelected(event);
@@ -197,8 +228,7 @@ describe('MediaUploadComponent', () => {
 
     it('should reject files exceeding 50MB and set error/a11y message', () => {
       const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
-
-      const massiveFile = createMockFile('huge.mp4', 'video/mp4', 51 * 1024 * 1024);
+      const massiveFile = createMockFile('huge.mp4', 'video/mp4', 51 * 1024 * 1024); // 51MB
 
       component.handleFiles([massiveFile]);
 
@@ -209,6 +239,7 @@ describe('MediaUploadComponent', () => {
 
     it('should reject invalid MIME types', () => {
       const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
+      const invalidAudio = createMockFile('notes.txt', 'text/plain', 1024);
 
       const invalidFile = createMockFile('notes.txt', 'text/plain', 1024);
 
@@ -221,12 +252,13 @@ describe('MediaUploadComponent', () => {
     it('should process mixed valid and invalid files simultaneously', () => {
       const validFile = createMockFile('good.png', 'image/png', 1024);
       const invalidFile = createMockFile('bad.txt', 'text/plain', 1024);
-
       const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
 
       component.handleFiles([validFile, invalidFile]);
 
+      // Should upload the valid one
       expect(uploadSpy).toHaveBeenCalledWith(validFile);
+      // Should flag the invalid one
       expect(component.errorMessage()).toContain('Invalid file type: bad.txt');
     });
   });
@@ -237,6 +269,7 @@ describe('MediaUploadComponent', () => {
 
       component.uploadFile(file);
 
+      // 1. Check Initial State
       expect(component.mediaList().length).toBe(1);
       expect(component.mediaList()[0].status).toBe('uploading');
       expect(component.mediaList()[0].id).toBe('mock-uuid-1234');
@@ -246,13 +279,14 @@ describe('MediaUploadComponent', () => {
 
       expect(req.request.method).toBe('POST');
       expect(req.request.body instanceof FormData).toBeTruthy();
+      expect(req.request.headers.get('X-User-Id')).toBe(MOCK_USER_ID);
 
+      // 3. Simulate Progress Event
       req.event({
         type: HttpEventType.UploadProgress,
         loaded: 50,
         total: 100,
       });
-
       expect(component.mediaList()[0].progress).toBe(50);
 
       req.flush({
@@ -265,8 +299,8 @@ describe('MediaUploadComponent', () => {
         sizeBytes: 1024,
       });
 
+      // 5. Check Final State
       const finalizedMedia = component.mediaList()[0];
-
       expect(finalizedMedia.status).toBe('complete');
       expect(finalizedMedia.progress).toBe(100);
       expect(finalizedMedia.id).toBe('backend-media-id');
@@ -276,59 +310,71 @@ describe('MediaUploadComponent', () => {
       expect(component.a11yMessage()).toContain('Upload complete: test.png');
     });
 
-    it('should handle successful upload lifecycle for video', () => {
-      const file = createMockFile('video.mp4', 'video/mp4', 1024);
+    it('should send empty X-User-Id header if user is null', () => {
+      const authStore = TestBed.inject(AuthStore);
+      // Simulate no user
+      authStore.user.set(null);
 
+      const file = createMockFile('test.png', 'image/png', 1024);
       component.uploadFile(file);
 
-      const req = httpTestingController.expectOne(uploadUrl);
-
-      req.flush({
-        id: 'video-id',
-        url: 'https://cdn.example.com/video-id.mp4',
-        originalFilename: 'video.mp4',
-        storedFilename: 'video-id.mp4',
-        mimeType: 'video/mp4',
-        mediaType: 'VIDEO',
-        sizeBytes: 1024,
-      });
-
-      const finalizedMedia = component.mediaList()[0];
-
-      expect(finalizedMedia.status).toBe('complete');
-      expect(finalizedMedia.id).toBe('video-id');
-      expect(finalizedMedia.url).toBe('https://cdn.example.com/video-id.mp4');
-      expect(finalizedMedia.type).toBe('video');
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      expect(req.request.headers.get('X-User-Id')).toBe('');
+      req.flush({});
     });
 
-    it('should handle successful upload lifecycle for pdf', () => {
-      const file = createMockFile('lesson.pdf', 'application/pdf', 1024);
+    it('should not modify other media items when updating progress or status', () => {
+      // Add an existing item
+      component.mediaList.set([
+        { id: 'existing-id', file: null, url: 'blob:old', type: 'image', status: 'complete', progress: 100 }
+      ]);
 
+      const file = createMockFile('test.png', 'image/png', 1024);
       component.uploadFile(file);
 
-      const req = httpTestingController.expectOne(uploadUrl);
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
 
-      req.flush({
-        id: 'pdf-id',
-        url: 'https://cdn.example.com/lesson.pdf',
-        originalFilename: 'lesson.pdf',
-        storedFilename: 'lesson.pdf',
-        mimeType: 'application/pdf',
-        mediaType: 'FILE',
-        sizeBytes: 1024,
+      // Simulate Progress Event
+      req.event({
+        type: HttpEventType.UploadProgress,
+        loaded: 50,
+        total: 100
       });
 
-      const finalizedMedia = component.mediaList()[0];
+      // Verify existing item is untouched during progress update
+      expect(component.mediaList()[0].id).toBe('existing-id');
+      expect(component.mediaList()[0].progress).toBe(100);
+      expect(component.mediaList()[1].progress).toBe(50);
 
-      expect(finalizedMedia.status).toBe('complete');
-      expect(finalizedMedia.id).toBe('pdf-id');
-      expect(finalizedMedia.url).toBe('https://cdn.example.com/lesson.pdf');
-      expect(finalizedMedia.type).toBe('pdf');
+      // Simulate Success Response
+      req.flush({ url: 'https://cdn.example.com/mock-uuid-1234.png' });
+
+      // Verify existing item is untouched during completion update
+      expect(component.mediaList()[0].status).toBe('complete');
+      expect(component.mediaList()[0].url).toBe('blob:old');
+      expect(component.mediaList()[1].status).toBe('complete');
+      expect(component.mediaList()[1].url).toBe('https://cdn.example.com/mock-uuid-1234.png');
+    });
+
+    it('should not modify other media items when an upload errors out', () => {
+      // Add an existing item
+      component.mediaList.set([
+        { id: 'existing-id', file: null, url: 'blob:old', type: 'image', status: 'complete', progress: 100 }
+      ]);
+
+      const file = createMockFile('test.png', 'image/png', 1024);
+      component.uploadFile(file);
+
+      const req = httpTestingController.expectOne(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      req.error(new ProgressEvent('error'));
+
+      // Verify existing item is untouched during error update
+      expect(component.mediaList()[0].status).toBe('complete');
+      expect(component.mediaList()[1].status).toBe('error');
     });
 
     it('should fallback to local ObjectURL if response body has no url', () => {
       const file = createMockFile('test.png', 'image/png', 1024);
-
       component.uploadFile(file);
 
       const req = httpTestingController.expectOne(uploadUrl);
@@ -340,7 +386,6 @@ describe('MediaUploadComponent', () => {
 
     it('should handle network error gracefully', () => {
       const file = createMockFile('test.png', 'image/png', 1024);
-
       component.uploadFile(file);
 
       const req = httpTestingController.expectOne(uploadUrl);
@@ -350,10 +395,39 @@ describe('MediaUploadComponent', () => {
       expect(component.mediaList()[0].status).toBe('error');
       expect(component.a11yMessage()).toContain('Upload failed for test.png');
     });
+
+    it('should properly classify video and pdf files', () => {
+      component.uploadFile(createMockFile('test.mp4', 'video/mp4', 1024));
+      component.uploadFile(createMockFile('test.pdf', 'application/pdf', 1024));
+
+      const reqs = httpTestingController.match(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      expect(reqs.length).toBe(2);
+
+      expect(component.mediaList()[0].type).toBe('video');
+      expect(component.mediaList()[1].type).toBe('pdf');
+    });
+
+    it('should reject audio files since backend does not accept them', () => {
+      const uploadSpy = vi.spyOn(component, 'uploadFile').mockImplementation(() => undefined);
+      const audioFile = createMockFile('song.mp3', 'audio/mpeg', 1024);
+
+      component.handleFiles([audioFile]);
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+      expect(component.errorMessage()).toContain('Invalid file type: song.mp3');
+    });
+
+    it('should return early if media type is unsupported in uploadFile', () => {
+      const file = createMockFile('test.txt', 'text/plain', 1024);
+      component.uploadFile(file);
+      httpTestingController.expectNone(`${environment.lessonApiUrl}/api/v1/media/upload`);
+      expect(component.mediaList().length).toBe(0);
+    });
   });
 
   describe('Retry & Remove Operations', () => {
     it('should retry a failed upload using existing ID and File', () => {
+      // Setup: Seed a failed media item
       const failedFile = createMockFile('retry.png', 'image/png', 1024);
 
       component.mediaList.set([
@@ -370,6 +444,7 @@ describe('MediaUploadComponent', () => {
 
       component.retryUpload('retry-123');
 
+      // State should reset to uploading
       expect(component.mediaList()[0].status).toBe('uploading');
 
       const req = httpTestingController.expectOne(uploadUrl);
@@ -394,6 +469,16 @@ describe('MediaUploadComponent', () => {
       expect(component.mediaList().length).toBeGreaterThanOrEqual(0);
     });
 
+    it('should safely ignore retry if media exists but has no file attached', () => {
+      component.mediaList.set([{
+        id: 'no-file-123', url: 'https://example.com/test.png', name: 'test.png', type: 'image',
+        progress: 100, status: 'complete'
+      }]);
+      component.retryUpload('no-file-123');
+      httpTestingController.expectNone(`${environment.lessonApiUrl}/api/v1/media/upload`);
+    });
+
+    it('should remove media when confirmed', () => {
     it('should emit removed media and remove media when confirmed', () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       const mediaRemovedSpy = vi.spyOn(component.mediaRemoved, 'emit');
@@ -478,7 +563,7 @@ describe('MediaUploadComponent', () => {
       component.dropMediaList(event);
 
       const list = component.mediaList();
-
+      // 'id-1' should have moved from index 0 to index 2
       expect(list[0].id).toBe('id-2');
       expect(list[1].id).toBe('id-3');
       expect(list[2].id).toBe('id-1');

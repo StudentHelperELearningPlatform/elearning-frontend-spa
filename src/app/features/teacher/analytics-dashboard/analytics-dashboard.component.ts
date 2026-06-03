@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ContentStore } from '../state/content.store';
@@ -310,10 +310,20 @@ export class AnalyticsDashboardComponent implements OnInit {
 
   isModalOpen = signal(false);
 
+  constructor() {
+    effect(() => {
+      const classes = this.classStore.classes();
+      if (classes.length > 0) {
+        untracked(() => {
+          this.progressStore.loadAllStudents({ classId: classes[0].id });
+        });
+      }
+    });
+  }
+
   ngOnInit() {
     this.contentStore.loadContent();
     this.classStore.loadClasses();
-    this.progressStore.loadAllStudents();
   }
 
   inspectStudent(studentId: string) {

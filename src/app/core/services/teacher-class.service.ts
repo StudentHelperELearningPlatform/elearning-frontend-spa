@@ -55,8 +55,20 @@ export class TeacherClassService {
   private readonly baseUrl = `${this.apiUrl}/teachers/classes`;
 
   getClasses(): Observable<TeacherClass[]> {
-    return this.http.get<TeacherClassRaw[]>(this.baseUrl).pipe(
-      map((list) => list.map(mapClass))
+    return this.http.get<TeacherClassRaw[] | { classes?: TeacherClassRaw[], content?: TeacherClassRaw[] }>(this.baseUrl).pipe(
+      map((res) => {
+        const list = Array.isArray(res) ? res : (res.classes || res.content || []);
+        return list.map(mapClass);
+      })
+    );
+  }
+
+  getStudentClasses(): Observable<TeacherClass[]> {
+    return this.http.get<TeacherClassRaw[] | { classes?: TeacherClassRaw[], content?: TeacherClassRaw[] }>(`${this.apiUrl}/students/me/classes`).pipe(
+      map((res) => {
+        const list = Array.isArray(res) ? res : (res.classes || res.content || []);
+        return list.map(mapClass);
+      })
     );
   }
 

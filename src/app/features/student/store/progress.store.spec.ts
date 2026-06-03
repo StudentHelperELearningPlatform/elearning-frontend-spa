@@ -17,18 +17,46 @@ import type {
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const mockDashboard: DashboardData = {
-  student: null,
+// Wire shape that the backend sends (flat DashboardResponse).
+const mockDashboardPayload = {
+  firstName: '',
+  lastName: '',
+  studentId: '',
+  totalLessons: 10,
+  completedLessons: 7,
+  currentStreak: 0,
+  longestStreak: 0,
+  lastActivityDate: null,
+  subjects: [],
+  progressRecords: [],
+  recentActivity: [],
+  milestones: [],
+  upcomingQuizzes: [],
+};
+
+// Expected mapped state in the store after consuming the payload above + a count of 7.
+const expectedMappedDashboard: DashboardData = {
+  student: {
+    id: '',
+    firstName: '',
+    lastName: '',
+    totalLessons: 10,
+    completedLessons: 7,
+  },
   skillLevels: [],
-  streak: null,
+  streak: {
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: '',
+  },
   progressRecords: [],
   recentActivity: [],
   milestones: [],
   upcomingQuizzes: [],
   totalLessons: 10,
   completedLessons: 7,
-  averageScore: 82,
-  lastActive: '2026-05-10T12:00:00Z',
+  averageScore: 0,
+  lastActive: null,
 };
 
 const mockLessonStats: LessonStats = {
@@ -44,6 +72,7 @@ const mockStudents: StudentSummary[] = [
   {
     id: 'stu-1',
     firstName: 'Alice',
+    lastName: 'Walker',
     totalLessons: 12,
     completedLessons: 10,
   },
@@ -148,8 +177,12 @@ describe('ProgressStore', () => {
       const req = http.expectOne((r) =>
         r.url.includes('/progress/me/dashboard'),
       );
-      req.flush(mockDashboard);
-      expect(store.dashboard()).toEqual(mockDashboard);
+      req.flush(mockDashboardPayload);
+
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 7 });
+
+      expect(store.dashboard()).toEqual(expectedMappedDashboard);
       expect(store.dashboardLoading()).toBe(false);
     });
 
@@ -158,8 +191,12 @@ describe('ProgressStore', () => {
       const req = http.expectOne((r) =>
         r.url.includes('/progress/me/dashboard') && r.params.get('classId') === '3fa85f64-5717-4562-b3fc-2c963f66afa6',
       );
-      req.flush(mockDashboard);
-      expect(store.dashboard()).toEqual(mockDashboard);
+      req.flush(mockDashboardPayload);
+
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 7 });
+
+      expect(store.dashboard()).toEqual(expectedMappedDashboard);
     });
 
     it('should fallback to placeholder UUID if no classId provided', () => {
@@ -167,8 +204,12 @@ describe('ProgressStore', () => {
       const req = http.expectOne((r) =>
         r.url.includes('/progress/me/dashboard') && r.params.get('classId') === '00000000-0000-0000-0000-000000000000',
       );
-      req.flush(mockDashboard);
-      expect(store.dashboard()).toEqual(mockDashboard);
+      req.flush(mockDashboardPayload);
+
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 7 });
+
+      expect(store.dashboard()).toEqual(expectedMappedDashboard);
     });
 
     it('completionRate() should compute from dashboard on success', () => {
@@ -176,7 +217,11 @@ describe('ProgressStore', () => {
       const req = http.expectOne((r) =>
         r.url.includes('/progress/me/dashboard'),
       );
-      req.flush(mockDashboard);
+      req.flush(mockDashboardPayload);
+
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 7 });
+
       // 7/10 * 100 = 70
       expect(store.completionRate()).toBe(70);
     });
@@ -187,61 +232,101 @@ describe('ProgressStore', () => {
         r.url.includes('/progress/me/dashboard'),
       );
       req.flush('Server error', { status: 500, statusText: 'Server Error' });
+
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      if (!countReq.cancelled) {
+        countReq.flush({ completedLessonsCount: 7 });
+      }
+
       expect(store.dashboardLoading()).toBe(false);
       expect(store.dashboardError()).toBeTruthy();
     });
-  });
 
-  // ── loadDashboard (Legacy) ─────────────────────────────────────────────────
+    it('should still load dashboard when completed-lessons/count endpoint fails (catchError branch)', () => {
+      store.loadMyDashboard();
+      const dashReq = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      dashReq.flush({ totalLessons: 8, completedLessons: 4 });
 
-  describe('loadDashboard() — legacy', () => {
-    it('should populate legacy state fields on success', () => {
-      store.loadDashboard('stu-1');
-      const req = http.expectOne((r) =>
-        r.url.includes('/progress/me/dashboard'),
-      );
-      req.flush(mockDashboard);
-      expect(store.loading()).toBe(false);
-      expect(store.error()).toBeNull();
+      // Simulate the count endpoint failing — catchError(() => of(null)) kicks in
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush('Not Found', { status: 404, statusText: 'Not Found' });
+
+      // Dashboard should still be set; completedLessons falls back to data.completedLessons = 4
+      expect(store.dashboard()).toBeTruthy();
+      expect(store.dashboard()?.completedLessons).toBe(4);
+      expect(store.dashboardLoading()).toBe(false);
     });
 
-    it('should set error state when legacy API fails', () => {
-      store.loadDashboard('stu-1');
-      const req = http.expectOne((r) =>
-        r.url.includes('/progress/me/dashboard'),
-      );
-      req.error(new ProgressEvent('error'));
-      expect(store.loading()).toBe(false);
-      expect(store.error()).toBeTruthy();
+    it('uses fallback error message when err has no message property', () => {
+      store.loadMyDashboard();
+      const dashReq = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      // flush with status 0 (network error) which produces HttpErrorResponse with empty statusText
+      dashReq.error(new ProgressEvent('error'));
+
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      if (!countReq.cancelled) countReq.flush({ completedLessonsCount: 0 });
+
+      expect(store.dashboardLoading()).toBe(false);
+      expect(store.dashboardError()).toBeTruthy();
+    });
+
+    it('derives averageScore from progressRecords scores', () => {
+      store.loadMyDashboard();
+      const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      req.flush({
+        totalLessons: 3,
+        completedLessons: 2,
+        progressRecords: [
+          { id: 'pr-1', lessonId: 'l1', score: 80 },
+          { id: 'pr-2', lessonId: 'l2', score: 100 },
+          { id: 'pr-3', lessonId: 'l3', score: 60 },
+        ],
+      });
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 2 });
+
+      expect(store.dashboard()?.averageScore).toBe(80);
+    });
+
+    it('averageScore defaults to 0 when there are no scored progressRecords', () => {
+      store.loadMyDashboard();
+      const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
+      req.flush({ totalLessons: 0, completedLessons: 0, progressRecords: [] });
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 0 });
+
+      expect(store.dashboard()?.averageScore).toBe(0);
     });
   });
+
+
 
   // ── markLessonComplete ─────────────────────────────────────────────────────
 
   describe('markLessonComplete()', () => {
-    it('should call PUT with correct URL and body', () => {
+    it('should call POST with correct URL and body', () => {
       store.markLessonComplete({ lessonId: 'lesson-42', score: 95 });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-42/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-42/complete') && r.method === 'POST',
       );
-      expect(req.request.body).toEqual({ status: 'completed', score: 95 });
+      expect(req.request.body).toBeNull();
       req.flush({});
       expect(store.markCompleteLoading()).toBe(false);
     });
 
-    it('should use null score when score is omitted', () => {
+    it('should use null body when score is omitted', () => {
       store.markLessonComplete({ lessonId: 'lesson-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-1/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-1/complete') && r.method === 'POST',
       );
-      expect(req.request.body).toEqual({ status: 'completed', score: null });
+      expect(req.request.body).toBeNull();
       req.flush({});
     });
 
     it('should set markCompleteError on failure', () => {
       store.markLessonComplete({ lessonId: 'lesson-1', score: 80 });
       const req = http.expectOne((r) =>
-        r.url.includes('/lessons/lesson-1/progress') && r.method === 'PUT',
+        r.url.includes('/lessons/lesson-1/complete') && r.method === 'POST',
       );
       req.flush('Error', { status: 500, statusText: 'Server Error' });
       expect(store.markCompleteLoading()).toBe(false);
@@ -277,9 +362,9 @@ describe('ProgressStore', () => {
 
   describe('loadStudents()', () => {
     it('should load and store students list', () => {
-      store.loadStudents();
+      store.loadStudents({ classId: 'cls-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/teacher/students'),
+        r.url.includes('/progress/teacher/students') && r.params.get('classId') === 'cls-1'
       );
       req.flush(mockStudents);
       expect(store.students()).toEqual(mockStudents);
@@ -287,9 +372,9 @@ describe('ProgressStore', () => {
     });
 
     it('should set studentsError on failure', () => {
-      store.loadStudents();
+      store.loadStudents({ classId: 'cls-1' });
       const req = http.expectOne((r) =>
-        r.url.includes('/progress/teacher/students'),
+        r.url.includes('/progress/teacher/students') && r.params.get('classId') === 'cls-1'
       );
       req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
       expect(store.studentsLoading()).toBe(false);
@@ -389,6 +474,19 @@ describe('ProgressStore', () => {
       expect(store.myHistoryLoading()).toBe(false);
     });
 
+    it('should pass query parameters if provided', () => {
+      store.loadMyHistory({ lessonId: 'l1', result: 'ALL', from: '2023-01-01', to: '2023-12-31' });
+      const req = http.expectOne((r) => 
+        r.url.includes('/progress/me/history') &&
+        r.params.get('lessonId') === 'l1' &&
+        r.params.get('result') === 'ALL' &&
+        r.params.get('from') === '2023-01-01' &&
+        r.params.get('to') === '2023-12-31'
+      );
+      req.flush([]);
+      expect(store.myHistory()).toEqual([]);
+    });
+
     it('coerces a null response into an empty array', () => {
       store.loadMyHistory();
       const req = http.expectOne((r) => r.url.includes('/progress/me/history'));
@@ -438,36 +536,44 @@ describe('ProgressStore', () => {
       expect(store.overallProgressPercent()).toBe(0);
 
       // 2. Dashboard with no totalLessons, student null
-      // Let's set dashboard state manually by loading it
       store.loadMyDashboard();
       let req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({ totalLessons: 0, completedLessons: 0 });
+
+      let countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 0 });
+
       expect(store.completionRate()).toBe(0);
 
-      // Reset dashboard to null, set student with totalLessons = 0
-      store.loadDashboard('stu-1');
+      // 3. Backend now sends flat top-level fields — no nested student fallback.
+      store.loadMyDashboard();
       req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
-      req.flush({ studentId: 'stu-1', student: { id: 'stu-1', totalLessons: 0 } });
+      req.flush({ studentId: 'stu-1', totalLessons: 0, completedLessons: 0 });
+
+      countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 0 });
+
       expect(store.completionRate()).toBe(0);
       expect(store.overallProgressPercent()).toBe(0);
 
-      // Set student with totalLessons > 0, dashboard is null (loadDashboard doesn't set store.dashboard)
-      store.loadDashboard('stu-2');
+      // 4. Student populated with totalLessons > 0.
+      store.loadMyDashboard();
       req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
-        student: {
-          id: 'stu-2',
-          totalLessons: 10,
-          completedLessons: 6,
-        }
+        studentId: 'stu-2',
+        totalLessons: 10,
+        completedLessons: 6,
       });
-      // Now dashboard is null, student is populated. Should fall back to student.
+
+      countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 6 });
+
       expect(store.completionRate()).toBe(60);
       expect(store.overallProgressPercent()).toBe(60);
     });
 
     it('recentMilestones() sorting and filtering logic', () => {
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         milestones: [
@@ -479,6 +585,9 @@ describe('ProgressStore', () => {
         ],
       });
 
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 0 });
+
       const milestones = store.recentMilestones();
       expect(milestones.length).toBe(3);
       expect(milestones[0].id).toBe('m5'); // 2026-05-04
@@ -487,7 +596,7 @@ describe('ProgressStore', () => {
     });
 
     it('continueLesson() reduce logic with multiple IN_PROGRESS records', () => {
-      store.loadDashboard('stu-1');
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
         progressRecords: [
@@ -498,36 +607,38 @@ describe('ProgressStore', () => {
         ],
       });
 
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 0 });
+
       const cont = store.continueLesson();
       expect(cont).toBeTruthy();
       expect(cont!.lessonId).toBe('l3'); // latest lastAccessedAt
     });
 
-    it('loadDashboard mapping branches for legacy shapes', () => {
-      store.loadDashboard('stu-1');
+    it('loadDashboard maps the flat backend payload (firstName/lastName, subjects, currentStreak)', () => {
+      store.loadMyDashboard();
       const req = http.expectOne((r) => r.url.includes('/progress/me/dashboard'));
       req.flush({
-        student: {
-          id: 'stu-nested',
-          firstName: 'NestedFirst',
-          lastName: 'NestedLast',
-          totalLessons: 8,
-          completedLessons: 4,
-        },
+        studentId: 'stu-1',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        totalLessons: 8,
+        completedLessons: 4,
         subjects: [
           { subjectId: 'subj-1', skillLevel: 4 },
           { subjectId: 'subj-2', subjectName: 'Subject 2' },
         ],
-        streak: {
-          currentStreak: 5,
-          longestStreak: 10,
-          lastActivityDate: '2026-05-15T00:00:00Z',
-        },
+        currentStreak: 5,
+        longestStreak: 10,
+        lastActivityDate: '2026-05-15T00:00:00Z',
       });
 
-      expect(store.student()?.id).toBe('stu-nested');
-      expect(store.student()?.firstName).toBe('NestedFirst');
-      expect(store.student()?.lastName).toBe('NestedLast');
+      const countReq = http.expectOne((r) => r.url.includes('/progress/me/completed-lessons/count'));
+      countReq.flush({ completedLessonsCount: 4 });
+
+      expect(store.student()?.id).toBe('stu-1');
+      expect(store.student()?.firstName).toBe('Ada');
+      expect(store.student()?.lastName).toBe('Lovelace');
       expect(store.student()?.totalLessons).toBe(8);
       expect(store.student()?.completedLessons).toBe(4);
       expect(store.skillLevels()).toEqual([
@@ -587,24 +698,35 @@ describe('ProgressStore', () => {
           lessonId: '',
           subject: 'Science',
         },
+        {
+          lessonId: 'lesson-with-name',
+          lessonName: 'Real Lesson Name',
+        },
       ]);
 
-      const history = store.myHistory();
-      expect(history.length).toBe(2);
+      const contentReq = http.expectOne((r) => r.url.includes('/api/v1/lessons/lesson-123456789'));
+      contentReq.flush({ id: 'lesson-123456789', title: 'Mocked Lesson Title', subject: 'Mocked Subject' });
 
-      // First item checks: lessonTitle auto formatted, subject default, status based on completedAt
+      const history = store.myHistory();
+      expect(history.length).toBe(3);
+
+      // First item checks: fetched from content API
       expect(history[0].lessonId).toBe('lesson-123456789');
-      expect(history[0].lessonTitle).toBe('Lecția lesson-1');
-      expect(history[0].subject).toBe('General');
+      expect(history[0].lessonTitle).toBe('Mocked Lesson Title');
+      expect(history[0].subject).toBe('Mocked Subject');
       expect(history[0].status).toBe('completed');
       expect(history[0].dateCompleted).toBe('2026-05-10T10:00:00Z');
 
-      // Second item checks: empty lessonId, lessonTitle auto-formatted, custom subject, status in_progress
+      // Second item checks: empty lessonId, custom subject, status in_progress
       expect(history[1].lessonId).toBe('');
-      expect(history[1].lessonTitle).toBe('Lecția ');
+      expect(history[1].lessonTitle).toBe('Untitled lesson');
       expect(history[1].subject).toBe('Science');
       expect(history[1].status).toBe('in_progress');
       expect(history[1].dateCompleted).toBeNull();
+
+      // Third item checks: lessonName alias is picked as display title
+      expect(history[2].lessonId).toBe('lesson-with-name');
+      expect(history[2].lessonTitle).toBe('Real Lesson Name');
     });
   });
 });

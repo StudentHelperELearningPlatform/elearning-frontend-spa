@@ -1,9 +1,18 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Input,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
 import { ProgressStore, HistoryEntry } from '../store/progress.store';
+import { LessonsStore } from '../store/lessons.store';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 
 const PAGE_SIZE = 20;
@@ -15,14 +24,15 @@ const PAGE_SIZE = 20;
   imports: [CommonModule, FormsModule, RouterModule, EmptyStateComponent],
   template: `
     <div class="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      <header class="flex flex-col gap-2">
-        <h1 class="text-3xl font-black tracking-tight">Lesson history</h1>
-        <p class="text-gray-600 font-medium">
-          Every lesson you've completed, with score and date.
-        </p>
-      </header>
+      @if (showHeader) {
+        <header class="flex flex-col gap-2">
+          <h1 class="text-3xl font-black tracking-tight">Lesson history</h1>
+          <p class="text-gray-600 font-medium">
+            Every lesson you've completed, with score and date.
+          </p>
+        </header>
+      }
 
-      <!-- Date range filter -->
       <section
         class="bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row gap-3 sm:items-end"
         aria-label="Filter completion history by date range"
@@ -82,7 +92,9 @@ const PAGE_SIZE = 20;
           aria-label="Completion history"
         >
           <table class="w-full text-left" data-testid="history-table">
-            <caption class="sr-only">Your completed lessons</caption>
+            <caption class="sr-only">
+              Your completed lessons
+            </caption>
             <thead class="bg-gray-50 border-b-2 border-black">
               <tr>
                 <th scope="col" class="px-4 py-3 text-xs font-black uppercase tracking-wider">
@@ -94,7 +106,10 @@ const PAGE_SIZE = 20;
                 <th scope="col" class="px-4 py-3 text-xs font-black uppercase tracking-wider">
                   Date completed
                 </th>
-                <th scope="col" class="px-4 py-3 text-xs font-black uppercase tracking-wider text-right">
+                <th
+                  scope="col"
+                  class="px-4 py-3 text-xs font-black uppercase tracking-wider text-right"
+                >
                   Score
                 </th>
               </tr>
@@ -134,10 +149,7 @@ const PAGE_SIZE = 20;
         </section>
 
         @if (totalPages() > 1) {
-          <nav
-            class="flex items-center justify-between gap-3"
-            aria-label="History pagination"
-          >
+          <nav class="flex items-center justify-between gap-3" aria-label="History pagination">
             <button
               type="button"
               class="px-4 py-2 border-2 border-black rounded-xl font-black bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:opacity-40"
@@ -164,7 +176,10 @@ const PAGE_SIZE = 20;
   `,
 })
 export class HistoryComponent implements OnInit {
+  @Input() showHeader = true;
+
   protected readonly progressStore = inject(ProgressStore);
+  protected readonly lessonsStore = inject(LessonsStore);
 
   protected readonly page = signal(1);
   protected readonly fromDateSignal = signal<string | null>(null);
@@ -174,13 +189,27 @@ export class HistoryComponent implements OnInit {
   protected toDate = '';
 
   protected readonly filteredHistory = computed<HistoryEntry[]>(() => {
-    const history = this.progressStore.myHistory();
+    const rawHistory = this.progressStore.myHistory();
+    const availableLessons = this.lessonsStore.lessons();
     const from = this.fromDateSignal();
     const to = this.toDateSignal();
-    if (!from && !to) return history;
+
+    const historyWithTitles = rawHistory.map((entry) => {
+      if (entry.lessonTitle === 'Untitled lesson' || !entry.lessonTitle) {
+        const matchedLesson = availableLessons.find((l) => l.id === entry.lessonId);
+        if (matchedLesson) {
+          return { ...entry, lessonTitle: matchedLesson.title };
+        }
+      }
+      return entry;
+    });
+
+    if (!from && !to) return historyWithTitles;
+
     const fromTime = from ? Date.parse(from) : Number.NEGATIVE_INFINITY;
     const toTime = to ? Date.parse(to) + 86_399_999 : Number.POSITIVE_INFINITY;
-    return history.filter((entry) => {
+
+    return historyWithTitles.filter((entry) => {
       if (!entry.dateCompleted) return false;
       const t = Date.parse(entry.dateCompleted);
       return t >= fromTime && t <= toTime;
@@ -194,17 +223,37 @@ export class HistoryComponent implements OnInit {
   protected readonly pagedHistory = computed(() => {
     const all = this.filteredHistory();
     const start = (this.page() - 1) * PAGE_SIZE;
-    return all.slice(start, start + PAGE_SIZE);
+    const items = all.slice(start, start + PAGE_SIZE);
+    
+    const lessons = this.lessonsStore.lessons();
+    return items.map(entry => {
+      let title = entry.lessonTitle;
+      if (!title || title.trim().toLowerCase() === 'untitled lesson') {
+        const l = lessons.find(lesson => String(lesson.id).toLowerCase() === String(entry.lessonId).toLowerCase());
+        if (l?.title) title = l.title;
+      }
+      if (!title || title.trim() === '') title = 'Untitled lesson';
+      return { ...entry, lessonTitle: title };
+    });
   });
 
   ngOnInit(): void {
     this.progressStore.loadMyHistory();
+
+    const currentLessons = this.lessonsStore.lessons();
+    if (currentLessons.length === 0 || currentLessons[0].id === 'seed-1') {
+      this.lessonsStore.loadLessons();
+    }
   }
 
   protected onDateChange(): void {
     this.fromDateSignal.set(this.fromDate || null);
     this.toDateSignal.set(this.toDate || null);
     this.page.set(1);
+    this.progressStore.loadMyHistory({
+      from: this.fromDate ? this.fromDate : undefined,
+      to: this.toDate ? this.toDate : undefined,
+    });
   }
 
   protected clearFilters(): void {
@@ -213,6 +262,7 @@ export class HistoryComponent implements OnInit {
     this.fromDateSignal.set(null);
     this.toDateSignal.set(null);
     this.page.set(1);
+    this.progressStore.loadMyHistory();
   }
 
   protected nextPage(): void {

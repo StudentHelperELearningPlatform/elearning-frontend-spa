@@ -1,16 +1,18 @@
 import { Component, inject, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { ClassStore } from '../../../state/class.store';
 import { TeacherLessonsStore } from '../../../state/teacher-lessons.store';
-import { USER_PLATFORM_API_URL, CONTENT_API_URL } from '@core/tokens/api.token';
+import { ChatStore } from '@features/shared/chat/chat.store';
+import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 export interface StudentRow {
+  userId?: string;
   studentId: string;
   firstName: string;
   lastName: string;
@@ -20,6 +22,7 @@ export interface StudentRow {
 
 export interface RawStudentRow {
   id?: string;
+  userId?: string;
   studentId?: string;
   firstName?: string;
   name?: string;
@@ -28,24 +31,18 @@ export interface RawStudentRow {
   lastActiveAt?: string | null;
 }
 
-export interface FinalQuizAttempt {
-  attemptId: string;
-  studentId: string;
-  studentName: string;
-  lessonId: string;
-  lessonTitle: string;
-  score: number;
-  submittedAt: string;
-}
-
-export interface RawQuizAttempt {
-  id?: string;
-  attemptId?: string;
-  studentId?: string;
-  score?: number;
-  totalScore?: number;
-  submittedAt?: string;
-  completedAt?: string;
+export interface PaginatedUsersResponse {
+  users: {
+    firstName: string;
+    lastName: string;
+    id: string;
+    email: string;
+    role: string;
+    profilePictureUrl?: string;
+  }[];
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
 }
 
 @Component({
@@ -57,11 +54,12 @@ export interface RawQuizAttempt {
 })
 export class ClassDetailComponent implements OnInit {
   readonly route = inject(ActivatedRoute);
+  readonly router = inject(Router);
   readonly store = inject(ClassStore);
   readonly lessonsStore = inject(TeacherLessonsStore);
+  readonly chatStore = inject(ChatStore);
   readonly http = inject(HttpClient);
   readonly userApi = inject(USER_PLATFORM_API_URL);
-  readonly contentApi = inject(CONTENT_API_URL);
 
   classId!: string;
 
@@ -72,15 +70,14 @@ export class ClassDetailComponent implements OnInit {
   showInviteModal = signal(false);
   allStudents = signal<StudentRow[]>([]);
   studentSearch = signal('');
+  isSearching = signal(false);
   addingStudentId = signal<string | null>(null);
   addStudentError = signal<string | null>(null);
 
   readonly filteredStudents = computed(() => {
-    const q = this.studentSearch().toLowerCase().trim();
     const enrolled = new Set(this.students().map((s) => s.id));
     return this.allStudents()
-      .filter((s) => !enrolled.has(s.studentId))
-      .filter((s) => !q || `${s.firstName} ${s.lastName}`.toLowerCase().includes(q));
+      .filter((s) => !enrolled.has(s.studentId));
   });
 
   // ─── Add lesson modal ─────────────────────────────
@@ -100,11 +97,6 @@ export class ClassDetailComponent implements OnInit {
       );
   });
 
-  // ─── Final quiz attempts ──────────────────────────
-  quizAttempts = signal<FinalQuizAttempt[]>([]);
-  quizLoading = signal(false);
-  quizError = signal<string | null>(null);
-
   ngOnInit(): void {
     this.classId = this.route.snapshot.params['classId'];
     this.store.loadClassDetail(this.classId);
@@ -119,27 +111,56 @@ export class ClassDetailComponent implements OnInit {
     this.store.removeLesson(this.classId, lessonId);
   }
 
+  startConversation(studentId: string): void {
+    this.chatStore.selectContact(studentId);
+    this.router.navigate(['/teacher/chat']);
+  }
+
   openInviteModal(): void {
     this.showInviteModal.set(true);
     this.studentSearch.set('');
     this.addStudentError.set(null);
-    if (this.allStudents().length === 0) {
-      this.http
-        .get<RawStudentRow[]>(`${this.userApi}/students`)
-        .pipe(
-          catchError(() => of([] as RawStudentRow[])),
-          map((rows) =>
-            rows.map((r) => ({
-              studentId: r.studentId || r.id || '',
-              firstName: r.firstName || r.name || '',
-              lastName: r.lastName || '',
-              streakValue: r.streakValue ?? 0,
-              lastActiveAt: r.lastActiveAt || null,
-            }))
-          )
-        )
-        .subscribe((rows) => this.allStudents.set(rows));
+    this.allStudents.set([]);
+  }
+
+  performSearch(): void {
+    const q = this.studentSearch().trim();
+    if (!q) {
+      this.allStudents.set([]);
+      return;
     }
+
+    this.isSearching.set(true);
+    
+    interface UserSearchItem {
+      id?: string;
+      firstName?: string;
+      lastName?: string;
+      role?: string;
+    }
+
+    this.http
+      .get<UserSearchItem[] | { users: UserSearchItem[] }>(`${this.userApi}/users/search`, {
+        params: { name: q }
+      })
+      .pipe(
+        catchError(() => of([]))
+      )
+      .subscribe((res) => {
+        const usersList = Array.isArray(res) ? res : (res.users || []);
+        const studentRows: StudentRow[] = usersList
+          .filter((u: UserSearchItem) => u.role === 'STUDENT')
+          .map((u: UserSearchItem) => ({
+            studentId: u.id || '',
+            firstName: u.firstName || '',
+            lastName: u.lastName || '',
+            streakValue: 0,
+            lastActiveAt: null,
+          }));
+
+        this.allStudents.set(studentRows);
+        this.isSearching.set(false);
+      });
   }
 
   closeInviteModal(): void {
@@ -151,7 +172,7 @@ export class ClassDetailComponent implements OnInit {
   addStudent(student: StudentRow): void {
     this.addingStudentId.set(student.studentId);
     this.addStudentError.set(null);
-    this.store.addStudent(this.classId, student.studentId).subscribe({
+    this.store.addStudent(this.classId, student.studentId, student.userId).subscribe({
       next: () => {
         this.store.loadClassDetail(this.classId);
         this.addingStudentId.set(null);
@@ -189,66 +210,5 @@ export class ClassDetailComponent implements OnInit {
         this.addingLessonId.set(null);
       },
     });
-  }
-
-  loadQuizAttempts(): void {
-    if (this.quizLoading()) return;
-
-    const lessonIds = this.lessons().map((l) => l.id);
-    const studentIds = this.students().map((s) => s.id);
-
-    if (lessonIds.length === 0 || studentIds.length === 0) {
-      this.quizAttempts.set([]);
-      return;
-    }
-
-    this.quizLoading.set(true);
-    this.quizError.set(null);
-
-    const requests = lessonIds.map((lessonId) =>
-      this.http
-        .get<RawQuizAttempt[]>(`${this.contentApi}/lessons/${lessonId}/final-quiz/attempts`)
-        .pipe(map((attempts) => this.mapQuizAttempts(attempts, studentIds, lessonId))),
-    );
-
-    forkJoin(requests).subscribe({
-      next: (results) => {
-        const all = results
-          .flat()
-          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-        this.quizAttempts.set(all);
-        this.quizLoading.set(false);
-      },
-      error: () => {
-        this.quizError.set('Failed to load quiz attempts');
-        this.quizLoading.set(false);
-      },
-    });
-  }
-
-  private mapQuizAttempts(
-    attempts: RawQuizAttempt[],
-    studentIds: string[],
-    lessonId: string,
-  ): FinalQuizAttempt[] {
-    return attempts
-      .filter((a) => a.studentId && studentIds.includes(a.studentId))
-      .map((a) => ({
-        attemptId: a.id ?? a.attemptId ?? '',
-        studentId: a.studentId ?? '',
-        studentName: this.resolveStudentName(a.studentId ?? ''),
-        lessonId,
-        lessonTitle: this.lessons().find((l) => l.id === lessonId)?.title ?? lessonId,
-        score: a.score ?? a.totalScore ?? 0,
-        submittedAt: a.submittedAt ?? a.completedAt ?? '',
-      }));
-  }
-
-  private resolveStudentName(studentId: string): string {
-    const enrolled = this.students().find((s) => s.id === studentId);
-    if (enrolled?.name) return enrolled.name;
-    const cached = this.allStudents().find((s) => s.studentId === studentId);
-    if (cached) return `${cached.firstName} ${cached.lastName}`;
-    return studentId;
   }
 }

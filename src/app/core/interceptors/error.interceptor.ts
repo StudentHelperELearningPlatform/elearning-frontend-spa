@@ -10,7 +10,12 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const authStore = inject(AuthStore);
   const notificationService = inject(NotificationService);
 
-  return next(req).pipe(
+  const skipNotification = req.headers.has('X-Skip-Error-Notification');
+  const cleanReq = skipNotification
+    ? req.clone({ headers: req.headers.delete('X-Skip-Error-Notification') })
+    : req;
+
+  return next(cleanReq).pipe(
     catchError((error) => {
       if (error.status === 401) {
         // Genuine auth failure — token missing or expired
@@ -68,7 +73,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           }
         }
 
-        notificationService.error(errorMessage);
+        const isQuiz404 = error.status === 404 && (req.url.includes('/final-quiz') || req.url.includes('/check-quiz'));
+        const isComplete409 = error.status === 409 && req.url.includes('/complete');
+        if (!skipNotification && !isQuiz404 && !isComplete409) {
+          notificationService.error(errorMessage);
+        }
       }
       return throwError(() => error);
     }),

@@ -18,6 +18,7 @@ import {
 import { HttpClient, HttpEventType } from '@angular/common/http';
 import { MediaPlayerComponent } from '../../../../shared/components/media-player/media-player.component';
 import { environment } from '../../../../../environments/environment';
+import { AuthStore } from '../../../auth/store/auth.store';
 
 export interface UploadedMedia {
   id: string;
@@ -42,16 +43,13 @@ export interface UploadedMedia {
         border: none !important;
         border-radius: 0 !important;
       }
-
       ::ng-deep .cdk-drag-placeholder {
         opacity: 0.3 !important;
         border: 2px dashed black !important;
       }
-
       ::ng-deep .cdk-drag-animating {
         transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
       }
-
       .cdk-drop-list-dragging .cdk-drag {
         transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
       }
@@ -81,9 +79,8 @@ export interface UploadedMedia {
         <span
           class="material-icons text-5xl text-gray-400 mb-2 transition-colors"
           [class.text-[#0ABAB5]]="isDragging()"
+          >cloud_upload</span
         >
-          cloud_upload
-        </span>
 
         <p class="text-black font-bold text-lg tracking-tight mb-1">
           Drag and drop media here
@@ -94,7 +91,6 @@ export interface UploadedMedia {
         </p>
 
         <label class="sr-only" for="fileInput">Browse files</label>
-
         <input
           #fileInput
           type="file"
@@ -184,7 +180,6 @@ export interface UploadedMedia {
                         class="h-24 flex flex-col items-center justify-center !bg-red-50 !rounded-lg !border-2 !border-solid !border-red-300 !p-2 text-center"
                       >
                         <span class="material-icons text-red-500 !mb-1">error</span>
-
                         <p class="text-[10px] text-red-700 font-bold leading-tight !mb-1">
                           Upload failed. Try again.
                         </p>
@@ -236,11 +231,9 @@ export interface UploadedMedia {
                     class="h-24 flex flex-col items-center justify-center bg-red-50 rounded-lg border-2 border-red-300 p-2 text-center"
                   >
                     <span class="material-icons text-red-500 mb-1">error</span>
-
                     <p class="text-[10px] text-red-700 font-bold leading-tight mb-1">
                       Upload failed. Try again.
                     </p>
-
                     <button
                       type="button"
                       (click)="retryUpload(media.id)"
@@ -252,7 +245,6 @@ export interface UploadedMedia {
                 }
 
                 <button
-                  type="button"
                   class="absolute -top-2 -right-2 bg-white text-red-500 rounded-full w-6 h-6 flex items-center justify-center border-2 border-black opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 z-10 focus:opacity-100"
                   (click)="removeMedia(media.id)"
                   aria-label="Remove media"
@@ -278,6 +270,7 @@ export interface UploadedMedia {
 })
 export class MediaUploadComponent implements OnChanges {
   private readonly http = inject(HttpClient);
+  private readonly authStore = inject(AuthStore);
 
   @Input() media: UploadedMedia[] = [];
   @Output() mediaChange = new EventEmitter<UploadedMedia[]>();
@@ -323,7 +316,6 @@ export class MediaUploadComponent implements OnChanges {
     this.isDragging.set(false);
 
     const files = event.dataTransfer?.files;
-
     if (files && files.length > 0) {
       this.handleFiles(Array.from(files));
     }
@@ -331,7 +323,6 @@ export class MediaUploadComponent implements OnChanges {
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-
     if (input.files && input.files.length > 0) {
       this.handleFiles(Array.from(input.files));
       input.value = '';
@@ -364,14 +355,19 @@ export class MediaUploadComponent implements OnChanges {
     }
   }
 
-  uploadFile(file: File, existingId?: string): void {
-    const mediaType = this.resolveLocalMediaType(file);
+  uploadFile(file: File, existingId?: string) {
+    let mediaType: 'image' | 'video' | 'audio' | 'pdf';
 
-    if (!mediaType) {
+    if (file.type.startsWith('image/')) {
+      mediaType = 'image';
+    } else if (file.type.startsWith('video/')) {
+      mediaType = 'video';
+    } else if (file.type === 'application/pdf') {
+      mediaType = 'pdf';
+    } else {
       return;
     }
-
-    const tempId = existingId || crypto.randomUUID();
+    const id = existingId || crypto.randomUUID();
 
     if (existingId) {
       this.mediaList.update((list) =>
@@ -395,7 +391,6 @@ export class MediaUploadComponent implements OnChanges {
         status: 'uploading',
         file,
       };
-
       this.mediaList.update((list) => [...list, newMedia]);
       this.emitMediaChange();
     }
@@ -404,6 +399,7 @@ export class MediaUploadComponent implements OnChanges {
     formData.append('file', file);
 
     const uploadUrl = `${environment.lessonApiUrl}/api/v1/media/upload`;
+    const userId = this.authStore.user()?.id ?? '';
 
     this.http
       .post<{
@@ -420,7 +416,6 @@ export class MediaUploadComponent implements OnChanges {
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress && event.total) {
             const progress = Math.round((100 * event.loaded) / event.total);
-
             this.mediaList.update((list) =>
               list.map((media) =>
                 media.id === tempId
@@ -459,7 +454,6 @@ export class MediaUploadComponent implements OnChanges {
             this.announceA11y(`Upload complete: ${file.name}`);
           }
         },
-
         error: () => {
           this.mediaList.update((list) =>
             list.map((media) =>

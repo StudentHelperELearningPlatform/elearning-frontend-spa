@@ -16,6 +16,7 @@ import { LessonListComponent } from './lesson-list/lesson-list.component';
 
 import { TeacherClassesPageComponent } from './pages/teacher-classes-page/teacher-classes-page.component';
 import { TeacherClassDetailPageComponent } from './pages/teacher-class-detail-page/teacher-class-detail-page.component';
+import { BundleEditorComponent } from './bundle-editor/bundle-editor.component';
 
 export default [
   { path: 'dashboard', component: TeacherDashboardComponent },
@@ -35,6 +36,10 @@ export default [
     component: LessonEditorComponent,
     canDeactivate: [unsavedChangesGuard],
   },
+
+  // Bundle Editor Routes
+  { path: 'bundles/new', component: BundleEditorComponent },
+  { path: 'bundles/:id/edit', component: BundleEditorComponent },
 
   // Builder Routes
   { path: 'path-builder', component: PathBuilderComponent },

@@ -24,6 +24,7 @@ import {
 
 interface ClassStudentRaw {
   id?: string;
+  userId?: string;
   studentId?: string;
   firstName?: string;
   lastName?: string;
@@ -36,6 +37,10 @@ interface ClassState {
   currentClass: TeacherClassDetail | null;
   loading: boolean;
   error: string | null;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalElements: number;
 }
 
 const initialState: ClassState = {
@@ -44,6 +49,11 @@ const initialState: ClassState = {
 
   loading: false,
   error: null,
+  
+  page: 0,
+  pageSize: 9,
+  totalPages: 1,
+  totalElements: 0,
 };
 
 export const ClassStore = signalStore(
@@ -68,19 +78,26 @@ export const ClassStore = signalStore(
     userApi = inject(USER_PLATFORM_API_URL),
   ) => ({
 
-    loadClasses() {
+    loadClasses(pageIndex?: number) {
+      if (pageIndex !== undefined) {
+        patchState(store, { page: pageIndex });
+      }
+
       patchState(store, {
         loading: true,
         error: null,
       });
 
       http
-        .get<TeacherClassRaw[]>(`${userApi}/teachers/classes`)
+        .get<TeacherClassRaw[] | { classes?: TeacherClassRaw[], content?: TeacherClassRaw[], totalPages?: number, totalElements?: number }>(`${userApi}/teachers/classes?page=${store.page()}&size=${store.pageSize()}`)
         .subscribe({
-          next: (rawClasses) => {
+          next: (res) => {
+            const rawClasses = Array.isArray(res) ? res : (res.classes || res.content || []);
             patchState(store, {
               classes: rawClasses.map(mapClass),
               loading: false,
+              totalPages: Array.isArray(res) ? 1 : (res.totalPages ?? 1),
+              totalElements: Array.isArray(res) ? rawClasses.length : (res.totalElements ?? rawClasses.length),
             });
           },
 
@@ -109,7 +126,7 @@ export const ClassStore = signalStore(
           .get<(string | ClassStudentRaw)[]>(`${userApi}/teachers/classes/${classId}/students`)
           .pipe(catchError(() => of([]))),
         allStudents: http
-          .get<{ id: string; firstName: string; lastName: string; email?: string }[]>(
+          .get<{ id: string; userId?: string; studentId?: string; firstName: string; lastName: string; email?: string }[]>(
             `${userApi}/teachers/classes/${classId}/students`,
           )
           .pipe(catchError(() => of([]))),
@@ -118,18 +135,20 @@ export const ClassStore = signalStore(
           const studentMap = new Map(
             allStudents
               .filter((s) => s && typeof s === 'object')
-              .map((s: ClassStudentRaw) => [s.id || s.studentId || '', s])
+              .map((s: ClassStudentRaw) => [s.userId || s.id || s.studentId || '', s])
           );
           patchState(store, {
             currentClass: {
               ...mapClassDetail(detail),
               lessons,
               students: enrolledIds.map((item: string | ClassStudentRaw) => {
-                const id = typeof item === 'string' ? item : (item.id || item.studentId || '');
+                const id = typeof item === 'string' ? item : (item.userId || item.id || item.studentId || '');
                 const s = studentMap.get(id) || (typeof item === 'object' ? item : null);
                 return {
                   id,
-                  name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim()) : id,
+                  studentId: typeof item === 'string' ? item : (item.studentId || item.id || ''),
+                  userId: typeof item === 'string' ? undefined : item.userId,
+                  name: s ? (s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim() || id) : id,
                   email: s?.email ?? '',
                 };
               }),
@@ -252,10 +271,13 @@ export const ClassStore = signalStore(
     .subscribe();
 },
 
-    addStudent(classId: string, studentId: string) {
-      return http.post(
-        `${userApi}/teachers/classes/${classId}/students/${studentId}`,
-        {},
+    addStudent(classId: string, studentId: string, userId?: string) {
+      const req = http.post(`${userApi}/teachers/classes/${classId}/students/${studentId}`, {});
+      if (!userId || userId === studentId) {
+        return req;
+      }
+      return req.pipe(
+        catchError(() => http.post(`${userApi}/teachers/classes/${classId}/students/${userId}`, {}))
       );
     },
 

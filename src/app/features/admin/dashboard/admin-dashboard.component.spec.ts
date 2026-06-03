@@ -10,6 +10,7 @@ import {
   AdminUserRaw,
   AdminLessonRaw,
   AdminClassRaw,
+  PaginatedUsersResponse,
 } from '../../../core/services/admin.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
@@ -169,9 +170,8 @@ describe('AdminDashboardComponent', () => {
   });
 
   it('should update search query correctly', () => {
-    const inputEvent = { target: { value: 'Jane' } } as unknown as Event;
-    component.updateUserSearch(inputEvent);
-    expect(component.userSearchQuery()).toBe('Jane');
+    component.triggerUserSearch('search query');
+    expect(component.userSearchQuery()).toBe('search query');
   });
 
   it('should compute user distribution insights correctly', () => {
@@ -421,7 +421,7 @@ describe('AdminDashboardComponent', () => {
     expect(component.safeExtractArray(null)).toEqual([]);
     expect(component.safeExtractArray(undefined)).toEqual([]);
     expect(component.safeExtractArray(123)).toEqual([]);
-    expect(component.safeExtractArray("string")).toEqual([]);
+    expect(component.safeExtractArray('string')).toEqual([]);
   });
 
   it('should successfully parse paginated responses for loadLessons, loadClasses, loadContactMessages, and loadUsers', () => {
@@ -452,6 +452,26 @@ describe('AdminDashboardComponent', () => {
 
     component.loadUsers();
     expect(component.users().length).toBe(5);
+  });
+
+  it('should parse paginated classes response with classes, totalPages, and totalElements fields explicitly', () => {
+    const paginatedClasses = { classes: mockClasses, totalPages: 5, totalElements: 50 };
+    vi.spyOn(adminService, 'getClasses').mockReturnValue(of(paginatedClasses as never));
+    
+    component.loadClasses();
+    expect(component.classes().length).toBe(1);
+    expect(component.classesTotalPages()).toBe(5);
+    expect(component.classesTotalElements()).toBe(50);
+  });
+
+  it('should parse paginated classes response with missing pagination fields to fallbacks', () => {
+    const paginatedClasses = { classes: mockClasses };
+    vi.spyOn(adminService, 'getClasses').mockReturnValue(of(paginatedClasses as never));
+    
+    component.loadClasses();
+    expect(component.classes().length).toBe(1);
+    expect(component.classesTotalPages()).toBe(1);
+    expect(component.classesTotalElements()).toBe(1); // mappedClasses.length is 1
   });
 
   it('should gracefully handle API failure when performBan fails', () => {
@@ -610,36 +630,81 @@ describe('AdminDashboardComponent', () => {
     ]);
   });
 
-  it('should paginate users correctly in pages of 5', () => {
+  it('should paginate users correctly via server-side API calls', () => {
     fixture.detectChanges();
-    expect(component.totalUserPages()).toBe(1);
-    expect(component.paginatedUsers().length).toBe(5);
 
-    const extraUsers = Array.from({ length: 7 }, (_, i) => ({
+    // 1. Create mock chunks of data for pages 2 and 3
+    const extraUsersPage2 = Array.from({ length: 5 }, (_, i) => ({
       id: `u-extra-${i}`,
       name: `User Extra ${i}`,
       email: `extra${i}@example.com`,
-      role: 'STUDENT' as const,
-      status: 'ACTIVE' as const,
+      role: 'STUDENT',
+      status: 'ACTIVE',
       raw: {},
     }));
-    component.users.set([...component.users(), ...extraUsers]);
-    expect(component.totalUserPages()).toBe(3);
 
+    const extraUsersPage3 = Array.from({ length: 2 }, (_, i) => ({
+      id: `u-extra-${i + 5}`,
+      name: `User Extra ${i + 5}`,
+      email: `extra${i + 5}@example.com`,
+      role: 'STUDENT',
+      status: 'ACTIVE',
+      raw: {},
+    }));
+
+    // 2. Spy on the service to return different data based on the requested page
+    vi.spyOn(adminService, 'getUsers').mockImplementation((page) => {
+      if (page === 0)
+        return of({
+          content: mockUsers,
+          currentPage: 1,
+          totalPages: 3,
+          totalElements: 12,
+        } as PaginatedUsersResponse);
+      if (page === 1)
+        return of({
+          content: extraUsersPage2,
+          currentPage: 2,
+          totalPages: 3,
+          totalElements: 12,
+        } as PaginatedUsersResponse);
+      if (page === 2)
+        return of({
+          content: extraUsersPage3,
+          currentPage: 3,
+          totalPages: 3,
+          totalElements: 12,
+        } as PaginatedUsersResponse);
+      return of({
+        content: [],
+        currentPage: page,
+        totalPages: 3,
+        totalElements: 12,
+      } as PaginatedUsersResponse);
+    });
+    // 3. Reload page 1 to apply our new spy
+    component.userPage.set(1);
+    component.loadUsers();
+
+    // Verify Page 1
+    expect(component.totalUserPages()).toBe(3);
     expect(component.userPage()).toBe(1);
     expect(component.paginatedUsers().length).toBe(5);
     expect(component.paginatedUsers()[0].name).toBe('Alice');
 
+    // Verify moving to Page 2
     component.nextUserPage();
     expect(component.userPage()).toBe(2);
     expect(component.paginatedUsers().length).toBe(5);
     expect(component.paginatedUsers()[0].name).toBe('User Extra 0');
 
+    // Verify moving to Page 3
     component.nextUserPage();
     expect(component.userPage()).toBe(3);
     expect(component.paginatedUsers().length).toBe(2);
     expect(component.paginatedUsers()[0].name).toBe('User Extra 5');
 
+    // Verify moving back to Page 2
     component.prevUserPage();
     expect(component.userPage()).toBe(2);
     expect(component.paginatedUsers().length).toBe(5);
@@ -865,8 +930,7 @@ describe('AdminDashboardComponent', () => {
 
     it('should reset user page to 1 when a new search query is updated', () => {
       component.userPage.set(2);
-      const inputEvent = { target: { value: 'Jane' } } as unknown as Event;
-      component.updateUserSearch(inputEvent);
+      component.triggerUserSearch('newSearchQuery');
       expect(component.userPage()).toBe(1);
     });
 
@@ -916,14 +980,28 @@ describe('AdminDashboardComponent', () => {
         adminsPct: 0,
         studentsCount: 0,
         teachersCount: 0,
-        adminsCount: 0
+        adminsCount: 0,
       });
     });
 
     it('should return 0 in sortedLessons when sorting key values are equal', () => {
       component.lessons.set([
-        { id: 'l1', title: 'Same Title', subject: 'Math', grade: 10, author: 'Author', status: 'PUBLISHED' },
-        { id: 'l2', title: 'Same Title', subject: 'Math', grade: 10, author: 'Author', status: 'PUBLISHED' },
+        {
+          id: 'l1',
+          title: 'Same Title',
+          subject: 'Math',
+          grade: 10,
+          author: 'Author',
+          status: 'PUBLISHED',
+        },
+        {
+          id: 'l2',
+          title: 'Same Title',
+          subject: 'Math',
+          grade: 10,
+          author: 'Author',
+          status: 'PUBLISHED',
+        },
       ]);
       component.lessonSortKey.set('title');
       component.lessonSortOrder.set('asc');
@@ -932,13 +1010,161 @@ describe('AdminDashboardComponent', () => {
 
     it('should filter active users when statusFilter is ACTIVE', () => {
       component.users.set([
-        { id: 'u1', name: 'Alice', email: 'alice@example.com', role: 'STUDENT', status: 'ACTIVE', raw: {} },
-        { id: 'u2', name: 'Bob', email: 'bob@example.com', role: 'TEACHER', status: 'BANNED', raw: {} },
+        {
+          id: 'u1',
+          name: 'Alice',
+          email: 'alice@example.com',
+          role: 'STUDENT',
+          status: 'ACTIVE',
+          raw: {},
+        },
+        {
+          id: 'u2',
+          name: 'Bob',
+          email: 'bob@example.com',
+          role: 'TEACHER',
+          status: 'BANNED',
+          raw: {},
+        },
       ]);
       component.statusFilter.set('ACTIVE');
       const filtered = component.filteredUsers();
       expect(filtered.length).toBe(1);
       expect(filtered[0].id).toBe('u1');
+    });
+  });
+
+  // ── insightsLoading & loadAllUsersForInsights tests ───────────────────────
+  describe('loadAllUsersForInsights', () => {
+    it('should set allUsersForInsights from current page users when total fits in one page', () => {
+      fixture.detectChanges();
+      // After detectChanges, total elements equals users loaded (5) which is <= pageSize default
+      // So the early-return path fires and allUsersForInsights mirrors users()
+      expect(component.allUsersForInsights().length).toBe(component.users().length);
+    });
+
+    it('should set insightsLoading true then false when fetching all users for insights', () => {
+      // Override getUsers so total > pageSize, forcing the HTTP path
+      vi.spyOn(adminService, 'getUsers').mockReturnValue(
+        of({
+          content: mockUsers,
+          currentPage: 1,
+          totalPages: 2,
+          totalElements: 100,
+        } as PaginatedUsersResponse),
+      );
+      vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(of([]));
+
+      component.loadUsers();
+
+      expect(component.insightsLoading()).toBe(false);
+      expect(component.allUsersForInsights().length).toBeGreaterThan(0);
+    });
+
+    it('should fall back to current page users when insights API call fails', () => {
+      // First set totalElements > pageSize so the HTTP call is triggered
+      component.usersTotalElements.set(10000);
+      let callCount = 0;
+      vi.spyOn(adminService, 'getUsers').mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          // insights call
+          return throwError(() => new Error('Insights API Error'));
+        }
+        return of([] as unknown as PaginatedUsersResponse);
+      });
+
+      component.users.set([
+        {
+          id: 'fallback-u1',
+          name: 'Fallback User',
+          email: 'f@example.com',
+          role: 'STUDENT',
+          status: 'ACTIVE',
+          raw: {},
+        },
+      ]);
+
+      component.loadAllUsersForInsights();
+
+      expect(component.insightsLoading()).toBe(false);
+      expect(component.allUsersForInsights()[0].name).toBe('Fallback User');
+    });
+
+    it('should mark banned users correctly via mapRawUserToActive when banned flag is set', () => {
+      component.usersTotalElements.set(10000);
+      const bannedRaw: AdminUserRaw = {
+        id: 'b1',
+        name: 'Banned Person',
+        email: 'banned@example.com',
+        role: 'STUDENT',
+        banned: true,
+      };
+      vi.spyOn(adminService, 'getUsers').mockReturnValue(
+        of({
+          content: [bannedRaw],
+          currentPage: 1,
+          totalPages: 1,
+          totalElements: 1,
+        } as PaginatedUsersResponse),
+      );
+
+      component.loadAllUsersForInsights();
+
+      expect(component.allUsersForInsights()[0].status).toBe('BANNED');
+    });
+  });
+
+  // ── loadBannedUsersOnly tests ─────────────────────────────────────────────
+  describe('loadBannedUsersOnly', () => {
+    it('should load and map banned users correctly', () => {
+      vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(of(mockBannedUsers));
+      component.loadBannedUsersOnly();
+
+      expect(component.usersLoading()).toBe(false);
+      expect(component.users().every((u) => u.status === 'BANNED')).toBe(true);
+    });
+
+    it('should handle API failure gracefully', () => {
+      vi.spyOn(adminService, 'getBannedUsers').mockReturnValue(
+        throwError(() => new Error('Banned only API Error')),
+      );
+      component.loadBannedUsersOnly();
+
+      expect(component.usersLoading()).toBe(false);
+      expect(component.usersError()).toBe('Banned only API Error');
+    });
+  });
+
+  // ── setStatusFilter / setActiveTab reload paths ───────────────────────────
+  describe('setStatusFilter', () => {
+    it('should call loadBannedUsersOnly when filter is set to BANNED', () => {
+      const bannedSpy = vi.spyOn(component, 'loadBannedUsersOnly');
+      component.setStatusFilter('BANNED');
+      expect(bannedSpy).toHaveBeenCalled();
+      expect(component.statusFilter()).toBe('BANNED');
+    });
+
+    it('should call loadUsers when filter is set to ACTIVE', () => {
+      const loadSpy = vi.spyOn(component, 'loadUsers');
+      component.setStatusFilter('ACTIVE');
+      expect(loadSpy).toHaveBeenCalled();
+      expect(component.statusFilter()).toBe('ACTIVE');
+    });
+  });
+
+  describe('setActiveTab', () => {
+    it('should reload users when switching to users tab', () => {
+      const loadSpy = vi.spyOn(component, 'loadUsers');
+      component.setActiveTab('users');
+      expect(loadSpy).toHaveBeenCalled();
+      expect(component.activeTab()).toBe('users');
+    });
+
+    it('should reset user page to 1 when switching to users tab', () => {
+      component.userPage.set(3);
+      component.setActiveTab('users');
+      expect(component.userPage()).toBe(1);
     });
   });
 });

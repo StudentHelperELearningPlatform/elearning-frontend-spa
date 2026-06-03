@@ -14,6 +14,11 @@ export default [
   { path: 'dashboard', component: ProgressDashboardComponent },
   { path: 'profile', loadComponent: () => import('./profile/student-profile.component').then((m) => m.StudentProfileComponent) },
   { path: 'lessons', component: LessonListComponent },
+  {
+    path: 'my-classes',
+    loadComponent: () =>
+      import('./my-classes/my-classes.component').then((m) => m.MyClassesComponent),
+  },
   { path: 'milestones', component: MilestonesComponent },
   {
     path: 'history',
@@ -36,7 +41,7 @@ export default [
     // E2 sprint alias — keep consistent with lesson-viewer/:id
     path: 'lessons/:id',
     loadComponent: () =>
-      import('./lesson-viewer/lesson-viewer.component').then((m) => m.LessonViewerComponent),
+      import('./lesson-overview/lesson-overview.component').then((m) => m.LessonOverviewComponent),
   },
   // quiz-player is NOT directly accessible by URL — only via the lesson viewer's "Start Final Quiz" CTA
   // Navigation: LessonViewerComponent.startFinalQuiz() → router.navigate(['/student/quiz-player', lessonId])
@@ -47,6 +52,16 @@ export default [
     path: 'payments',
     loadComponent: () =>
       import('./payments/payment-history.component').then((m) => m.PaymentHistoryComponent),
+  },
+  {
+    path: 'payments/success',
+    loadComponent: () =>
+      import('./payments/payment-success.component').then((m) => m.PaymentSuccessComponent),
+  },
+  {
+    path: 'payments/cancel',
+    loadComponent: () =>
+      import('./payments/payment-cancel.component').then((m) => m.PaymentCancelComponent),
   },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
    {

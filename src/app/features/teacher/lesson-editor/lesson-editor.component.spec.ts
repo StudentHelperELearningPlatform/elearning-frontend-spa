@@ -91,15 +91,13 @@ describe('LessonEditorComponent', () => {
 
   // ── Module Event Handlers ────────────────────────────────────────────────
   it('onAddModule calls store and triggers autosave', () => {
-    vi.useFakeTimers();
     const storeSpy = vi.spyOn(store, 'addModule');
-    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+    const autoSaveSpy = vi.spyOn(component['autoSave$'], 'next');
 
     component['onAddModule']();
 
     expect(storeSpy).toHaveBeenCalled();
-    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
-    expect(saveSpy).toHaveBeenCalled();
+    expect(autoSaveSpy).toHaveBeenCalled();
   });
 
   it('onModuleBlur calls save after a delay if valid and focus leaves module', () => {
@@ -137,99 +135,84 @@ describe('LessonEditorComponent', () => {
   });
 
   it('onModuleTitleChange updates store and triggers autosave', () => {
-    vi.useFakeTimers();
     const updateSpy = vi.spyOn(store, 'updateModule');
-    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+    const autoSaveSpy = vi.spyOn(component['autoSave$'], 'next');
 
     component['onModuleTitleChange']('1', { target: { value: 'New Title' } } as unknown as Event);
 
     expect(updateSpy).toHaveBeenCalledWith('1', { title: 'New Title' });
-    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
-    expect(saveSpy).toHaveBeenCalled();
+    expect(autoSaveSpy).toHaveBeenCalled();
   });
 
   it('onModuleTypeChange updates store and triggers autosave', () => {
-    vi.useFakeTimers();
     const updateSpy = vi.spyOn(store, 'updateModule');
-    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+    const autoSaveSpy = vi.spyOn(component['autoSave$'], 'next');
 
     component['onModuleTypeChange']('1', { target: { value: 'video' } } as unknown as Event);
 
     expect(updateSpy).toHaveBeenCalledWith('1', { type: 'video' });
-    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
-    expect(saveSpy).toHaveBeenCalled();
+    expect(autoSaveSpy).toHaveBeenCalled();
   });
 
   it('onModuleContentChange updates store and triggers autosave', () => {
-    vi.useFakeTimers();
     const updateSpy = vi.spyOn(store, 'updateModule');
-    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+    const autoSaveSpy = vi.spyOn(component['autoSave$'], 'next');
 
     component['onModuleContentChange']('1', '<p>Test</p>');
 
     expect(updateSpy).toHaveBeenCalledWith('1', { content: '<p>Test</p>' });
-    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
-    expect(saveSpy).toHaveBeenCalled();
+    expect(autoSaveSpy).toHaveBeenCalled();
   });
 
   it('confirmRemove deletes module and triggers autosave if confirmed', () => {
-    vi.useFakeTimers();
     const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
     const removeSpy = vi.spyOn(store, 'removeModule');
-    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+    const autoSaveSpy = vi.spyOn(component['autoSave$'], 'next');
 
     component['confirmRemove']('module-1');
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(removeSpy).toHaveBeenCalledWith('module-1');
-    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
-    expect(saveSpy).toHaveBeenCalled();
+    expect(autoSaveSpy).toHaveBeenCalled();
   });
 
   it('confirmRemove does nothing if declined', () => {
-    vi.useFakeTimers();
     const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(false);
     const removeSpy = vi.spyOn(store, 'removeModule');
-    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+    const autoSaveSpy = vi.spyOn(component['autoSave$'], 'next');
 
     component['confirmRemove']('module-1');
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(removeSpy).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
-    expect(saveSpy).not.toHaveBeenCalled(); // No autosave triggered
+    expect(autoSaveSpy).not.toHaveBeenCalled();
   });
 
   it('onModuleDrop reorders modules and triggers autosave if indexes differ', () => {
-    vi.useFakeTimers();
-    
     store.addModule();
     store.addModule();
 
     const reorderSpy = vi.spyOn(store, 'reorderModules');
-    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+    const autoSaveSpy = vi.spyOn(component['autoSave$'], 'next');
 
     component['onModuleDrop']({ previousIndex: 0, currentIndex: 1 } as CdkDragDrop<
       LessonModuleDraft[]
     >);
 
     expect(reorderSpy).toHaveBeenCalledWith(0, 1);
-    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
-    expect(saveSpy).toHaveBeenCalled();
+    expect(autoSaveSpy).toHaveBeenCalled();
   });
 
   it('onModuleDrop does nothing if index is the same', () => {
-    vi.useFakeTimers();
     const reorderSpy = vi.spyOn(store, 'reorderModules');
-    const saveSpy = vi.spyOn(store, 'save').mockResolvedValue(undefined);
+    const autoSaveSpy = vi.spyOn(component['autoSave$'], 'next');
 
     component['onModuleDrop']({ previousIndex: 1, currentIndex: 1 } as CdkDragDrop<
       LessonModuleDraft[]
     >);
 
     expect(reorderSpy).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS);
-    expect(saveSpy).not.toHaveBeenCalled();
+    expect(autoSaveSpy).not.toHaveBeenCalled();
   });
 
   it('toggleCollapsed switches the collapsed state', () => {

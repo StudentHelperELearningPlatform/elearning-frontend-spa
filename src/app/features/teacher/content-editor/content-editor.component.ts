@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ContentStore } from '../state/content.store';
+import { TeacherBundleStore } from '../state/teacher-bundle.store';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
@@ -22,21 +23,45 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
           </div>
           <div>
             <h1 class="text-3xl font-black text-black tracking-tight">Content Editor</h1>
-            <p class="text-gray-600 font-medium">Manage and organize your lessons</p>
+            <p class="text-gray-600 font-medium">Manage and organize your lessons and bundles</p>
           </div>
         </div>
         <div>
-          <app-button variant="primary" icon="add_circle" routerLink="/teacher/lessons/new">New Lesson</app-button>
+          @if (activeTab() === 'lessons') {
+            <app-button variant="primary" icon="add_circle" routerLink="/teacher/lessons/new">New Lesson</app-button>
+          } @else {
+            <app-button variant="primary" icon="add_circle" routerLink="/teacher/bundles/new">New Bundle</app-button>
+          }
         </div>
       </div>
  
+      <!-- Top Tabs -->
+      <div class="flex space-x-2 border-b-4 border-black pb-2">
+        <button 
+          (click)="setActiveTab('lessons')"
+          class="px-6 py-3 rounded-t-2xl font-black text-lg transition-all duration-200"
+          [ngClass]="activeTab() === 'lessons' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">
+          My Lessons
+        </button>
+        <button 
+          (click)="setActiveTab('bundles')"
+          class="px-6 py-3 rounded-t-2xl font-black text-lg transition-all duration-200"
+          [ngClass]="activeTab() === 'bundles' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">
+          My Bundles
+        </button>
+      </div>
+
       <!-- View & Status Switcher Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <div class="flex flex-wrap items-center gap-4">
-          <span class="font-black text-black text-lg">My Lessons</span>
+          <span class="font-black text-black text-lg">
+            {{ activeTab() === 'lessons' ? 'Lessons' : 'Bundles' }}
+          </span>
           
-          <!-- Status Filter Switcher -->
-          <div class="flex space-x-1.5 bg-gray-100 p-1 rounded-xl border-2 border-black inline-flex">
+          <!-- Status Filter Switcher (Lessons Only) -->
+          @if (activeTab() === 'lessons') {
+            <div class="flex space-x-1.5 bg-gray-100 p-1 rounded-xl border-2 border-black inline-flex">
+
             <button 
               (click)="setStatusFilter('ALL')"
               class="px-3 py-1.5 rounded-lg font-bold transition-all duration-200 text-xs font-black"
@@ -59,6 +84,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
               Drafts
             </button>
           </div>
+          }
         </div>
 
         <div class="flex space-x-2 bg-gray-100 p-1.5 rounded-xl border-2 border-black inline-flex">
@@ -82,7 +108,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       </div>
  
       <!-- Content -->
-      @if (store.loading()) {
+      @if ((activeTab() === 'lessons' && store.loading()) || (activeTab() === 'bundles' && bundleStore.loading())) {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           @for (i of [1,2,3]; track i) {
             <div class="h-64 bg-gray-200 rounded-3xl border-4 border-gray-300 animate-pulse"></div>
@@ -92,7 +118,8 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
         <!-- Grid View -->
         @if (viewMode() === 'grid') {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            @for (lesson of filteredLessons(); track lesson.id) {
+            @if (activeTab() === 'lessons') {
+              @for (lesson of filteredLessons(); track lesson.id) {
               <app-card class="block group">
                 <div class="p-6">
                   <div class="flex justify-between items-start mb-4">
@@ -126,11 +153,49 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                 </div>
               </app-card>
             }
+            } @else {
+              @for (bundle of bundleStore.bundles(); track bundle.id) {
+                <app-card class="block group">
+                  <div class="p-6">
+                    <div class="flex justify-between items-start mb-4">
+                      <div class="w-12 h-12 bg-gray-100 rounded-xl border-2 border-black flex items-center justify-center group-hover:bg-[#FFD700]/20 transition-colors">
+                        <span class="material-icons text-black group-hover:text-[#FFD700] transition-colors">inventory_2</span>
+                      </div>
+                      <app-badge variant="success">Active</app-badge>
+                    </div>
+                    
+                    <h3 class="text-xl font-black text-black mb-2 line-clamp-2">{{ bundle.name }}</h3>
+                    
+                    <div class="flex items-center space-x-2 mb-6">
+                      @for (subject of bundle.subjects; track subject) {
+                        <app-badge variant="primary" icon="category">{{ subject }}</app-badge>
+                      }
+                      <app-badge variant="neutral">{{ bundle.price }} RON</app-badge>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-4 border-t-2 border-gray-100">
+                      <span class="text-sm text-gray-500 font-medium">
+                        {{ bundle.lessons.length }} Lessons
+                      </span>
+                      <div class="flex space-x-2">
+                        <button class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-black hover:text-white transition-colors" [routerLink]="['/teacher/bundles', bundle.id, 'edit']" title="Edit Bundle">
+                          <span class="material-icons text-sm">edit</span>
+                        </button>
+                        <button class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" (click)="deleteBundle(bundle.id)" title="Delete Bundle">
+                          <span class="material-icons text-sm">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </app-card>
+              }
+            }
           </div>
         } @else {
           <!-- List View -->
           <div class="bg-white border-4 border-black rounded-3xl overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <div class="overflow-x-auto">
+              @if (activeTab() === 'lessons') {
               <table class="w-full border-collapse text-left">
                 <thead>
                   <tr class="bg-gray-100 border-b-4 border-black">
@@ -172,15 +237,61 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                   }
                 </tbody>
               </table>
+              } @else {
+                <table class="w-full border-collapse text-left">
+                  <thead>
+                    <tr class="bg-gray-100 border-b-4 border-black">
+                      <th class="p-4 font-black text-black text-sm uppercase tracking-wider" scope="col">Bundle Name</th>
+                      <th class="p-4 font-black text-black text-sm uppercase tracking-wider" scope="col">Subjects</th>
+                      <th class="p-4 font-black text-black text-sm uppercase tracking-wider" scope="col">Price</th>
+                      <th class="p-4 font-black text-black text-sm uppercase tracking-wider text-right" scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (bundle of bundleStore.bundles(); track bundle.id) {
+                      <tr class="border-b-2 border-black/10 hover:bg-[#FFD700]/5 transition-colors">
+                        <td class="p-4 font-bold text-black">{{ bundle.name }}</td>
+                        <td class="p-4">
+                          @for (subject of bundle.subjects; track subject) {
+                            <span class="inline-flex items-center gap-1 text-xs font-black bg-[#0ABAB5]/10 text-[#0ABAB5] border-2 border-[#0ABAB5] px-2.5 py-0.5 rounded-full mr-1">
+                              {{ subject }}
+                            </span>
+                          }
+                        </td>
+                        <td class="p-4">
+                          <span class="font-bold">{{ bundle.price }} RON</span>
+                        </td>
+                        <td class="p-4 text-right">
+                          <div class="flex justify-end gap-2">
+                            <app-button size="sm" variant="secondary" icon="edit" [routerLink]="['/teacher/bundles', bundle.id, 'edit']">
+                              Edit
+                            </app-button>
+                            <app-button size="sm" variant="danger" icon="delete" (btnClick)="deleteBundle(bundle.id)">
+                              Delete
+                            </app-button>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
             </div>
           </div>
         }
  
-        @if (filteredLessons().length === 0) {
+        @if (activeTab() === 'lessons' && filteredLessons().length === 0) {
           <app-empty-state
             title="No Lessons Found"
             description="Try selecting a different status filter or create a new lesson to start building your curriculum."
             icon="menu_book"
+          ></app-empty-state>
+        }
+        @if (activeTab() === 'bundles' && bundleStore.bundles().length === 0) {
+          <app-empty-state
+            title="No Bundles Found"
+            description="Create your first bundle to group lessons together and sell them at a special price."
+            icon="inventory_2"
           ></app-empty-state>
         }
       }
@@ -189,7 +300,10 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 })
 export class ContentEditorComponent implements OnInit {
   store = inject(ContentStore);
+  bundleStore = inject(TeacherBundleStore);
   
+  activeTab = signal<'lessons' | 'bundles'>('lessons');
+
   viewMode = signal<'grid' | 'list'>(
     (localStorage.getItem('teacher_lessons_view_mode') as 'grid' | 'list') || 'grid'
   );
@@ -207,6 +321,11 @@ export class ContentEditorComponent implements OnInit {
 
   ngOnInit() {
     this.store.loadContent();
+    this.bundleStore.loadBundles();
+  }
+
+  setActiveTab(tab: 'lessons' | 'bundles') {
+    this.activeTab.set(tab);
   }
 
   setViewMode(mode: 'grid' | 'list') {
@@ -222,6 +341,12 @@ export class ContentEditorComponent implements OnInit {
   deleteLesson(id: string) {
     if (confirm('Are you sure you want to delete this lesson?')) {
       this.store.deleteLesson(id);
+    }
+  }
+
+  deleteBundle(id: string) {
+    if (confirm('Are you sure you want to delete this bundle?')) {
+      this.bundleStore.deleteBundle(id);
     }
   }
 }

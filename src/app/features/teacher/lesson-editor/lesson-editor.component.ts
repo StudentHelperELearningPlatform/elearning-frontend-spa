@@ -47,6 +47,9 @@ interface MetadataForm {
   subject: string;
   difficulty_level: string;
   short_description: string;
+  /** true = lesson is paid */
+  price_paid: boolean;
+  price_ron: number | null;
 }
 
 @Component({
@@ -77,17 +80,14 @@ interface MetadataForm {
         border: none !important;
         border-radius: 0 !important;
       }
-
       ::ng-deep .cdk-drag-placeholder {
         opacity: 0.2 !important;
         border: 4px dashed black !important;
         background: #f9fafb !important;
       }
-
       ::ng-deep .cdk-drag-animating {
         transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
       }
-
       .cdk-drop-list-dragging .cdk-drag {
         transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
       }
@@ -97,7 +97,8 @@ interface MetadataForm {
     <p-toast
       position="top-right"
       [style]="{ position: 'fixed', top: '20px', right: '20px', 'z-index': '99999' }"
-    ></p-toast>
+    >
+    </p-toast>
 
     <div class="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6">
       <div
@@ -107,7 +108,6 @@ interface MetadataForm {
           <h1 class="text-2xl sm:text-3xl font-black tracking-tight break-words">
             {{ store.lesson().id ? 'Edit Lesson' : 'Create Lesson' }}
           </h1>
-
           <p class="text-gray-600 font-medium" data-testid="status-indicator">
             @switch (store.saveState()) {
               @case ('saving') {
@@ -147,9 +147,9 @@ interface MetadataForm {
 
           @if (store.lesson().status === 'PUBLISHED') {
             <div class="w-full sm:w-auto flex flex-col">
-              <app-button variant="secondary" icon="cloud_off" (btnClick)="onUnpublish()">
-                Unpublish
-              </app-button>
+              <app-button variant="secondary" icon="cloud_off" (btnClick)="onUnpublish()"
+              >Unpublish</app-button
+              >
             </div>
           } @else {
             <div class="w-full sm:w-auto flex flex-col">
@@ -158,9 +158,8 @@ interface MetadataForm {
                 icon="cloud_upload"
                 [disabled]="!store.canPublish()"
                 (btnClick)="onPublishClicked()"
+              >Publish</app-button
               >
-                Publish
-              </app-button>
             </div>
           }
         </div>
@@ -176,7 +175,6 @@ interface MetadataForm {
               placeholder="e.g. Intro to Fractions"
             />
           </label>
-
           <label class="flex flex-col text-sm font-bold col-span-1">
             <span class="mb-1">Subject <span aria-hidden="true">*</span></span>
             <select
@@ -189,7 +187,6 @@ interface MetadataForm {
               }
             </select>
           </label>
-
           <label class="flex flex-col text-sm font-bold col-span-1">
             <span class="mb-1">Difficulty Level <span aria-hidden="true">*</span></span>
             <select
@@ -202,7 +199,6 @@ interface MetadataForm {
               }
             </select>
           </label>
-
           <label class="flex flex-col text-sm font-bold col-span-1 lg:col-span-2">
             <span class="mb-1">Short Description (optional)</span>
             <textarea
@@ -211,6 +207,60 @@ interface MetadataForm {
               class="px-3 py-2 border-2 border-black rounded-xl font-medium"
             ></textarea>
           </label>
+
+          <!-- ── Lesson Pricing ──────────────────────────────────── -->
+          <div class="col-span-1 lg:col-span-2 mt-2 p-5 rounded-2xl border-4 border-black bg-gray-50 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <span class="material-icons text-[#0ABAB5]">monetization_on</span>
+                </div>
+                <div>
+                  <p class="font-black text-black">Lesson Pricing</p>
+                  <p class="text-xs text-gray-500 font-medium">Set a price to require payment from students</p>
+                </div>
+              </div>
+              <!-- Toggle -->
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  formControlName="price_paid"
+                  class="sr-only peer"
+                />
+                <div class="w-12 h-6 bg-gray-300 peer-checked:bg-[#0ABAB5] rounded-full border-2 border-black transition-colors after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:border-2 after:border-black after:transition-transform peer-checked:after:translate-x-6"></div>
+                <span class="ml-3 text-sm font-black" [class]="metaForm.value.price_paid ? 'text-[#0ABAB5]' : 'text-gray-500'">
+                  {{ metaForm.value.price_paid ? 'Paid' : 'Free' }}
+                </span>
+              </label>
+            </div>
+
+            @if (metaForm.value.price_paid) {
+              <div class="flex items-center gap-3 mt-2">
+                <label class="flex flex-col text-sm font-bold flex-1">
+                  <span class="mb-1">Price (RON)</span>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 font-black text-gray-500">RON</span>
+                    <input
+                      type="number"
+                      formControlName="price_ron"
+                      min="0"
+                      step="0.01"
+                      class="w-full pl-14 pr-3 py-2 border-2 border-black rounded-xl font-medium outline-none focus:ring-2 focus:ring-[#0ABAB5]"
+                      placeholder="e.g. 29.99"
+                    />
+                  </div>
+                </label>
+                <div class="text-xs text-gray-500 font-medium mt-5 max-w-[140px]">
+                  Students will pay this amount to unlock the lesson.
+                </div>
+              </div>
+            } @else {
+              <div class="flex items-center gap-2 text-sm text-gray-500 font-medium">
+                <span class="material-icons text-green-500 text-base">check_circle</span>
+                All students can access this lesson for free.
+              </div>
+            }
+          </div>
         </form>
       </app-card>
 
@@ -218,7 +268,6 @@ interface MetadataForm {
         @if (modules().length === 0) {
           <p class="text-gray-600">No modules yet. Add one to get started.</p>
         }
-
         <ul cdkDropList (cdkDropListDropped)="onModuleDrop($event)" class="space-y-4">
           @for (module of modules(); track module.id) {
             <li
@@ -235,28 +284,24 @@ interface MetadataForm {
                   >
                     <span class="material-icons">drag_indicator</span>
                   </div>
-
                   <div
                     class="flex-1 min-w-[120px] !px-2 !py-1 !border-2 !border-solid !border-black !rounded-lg font-bold !bg-white text-black opacity-70 truncate"
                   >
                     {{ module.title || 'Module Title' }}
                   </div>
-
                   <div
                     class="!px-2 !py-1 !border-2 !border-solid !border-black !rounded-lg font-bold !bg-white shrink-0 text-black flex items-center"
                   >
                     {{ module.type }}
                     <span class="material-icons text-sm align-middle ml-1">arrow_drop_down</span>
                   </div>
-
                   <div
                     class="!p-2 !rounded-lg !border-2 !border-solid !border-black !bg-white shrink-0 flex items-center justify-center"
                   >
-                    <span class="material-icons">
-                      {{ isCollapsed(module.id) ? 'expand_more' : 'expand_less' }}
-                    </span>
+                    <span class="material-icons">{{
+                        isCollapsed(module.id) ? 'expand_more' : 'expand_less'
+                      }}</span>
                   </div>
-
                   <div
                     class="!p-2 !rounded-lg !border-2 !border-solid !border-red-700 !bg-red-500 text-white shrink-0 flex items-center justify-center"
                   >
@@ -275,7 +320,6 @@ interface MetadataForm {
                 >
                   <span class="material-icons" aria-hidden="true">drag_indicator</span>
                 </button>
-
                 <input
                   type="text"
                   [value]="module.title"
@@ -283,7 +327,6 @@ interface MetadataForm {
                   class="flex-1 min-w-[120px] px-2 py-1 border-2 border-black rounded-lg font-bold outline-none focus:ring-2 focus:ring-[#0ABAB5]"
                   placeholder="Module Title"
                 />
-
                 <select
                   [value]="module.type"
                   (change)="onModuleTypeChange(module.id, $event)"
@@ -293,17 +336,15 @@ interface MetadataForm {
                     <option [value]="type">{{ type }}</option>
                   }
                 </select>
-
                 <button
                   type="button"
                   (click)="toggleCollapsed(module.id)"
                   class="p-2 rounded-lg border-2 border-black bg-white hover:bg-gray-100 shrink-0 flex items-center justify-center"
                 >
-                  <span class="material-icons" aria-hidden="true">
-                    {{ isCollapsed(module.id) ? 'expand_more' : 'expand_less' }}
-                  </span>
+                  <span class="material-icons" aria-hidden="true">{{
+                      isCollapsed(module.id) ? 'expand_more' : 'expand_less'
+                    }}</span>
                 </button>
-
                 <button
                   type="button"
                   (click)="confirmRemove(module.id)"
@@ -341,18 +382,15 @@ interface MetadataForm {
                       >
                         <span class="material-icons text-[#0ABAB5] text-2xl">fact_check</span>
                       </div>
-
                       <div>
                         <p class="text-base sm:text-lg font-black text-black leading-tight">
                           Module Check Quiz
                         </p>
-
                         <p class="text-xs sm:text-sm text-gray-600 font-bold m-0 mt-1">
                           Add quick questions to test student focus.
                         </p>
                       </div>
                     </div>
-
                     <div class="w-full sm:w-auto flex flex-col">
                       <app-button
                         variant="secondary"
@@ -368,7 +406,6 @@ interface MetadataForm {
             </li>
           }
         </ul>
-
         <div class="mt-4 flex flex-col sm:inline-flex">
           <app-button variant="secondary" icon="add" (btnClick)="onAddModule()">
             Add Module
@@ -417,13 +454,10 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   protected readonly difficultyOptions = DIFFICULTIES;
   protected readonly moduleTypes = MODULE_TYPES;
   protected readonly modules = computed(() => this.store.lesson().modules);
-
   protected readonly isEditRoute = signal<boolean>(false);
-
   protected readonly saveButtonLabel = computed(() =>
     this.isEditRoute() || !!this.store.lesson().id ? 'Save Edit' : 'Save Draft',
   );
-
   protected readonly autoSaveFailed = signal<boolean>(false);
 
   protected readonly metaForm: FormGroup<{
@@ -431,11 +465,15 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     subject: AbstractControl<string>;
     difficulty_level: AbstractControl<string>;
     short_description: AbstractControl<string>;
+    price_paid: AbstractControl<boolean>;
+    price_ron: AbstractControl<number | null>;
   }> = this.fb.nonNullable.group({
     title: ['', [Validators.required]],
     subject: ['', [Validators.required]],
     difficulty_level: ['BEGINNER', [Validators.required]],
     short_description: [''],
+    price_paid: [false],
+    price_ron: [null as number | null],
   }) as never;
 
   private readonly collapsed = new Set<string>();
@@ -449,34 +487,34 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   constructor() {
     effect(() => {
       const lesson = this.store.lesson();
-
       if (!this.syncing) {
         const current = this.metaForm.value;
-
         if (
           current.title !== lesson.title ||
           current.short_description !== lesson.short_description
         ) {
           this.syncing = true;
-
           this.metaForm.patchValue(
             {
               title: lesson.title || '',
               subject: lesson.subject || '',
               difficulty_level: lesson.difficulty_level || 'BEGINNER',
               short_description: lesson.short_description || '',
+              price_paid: lesson.priceInCents !== null && lesson.priceInCents > 0,
+              price_ron: lesson.priceInCents !== null ? lesson.priceInCents / 100 : null,
             },
             { emitEvent: false },
           );
-
           this.syncing = false;
         }
       }
     });
 
+    // When an auto-save tick lands the store in 'error', surface a specific
+    // toolbar message so the teacher knows the silent retry failed and they
+    // need to click Save manually.
     effect(() => {
       const state = this.store.saveState();
-
       if (state === 'error' && this.autoSaveInFlight) {
         this.autoSaveFailed.set(true);
         this.autoSaveInFlight = false;
@@ -488,7 +526,6 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
-
     this.store.reset();
     this.isEditRoute.set(!!id);
 
@@ -502,14 +539,16 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
       }
 
       const v = value as Partial<MetadataForm>;
-
+      const priceInCents = v.price_paid && v.price_ron != null && v.price_ron > 0
+        ? Math.round(v.price_ron * 100)
+        : null;
       this.store.updateMetadata({
         title: v.title ?? '',
         subject: v.subject ?? '',
         difficulty_level: v.difficulty_level ?? 'BEGINNER',
         short_description: v.short_description ?? '',
+        priceInCents,
       });
-
       this.autoSave$.next();
     });
 
@@ -518,7 +557,6 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
       .subscribe(() => {
         if (this.store.saveState() === 'unsaved') {
           this.autoSaveInFlight = true;
-
           this.store.save(() => {
             this.autoSaveInFlight = false;
             this.autoSaveFailed.set(false);
@@ -533,25 +571,31 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
   }
 
   protected onModuleBlur(moduleId: string): void {
+    // Delay the save slightly to allow the browser's focus to settle
     setTimeout(() => {
+      // Check if the newly focused element is anywhere inside the current module's card
+      // (e.g., they clicked the module title, media upload, or a formatting button)
       const isInsideModule = document.activeElement?.closest(`[data-module-id="${moduleId}"]`);
+
+      // Quill (the engine behind p-editor) sometimes renders floating tooltips
+      // (like the link URL input) directly to the <body>. We protect those too.
       const isFloatingTooltip = document.activeElement?.closest('.ql-tooltip, .p-overlaypanel');
 
+      // If the user is still interacting with this module or its popups, cancel the save
       if (isInsideModule || isFloatingTooltip) {
         return;
       }
 
+      // Focus genuinely left the module card entirely. Proceed with background save.
       if (this.store.canSave()) {
         this.store.save(undefined, true);
       }
     }, 200);
   }
-
   protected onAddModule(): void {
     this.store.addModule();
     this.autoSave$.next();
   }
-
   protected confirmRemove(id: string): void {
     if (!globalThis.confirm('Delete this module? This cannot be undone.')) {
       return;
@@ -560,7 +604,6 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.store.removeModule(id);
     this.autoSave$.next();
   }
-
   protected onModuleTitleChange(id: string, event: Event): void {
     this.store.updateModule(id, {
       title: (event.target as HTMLInputElement).value,
@@ -568,7 +611,6 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
 
     this.autoSave$.next();
   }
-
   protected onModuleTypeChange(id: string, event: Event): void {
     this.store.updateModule(id, {
       type: (event.target as HTMLSelectElement).value as ModuleType,
@@ -576,10 +618,23 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
 
     this.autoSave$.next();
   }
+  protected onModuleContentChange(id: string, value: string | Event): void {
+    // Normalize content: p-editor typically emits a string, but template typing
+    // can present it as Event under strictTemplates. Extract safely.
+    let content = '';
+    if (typeof value === 'string') {
+      content = value;
+    } else {
+      const ev: any = value as any;
+      // Try common shapes: event.target.value (input-like), detail (custom events), or direct payload
+      content = (ev?.target?.value as string) ?? (ev?.detail as string) ?? '';
+      if (typeof content !== 'string') {
+        content = '';
+      }
+    }
 
-  protected onModuleContentChange(id: string, value: string): void {
     this.store.updateModule(id, {
-      content: value ?? '',
+      content: content ?? '',
     });
 
     this.autoSave$.next();
@@ -600,15 +655,24 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.autoSave$.next();
   }
 
-  protected onModuleDrop(event: CdkDragDrop<LessonModuleDraft[]>): void {
-    if (event.previousIndex === event.currentIndex) {
+  protected onModuleDrop(event: Event | CdkDragDrop<LessonModuleDraft[]>): void {
+    // Accept either a proper CdkDragDrop or a generic Event (template strict typing).
+    const drop = event as unknown as CdkDragDrop<LessonModuleDraft[]>;
+    const prevIdx = (drop && typeof (drop as any).previousIndex === 'number') ? (drop as any).previousIndex : undefined;
+    const currIdx = (drop && typeof (drop as any).currentIndex === 'number') ? (drop as any).currentIndex : undefined;
+
+    // If we couldn't extract indexes, do nothing (safe no-op).
+    if (prevIdx === undefined || currIdx === undefined) {
       return;
     }
 
-    this.store.reorderModules(event.previousIndex, event.currentIndex);
+    if (prevIdx === currIdx) {
+      return;
+    }
+
+    this.store.reorderModules(prevIdx, currIdx);
     this.autoSave$.next();
   }
-
   protected toggleCollapsed(id: string): void {
     if (this.collapsed.has(id)) {
       this.collapsed.delete(id);
@@ -616,16 +680,12 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
       this.collapsed.add(id);
     }
   }
-
   protected isCollapsed(id: string): boolean {
     return this.collapsed.has(id);
   }
-
   protected onSaveDraft(): void {
     const wasNewLesson = !this.store.lesson().id;
-
     this.autoSaveFailed.set(false);
-
     this.store.save((saved) => {
       if (wasNewLesson && saved.id) {
         this.isEditRoute.set(true);
@@ -663,7 +723,6 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
       this.store.save();
       return;
     }
-
     this.activeCheckQuizModuleId.set(moduleId);
   }
 

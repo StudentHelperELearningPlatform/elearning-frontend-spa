@@ -5,6 +5,8 @@ import {
   signal,
   computed,
   DestroyRef,
+  effect,
+  untracked,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -19,9 +21,11 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
 import { ProgressStore } from '../../student/store/progress.store';
+import { ClassStore } from '../state/class.store';
 
 // Tipul local pentru teacher — câmpurile reale din backend S6
 interface TeacherStudentSummary {
+  userId?: string;
   studentId: string;
   studentName: string;
   classesEnrolled: number;
@@ -49,9 +53,21 @@ export class TeacherStudentsOverviewComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
   readonly store = inject(ProgressStore);
+  readonly classStore = inject(ClassStore);
 
   searchTerm = signal('');
   private readonly searchInput$ = new Subject<string>();
+
+  constructor() {
+    effect(() => {
+      const classes = this.classStore.classes();
+      if (classes.length > 0) {
+        untracked(() => {
+          this.store.loadStudents({ classId: classes[0].id });
+        });
+      }
+    });
+  }
 
   readonly filteredStudents = computed<TeacherStudentSummary[]>(() => {
     const term = this.searchTerm().toLowerCase().trim();
@@ -63,7 +79,7 @@ export class TeacherStudentsOverviewComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.store.loadStudents();
+    this.classStore.loadClasses();
 
     this.searchInput$
       .pipe(

@@ -30,6 +30,20 @@ export interface AdminUserRaw {
   [key: string]: unknown;
 }
 
+export interface PaginatedUsersResponse {
+  content: AdminUserRaw[];
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
+}
+
+export interface PaginatedClassesResponse {
+  classes: AdminClassRaw[];
+  currentPage?: number;
+  totalPages?: number;
+  totalElements?: number;
+}
+
 export interface AdminLessonRaw {
   id?: string;
   title?: string;
@@ -45,22 +59,30 @@ export interface AdminLessonRaw {
 export interface AdminClassRaw {
   id?: string;
   name?: string;
+  bio?: string;
   teacher?: string;
   teacherName?: string;
   studentsCount?: number;
   studentCount?: number;
   subject?: string;
+  email?: string;
+  teacherEmail?: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
   private readonly apiBase = inject(USER_PLATFORM_API_URL); // Contains '/api/v1' already!
-  private readonly contentApi = inject(CONTENT_API_URL);     // Contains '/api/v1' already!
+  private readonly contentApi = inject(CONTENT_API_URL); // Contains '/api/v1' already!
 
   // Manage Users (Moisa Admin Controller & User Controller)
-  getUsers(): Observable<AdminUserRaw[]> {
-    return this.http.get<AdminUserRaw[]>(`${this.apiBase}/users`);
+  getUsers(page = 0, size = 5, query = ''): Observable<PaginatedUsersResponse> {
+    const params: Record<string, string> = { 
+      page: page.toString(), 
+      size: size.toString(),
+      query: query
+    };
+    return this.http.get<PaginatedUsersResponse>(`${this.apiBase}/users`, { params });
   }
 
   getBannedUsers(): Observable<AdminUserRaw[]> {
@@ -89,8 +111,12 @@ export class AdminService {
   }
 
   // Manage Classes
-  getClasses(): Observable<AdminClassRaw[]> {
-    return this.http.get<AdminClassRaw[]>(`${this.apiBase}/teachers/classes`);
+  getClasses(page = 0, size = 5): Observable<PaginatedClassesResponse> {
+    const params: Record<string, string> = { 
+      page: page.toString(), 
+      size: size.toString()
+    };
+    return this.http.get<PaginatedClassesResponse>(`${this.apiBase}/teachers/classes`, { params });
   }
 
   deleteClass(classId: string): Observable<void> {
@@ -107,7 +133,7 @@ export class AdminService {
   }
 
   deleteContactMessage(messageId: string): Observable<void> {
-    return new Observable<void>(observer => {
+    return new Observable<void>((observer) => {
       Object.keys({ messageId });
       observer.next();
       observer.complete();

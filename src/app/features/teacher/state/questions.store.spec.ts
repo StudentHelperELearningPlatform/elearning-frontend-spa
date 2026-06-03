@@ -9,6 +9,7 @@ import { CONTENT_API_URL } from '../../../core/tokens/api.token';
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import { QuestionResponse, AddQuestionRequest } from '../../../shared/models/quiz.types';
 import { HttpErrorResponse } from '@angular/common/http';
+import { patchState } from '@ngrx/signals';
 
 describe('QuestionsStore', () => {
   let store: InstanceType<typeof QuestionsStore>;
@@ -28,6 +29,8 @@ describe('QuestionsStore', () => {
 
   beforeEach(() => {
     mockService = {
+      getCheckQuiz: vi.fn().mockReturnValue(of({})),
+      getFinalQuiz: vi.fn().mockReturnValue(of({})),
       getCheckQuizQuestions: vi.fn(),
       getFinalQuizQuestions: vi.fn(),
       addCheckQuizQuestion: vi.fn(),
@@ -84,54 +87,84 @@ describe('QuestionsStore', () => {
     expect(store.isLoading()).toBe(false);
   });
 
-  it('should handle 404 and auto-create check quiz via HTTP intercept', () => {
-    mockService.getCheckQuizQuestions.mockReturnValue(
+  it('should patch passThreshold if returned in getFinalQuiz', () => {
+    mockService.getFinalQuiz.mockReturnValue(of({ passThreshold: 85 }));
+    mockService.getFinalQuizQuestions.mockReturnValue(of([]));
+    
+    store.loadQuestions({ type: 'final', parentId: 'p1' });
+    
+    expect(store.passThreshold()).toBe(85);
+  });
+
+  it('should return empty array if fetchQuestions$ returns 404', () => {
+    mockService.getFinalQuiz.mockReturnValue(of({}));
+    mockService.getFinalQuizQuestions.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 }))
+    );
+
+    store.loadQuestions({ type: 'final', parentId: 'p1' });
+
+    expect(store.questions()).toEqual([]);
+    expect(store.quizExists()).toBe(true);
+  });
+
+  it('should handle 404 gracefully without eager creation during loadQuestions', () => {
+    mockService.getCheckQuiz.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 404 })),
     );
 
     store.loadQuestions({ type: 'check', parentId: 'p1' });
 
-    const req = httpMock.expectOne('http://api/subcapitols/p1/check-quiz');
-    expect(req.request.method).toBe('POST');
-    req.flush({});
-
     expect(store.questions()).toEqual([]);
+    expect(store.quizExists()).toBe(false);
     expect(store.isLoading()).toBe(false);
   });
 
-  it('should handle 404 and auto-create final quiz via HTTP intercept with correct payload', () => {
-    mockService.getFinalQuizQuestions.mockReturnValue(
+  it('should handle 404 gracefully without eager creation for final quiz during loadQuestions', () => {
+    mockService.getFinalQuiz.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 404 })),
     );
 
     store.loadQuestions({ type: 'final', parentId: 'p2' });
 
-    const req = httpMock.expectOne('http://api/lessons/p2/final-quiz');
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ passThreshold: 100, mandatory: true, maxAttempts: 1073741824 });
-    req.flush({});
-
     expect(store.questions()).toEqual([]);
+    expect(store.quizExists()).toBe(false);
     expect(store.isLoading()).toBe(false);
   });
 
-  it('should handle error if auto-creation fails during a 404 response', () => {
-    mockService.getCheckQuizQuestions.mockReturnValue(
-      throwError(() => new HttpErrorResponse({ status: 404 })),
-    );
+  it('should lazily create final quiz and add question when quizExists is false', () => {
+    patchState(store, { quizExists: false });
+    const payload = { questionText: 'New Q' } as AddQuestionRequest;
+    const mockQ = { id: 'q1', questionText: 'New Q' } as QuestionResponse;
+    mockService.addCheckQuizQuestion.mockReturnValue(of(mockQ));
 
-    store.loadQuestions({ type: 'check', parentId: 'p1' });
+    store.addQuestion({ type: 'check', parentId: 'p1', payload });
 
     const req = httpMock.expectOne('http://api/subcapitols/p1/check-quiz');
-    // Simulate failure during creation POST
-    req.flush({ error: 'Failed to create quiz' }, { status: 500, statusText: 'Server Error' });
+    expect(req.request.method).toBe('POST');
+    req.flush({});
 
-    expect(store.error()).toBe('Failed to create quiz');
-    expect(store.isLoading()).toBe(false);
-    expect(messageServiceSpy.add).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: 'Error', detail: 'Failed to create quiz' }),
-    );
+    expect(mockService.addCheckQuizQuestion).toHaveBeenCalledWith('p1', payload);
+    expect(store.questions()).toContain(mockQ);
+    expect(store.quizExists()).toBe(true);
   });
+
+  it('should lazily create final quiz and generate AI when quizExists is false', () => {
+    patchState(store, { quizExists: false });
+    const mockQs = [{ id: 'q1', questionText: 'Gen Q' } as QuestionResponse];
+    mockService.generateFinalQuizQuestions.mockReturnValue(of(mockQs));
+
+    store.generateAI({ type: 'final', parentId: 'p1' });
+
+    const req = httpMock.expectOne('http://api/lessons/p1/final-quiz');
+    expect(req.request.body).toEqual({ passThreshold: 50, mandatory: false, maxAttempts: 3 });
+    req.flush({});
+
+    expect(mockService.generateFinalQuizQuestions).toHaveBeenCalledWith('p1');
+    expect(store.questions()).toEqual(mockQs);
+    expect(store.quizExists()).toBe(true);
+  });
+
 
   it('should handle non-404 error during loadQuestions', () => {
     mockService.getFinalQuizQuestions.mockReturnValue(
@@ -145,6 +178,16 @@ describe('QuestionsStore', () => {
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ summary: 'Error' }),
     );
+  });
+
+  it('should propagate non-404 error from checkExists$', () => {
+    mockService.getFinalQuiz.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+
+    store.loadQuestions({ type: 'final', parentId: 'p1' });
+
+    expect(store.error()).toBe('Failed to load questions.');
   });
 
   // --- GENERATE AI ---
@@ -190,6 +233,16 @@ describe('QuestionsStore', () => {
     );
   });
 
+  it('should use fallback error message when generating AI without error message', () => {
+    mockService.generateFinalQuizQuestions.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+
+    store.generateAI({ type: 'final', parentId: 'p1' });
+
+    expect(store.error()).toBe('Failed to generate questions. Ensure your lesson has text content.');
+  });
+
   // --- ADD QUESTION ---
 
   it('should add check question', () => {
@@ -231,11 +284,25 @@ describe('QuestionsStore', () => {
     );
   });
 
+  it('should use fallback error message for addQuestion', () => {
+    const payload = { questionText: 'New Q' } as AddQuestionRequest;
+    mockService.addCheckQuizQuestion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+
+    store.addQuestion({ type: 'check', parentId: 'p1', payload });
+
+    expect(store.error()).toBe('Failed to add question.');
+  });
+
   // --- UPDATE QUESTION ---
 
   it('should update question via api put', () => {
     mockService.getCheckQuizQuestions.mockReturnValue(
-      of([{ id: 'q1', questionText: 'Old' } as QuestionResponse]),
+      of([
+        { id: 'q1', questionText: 'Old' } as QuestionResponse,
+        { id: 'q2', questionText: 'Other' } as QuestionResponse
+      ]),
     );
     store.loadQuestions({ type: 'check', parentId: 'p1' });
 
@@ -249,6 +316,7 @@ describe('QuestionsStore', () => {
     req.flush(updated);
 
     expect(store.questions()[0].questionText).toBe('New');
+    expect(store.questions()[1].questionText).toBe('Other');
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'success' }),
     );
@@ -266,6 +334,12 @@ describe('QuestionsStore', () => {
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'error', detail: 'Update failed' }),
     );
+  });
+
+  it('should use fallback error message for updateQuestion', () => {
+    store.updateQuestion({ id: 'q1', payload: {} as AddQuestionRequest });
+    httpMock.expectOne('http://api/questions/q1').flush({}, { status: 500, statusText: 'Server Error' });
+    expect(store.error()).toBe('Failed to update question.');
   });
 
   // --- DELETE QUESTION ---
@@ -298,11 +372,22 @@ describe('QuestionsStore', () => {
     );
   });
 
+  it('should use fallback error message for deleteQuestion', () => {
+    mockService.deleteQuestion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+    store.deleteQuestion('q1');
+    expect(store.error()).toBe('Failed to delete question.');
+  });
+
   // --- APPROVE QUESTION ---
 
   it('should approve question', () => {
     mockService.getCheckQuizQuestions.mockReturnValue(
-      of([{ id: 'q1', status: 'PENDING' } as QuestionResponse]),
+      of([
+        { id: 'q1', status: 'PENDING' } as QuestionResponse,
+        { id: 'q2', status: 'PENDING' } as QuestionResponse
+      ]),
     );
     store.loadQuestions({ type: 'check', parentId: 'p1' });
 
@@ -311,6 +396,7 @@ describe('QuestionsStore', () => {
 
     expect(mockService.approveQuestion).toHaveBeenCalledWith('q1');
     expect(store.questions()[0].status).toBe('APPROVED');
+    expect(store.questions()[1].status).toBe('PENDING');
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'success' }),
     );
@@ -328,6 +414,14 @@ describe('QuestionsStore', () => {
     expect(messageServiceSpy.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'error', detail: 'Approve failed' }),
     );
+  });
+
+  it('should use fallback error message for approveQuestion', () => {
+    mockService.approveQuestion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 }))
+    );
+    store.approveQuestion('q1');
+    expect(store.error()).toBe('Failed to approve question.');
   });
   // --- UPDATE PASS THRESHOLD ---
 
@@ -355,5 +449,19 @@ describe('QuestionsStore', () => {
     expect(store.passThreshold()).toBe(80);
     // Should NOT call success message
     expect(messageServiceSpy.add).not.toHaveBeenCalled();
+  });
+
+  it('should create quiz when updatePassThreshold called and quizExists is false', () => {
+    patchState(store, { quizExists: false });
+    
+    store.updatePassThreshold({ parentId: 'p1', passThreshold: 90 });
+    
+    const req = httpMock.expectOne('http://api/lessons/p1/final-quiz');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.passThreshold).toBe(90);
+    req.flush({});
+    
+    expect(store.quizExists()).toBe(true);
+    expect(store.passThreshold()).toBe(90);
   });
 });
