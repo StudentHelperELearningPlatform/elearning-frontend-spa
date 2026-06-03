@@ -2,18 +2,13 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
-export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
-export type PaymentItemType = 'LESSON' | 'BUNDLE' | 'SUBSCRIPTION';
-
 export interface PaymentRecord {
-  id: string;
-  itemType: PaymentItemType;
+  purchaseId: string;
+  studentId: string;
+  itemType: string;
   itemId: string;
-  itemTitle: string;
-  amount: number;
-  currency: string;
-  status: PaymentStatus;
-  createdAt: string;
+  purchasedAt: string;
+  amountPaid: number;
 }
 
 export interface CheckoutSession {
@@ -25,7 +20,7 @@ export interface CheckoutSession {
 
 interface CheckoutParams {
   studentId: string;
-  itemType: PaymentItemType;
+  itemType: string;
   itemId: string;
   bundleId?: string;
 }
@@ -43,9 +38,7 @@ export class PaymentStore {
   checkoutError = signal<string | null>(null);
 
   totalSpent = computed(() =>
-    this.history()
-      .filter((p) => p.status === 'SUCCESS')
-      .reduce((sum, p) => sum + p.amount, 0),
+    this.history().reduce((sum, p) => sum + p.amountPaid, 0),
   );
 
   loadHistory() {
@@ -97,6 +90,6 @@ export class PaymentStore {
   }
 
   hasPurchased(itemId: string): boolean {
-    return this.history().some((p) => p.itemId === itemId && p.status === 'SUCCESS');
+    return this.history().some((p) => p.itemId === itemId);
   }
 }
