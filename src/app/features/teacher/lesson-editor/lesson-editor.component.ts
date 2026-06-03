@@ -47,6 +47,9 @@ interface MetadataForm {
   subject: string;
   difficulty_level: string;
   short_description: string;
+  /** true = lesson is paid */
+  price_paid: boolean;
+  price_ron: number | null;
 }
 
 @Component({
@@ -204,6 +207,60 @@ interface MetadataForm {
               class="px-3 py-2 border-2 border-black rounded-xl font-medium"
             ></textarea>
           </label>
+
+          <!-- ── Lesson Pricing ──────────────────────────────────── -->
+          <div class="col-span-1 lg:col-span-2 mt-2 p-5 rounded-2xl border-4 border-black bg-gray-50 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <span class="material-icons text-[#0ABAB5]">monetization_on</span>
+                </div>
+                <div>
+                  <p class="font-black text-black">Lesson Pricing</p>
+                  <p class="text-xs text-gray-500 font-medium">Set a price to require payment from students</p>
+                </div>
+              </div>
+              <!-- Toggle -->
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  formControlName="price_paid"
+                  class="sr-only peer"
+                />
+                <div class="w-12 h-6 bg-gray-300 peer-checked:bg-[#0ABAB5] rounded-full border-2 border-black transition-colors after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:border-2 after:border-black after:transition-transform peer-checked:after:translate-x-6"></div>
+                <span class="ml-3 text-sm font-black" [class]="metaForm.value.price_paid ? 'text-[#0ABAB5]' : 'text-gray-500'">
+                  {{ metaForm.value.price_paid ? 'Paid' : 'Free' }}
+                </span>
+              </label>
+            </div>
+
+            @if (metaForm.value.price_paid) {
+              <div class="flex items-center gap-3 mt-2">
+                <label class="flex flex-col text-sm font-bold flex-1">
+                  <span class="mb-1">Price (RON)</span>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 font-black text-gray-500">RON</span>
+                    <input
+                      type="number"
+                      formControlName="price_ron"
+                      min="0"
+                      step="0.01"
+                      class="w-full pl-14 pr-3 py-2 border-2 border-black rounded-xl font-medium outline-none focus:ring-2 focus:ring-[#0ABAB5]"
+                      placeholder="e.g. 29.99"
+                    />
+                  </div>
+                </label>
+                <div class="text-xs text-gray-500 font-medium mt-5 max-w-[140px]">
+                  Students will pay this amount to unlock the lesson.
+                </div>
+              </div>
+            } @else {
+              <div class="flex items-center gap-2 text-sm text-gray-500 font-medium">
+                <span class="material-icons text-green-500 text-base">check_circle</span>
+                All students can access this lesson for free.
+              </div>
+            }
+          </div>
         </form>
       </app-card>
 
@@ -404,11 +461,15 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     subject: AbstractControl<string>;
     difficulty_level: AbstractControl<string>;
     short_description: AbstractControl<string>;
+    price_paid: AbstractControl<boolean>;
+    price_ron: AbstractControl<number | null>;
   }> = this.fb.nonNullable.group({
     title: ['', [Validators.required]],
     subject: ['', [Validators.required]],
     difficulty_level: ['BEGINNER', [Validators.required]],
     short_description: [''],
+    price_paid: [false],
+    price_ron: [null as number | null],
   }) as never;
 
   private readonly collapsed = new Set<string>();
@@ -435,6 +496,8 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
               subject: lesson.subject || '',
               difficulty_level: lesson.difficulty_level || 'BEGINNER',
               short_description: lesson.short_description || '',
+              price_paid: lesson.priceInCents !== null && lesson.priceInCents > 0,
+              price_ron: lesson.priceInCents !== null ? lesson.priceInCents / 100 : null,
             },
             { emitEvent: false },
           );
@@ -466,11 +529,15 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.metaForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((value) => {
       if (this.syncing) return;
       const v = value as Partial<MetadataForm>;
+      const priceInCents = v.price_paid && v.price_ron != null && v.price_ron > 0
+        ? Math.round(v.price_ron * 100)
+        : null;
       this.store.updateMetadata({
         title: v.title ?? '',
         subject: v.subject ?? '',
         difficulty_level: v.difficulty_level ?? 'BEGINNER',
         short_description: v.short_description ?? '',
+        priceInCents,
       });
       this.autoSave$.next();
     });

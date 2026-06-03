@@ -135,7 +135,6 @@ export class MyClassesComponent implements OnInit {
   ngOnInit(): void {
     this.store.loadMyClasses();
   }
-
   openClass(classId: string): void {
     this.router.navigate(['/student/dashboard'], { queryParams: { classId } });
   }
