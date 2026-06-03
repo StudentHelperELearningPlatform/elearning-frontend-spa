@@ -62,7 +62,7 @@ jobs:
           echo "Build artifacts ready. Deployment target not yet configured."
           ls -la dist/
 
- tag-release:
+  tag-release:
     name: Tag Release
     needs: deploy
     runs-on: ubuntu-latest
@@ -92,4 +92,4 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           generate_release_notes: true
-          
+
