@@ -10,7 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { AuthStore } from '@features/auth/store/auth.store';
 import { ButtonComponent } from '@shared/components/button/button.component';
-import { PaymentItemType, PaymentStore } from './payment.store';
+import { PaymentStore } from './payment.store';
 
 @Component({
   selector: 'app-checkout-modal',
@@ -97,7 +97,7 @@ export class CheckoutModalComponent {
   itemId = input<string>('');
   itemTitle = input<string>('');
   /** Defaults to LESSON for backward compatibility. */
-  itemType = input<PaymentItemType>('LESSON');
+  itemType = input<string>('LESSON');
   /** Optional formatted price string to display (e.g. "29.99 RON") */
   price = input<string>('');
 

@@ -130,7 +130,7 @@ export class BundleStore {
     new Set(
       this.paymentStore
         .history()
-        .filter((p) => p.itemType === 'BUNDLE' && p.status === 'SUCCESS')
+        .filter((p) => p.itemType === 'BUNDLE')
         .map((p) => p.itemId),
     ),
   );

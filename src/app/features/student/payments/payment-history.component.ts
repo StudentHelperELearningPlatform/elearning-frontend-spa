@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthStore } from '@features/auth/store/auth.store';
-import { PaymentRecord, PaymentStatus, PaymentStore } from './payment.store';
+import { PaymentRecord, PaymentStore } from './payment.store';
 
 @Component({
   selector: 'app-payment-history',
@@ -26,7 +26,7 @@ import { PaymentRecord, PaymentStatus, PaymentStore } from './payment.store';
         </div>
         <div class="bg-[#0ABAB5]/10 p-4 border-4 border-black rounded-2xl">
           <p class="text-xs font-black uppercase tracking-widest text-gray-500">Total spent</p>
-          <p class="text-2xl font-black text-black">{{ formatAmount(totalSpentCents()) }}</p>
+          <p class="text-2xl font-black text-black">{{ formatAmount(totalSpent()) }}</p>
         </div>
       </header>
 
@@ -57,37 +57,17 @@ import { PaymentRecord, PaymentStatus, PaymentStore } from './payment.store';
           <table class="w-full">
             <thead class="bg-gray-100 border-b-4 border-black">
               <tr class="text-left">
-                <th scope="col" class="p-3 font-black">Item</th>
                 <th scope="col" class="p-3 font-black">Type</th>
                 <th scope="col" class="p-3 font-black">Amount</th>
-                <th scope="col" class="p-3 font-black">Status</th>
                 <th scope="col" class="p-3 font-black">Date</th>
               </tr>
             </thead>
             <tbody>
-              @for (p of store.history(); track p.id) {
+              @for (p of store.history(); track p.purchaseId) {
                 <tr class="border-b-2 border-black/10 hover:bg-[#0ABAB5]/5">
-                  <td class="p-3 font-bold">{{ p.itemTitle }}</td>
-                  <td class="p-3 text-sm uppercase font-medium text-gray-600">
-                    {{ p.itemType }}
-                  </td>
-                  <td class="p-3 font-bold">{{ formatAmount(p.amount, p.currency) }}</td>
-                  <td class="p-3">
-                    <span
-                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-black border-2 border-black"
-                      [class.bg-green-100]="p.status === 'SUCCESS'"
-                      [class.text-green-800]="p.status === 'SUCCESS'"
-                      [class.bg-yellow-100]="p.status === 'PENDING'"
-                      [class.text-yellow-800]="p.status === 'PENDING'"
-                      [class.bg-red-100]="p.status === 'FAILED'"
-                      [class.text-red-800]="p.status === 'FAILED'"
-                      [class.bg-gray-100]="p.status === 'REFUNDED'"
-                      [class.text-gray-700]="p.status === 'REFUNDED'"
-                    >
-                      {{ statusLabel(p.status) }}
-                    </span>
-                  </td>
-                  <td class="p-3 text-sm">{{ p.createdAt | date: 'mediumDate' }}</td>
+                  <td class="p-3 font-bold uppercase">{{ p.itemType }}</td>
+                  <td class="p-3 font-bold">{{ formatAmount(p.amountPaid) }}</td>
+                  <td class="p-3 text-sm">{{ p.purchasedAt | date: 'mediumDate' }}</td>
                 </tr>
               }
             </tbody>
@@ -101,7 +81,7 @@ export class PaymentHistoryComponent implements OnInit {
   protected readonly store = inject(PaymentStore);
   private readonly authStore = inject(AuthStore);
 
-  protected readonly totalSpentCents = computed(() => this.store.totalSpent());
+  protected readonly totalSpent = computed(() => this.store.totalSpent());
 
   ngOnInit() {
     const studentId = this.authStore.user()?.id;
@@ -110,8 +90,7 @@ export class PaymentHistoryComponent implements OnInit {
     }
   }
 
-  formatAmount(amountCents: number, currency = 'RON'): string {
-    const value = amountCents / 100;
+  formatAmount(value: number, currency = 'RON'): string {
     try {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value);
     } catch {
@@ -119,11 +98,7 @@ export class PaymentHistoryComponent implements OnInit {
     }
   }
 
-  statusLabel(status: PaymentStatus): string {
-    return status.charAt(0) + status.slice(1).toLowerCase();
-  }
-
   protected trackById(_: number, p: PaymentRecord) {
-    return p.id;
+    return p.purchaseId;
   }
 }
