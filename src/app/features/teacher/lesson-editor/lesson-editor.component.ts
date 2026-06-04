@@ -544,7 +544,7 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
       const v = value as Partial<MetadataForm>;
       const priceInCents = v.price_paid && v.price_ron != null && v.price_ron > 0
         ? Math.round(v.price_ron * 100)
-        : null;
+        : 0;
       this.store.updateMetadata({
         title: v.title ?? '',
         subject: v.subject ?? '',
