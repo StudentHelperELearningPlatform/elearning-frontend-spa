@@ -93,11 +93,11 @@ export class PaymentHistoryComponent implements OnInit {
   }
 
   formatAmount(value: number, currency = 'RON'): string {
-    const major = value / 100;
+    // FIX: eliminat value / 100 — amount vine în RON direct, nu în cenți
     try {
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(major);
+      return new Intl.NumberFormat('ro-RO', { style: 'currency', currency }).format(value);
     } catch {
-      return `${major.toFixed(2)} ${currency}`;
+      return `${value.toFixed(2)} ${currency}`;
     }
   }
 
