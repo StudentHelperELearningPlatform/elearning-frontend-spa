@@ -89,7 +89,7 @@ function getInitials(name?: string): string {
                 type="text"
                 [ngModel]="searchQuery()"
                 (ngModelChange)="onSearchChange($event)"
-                placeholder="Search by name (e.g. Alex Popescu)"
+                placeholder="Search by name (e.g. Ioana Popescu)"
                 class="w-full rounded-xl border-2 border-black px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
                 aria-label="Search students and teachers by name"
               />

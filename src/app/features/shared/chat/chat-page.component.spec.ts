@@ -33,6 +33,8 @@ describe('ChatPageComponent', () => {
       sendError: () => null,
       startingChat: () => false,
       startChatError: () => null,
+      searchLoading: () => false,
+      searchResults: () => [],
       selectedContactId: () => 'u1',
       conversations: () => mockConversations,
       selectedConversation: () => mockConversations[0],
@@ -40,6 +42,8 @@ describe('ChatPageComponent', () => {
       loadInbox: vi.fn(),
       selectContact: vi.fn(),
       sendMessage: vi.fn(),
+      searchUsersByName: vi.fn(),
+      selectSearchResult: vi.fn(),
       startConversationByUserId: vi.fn(),
     };
 

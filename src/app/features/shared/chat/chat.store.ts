@@ -1,24 +1,29 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { ContactService, InboxMessage, UserProfile, displayNameOf } from './contact.service';
+import {
+  ContactService,
+  InboxMessage,
+  UserProfile,
+  displayNameOf,
+} from './contact.service';
 import { AuthStore } from '@features/auth/store/auth.store';
 import { TeacherClassService } from '@core/services/teacher-class.service';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export interface UserSearchResult {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
 
 export interface Conversation {
   contactId: string;
   contactName: string;
   messages: InboxMessage[];
   lastMessage: InboxMessage;
+}
+
+export interface UserSearchResult {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -47,7 +52,6 @@ export class ChatStore {
     const me = this.authStore.user()?.id;
     const msgs = this._allMessages();
     if (!me || msgs.length === 0) return false;
-
     return msgs.some((msg) => {
       const partnerId = msg.senderId === me ? msg.receiverId : msg.senderId;
       return partnerId && partnerId !== me;
@@ -61,14 +65,10 @@ export class ChatStore {
     if (!me) return [];
 
     const map = new Map<string, InboxMessage[]>();
-
     for (const msg of msgs) {
-      // Received message: partner is senderId
-      // Optimistically-sent message: partner is receiverId
       const partnerId: string =
         msg.senderId === me ? (msg.receiverId ?? msg.senderId) : msg.senderId;
       if (!partnerId || partnerId === me) continue;
-
       if (!map.has(partnerId)) map.set(partnerId, []);
       map.get(partnerId)!.push(msg);
     }
@@ -78,8 +78,7 @@ export class ChatStore {
         const sorted = [...messages].sort(
           (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime(),
         );
-        const contactName =
-          names.get(contactId) ?? `User …${contactId.slice(-6)}`;
+        const contactName = names.get(contactId) ?? `User …${contactId.slice(-6)}`;
         return {
           contactId,
           contactName,
@@ -93,11 +92,8 @@ export class ChatStore {
           new Date(a.lastMessage.sentAt).getTime(),
       );
 
-    if (activeConvs.length > 0) {
-      return activeConvs;
-    }
+    if (activeConvs.length > 0) return activeConvs;
 
-    // Fallback: discoverable/potential classmates or students
     return this._discoverableContacts().map((contact) => {
       const contactName = names.get(contact.id) ?? contact.name;
       return {
@@ -132,8 +128,7 @@ export class ChatStore {
         const safeInbox = Array.isArray(inbox) ? inbox : [];
         const safeSent = Array.isArray(sent) ? sent : [];
 
-        // Merge by id so an optimistic sent message added before the server
-        // round-trip doesn't appear twice once persisted state is loaded.
+        // Dedupe by id so optimistic + persisted copies don't double up.
         const byId = new Map<string, InboxMessage>();
         for (const m of [...safeInbox, ...safeSent]) {
           if (m && m.id) byId.set(m.id, m);
@@ -153,7 +148,7 @@ export class ChatStore {
 
   private _resolveContactNames(msgs: InboxMessage[]) {
     const me = this.authStore.user()?.id;
-    // Partner is the other party — senderId for received, receiverId for sent.
+    // Partner is the other party: senderId for received, receiverId for sent.
     const partnerIds = msgs.flatMap((m) =>
       [m.senderId, m.receiverId].filter((id): id is string => !!id && id !== me),
     );
@@ -167,9 +162,7 @@ export class ChatStore {
     forkJoin(requests).subscribe((profiles) => {
       const map = new Map(this._userNames());
       profiles.forEach((p: UserProfile | null, i) => {
-        if (p) {
-          map.set(uniqueIds[i], displayNameOf({ ...p, id: uniqueIds[i] }));
-        }
+        if (p) map.set(uniqueIds[i], displayNameOf({ ...p, id: uniqueIds[i] }));
       });
       this._userNames.set(map);
     });
@@ -181,30 +174,22 @@ export class ChatStore {
       this.loading.set(false);
       return;
     }
-
     const role = me.role;
     const myId = me.id;
 
     if (role === 'PROFESSOR' || role === 'TEACHER') {
-      // Teachers can list their classes and roster each one through
-      // GET /api/v1/teachers/classes/{id}/students.
-      this.classService.getClasses().pipe(
-        catchError(() => of([]))
-      ).subscribe((classes) => {
+      this.classService.getClasses().pipe(catchError(() => of([]))).subscribe((classes) => {
         if (classes.length === 0) {
           this.loading.set(false);
           return;
         }
-
         const requests = classes.map((c) =>
-          this.classService.getStudents(c.id).pipe(catchError(() => of([])))
+          this.classService.getStudents(c.id).pipe(catchError(() => of([]))),
         );
-
         forkJoin(requests).subscribe((rosters) => {
           const map = new Map<string, string>();
           for (const roster of rosters) {
             for (const s of roster) {
-              // Backend returns StudentNameResponse(userId, firstName, lastName, email)
               const studentId = (s as { userId?: string }).userId ?? s.id;
               if (studentId && studentId !== myId) {
                 map.set(studentId, displayNameOf({ ...s, id: studentId }));
@@ -217,14 +202,10 @@ export class ChatStore {
           const nameMap = new Map(this._userNames());
           list.forEach((item) => nameMap.set(item.id, item.name));
           this._userNames.set(nameMap);
-
           this.loading.set(false);
         });
       });
     } else {
-      // Students (and other roles) have no exposed user/roster lookup,
-      // so we leave the discoverable list empty — they start chats via
-      // startConversationByUserId().
       this._discoverableContacts.set([]);
       this.loading.set(false);
     }
@@ -336,9 +317,7 @@ export class ChatStore {
   }
 
   contactNameFor(contactId: string): string {
-    return (
-      this._userNames().get(contactId) ?? `User …${contactId.slice(-6)}`
-    );
+    return this._userNames().get(contactId) ?? `User …${contactId.slice(-6)}`;
   }
 
   sendMessage(receiverId: string, body: string, subject = 'Chat') {
@@ -348,7 +327,21 @@ export class ChatStore {
     this.sending.set(true);
     this.sendError.set(null);
     const trimmedBody = body.trim();
-    const sentAt = Date.now();
+    const optimistic: InboxMessage = {
+      id: crypto.randomUUID(),
+      senderId: me.id,
+      receiverId,
+      subject,
+      body: trimmedBody,
+      isRead: true,
+      sentAt: new Date().toISOString(),
+    };
+
+    // Show the message immediately; we'll dedupe against the persisted copy
+    // when /me/sent returns. We do this BEFORE the network call so the user
+    // sees their message even if the gateway 503s — the DB write goes
+    // through regardless.
+    this._allMessages.update((list) => [...list, optimistic]);
 
     this.contactService
       .sendMessage({
@@ -359,45 +352,47 @@ export class ChatStore {
       })
       .subscribe({
         next: () => {
-          const optimistic: InboxMessage = {
-            id: crypto.randomUUID(),
-            senderId: me.id,
-            receiverId,
-            subject,
-            body: trimmedBody,
-            isRead: true,
-            sentAt: new Date().toISOString(),
-          };
-          this._allMessages.update((list) => [...list, optimistic]);
           this.sending.set(false);
         },
         error: () => {
-          // The gateway often returns 503 from its circuit breaker even when
-          // the user-platform-service successfully persists the message.
-          // Re-fetch /me/sent and see if our message actually made it through
-          // before deciding to surface an error.
-          this.contactService.getSent().pipe(catchError(() => of([] as InboxMessage[]))).subscribe((sent) => {
-            const persisted = (sent ?? []).find(
+          // The gateway's circuit breaker frequently returns 503 even when
+          // the user-platform-service persisted the message. Confirm by
+          // re-fetching /me/sent; if our message is there, treat as success.
+          // If the re-fetch also fails, leave the optimistic message in place
+          // and don't surface an error — a future loadInbox() will reconcile.
+          this.contactService.getSent().pipe(catchError(() => of(null))).subscribe((sent) => {
+            const list = Array.isArray(sent) ? sent : null;
+            const persisted = list?.find(
               (m) =>
                 m.senderId === me.id &&
                 m.receiverId === receiverId &&
-                m.body === trimmedBody &&
-                Math.abs(new Date(m.sentAt).getTime() - sentAt) < 60_000,
+                m.body === trimmedBody,
             );
             if (persisted) {
-              // Merge so the persisted row replaces any earlier optimistic copy.
-              this._allMessages.update((list) => {
+              // Replace the optimistic copy with the persisted one (dedupe by id).
+              this._allMessages.update((curr) => {
                 const byId = new Map<string, InboxMessage>();
-                for (const m of [...list, persisted]) {
-                  if (m && m.id) byId.set(m.id, m);
+                for (const m of curr) {
+                  if (m.id === optimistic.id) continue;
+                  byId.set(m.id, m);
                 }
+                byId.set(persisted.id, persisted);
                 return [...byId.values()];
               });
               this.sending.set(false);
-            } else {
-              this.sending.set(false);
-              this.sendError.set('Failed to send. Try again.');
+              return;
             }
+            if (list === null) {
+              // Re-fetch failed too; keep the optimistic message visible and
+              // don't show a misleading "Failed to send".
+              this.sending.set(false);
+              return;
+            }
+            // Re-fetch succeeded but our message isn't there — likely a real
+            // failure. Roll back the optimistic copy and tell the user.
+            this._allMessages.update((curr) => curr.filter((m) => m.id !== optimistic.id));
+            this.sending.set(false);
+            this.sendError.set('Failed to send. Try again.');
           });
         },
       });
