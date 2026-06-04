@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal, effect, untracked, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LessonsStore, Lesson } from '../../store/lessons.store';
+import { LessonsStore } from '../../store/lessons.store';
 import { ProgressStore } from '../../store/progress.store';
 import { AuthStore } from '../../../auth/store/auth.store';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -9,7 +9,6 @@ import { BadgeComponent } from '../../../../shared/components/badge/badge.compon
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { HistoryComponent } from '../../history/history.component';
 import { BundlesPageComponent } from '../../payments/bundles-page.component';
-import { CheckoutModalComponent } from '../../payments/checkout-modal.component';
 import { PaymentStore } from '../../payments/payment.store';
 
 type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles' | 'purchased';
@@ -25,27 +24,7 @@ type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles' | 'purchased';
     EmptyStateComponent,
     HistoryComponent,
     BundlesPageComponent,
-    CheckoutModalComponent,
   ],
-  styles: [`
-    /* ─── Premium border animations ─────────────────────────────────────── */
-    @keyframes shimmer-silver {
-      0%, 100% { box-shadow: 0 0 0 0 transparent, 4px 4px 0px 0px rgba(0,0,0,1); border-color: #c0c0c0; }
-      50%       { box-shadow: 0 0 12px 3px rgba(192,192,192,0.5), 4px 4px 0px 0px rgba(0,0,0,1); border-color: #e8e8e8; }
-    }
-    @keyframes shimmer-gold {
-      0%, 100% { box-shadow: 0 0 0 0 transparent, 4px 4px 0px 0px rgba(0,0,0,1); border-color: #FFD700; }
-      50%       { box-shadow: 0 0 18px 4px rgba(255,215,0,0.6), 4px 4px 0px 0px rgba(0,0,0,1); border-color: #ffe45e; }
-    }
-    @keyframes shimmer-diamond {
-      0%, 100% { box-shadow: 0 0 0 0 transparent, 4px 4px 0px 0px rgba(0,0,0,1); border-color: #8b5cf6; }
-      50%       { box-shadow: 0 0 24px 6px rgba(139,92,246,0.6), 4px 4px 0px 0px rgba(0,0,0,1); border-color: #a78bfa; }
-    }
-    .tier-silver  { animation: shimmer-silver  2.8s ease-in-out infinite; border-width: 4px; }
-    .tier-gold    { animation: shimmer-gold    2.2s ease-in-out infinite; border-width: 4px; }
-    .tier-diamond { animation: shimmer-diamond 1.8s ease-in-out infinite; border-width: 4px; }
-    .tier-free    { border-width: 4px; border-color: rgba(0,0,0,0.2); }
-  `],
   template: `
     <div class="p-6 max-w-7xl mx-auto space-y-8">
       <!-- Header -->
@@ -132,15 +111,6 @@ type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles' | 'purchased';
                 [icon]="'menu_book'"
               ></app-empty-state>
             } @else {
-              <!-- Legend -->
-              <div class="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-2xl border-2 border-black/10">
-                <span class="text-xs font-black uppercase tracking-widest text-gray-500">Border tiers:</span>
-                <div class="flex items-center gap-1.5"><div class="w-5 h-5 rounded border-4 border-[#0ABAB5]"></div><span class="text-xs font-bold text-gray-600">Free / Accessible</span></div>
-                <div class="flex items-center gap-1.5"><div class="w-5 h-5 rounded border-4 border-[#c0c0c0]"></div><span class="text-xs font-bold text-gray-600">Beginner (paid)</span></div>
-                <div class="flex items-center gap-1.5"><div class="w-5 h-5 rounded border-4 border-[#FFD700]"></div><span class="text-xs font-bold text-gray-600">Intermediate (paid)</span></div>
-                <div class="flex items-center gap-1.5"><div class="w-5 h-5 rounded border-4 border-[#8b5cf6]"></div><span class="text-xs font-bold text-gray-600">Advanced (paid)</span></div>
-              </div>
-
               <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 @for (lesson of lessonsStore.publishedLessons(); track lesson.id) {
                   <ng-container *ngTemplateOutlet="lessonCard; context: { $implicit: lesson, type: 'browser' }"/>
@@ -217,49 +187,19 @@ type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles' | 'purchased';
     </div>
 
     <!-- ── Lesson Card Template ────────────────────────────────────────── -->
-    <ng-template #lessonCard let-lesson let-type="type">
-      @let accessible = isAccessible(lesson.id);
-      @let tier = getPriceTier(lesson, accessible);
+    <ng-template #lessonCard let-lesson>
       @let status = getLessonStatus(lesson.id);
 
-      <div
-        class="bg-white rounded-3xl flex flex-col transition-all duration-300 hover:-translate-y-1 hover:-translate-x-1 overflow-hidden"
-        [class]="tier === 'free' ? 'border-4 border-[#0ABAB5] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : 'tier-' + tier"
-      >
+      <div class="bg-white rounded-3xl flex flex-col transition-all duration-300 hover:-translate-y-1 hover:-translate-x-1 overflow-hidden border-4 border-[#0ABAB5] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
         <!-- Card image area -->
-        <div
-          class="relative h-40 flex items-center justify-center overflow-hidden"
-          [class]="accessible ? 'bg-[#0ABAB5]/20' : getTierBg(tier)"
-        >
+        <div class="relative h-40 flex items-center justify-center overflow-hidden bg-[#0ABAB5]/20">
           <img
             [src]="'https://api.dicebear.com/7.x/shapes/svg?seed=' + lesson.id"
             alt="Lesson Cover"
-            class="absolute inset-0 w-full h-full object-cover"
-            [class]="accessible ? 'opacity-50' : 'opacity-20'"
+            class="absolute inset-0 w-full h-full object-cover opacity-50"
             referrerpolicy="no-referrer"
           />
-
-          @if (!accessible) {
-            <!-- Lock overlay -->
-            <div class="absolute inset-0 flex flex-col items-center justify-center gap-1 z-10">
-              <span class="material-icons text-5xl drop-shadow-lg" [class]="getTierIconColor(tier)">lock</span>
-              @if (lesson.priceInCents) {
-                <span class="font-black text-sm px-3 py-1 rounded-full border-2 border-black bg-white/90 shadow-sm">
-                  {{ formatPrice(lesson.priceInCents, lesson.currency) }}
-                </span>
-              }
-            </div>
-            <!-- Tier badge top-right -->
-            <div class="absolute top-2 right-2 z-10">
-              <span
-                class="text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-black"
-                [class]="getTierBadgeClass(tier)"
-              >{{ getTierLabel(tier) }}</span>
-            </div>
-          } @else {
-            <!-- Accessible indicator -->
-            <span class="material-icons text-black text-6xl relative z-10 drop-shadow-[2px_2px_0px_rgba(255,255,255,1)]">menu_book</span>
-          }
+          <span class="material-icons text-black text-6xl relative z-10 drop-shadow-[2px_2px_0px_rgba(255,255,255,1)]">menu_book</span>
         </div>
 
         <!-- Card body -->
@@ -289,43 +229,23 @@ type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles' | 'purchased';
             </div>
 
             <!-- CTA button -->
-            @if (!accessible) {
-              <app-button
-                variant="primary"
-                size="sm"
-                (btnClick)="openUnlockModal(lesson)"
-              >
-                🔓 Unlock
-              </app-button>
-            } @else {
-              @switch (status) {
-                @case ('in-progress') {
-                  <app-button variant="primary" size="sm" [routerLink]="['/student/lessons', lesson.id]">Continue</app-button>
-                }
-                @case ('quiz-submitted') {
-                  <app-button variant="secondary" size="sm" [routerLink]="['/student/lessons', lesson.id]">Review</app-button>
-                }
-                @default {
-                  <app-button variant="primary" size="sm" [routerLink]="['/student/lessons', lesson.id]">
-                    {{ status === 'quiz-ready' ? 'Go to Lesson' : 'Start Lesson' }}
-                  </app-button>
-                }
+            @switch (status) {
+              @case ('in-progress') {
+                <app-button variant="primary" size="sm" [routerLink]="['/student/lessons', lesson.id]">Continue</app-button>
+              }
+              @case ('quiz-submitted') {
+                <app-button variant="secondary" size="sm" [routerLink]="['/student/lessons', lesson.id]">Review</app-button>
+              }
+              @default {
+                <app-button variant="primary" size="sm" [routerLink]="['/student/lessons', lesson.id]">
+                  {{ status === 'quiz-ready' ? 'Go to Lesson' : 'Start Lesson' }}
+                </app-button>
               }
             }
           </div>
         </div>
       </div>
     </ng-template>
-
-    <!-- Checkout modal (for individual lesson unlock from browser) -->
-    <app-checkout-modal
-      [isOpen]="unlockModalOpen()"
-      [itemId]="unlockLesson()?.id ?? ''"
-      [itemTitle]="unlockLesson()?.title ?? ''"
-      itemType="LESSON"
-      [price]="unlockLessonPrice()"
-      (closed)="closeUnlockModal()"
-    />
   `,
 })
 export class LessonListComponent implements OnInit {
@@ -349,14 +269,6 @@ export class LessonListComponent implements OnInit {
       ),
     ),
   );
-
-  // For the unlock modal triggered from browser tab
-  protected readonly unlockModalOpen = signal(false);
-  protected readonly unlockLesson = signal<Lesson | null>(null);
-  protected readonly unlockLessonPrice = computed(() => {
-    const l = this.unlockLesson();
-    return l?.priceInCents ? this.formatPrice(l.priceInCents, l.currency) : '';
-  });
 
   private readonly lessonStatusMap = signal<Record<string, string>>({});
 
@@ -398,76 +310,6 @@ export class LessonListComponent implements OnInit {
 
   setTab(tab: ActiveTab): void {
     this.activeTab.set(tab);
-  }
-
-  isAccessible(lessonId: string): boolean {
-    // Seed lessons (non-UUID IDs) are always accessible
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(lessonId)) return true;
-    return this.lessonsStore.accessibleLessonIds().has(lessonId);
-  }
-
-  getPriceTier(lesson: Lesson, accessible: boolean): 'free' | 'silver' | 'gold' | 'diamond' {
-    if (accessible || lesson.priceInCents === null) return 'free';
-    const diff = lesson.difficulty?.toLowerCase() ?? '';
-    if (diff === 'advanced' || diff === 'hard') return 'diamond';
-    if (diff === 'intermediate' || diff === 'medium') return 'gold';
-    return 'silver';
-  }
-
-  getTierBg(tier: string): string {
-    switch (tier) {
-      case 'diamond': return 'bg-violet-100';
-      case 'gold':    return 'bg-amber-50';
-      case 'silver':  return 'bg-gray-100';
-      default:        return 'bg-[#0ABAB5]/20';
-    }
-  }
-
-  getTierIconColor(tier: string): string {
-    switch (tier) {
-      case 'diamond': return 'text-violet-500';
-      case 'gold':    return 'text-amber-500';
-      case 'silver':  return 'text-gray-500';
-      default:        return 'text-[#0ABAB5]';
-    }
-  }
-
-  getTierBadgeClass(tier: string): string {
-    switch (tier) {
-      case 'diamond': return 'bg-violet-100 text-violet-700 border-violet-400';
-      case 'gold':    return 'bg-amber-100 text-amber-700 border-amber-400';
-      case 'silver':  return 'bg-gray-100 text-gray-700 border-gray-400';
-      default:        return 'bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]';
-    }
-  }
-
-  getTierLabel(tier: string): string {
-    switch (tier) {
-      case 'diamond': return '💎 Premium';
-      case 'gold':    return '🥇 Gold';
-      case 'silver':  return '🥈 Silver';
-      default:        return '✓ Free';
-    }
-  }
-
-  formatPrice(priceInCents: number, currency = 'RON'): string {
-    const value = priceInCents / 100;
-    try {
-      return new Intl.NumberFormat('ro-RO', { style: 'currency', currency }).format(value);
-    } catch {
-      return `${value.toFixed(2)} ${currency}`;
-    }
-  }
-
-  openUnlockModal(lesson: Lesson): void {
-    this.unlockLesson.set(lesson);
-    this.unlockModalOpen.set(true);
-  }
-
-  closeUnlockModal(): void {
-    this.unlockModalOpen.set(false);
-    this.unlockLesson.set(null);
   }
 
   getLessonStatus(lessonId: string): string {
