@@ -21,6 +21,15 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { CheckoutModalComponent } from '../payments/checkout-modal.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 
+type ViewerMediaType = 'image' | 'video' | 'pdf';
+
+interface ViewerMedia {
+  name: string;
+  url: string;
+  type: ViewerMediaType;
+  mediaId?: string;
+}
+
 interface QuizAttempt {
   attemptId?: string;
   id?: string;
@@ -63,12 +72,13 @@ interface QuizAttempt {
             {{ store.currentLesson()?.title || 'Loading...' }}
           </h2>
           <div class="flex items-center mt-3 space-x-2">
-            <app-badge variant="primary" icon="category">{{
-              store.currentLesson()?.subject
-            }}</app-badge>
-            <app-badge variant="secondary" icon="schedule"
-              >{{ store.currentLesson()?.duration }}</app-badge
-            >
+            <app-badge variant="primary" icon="category">
+              {{ store.currentLesson()?.subject }}
+            </app-badge>
+
+            <app-badge variant="secondary" icon="schedule">
+              {{ store.currentLesson()?.duration }}
+            </app-badge>
           </div>
         </div>
 
@@ -86,19 +96,19 @@ interface QuizAttempt {
                   <h3 class="font-black text-black uppercase tracking-wider text-xs opacity-75 truncate max-w-[150px]" [title]="sub.title">
                     {{ sub.title }}
                   </h3>
-                  
+
                   @let exists = subcapitolQuizzesExist()[sub.id] !== false;
                   @if (exists) {
                     <div class="flex items-center gap-1.5 shrink-0">
                       @let bestAttempt = getBestAttempt(sub.id);
                       @if (bestAttempt) {
-                        <span 
+                        <span
                           class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wide border bg-gray-100 text-gray-700 border-gray-300"
                         >
                           {{ bestAttempt.score ?? 0 }} pts
                         </span>
                       }
-                      
+
                       <button
                         (click)="startCheckQuiz(sub.id)"
                         class="flex items-center justify-center p-1 rounded-lg border-2 border-black bg-white text-black hover:bg-[#0ABAB5]/10 hover:text-[#0ABAB5] active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none duration-150"
@@ -121,7 +131,7 @@ interface QuizAttempt {
                       'border-black bg-[#0ABAB5] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]':
                         currentModuleIndex() === globalIdx,
                       'border-gray-300 bg-white hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px]':
-                        currentModuleIndex() !== globalIdx,
+                        currentModuleIndex() !== globalIdx
                     }"
                   >
                     <div
@@ -129,7 +139,7 @@ interface QuizAttempt {
                       [ngClass]="{
                         'bg-white text-[#0ABAB5] border-black': currentModuleIndex() === globalIdx,
                         'bg-gray-100 text-gray-500 border-gray-300 group-hover:border-black group-hover:text-black':
-                          currentModuleIndex() !== globalIdx,
+                          currentModuleIndex() !== globalIdx
                       }"
                     >
                       {{ globalIdx + 1 }}
@@ -140,7 +150,7 @@ interface QuizAttempt {
                         class="font-bold text-base leading-tight"
                         [ngClass]="{
                           'text-white': currentModuleIndex() === globalIdx,
-                          'text-black': currentModuleIndex() !== globalIdx,
+                          'text-black': currentModuleIndex() !== globalIdx
                         }"
                       >
                         {{ module.title }}
@@ -149,13 +159,13 @@ interface QuizAttempt {
                         class="flex items-center mt-1 text-xs font-medium opacity-80"
                         [ngClass]="{
                           'text-white': currentModuleIndex() === globalIdx,
-                          'text-gray-500': currentModuleIndex() !== globalIdx,
+                          'text-gray-500': currentModuleIndex() !== globalIdx
                         }"
                       >
-                        <span class="material-icons text-sm mr-1">{{
-                          getModuleIcon(module.type)
-                        }}</span>
-                        <span class="capitalize">{{ module.type }}</span>
+                        <span class="material-icons text-sm mr-1">
+                          {{ getModuleIcon(module.type) }}
+                        </span>
+                        <span class="capitalize">{{ getModuleLabel(module.type) }}</span>
                       </div>
                     </div>
                   </div>
@@ -214,34 +224,37 @@ interface QuizAttempt {
                 <div class="h-2 w-24 bg-[#0ABAB5] rounded-full"></div>
               </div>
 
-              @if (
-                currentModule()?.type === 'video' ||
-                currentModule()?.type === 'image' ||
-                currentModule()?.type === 'pdf'
-              ) {
-                <div class="mb-10">
-                  <app-media-player
-                    [url]="currentModule()?.mediaUrl || ''"
-                    [type]="
-                      currentModule()?.type === 'video'
-                        ? 'video'
-                        : currentModule()?.type === 'pdf'
-                          ? 'pdf'
-                          : 'image'
-                    "
-                    [title]="currentModule()?.title || 'Media'"
-                  >
-                  </app-media-player>
-                </div>
+              @if (isMediaModule(currentModule())) {
+                @if (currentMedia(); as media) {
+                  @if (media.url) {
+                    <div class="mb-10">
+                      <app-media-player
+                        [url]="media.url"
+                        [type]="media.type"
+                        [title]="media.name"
+                      ></app-media-player>
+                    </div>
+                  } @else {
+                    <app-card class="mb-6 block">
+                      <div class="p-8 text-center">
+                        <span class="material-icons text-5xl text-red-500 mb-3">broken_image</span>
+                        <p class="font-black text-black mb-2">Media URL missing</p>
+                        <p class="text-gray-600 font-medium">
+                          This media block does not contain a valid URL.
+                        </p>
+                      </div>
+                    </app-card>
+                  }
+                }
+              } @else {
+                <app-card class="mb-6 block">
+                  <div class="p-8">
+                    <app-module-content
+                      [content]="currentModule()?.content || ''"
+                    ></app-module-content>
+                  </div>
+                </app-card>
               }
-
-              <app-card class="mb-6 block">
-                <div class="p-8">
-                  <app-module-content
-                    [content]="currentModule()?.content || ''"
-                  ></app-module-content>
-                </div>
-              </app-card>
 
               @if (currentModule()?.type === 'text') {
                 <div class="mb-10 flex justify-end">
@@ -297,11 +310,9 @@ interface QuizAttempt {
                   <p class="font-black text-black text-lg">Final Quiz Completed!</p>
                   <p class="text-gray-600 font-medium text-sm">
                     Last score:
-                    <span class="font-black text-[#0ABAB5]"
-                      >{{ attempt.score }}/{{ attempt.totalPoints }} ({{
-                        attempt.percentage
-                      }}%)</span
-                    >
+                    <span class="font-black text-[#0ABAB5]">
+                      {{ attempt.score }}/{{ attempt.totalPoints }} ({{ attempt.percentage }}%)
+                    </span>
                     &nbsp;&bull;&nbsp;{{ attempt.passed ? '✓ Passed' : '✕ Not passed' }}
                   </p>
                 </div>
@@ -358,7 +369,7 @@ interface QuizAttempt {
                   class="w-3 h-3 rounded-full border-2 border-black transition-colors"
                   [ngClass]="{
                     'bg-[#0ABAB5]': idx <= currentModuleIndex(),
-                    'bg-gray-200': idx > currentModuleIndex(),
+                    'bg-gray-200': idx > currentModuleIndex()
                   }"
                 ></div>
               }
@@ -414,22 +425,33 @@ interface QuizAttempt {
             <!-- Header -->
             <div class="flex items-center gap-2 pb-3 border-b-2 border-black/10 sticky top-0 bg-white">
               <span class="material-icons text-[#0ABAB5]">psychology</span>
-              <p class="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">Generated by AI · Not a substitute for the lesson</p>
+              <p class="text-xs font-bold uppercase tracking-wider text-gray-400 m-0">
+                Generated by AI · Not a substitute for the lesson
+              </p>
             </div>
 
             <!-- Simplified Explanation -->
             <div>
-              <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2">Simplified Explanation</p>
-              <p class="whitespace-pre-wrap text-gray-800" [innerHTML]="boldify(exp.simplified_explanation)"></p>
+              <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2">
+                Simplified Explanation
+              </p>
+              <p
+                class="whitespace-pre-wrap text-gray-800"
+                [innerHTML]="boldify(exp.simplified_explanation)"
+              ></p>
             </div>
 
             <!-- Analogy -->
             @if (exp.analogy) {
               <div class="rounded-xl border-2 border-[#0ABAB5] bg-[#0ABAB5]/5 p-4">
                 <p class="text-xs font-black uppercase tracking-wider text-[#0ABAB5] mb-2 flex items-center gap-1">
-                  <span class="material-icons text-sm">lightbulb</span> Analogy
+                  <span class="material-icons text-sm">lightbulb</span>
+                  Analogy
                 </p>
-                <p class="whitespace-pre-wrap text-gray-700 m-0" [innerHTML]="boldify(exp.analogy)"></p>
+                <p
+                  class="whitespace-pre-wrap text-gray-700 m-0"
+                  [innerHTML]="boldify(exp.analogy)"
+                ></p>
               </div>
             }
 
@@ -437,9 +459,13 @@ interface QuizAttempt {
             @if (exp.check_for_understanding_question) {
               <div class="rounded-xl border-2 border-black bg-gray-50 p-4">
                 <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1">
-                  <span class="material-icons text-sm">quiz</span> Check Your Understanding
+                  <span class="material-icons text-sm">quiz</span>
+                  Check Your Understanding
                 </p>
-                <p class="text-gray-800 font-medium m-0" [innerHTML]="boldify(exp.check_for_understanding_question)"></p>
+                <p
+                  class="text-gray-800 font-medium m-0"
+                  [innerHTML]="boldify(exp.check_for_understanding_question)"
+                ></p>
               </div>
             }
           </div>
@@ -484,6 +510,32 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     });
   }
 
+  currentModule = computed(() => {
+    const lesson = this.store.currentLesson();
+
+    if (!lesson || !lesson.modules || lesson.modules.length === 0) {
+      return null;
+    }
+
+    const index = this.currentModuleIndex();
+
+    if (index < 0 || index >= lesson.modules.length) {
+      return null;
+    }
+
+    return lesson.modules[index];
+  });
+
+  protected readonly currentMedia = computed<ViewerMedia | null>(() => {
+    const module = this.currentModule();
+
+    if (!module || !this.isMediaModule(module)) {
+      return null;
+    }
+
+    return this.parseMediaContent(module);
+  });
+
   ngOnInit() {
     this.reloadLesson();
   }
@@ -512,14 +564,6 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     }
   }
 
-  currentModule = computed(() => {
-    const lesson = this.store.currentLesson();
-    if (!lesson || !lesson.modules || lesson.modules.length === 0) return null;
-    const index = this.currentModuleIndex();
-    if (index < 0 || index >= lesson.modules.length) return null;
-    return lesson.modules[index];
-  });
-
   selectModule(index: number) {
     this.currentModuleIndex.set(index);
   }
@@ -532,13 +576,13 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     }
 
     if (lesson && lesson.modules && this.currentModuleIndex() < lesson.modules.length - 1) {
-      this.currentModuleIndex.update((i) => i + 1);
+      this.currentModuleIndex.update((index) => index + 1);
     }
   }
 
   previousModule() {
     if (this.currentModuleIndex() > 0) {
-      this.currentModuleIndex.update((i) => i - 1);
+      this.currentModuleIndex.update((index) => index - 1);
     }
   }
 
@@ -565,17 +609,19 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   finishLesson() {
     const id = this.lessonId();
-    if (!id) return;
+
+    if (!id) {
+      return;
+    }
 
     const attempts = this.store.finalQuizAttempts() || [];
-    
-    // Daca studentul nu a dat inca final quiz -> redirectezi
+
     if (attempts.length === 0) {
       this.router.navigate(['/student/quiz-player', id]);
       return;
     }
 
-    const hasPassed = attempts.some(a => a.passed === true);
+    const hasPassed = attempts.some((attempt) => attempt.passed === true);
 
     // Daca a dat quiz si a trecut -> complete lesson
     if (hasPassed) {
@@ -671,7 +717,7 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
    */
   boldify(text: string): SafeHtml {
     const html = (text ?? '').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    return this.sanitizer.bypassSecurityTrustHtml(html); // NOSONAR
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   explainCurrentModule() {
@@ -689,35 +735,112 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   getGlobalIndex(sub: Subcapitol, module: Module): number {
     const lesson = this.store.currentLesson();
-    if (!lesson) return -1;
+
+    if (!lesson) {
+      return -1;
+    }
 
     let index = 0;
-    for (const s of lesson.subcapitols ?? []) {
-      if (s.id === sub.id) {
-        const moduleIdx = s.blocks.findIndex((b) => b.id === module.id);
-        return index + moduleIdx;
+
+    for (const currentSubcapitol of lesson.subcapitols ?? []) {
+      if (currentSubcapitol.id === sub.id) {
+        const moduleIndex = currentSubcapitol.blocks.findIndex((block) => block.id === module.id);
+        return index + moduleIndex;
       }
-      index += s.blocks.length;
+
+      index += currentSubcapitol.blocks.length;
     }
     return -1;
   }
 
   getModuleIcon(type: string): string {
-    switch (type) {
+    const normalizedType = String(type || '').toLowerCase();
+
+    switch (normalizedType) {
       case 'video':
         return 'play_circle';
-      case 'text':
-        return 'article';
-      case 'quiz':
-        return 'quiz';
-      case 'interactive':
-        return 'touch_app';
-      case 'pdf':
-        return 'picture_as_pdf';
+
       case 'image':
         return 'image';
+
+      case 'audio':
+        return 'headphones';
+
+      case 'pdf':
+      case 'file':
+        return 'picture_as_pdf';
+
+      case 'text':
+        return 'article';
+
+      case 'quiz':
+        return 'quiz';
+
+      case 'interactive':
+        return 'touch_app';
+
       default:
         return 'menu_book';
     }
+  }
+
+  protected getModuleLabel(type: string): string {
+    if (type === 'pdf' || type === 'file') {
+      return 'PDF';
+    }
+
+    return type;
+  }
+
+  protected isMediaModule(module: Module | null | undefined): boolean {
+    if (!module) {
+      return false;
+    }
+
+    const type = String(module.type);
+
+    return type === 'image' || type === 'video' || type === 'pdf' || type === 'file';
+  }
+
+  private parseMediaContent(module: Module): ViewerMedia {
+    const rawContent = module.content || '';
+    const fallbackUrl = module.mediaUrl || '';
+    const fallbackName = module.title || 'Media';
+
+    try {
+      const parsed = JSON.parse(rawContent) as {
+        name?: string;
+        url?: string;
+        type?: ViewerMediaType | 'file';
+        mediaId?: string;
+      };
+
+      return {
+        name: parsed.name || fallbackName,
+        url: parsed.url || fallbackUrl,
+        type: this.normalizeMediaType(parsed.type || module.type),
+        mediaId: parsed.mediaId,
+      };
+    } catch {
+      return {
+        name: fallbackName,
+        url: fallbackUrl || rawContent,
+        type: this.normalizeMediaType(module.type),
+      };
+    }
+  }
+
+  private normalizeMediaType(type: string | undefined): ViewerMediaType {
+    const normalizedType = String(type || '').toLowerCase();
+
+    if (normalizedType === 'video') {
+      return 'video';
+    }
+
+    if (normalizedType === 'pdf' || normalizedType === 'file') {
+      return 'pdf';
+    }
+
+    return 'image';
   }
 }

@@ -6,8 +6,9 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="w-full bg-black rounded-2xl border-4 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative aspect-video flex items-center justify-center group">
-
+    <div
+      class="w-full bg-black rounded-2xl border-4 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative aspect-video flex items-center justify-center group"
+    >
       @if (type() === 'image') {
         <img
           [src]="url()"
@@ -23,24 +24,22 @@ import { CommonModule } from '@angular/common';
           controls
           class="w-full h-full object-cover"
           referrerpolicy="no-referrer"
-        >
-        </video>
+        ></video>
       }
 
       @if (type() === 'audio') {
-        <div class="w-full h-full bg-[#0ABAB5]/20 flex flex-col items-center justify-center p-8">
-          <div class="w-32 h-32 bg-white rounded-full border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-6 animate-pulse">
-            <span class="material-icons text-[#0ABAB5] text-6xl">
-              music_note
-            </span>
-          </div>
+        <div
+          class="w-full h-full bg-gray-900 flex flex-col items-center justify-center text-white"
+        >
+          <span class="material-icons text-6xl mb-4">
+            music_note
+          </span>
 
           <audio
             [src]="url()"
             controls
-            class="w-full"
-          >
-          </audio>
+            class="w-3/4"
+          ></audio>
         </div>
       }
 
@@ -48,6 +47,7 @@ import { CommonModule } from '@angular/common';
         <a
           [href]="url()"
           target="_blank"
+          rel="noopener noreferrer"
           class="w-full h-full bg-red-50 flex flex-col items-center justify-center"
         >
           <span class="material-icons text-red-500 text-6xl">
@@ -59,7 +59,6 @@ import { CommonModule } from '@angular/common';
           </span>
         </a>
       }
-
     </div>
   `
 })

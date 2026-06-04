@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,6 +8,7 @@ import {
   inject,
   signal,
   effect,
+  NO_ERRORS_SCHEMA,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -33,7 +35,7 @@ import { ToastModule } from 'primeng/toast';
 import { LessonEditorStore, LessonModuleDraft, ModuleType } from '../state/lesson-editor.store';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
-import { MediaUploadComponent } from './media-upload/media-upload.component';
+import { MediaUploadComponent, UploadedMedia } from './media-upload/media-upload.component';
 import { QuestionManagerComponent } from '../quiz-builder/question-manager.component';
 import { UnsavedChangesGuarded } from './unsaved-changes.guard';
 
@@ -148,7 +150,7 @@ interface MetadataForm {
           @if (store.lesson().status === 'PUBLISHED') {
             <div class="w-full sm:w-auto flex flex-col">
               <app-button variant="secondary" icon="cloud_off" (btnClick)="onUnpublish()"
-                >Unpublish</app-button
+              >Unpublish</app-button
               >
             </div>
           } @else {
@@ -158,7 +160,7 @@ interface MetadataForm {
                 icon="cloud_upload"
                 [disabled]="!store.canPublish()"
                 (btnClick)="onPublishClicked()"
-                >Publish</app-button
+              >Publish</app-button
               >
             </div>
           }
@@ -182,8 +184,8 @@ interface MetadataForm {
               class="px-3 py-2 border-2 border-black rounded-xl font-medium bg-white"
             >
               <option value="">Select subject…</option>
-              @for (s of subjectOptions; track s) {
-                <option [value]="s">{{ s }}</option>
+              @for (subject of subjectOptions; track subject) {
+                <option [value]="subject">{{ subject }}</option>
               }
             </select>
           </label>
@@ -194,8 +196,8 @@ interface MetadataForm {
               class="px-3 py-2 border-2 border-black rounded-xl font-medium bg-white"
             >
               <option value="">Select difficulty…</option>
-              @for (d of difficultyOptions; track d) {
-                <option [value]="d">{{ d }}</option>
+              @for (difficulty of difficultyOptions; track difficulty) {
+                <option [value]="difficulty">{{ difficulty }}</option>
               }
             </select>
           </label>
@@ -269,7 +271,7 @@ interface MetadataForm {
           <p class="text-gray-600">No modules yet. Add one to get started.</p>
         }
         <ul cdkDropList (cdkDropListDropped)="onModuleDrop($event)" class="space-y-4">
-          @for (module of modules(); track module.id; let idx = $index) {
+          @for (module of modules(); track module.id) {
             <li
               cdkDrag
               class="border-2 border-black rounded-2xl bg-gray-50 overflow-hidden"
@@ -299,8 +301,8 @@ interface MetadataForm {
                     class="!p-2 !rounded-lg !border-2 !border-solid !border-black !bg-white shrink-0 flex items-center justify-center"
                   >
                     <span class="material-icons">{{
-                      isCollapsed(module.id) ? 'expand_more' : 'expand_less'
-                    }}</span>
+                        isCollapsed(module.id) ? 'expand_more' : 'expand_less'
+                      }}</span>
                   </div>
                   <div
                     class="!p-2 !rounded-lg !border-2 !border-solid !border-red-700 !bg-red-500 text-white shrink-0 flex items-center justify-center"
@@ -332,8 +334,8 @@ interface MetadataForm {
                   (change)="onModuleTypeChange(module.id, $event)"
                   class="px-2 py-1 border-2 border-black rounded-lg font-bold bg-white shrink-0 outline-none focus:ring-2 focus:ring-[#0ABAB5]"
                 >
-                  @for (t of moduleTypes; track t) {
-                    <option [value]="t">{{ t }}</option>
+                  @for (type of moduleTypes; track type) {
+                    <option [value]="type">{{ type }}</option>
                   }
                 </select>
                 <button
@@ -342,8 +344,8 @@ interface MetadataForm {
                   class="p-2 rounded-lg border-2 border-black bg-white hover:bg-gray-100 shrink-0 flex items-center justify-center"
                 >
                   <span class="material-icons" aria-hidden="true">{{
-                    isCollapsed(module.id) ? 'expand_more' : 'expand_less'
-                  }}</span>
+                      isCollapsed(module.id) ? 'expand_more' : 'expand_less'
+                    }}</span>
                 </button>
                 <button
                   type="button"
@@ -364,7 +366,11 @@ interface MetadataForm {
                   ></p-editor>
 
                   <div class="mt-4 w-full">
-                    <app-media-upload></app-media-upload>
+                    <app-media-upload
+                      [media]="module.media || []"
+                      (mediaChange)="onModuleMediaChange(module.id, $event)"
+                      (mediaRemoved)="onModuleMediaRemoved($event)"
+                    ></app-media-upload>
                   </div>
 
                   <div
@@ -403,9 +409,9 @@ interface MetadataForm {
           }
         </ul>
         <div class="mt-4 flex flex-col sm:inline-flex">
-          <app-button variant="secondary" icon="add" (btnClick)="onAddModule()"
-            >Add Module</app-button
-          >
+          <app-button variant="secondary" icon="add" (btnClick)="onAddModule()">
+            Add Module
+          </app-button>
         </div>
       </app-card>
 
@@ -436,6 +442,7 @@ interface MetadataForm {
       }
     </p-dialog>
   `,
+  schemas: [NO_ERRORS_SCHEMA],
 })
 export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesGuarded {
   protected readonly store = inject(LessonEditorStore);
@@ -524,10 +531,16 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     const id = this.route.snapshot.paramMap.get('id');
     this.store.reset();
     this.isEditRoute.set(!!id);
-    if (id) this.store.loadLesson(id);
+
+    if (id) {
+      this.store.loadLesson(id);
+    }
 
     this.metaForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((value) => {
-      if (this.syncing) return;
+      if (this.syncing) {
+        return;
+      }
+
       const v = value as Partial<MetadataForm>;
       const priceInCents = v.price_paid && v.price_ron != null && v.price_ron > 0
         ? Math.round(v.price_ron * 100)
@@ -587,30 +600,104 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.autoSave$.next();
   }
   protected confirmRemove(id: string): void {
-    if (!globalThis.confirm('Delete this module? This cannot be undone.')) return;
+    if (!globalThis.confirm('Delete this module? This cannot be undone.')) {
+      return;
+    }
+
     this.store.removeModule(id);
     this.autoSave$.next();
   }
   protected onModuleTitleChange(id: string, event: Event): void {
-    this.store.updateModule(id, { title: (event.target as HTMLInputElement).value });
+    this.store.updateModule(id, {
+      title: (event.target as HTMLInputElement).value,
+    });
+
     this.autoSave$.next();
   }
   protected onModuleTypeChange(id: string, event: Event): void {
-    this.store.updateModule(id, { type: (event.target as HTMLSelectElement).value as ModuleType });
+    this.store.updateModule(id, {
+      type: (event.target as HTMLSelectElement).value as ModuleType,
+    });
+
     this.autoSave$.next();
   }
-  protected onModuleContentChange(id: string, value: string): void {
-    this.store.updateModule(id, { content: value ?? '' });
+  protected onModuleContentChange(id: string, value: string | Event): void {
+    // Normalize content: p-editor typically emits a string, but template typing
+    // can present it as Event under strictTemplates. Extract safely.
+    let content: string;
+    if (typeof value === 'string') {
+      content = value;
+    } else {
+      const ev = value as unknown;
+      // Try common shapes: event.target.value (input-like), detail (custom events), or direct payload
+      if (ev && typeof ev === 'object') {
+        const target = (ev as { target?: { value?: unknown } }).target;
+        const detail = (ev as { detail?: unknown }).detail;
+        if (target && typeof target.value === 'string') {
+          content = target.value;
+        } else if (typeof detail === 'string') {
+          content = detail;
+        } else {
+          content = '';
+        }
+      } else {
+        content = '';
+      }
+    }
+
+    this.store.updateModule(id, {
+      content: content ?? '',
+    });
+
     this.autoSave$.next();
   }
-  protected onModuleDrop(event: CdkDragDrop<LessonModuleDraft[]>): void {
-    if (event.previousIndex === event.currentIndex) return;
-    this.store.reorderModules(event.previousIndex, event.currentIndex);
+
+  protected onModuleMediaChange(moduleId: string, media: UploadedMedia[]): void {
+    this.store.updateModule(moduleId, { media });
+
+    const hasUploadingMedia = media.some((item) => item.status === 'uploading');
+
+    if (!hasUploadingMedia) {
+      this.autoSave$.next();
+    }
+  }
+
+  protected onModuleMediaRemoved(media: UploadedMedia): void {
+    this.store.removeMediaBlock(media);
+    this.autoSave$.next();
+  }
+
+  protected onModuleDrop(event: Event | CdkDragDrop<LessonModuleDraft[]>): void {
+    // Accept either a proper CdkDragDrop or a generic Event (template strict typing).
+    const dropCandidate = event as unknown;
+    let prevIdx: number | undefined;
+    let currIdx: number | undefined;
+    if (dropCandidate && typeof dropCandidate === 'object') {
+      const partial = dropCandidate as Partial<CdkDragDrop<LessonModuleDraft[]>>;
+      if (typeof partial.previousIndex === 'number' && typeof partial.currentIndex === 'number') {
+        prevIdx = partial.previousIndex;
+        currIdx = partial.currentIndex;
+      }
+    }
+
+    // If we couldn't extract indexes, do nothing (safe no-op).
+    if (prevIdx === undefined || currIdx === undefined) {
+      return;
+    }
+
+    if (prevIdx === currIdx) {
+      return;
+    }
+
+    this.store.reorderModules(prevIdx, currIdx);
     this.autoSave$.next();
   }
   protected toggleCollapsed(id: string): void {
-    if (this.collapsed.has(id)) this.collapsed.delete(id);
-    else this.collapsed.add(id);
+    if (this.collapsed.has(id)) {
+      this.collapsed.delete(id);
+    } else {
+      this.collapsed.add(id);
+    }
   }
   protected isCollapsed(id: string): boolean {
     return this.collapsed.has(id);
@@ -621,7 +708,9 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     this.store.save((saved) => {
       if (wasNewLesson && saved.id) {
         this.isEditRoute.set(true);
-        this.router.navigate(['/teacher/lessons', saved.id, 'edit'], { replaceUrl: true });
+        this.router.navigate(['/teacher/lessons', saved.id, 'edit'], {
+          replaceUrl: true,
+        });
       }
     });
   }
@@ -631,16 +720,23 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
       this.metaForm.markAllAsTouched();
       return;
     }
-    if (!globalThis.confirm('Publish this lesson? Students will be able to see it.')) return;
+
+    if (!globalThis.confirm('Publish this lesson? Students will be able to see it.')) {
+      return;
+    }
+
     this.store.publish();
   }
 
   protected onUnpublish(): void {
-    if (!globalThis.confirm('Unpublish this lesson?')) return;
+    if (!globalThis.confirm('Unpublish this lesson?')) {
+      return;
+    }
+
     this.store.unpublish();
   }
 
-  protected openCheckQuiz(moduleId: string) {
+  protected openCheckQuiz(moduleId: string): void {
     if (moduleId.startsWith('module-') || !this.store.lesson().id) {
       alert('Please save the lesson draft first before managing quiz questions for this module.');
       this.store.save();
@@ -648,7 +744,8 @@ export class LessonEditorComponent implements OnInit, OnDestroy, UnsavedChangesG
     }
     this.activeCheckQuizModuleId.set(moduleId);
   }
-  protected closeCheckQuiz() {
+
+  protected closeCheckQuiz(): void {
     this.activeCheckQuizModuleId.set(null);
   }
 }

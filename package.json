@@ -47,10 +47,16 @@
     "angular-eslint": "21.1.0",
     "eslint": "^9.39.4",
     "jsdom": "^26.0.0",
+    "msw": "^2.14.6",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.59.1",
-    "vitest": "^4.0.0"
+    "vitest": "^4.1.7"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

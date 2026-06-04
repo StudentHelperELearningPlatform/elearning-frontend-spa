@@ -1,4 +1,13 @@
-import { Component, signal, inject } from '@angular/core';
+import {
+  Component,
+  signal,
+  inject,
+  Input,
+  Output,
+  EventEmitter,
+  OnChanges,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   CdkDragDrop,
@@ -9,7 +18,7 @@ import {
 import { HttpClient, HttpEventType } from '@angular/common/http';
 import { MediaPlayerComponent } from '../../../../shared/components/media-player/media-player.component';
 import { environment } from '../../../../../environments/environment';
-import { AuthStore } from '../../../auth/store/auth.store';
+// AuthStore not required here; removed to avoid unused import
 
 export interface UploadedMedia {
   id: string;
@@ -19,6 +28,7 @@ export interface UploadedMedia {
   progress: number;
   status: 'uploading' | 'complete' | 'error';
   file?: File;
+  mediaBlockId?: string;
 }
 
 @Component({
@@ -53,9 +63,10 @@ export interface UploadedMedia {
 
       <div
         class="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
+        aria-label="Upload media"
         [ngClass]="{
           'border-[#0ABAB5] bg-[#0ABAB5]/10': isDragging(),
-          'border-black/30': !isDragging(),
+          'border-black/30': !isDragging()
         }"
         role="button"
         tabindex="0"
@@ -71,8 +82,14 @@ export interface UploadedMedia {
           [class.text-[#0ABAB5]]="isDragging()"
           >cloud_upload</span
         >
-        <p class="text-black font-bold text-lg tracking-tight mb-1">Drag and drop media here</p>
-        <p class="text-sm text-gray-600 font-medium mb-4">Images, Video, or PDF (Max 50MB)</p>
+
+        <p class="text-black font-bold text-lg tracking-tight mb-1">
+          Drag and drop media here
+        </p>
+
+        <p class="text-sm text-gray-600 font-medium mb-4">
+          Images, Video, Audio, or PDF (Max 50MB)
+        </p>
 
         <label class="sr-only" for="fileInput">Browse files</label>
         <input
@@ -109,7 +126,9 @@ export interface UploadedMedia {
 
       @if (mediaList().length > 0) {
         <div class="mt-5 pt-4 border-t-2 border-black/10">
-          <h4 class="text-sm font-bold text-black tracking-tight mb-3">Attached Media</h4>
+          <h4 class="text-sm font-bold text-black tracking-tight mb-3">
+            Attached Media
+          </h4>
 
           <div
             cdkDropList
@@ -130,13 +149,12 @@ export interface UploadedMedia {
                       <div
                         class="h-24 flex flex-col items-center justify-center !bg-gray-50 !rounded-lg !border-2 !border-dashed !border-gray-300"
                       >
-                        <span class="material-icons animate-spin text-[#0ABAB5] text-3xl !mb-2"
-                          >autorenew</span
-                        >
+                        <span class="material-icons animate-spin text-[#0ABAB5] text-3xl !mb-2">
+                          autorenew
+                        </span>
+
                         <div class="w-full !px-3">
-                          <div
-                            class="h-2 !bg-white !rounded-full overflow-hidden border border-black"
-                          >
+                          <div class="h-2 !bg-white !rounded-full overflow-hidden border border-black">
                             <div
                               class="h-full bg-[#0ABAB5] transition-all duration-200"
                               [style.width.%]="media.progress"
@@ -154,8 +172,7 @@ export interface UploadedMedia {
                           [url]="media.url"
                           [type]="media.type"
                           [title]="media.name"
-                        >
-                        </app-media-player>
+                        ></app-media-player>
                       </div>
                     }
 
@@ -183,9 +200,10 @@ export interface UploadedMedia {
                   <div
                     class="h-24 flex flex-col items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300"
                   >
-                    <span class="material-icons animate-spin text-[#0ABAB5] text-3xl mb-2"
-                      >autorenew</span
-                    >
+                    <span class="material-icons animate-spin text-[#0ABAB5] text-3xl mb-2">
+                      autorenew
+                    </span>
+
                     <div class="w-full px-3">
                       <div class="h-2 bg-white rounded-full overflow-hidden border border-black">
                         <div
@@ -201,8 +219,11 @@ export interface UploadedMedia {
                   <div
                     class="h-24 rounded-lg overflow-hidden relative border border-black/10 bg-black"
                   >
-                    <app-media-player [url]="media.url" [type]="media.type" [title]="media.name">
-                    </app-media-player>
+                    <app-media-player
+                      [url]="media.url"
+                      [type]="media.type"
+                      [title]="media.name"
+                    ></app-media-player>
                   </div>
                 }
 
@@ -215,6 +236,7 @@ export interface UploadedMedia {
                       Upload failed. Try again.
                     </p>
                     <button
+                      type="button"
                       (click)="retryUpload(media.id)"
                       class="text-xs bg-red-100 border border-red-500 text-red-700 px-2 py-1 rounded font-bold hover:bg-red-200 focus:ring-2 focus:ring-red-500 cursor-pointer"
                     >
@@ -228,9 +250,9 @@ export interface UploadedMedia {
                   (click)="removeMedia(media.id)"
                   aria-label="Remove media"
                 >
-                  <span class="material-icons text-sm font-black" style="font-size: 14px;"
-                    >close</span
-                  >
+                  <span class="material-icons text-sm font-black" style="font-size: 14px;">
+                    close
+                  </span>
                 </button>
 
                 <p
@@ -247,9 +269,12 @@ export interface UploadedMedia {
     </div>
   `,
 })
-export class MediaUploadComponent {
+export class MediaUploadComponent implements OnChanges {
   private readonly http = inject(HttpClient);
-  private readonly authStore = inject(AuthStore);
+
+  @Input() media: UploadedMedia[] = [];
+  @Output() mediaChange = new EventEmitter<UploadedMedia[]>();
+  @Output() mediaRemoved = new EventEmitter<UploadedMedia>();
 
   isDragging = signal(false);
   errorMessage = signal<string | null>(null);
@@ -258,6 +283,7 @@ export class MediaUploadComponent {
 
   readonly MAX_SIZE_MB = 50;
   readonly MAX_SIZE_BYTES = this.MAX_SIZE_MB * 1024 * 1024;
+
   readonly ALLOWED_TYPES = [
     'image/jpeg',
     'image/png',
@@ -266,19 +292,25 @@ export class MediaUploadComponent {
     'application/pdf',
   ];
 
-  onDragOver(event: DragEvent) {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['media']) {
+      this.mediaList.set(this.media ?? []);
+    }
+  }
+
+  onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging.set(true);
   }
 
-  onDragLeave(event: DragEvent) {
+  onDragLeave(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging.set(false);
   }
 
-  onDrop(event: DragEvent) {
+  onDrop(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging.set(false);
@@ -289,16 +321,15 @@ export class MediaUploadComponent {
     }
   }
 
-  onFileSelected(event: Event) {
+  onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.handleFiles(Array.from(input.files));
       input.value = '';
     }
-
   }
 
-  handleFiles(files: File[]) {
+  handleFiles(files: File[]): void {
     this.errorMessage.set(null);
 
     const errors: string[] = [];
@@ -306,7 +337,7 @@ export class MediaUploadComponent {
 
     for (const file of files) {
       if (!this.ALLOWED_TYPES.includes(file.type)) {
-        errors.push(`Invalid file type: ${file.name}. Only images, videos, audio, and PDFs are allowed.`);
+        errors.push(`Invalid file type: ${file.name}. Only images, videos, and PDFs are allowed.`);
       } else if (file.size > this.MAX_SIZE_BYTES) {
         errors.push(`File too large: ${file.name}. Maximum size is ${this.MAX_SIZE_MB}MB.`);
       } else {
@@ -336,15 +367,23 @@ export class MediaUploadComponent {
     } else {
       return;
     }
-    const id = existingId || crypto.randomUUID();
+    const tempId = existingId ?? `temp-${crypto.randomUUID()}`;
 
     if (existingId) {
       this.mediaList.update((list) =>
-        list.map((m) => (m.id === id ? { ...m, status: 'uploading', progress: 0 } : m)),
+        list.map((media) =>
+          media.id === tempId
+            ? {
+                ...media,
+                status: 'uploading',
+                progress: 0,
+              }
+            : media,
+        ),
       );
     } else {
       const newMedia: UploadedMedia = {
-        id,
+        id: tempId,
         url: '',
         name: file.name,
         type: mediaType,
@@ -353,70 +392,177 @@ export class MediaUploadComponent {
         file,
       };
       this.mediaList.update((list) => [...list, newMedia]);
+      this.emitMediaChange();
     }
 
     const formData = new FormData();
     formData.append('file', file);
 
     const uploadUrl = `${environment.lessonApiUrl}/api/v1/media/upload`;
-    const userId = this.authStore.user()?.id ?? '';
 
     this.http
-      .post<{ id: string; url: string; mediatype: string; mimetype: string; originalFilename: string }>(
-        uploadUrl,
-        formData,
-        {
-          reportProgress: true,
-          observe: 'events',
-          headers: { 'X-User-Id': userId },
-        },
-      )
+      .post<{
+        id: string;
+        url: string;
+        originalFilename: string;
+        mediaType: string;
+        mimeType: string;
+      }>(uploadUrl, formData, {
+        reportProgress: true,
+        observe: 'events',
+      })
       .subscribe({
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress && event.total) {
             const progress = Math.round((100 * event.loaded) / event.total);
             this.mediaList.update((list) =>
-              list.map((m) => (m.id === id ? { ...m, progress } : m)),
+              list.map((media) =>
+                media.id === tempId
+                  ? {
+                      ...media,
+                      progress,
+                    }
+                  : media,
+              ),
             );
           } else if (event.type === HttpEventType.Response) {
-            const url = event.body?.url || URL.createObjectURL(file);
+            const body = event.body;
+
+            const backendId = body?.id || tempId;
+            const url = body?.url || URL.createObjectURL(file);
+            const name = body?.originalFilename || file.name;
+            const type = this.resolveBackendMediaType(body?.mimeType, body?.mediaType, name);
+
             this.mediaList.update((list) =>
-              list.map((m) => (m.id === id ? { ...m, status: 'complete', progress: 100, url } : m)),
+              list.map((media) =>
+                media.id === tempId
+                  ? {
+                      ...media,
+                      id: backendId,
+                      status: 'complete',
+                      progress: 100,
+                      url,
+                      name,
+                      type,
+                    }
+                  : media,
+              ),
             );
+
+            this.emitMediaChange();
             this.announceA11y(`Upload complete: ${file.name}`);
           }
         },
         error: () => {
           this.mediaList.update((list) =>
-            list.map((m) => (m.id === id ? { ...m, status: 'error' } : m)),
+            list.map((media) =>
+              media.id === tempId
+                ? {
+                    ...media,
+                    status: 'error',
+                  }
+                : media,
+            ),
           );
+
+          this.emitMediaChange();
           this.announceA11y(`Upload failed for ${file.name}`);
         },
       });
   }
 
-  retryUpload(id: string) {
-    const media = this.mediaList().find((m) => m.id === id);
+  retryUpload(id: string): void {
+    const media = this.mediaList().find((item) => item.id === id);
+
     if (media?.file) {
       this.uploadFile(media.file, id);
     }
   }
 
-  removeMedia(id: string) {
-    if (confirm('Are you sure you want to remove this media?')) {
-      this.mediaList.update((list) => list.filter((m) => m.id !== id));
-      this.announceA11y('Media removed');
+  removeMedia(id: string): void {
+    if (!confirm('Are you sure you want to remove this media?')) {
+      return;
     }
+
+    const removedMedia = this.mediaList().find((media) => media.id === id);
+
+    this.mediaList.update((list) => list.filter((media) => media.id !== id));
+
+    if (removedMedia) {
+      this.mediaRemoved.emit(removedMedia);
+    }
+
+    this.emitMediaChange();
+    this.announceA11y('Media removed');
   }
 
-  dropMediaList(event: CdkDragDrop<UploadedMedia[]>) {
+  dropMediaList(event: Event | CdkDragDrop<UploadedMedia[]>): void {
+    // Template strict typing may treat $event as Event — normalize to CdkDragDrop safely
+    const drop = event as unknown as CdkDragDrop<UploadedMedia[]>;
+    const maybe = drop as unknown as { previousIndex?: number; currentIndex?: number };
+    const prevIdx = typeof maybe.previousIndex === 'number' ? maybe.previousIndex : undefined;
+    const currIdx = typeof maybe.currentIndex === 'number' ? maybe.currentIndex : undefined;
+
+    if (prevIdx === undefined || currIdx === undefined) return;
+    if (prevIdx === currIdx) return;
+
     this.mediaList.update((list) => {
-      moveItemInArray(list, event.previousIndex, event.currentIndex);
+      moveItemInArray(list, prevIdx, currIdx);
       return [...list];
     });
+
+    this.emitMediaChange();
   }
 
-  private announceA11y(message: string) {
+  private emitMediaChange(): void {
+    this.mediaChange.emit(this.mediaList());
+  }
+
+  private announceA11y(message: string): void {
     this.a11yMessage.set(message);
+  }
+
+  private resolveLocalMediaType(file: File): 'image' | 'video' | 'pdf' | null {
+    if (file.type.startsWith('image/')) {
+      return 'image';
+    }
+
+    if (file.type.startsWith('video/')) {
+      return 'video';
+    }
+
+    if (file.type === 'application/pdf') {
+      return 'pdf';
+    }
+
+    return null;
+  }
+
+  private resolveBackendMediaType(
+    mimeType?: string,
+    mediaType?: string,
+    filename?: string,
+  ): 'image' | 'video' | 'pdf' {
+    const safeMimeType = (mimeType || '').toLowerCase();
+    const safeMediaType = (mediaType || '').toLowerCase();
+    const safeFilename = (filename || '').toLowerCase();
+
+    if (
+      safeMimeType === 'application/pdf' ||
+      safeMediaType === 'file' ||
+      safeFilename.endsWith('.pdf')
+    ) {
+      return 'pdf';
+    }
+
+    if (
+      safeMimeType.startsWith('video/') ||
+      safeMediaType === 'video' ||
+      safeFilename.endsWith('.mp4')
+    ) {
+      return 'video';
+    }
+
+    return 'image';
   }
 }

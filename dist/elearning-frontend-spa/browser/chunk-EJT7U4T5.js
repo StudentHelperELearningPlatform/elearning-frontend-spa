@@ -1,0 +1,1 @@
+import{S as _}from"./chunk-WJ7SS25N.js";var t=new _("API_URL"),A=new _("CONTENT_API_URL"),R=new _("USER_PLATFORM_API_URL"),U=new _("QUIZ_API_URL"),I=new _("LEARNING_PATH_API_URL"),o=new _("AUTH_API_URL");export{t as a,A as b,R as c,U as d,I as e,o as f};
