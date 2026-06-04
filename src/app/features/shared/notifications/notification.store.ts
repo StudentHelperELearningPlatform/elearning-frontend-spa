@@ -3,12 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 export type NotificationType =
-  | 'lesson_complete'
-  | 'quiz_result'
-  | 'milestone'
-  | 'class_invite'
-  | 'announcement'
-  | 'payment';
+  | 'SYSTEM'
+  | 'PROGRESS'
+  | 'PAYMENT'
+  | 'CLASS'
+  | 'ACHIEVEMENT';
 
 export interface AppNotification {
   id: string;
@@ -19,7 +18,6 @@ export interface AppNotification {
   isRead: boolean;
   read: boolean;
   createdAt: string;
-  linkUrl?: string;
 }
 
 /** Raw shape returned by GET /notifications/me/unread */
@@ -30,7 +28,6 @@ interface RawNotification {
   type: string;
   isRead: boolean;
   createdAt: string;
-  linkUrl?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -82,14 +79,6 @@ export class NotificationStore {
       list.map((n) => ({ ...n, read: true, isRead: true })),
     );
     this.http.put(`${this.apiBase}/notifications/me/read-all`, {}).subscribe({
-      error: () => this.notifications.set(previous),
-    });
-  }
-
-  remove(id: string) {
-    const previous = this.notifications();
-    this.notifications.update((list) => list.filter((n) => n.id !== id));
-    this.http.delete(`${this.apiBase}/notifications/${id}`).subscribe({
       error: () => this.notifications.set(previous),
     });
   }
