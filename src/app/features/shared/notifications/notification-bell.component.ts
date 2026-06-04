@@ -62,12 +62,8 @@ import { AppNotification, NotificationStore } from './notification.store';
             <ul class="divide-y-2 divide-black/10">
               @for (n of store.notifications(); track n.id) {
                 <li
-                  class="p-3 cursor-pointer hover:bg-gray-50"
+                  class="p-3 hover:bg-gray-50"
                   [class.bg-[#0ABAB5]/5]="!n.read"
-                  (click)="openNotification(n)"
-                  (keydown.enter)="openNotification(n)"
-                  tabindex="0"
-                  role="button"
                 >
                   <div class="flex gap-3">
                     <span class="material-icons text-[#0ABAB5] mt-0.5" aria-hidden="true">
@@ -80,9 +76,14 @@ import { AppNotification, NotificationStore } from './notification.store';
                         {{ n.createdAt | date: 'short' }}
                       </p>
                     </div>
-                    @if (!n.read) {
-                      <span class="w-2 h-2 rounded-full bg-[#0ABAB5] mt-1.5" aria-hidden="true"></span>
-                    }
+                    <button
+                      type="button"
+                      class="text-gray-400 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-[#0ABAB5] rounded"
+                      (click)="dismiss(n)"
+                      [attr.aria-label]="'Dismiss ' + n.title"
+                    >
+                      <span class="material-icons text-base" aria-hidden="true">close</span>
+                    </button>
                   </div>
                 </li>
               }
@@ -108,10 +109,7 @@ export class NotificationBellComponent {
     const next = !this.open();
     this.open.set(next);
     if (next && this.authStore.isAuthenticated()) {
-      // Fetch only on open — no auto-load on init
       this.store.load();
-      // Auto mark-all-read after a brief moment so user can see the count
-      setTimeout(() => this.store.markAllRead(), 1500);
     }
   }
 
@@ -119,10 +117,8 @@ export class NotificationBellComponent {
     this.store.markAllRead();
   }
 
-  openNotification(n: AppNotification) {
-    if (!n.read) {
-      this.store.markRead(n.id);
-    }
+  dismiss(n: AppNotification) {
+    this.store.markRead(n.id);
   }
 
   iconFor(type: AppNotification['type']): string {

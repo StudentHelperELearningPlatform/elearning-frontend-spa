@@ -118,5 +118,4 @@ describe('NotificationStore', () => {
       expect(store.notifications()).toEqual(before);
     });
   });
-
 });
