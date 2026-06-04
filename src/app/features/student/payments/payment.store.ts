@@ -37,6 +37,8 @@ interface PaymentApiRecord {
   itemId: string;
   purchasedAt: string;
   amountPaid: number;
+  status?: string;   // backend-ul trimite status (SUCCESS / PENDING / etc.)
+  currency?: string;
 }
 
 function mapPaymentRecord(r: PaymentApiRecord): PaymentRecord {
@@ -46,8 +48,8 @@ function mapPaymentRecord(r: PaymentApiRecord): PaymentRecord {
     itemId:    r.itemId,
     itemTitle: '',
     amount:    r.amountPaid,
-    currency:  'RON',
-    status:    'SUCCESS',
+    currency:  r.currency ?? 'RON',
+    status:    r.status   ?? 'SUCCESS',  // fallback doar dacă lipsește complet
     createdAt: r.purchasedAt,
   };
 }
