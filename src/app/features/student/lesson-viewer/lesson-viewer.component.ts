@@ -18,7 +18,6 @@ import { CardComponent } from '@shared/components/card/card.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { ErrorStateComponent } from '@shared/components/error-state/error-state.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
-import { CheckoutModalComponent } from '../payments/checkout-modal.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 
 type ViewerMediaType = 'image' | 'video' | 'pdf';
@@ -51,7 +50,6 @@ interface QuizAttempt {
     EmptyStateComponent,
     ErrorStateComponent,
     BadgeComponent,
-    CheckoutModalComponent,
     ModalComponent,
   ],
   template: `
@@ -269,24 +267,6 @@ interface QuizAttempt {
                 </div>
               }
             </div>
-          } @else if (!hasAccess()) {
-            <!-- Locked state in viewer -->
-            <div class="h-full flex items-center justify-center p-8">
-              <div class="max-w-md w-full text-center">
-                <div class="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-violet-100 border-4 border-black mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  <span class="material-icons text-5xl text-violet-500">lock</span>
-                </div>
-                <h2 class="text-2xl font-black text-black mb-3">This lesson is locked</h2>
-                <p class="text-gray-600 font-medium mb-6">Purchase access to view and interact with all modules.</p>
-                <button
-                  (click)="checkoutOpen.set(true)"
-                  class="inline-flex items-center gap-2 px-8 py-4 bg-[#FFD700] text-black font-black rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-                >
-                  <span class="material-icons">shopping_cart</span>
-                  Unlock Lesson
-                </button>
-              </div>
-            </div>
           } @else {
             <div class="h-full flex items-center justify-center">
               <app-empty-state
@@ -298,7 +278,7 @@ interface QuizAttempt {
           }
         </div>
 
-        @if (store.allModulesComplete() && hasAccess() && store.hasFinalQuiz() !== false) {
+        @if (store.allModulesComplete() && store.hasFinalQuiz() !== false) {
           @if (store.lastQuizAttempt(); as attempt) {
             <div
               class="mx-6 mb-4 p-5 rounded-2xl border-4 border-[#0ABAB5] bg-[#0ABAB5]/10 flex flex-col md:flex-row items-center justify-between gap-4"
@@ -350,10 +330,9 @@ interface QuizAttempt {
         }
 
         <!-- Bottom Navigation Bar -->
-        @if (hasAccess()) {
-          <div
-            class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)]"
-          >
+        <div
+          class="bg-white border-t-4 border-black p-4 md:p-6 flex items-center justify-between z-20 shadow-[0px_-4px_0px_0px_rgba(0,0,0,1)]"
+        >
             <app-button
               variant="secondary"
               icon="arrow_back"
@@ -394,16 +373,8 @@ interface QuizAttempt {
                 Finish Lesson
               </app-button>
             }
-          </div>
-        }
+        </div>
       </div>
-
-      <app-checkout-modal
-        [isOpen]="checkoutOpen()"
-        [lessonId]="store.currentLesson()?.id ?? ''"
-        [lessonTitle]="store.currentLesson()?.title ?? ''"
-        (closed)="checkoutOpen.set(false)"
-      />
 
       <!-- AI Explanation Modal -->
       <app-modal
@@ -487,16 +458,9 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
 
   currentModuleIndex = signal(0);
   private readonly lessonId = signal<string | null>(null);
-  protected readonly checkoutOpen = signal(false);
   protected readonly explanationOpen = signal(false);
 
-  hasAccess = computed(() => {
-    const id = this.lessonId();
-    if (!id) return true;
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(id)) return true; // seed/mock lessons always accessible
-    return this.store.accessibleLessonIds().has(id);
-  });
+  hasAccess = computed(() => true);
 
   subcapitolAttempts = signal<Record<string, QuizAttempt[]>>({});
   subcapitolQuizzesExist = signal<Record<string, boolean>>({});
@@ -545,10 +509,6 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
     this.store.clearExplanation();
   }
 
-  unlockLesson() {
-    this.checkoutOpen.set(true);
-  }
-
   reloadLesson() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -556,11 +516,6 @@ export class LessonViewerComponent implements OnInit, OnDestroy {
       this.store.loadLesson(id);
       this.store.loadFinalQuizAttempts(id);
       this.progressStore.loadMyLessonStats({ lessonId: id });
-      // Ensure access-check is current for this lesson
-      const studentId = this.authStore.user()?.id;
-      if (studentId) {
-        this.store.loadAccessibleLessons(studentId);
-      }
     }
   }
 
