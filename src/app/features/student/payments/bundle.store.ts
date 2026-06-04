@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom, forkJoin, of } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { PaymentStore } from './payment.store';
 import { AuthStore } from '@features/auth/store/auth.store';
