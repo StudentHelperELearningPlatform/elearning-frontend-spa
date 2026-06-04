@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
 import { AuthStore } from '@features/auth/store/auth.store';
 import { AppNotification, NotificationStore } from './notification.store';
 
@@ -96,7 +95,6 @@ import { AppNotification, NotificationStore } from './notification.store';
 })
 export class NotificationBellComponent {
   protected readonly store = inject(NotificationStore);
-  private readonly router = inject(Router);
   private readonly authStore = inject(AuthStore);
 
   protected readonly open = signal(false);
@@ -125,25 +123,19 @@ export class NotificationBellComponent {
     if (!n.read) {
       this.store.markRead(n.id);
     }
-    if (n.linkUrl) {
-      this.open.set(false);
-      this.router.navigateByUrl(n.linkUrl);
-    }
   }
 
   iconFor(type: AppNotification['type']): string {
     switch (type) {
-      case 'lesson_complete':
+      case 'PROGRESS':
         return 'menu_book';
-      case 'quiz_result':
-        return 'quiz';
-      case 'milestone':
+      case 'ACHIEVEMENT':
         return 'emoji_events';
-      case 'class_invite':
+      case 'CLASS':
         return 'group_add';
-      case 'payment':
+      case 'PAYMENT':
         return 'payments';
-      case 'announcement':
+      case 'SYSTEM':
       default:
         return 'campaign';
     }

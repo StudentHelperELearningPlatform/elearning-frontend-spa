@@ -6,7 +6,7 @@ import { provideApiMocks } from '../../../../test-utils/api-testing';
 const sample: AppNotification[] = [
   {
     id: 'n1',
-    type: 'lesson_complete',
+    type: 'PROGRESS',
     title: 'Lesson done',
     message: 'Fractions completed',
     isRead: false,
@@ -15,13 +15,12 @@ const sample: AppNotification[] = [
   },
   {
     id: 'n2',
-    type: 'milestone',
+    type: 'ACHIEVEMENT',
     title: 'Milestone',
     message: 'First badge!',
     isRead: true,
     read: true,
     createdAt: '2026-01-02T00:00:00Z',
-    linkUrl: '/student/milestones',
   },
 ];
 
@@ -120,23 +119,4 @@ describe('NotificationStore', () => {
     });
   });
 
-  describe('remove', () => {
-    beforeEach(() => {
-      store.load();
-      httpMock.expectOne('/api/v1/notifications/me/unread').flush(sample);
-    });
-
-    it('removes optimistically', () => {
-      store.remove('n1');
-      expect(store.notifications().some((n) => n.id === 'n1')).toBe(false);
-      httpMock.expectOne('/api/v1/notifications/n1').flush({});
-    });
-
-    it('restores list on failure', () => {
-      const before = store.notifications();
-      store.remove('n1');
-      httpMock.expectOne('/api/v1/notifications/n1').error(new ErrorEvent('boom'));
-      expect(store.notifications()).toEqual(before);
-    });
-  });
 });

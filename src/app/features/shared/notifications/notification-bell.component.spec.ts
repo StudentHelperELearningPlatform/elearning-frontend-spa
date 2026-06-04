@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { NotificationBellComponent } from './notification-bell.component';
 import { AppNotification, NotificationStore } from './notification.store';
 import { AuthStore } from '@features/auth/store/auth.store';
@@ -10,7 +10,7 @@ import { provideApiMocks } from '../../../../test-utils/api-testing';
 const fixtureNotifs: AppNotification[] = [
   {
     id: 'n1',
-    type: 'lesson_complete',
+    type: 'PROGRESS',
     title: 'Done',
     message: '',
     isRead: false,
@@ -24,7 +24,6 @@ describe('NotificationBellComponent', () => {
   let component: NotificationBellComponent;
   let store: NotificationStore;
   let httpMock: HttpTestingController;
-  let router: Router;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -40,7 +39,6 @@ describe('NotificationBellComponent', () => {
 
     store = TestBed.inject(NotificationStore);
     httpMock = TestBed.inject(HttpTestingController);
-    router = TestBed.inject(Router);
 
     fixture = TestBed.createComponent(NotificationBellComponent);
     component = fixture.componentInstance;
@@ -90,35 +88,31 @@ describe('NotificationBellComponent', () => {
     httpMock.expectOne('/api/v1/notifications/me/read-all').flush({});
   });
 
-  it('opens link and marks as read when notification clicked', () => {
+  it('marks unread notification as read when clicked', () => {
     fixture.detectChanges();
     const markSpy = vi.spyOn(store, 'markRead');
-    const navSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
 
     component.openNotification({
       id: 'n1',
-      type: 'milestone',
+      type: 'ACHIEVEMENT',
       title: 't',
       message: 'm',
       isRead: false,
       read: false,
       createdAt: '2026-01-01T00:00:00Z',
-      linkUrl: '/student/milestones',
     });
 
     expect(markSpy).toHaveBeenCalledWith('n1');
-    expect(navSpy).toHaveBeenCalledWith('/student/milestones');
     httpMock.expectOne('/api/v1/notifications/n1/read').flush({});
   });
 
-  it('does not mark or navigate for read notifications without link', () => {
+  it('does not mark already-read notifications', () => {
     fixture.detectChanges();
     const markSpy = vi.spyOn(store, 'markRead');
-    const navSpy = vi.spyOn(router, 'navigateByUrl');
 
     component.openNotification({
       id: 'n2',
-      type: 'announcement',
+      type: 'SYSTEM',
       title: 't',
       message: 'm',
       isRead: true,
@@ -127,17 +121,15 @@ describe('NotificationBellComponent', () => {
     });
 
     expect(markSpy).not.toHaveBeenCalled();
-    expect(navSpy).not.toHaveBeenCalled();
   });
 
   it('maps notification types to icons', () => {
     fixture.detectChanges();
 
-    expect(component.iconFor('lesson_complete')).toBe('menu_book');
-    expect(component.iconFor('quiz_result')).toBe('quiz');
-    expect(component.iconFor('milestone')).toBe('emoji_events');
-    expect(component.iconFor('class_invite')).toBe('group_add');
-    expect(component.iconFor('payment')).toBe('payments');
-    expect(component.iconFor('announcement')).toBe('campaign');
+    expect(component.iconFor('PROGRESS')).toBe('menu_book');
+    expect(component.iconFor('ACHIEVEMENT')).toBe('emoji_events');
+    expect(component.iconFor('CLASS')).toBe('group_add');
+    expect(component.iconFor('PAYMENT')).toBe('payments');
+    expect(component.iconFor('SYSTEM')).toBe('campaign');
   });
 });
