@@ -167,9 +167,6 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                     <h3 class="text-xl font-black text-black mb-2 line-clamp-2">{{ bundle.name }}</h3>
                     
                     <div class="flex items-center space-x-2 mb-6">
-                      @for (subject of bundle.subjects; track subject) {
-                        <app-badge variant="primary" icon="category">{{ subject }}</app-badge>
-                      }
                       <app-badge variant="neutral">{{ bundle.price }} RON</app-badge>
                     </div>
                     
@@ -242,7 +239,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                   <thead>
                     <tr class="bg-gray-100 border-b-4 border-black">
                       <th class="p-4 font-black text-black text-sm uppercase tracking-wider" scope="col">Bundle Name</th>
-                      <th class="p-4 font-black text-black text-sm uppercase tracking-wider" scope="col">Subjects</th>
+                      <th class="p-4 font-black text-black text-sm uppercase tracking-wider" scope="col">Lessons</th>
                       <th class="p-4 font-black text-black text-sm uppercase tracking-wider" scope="col">Price</th>
                       <th class="p-4 font-black text-black text-sm uppercase tracking-wider text-right" scope="col">Actions</th>
                     </tr>
@@ -251,12 +248,8 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                     @for (bundle of bundleStore.bundles(); track bundle.id) {
                       <tr class="border-b-2 border-black/10 hover:bg-[#FFD700]/5 transition-colors">
                         <td class="p-4 font-bold text-black">{{ bundle.name }}</td>
-                        <td class="p-4">
-                          @for (subject of bundle.subjects; track subject) {
-                            <span class="inline-flex items-center gap-1 text-xs font-black bg-[#0ABAB5]/10 text-[#0ABAB5] border-2 border-[#0ABAB5] px-2.5 py-0.5 rounded-full mr-1">
-                              {{ subject }}
-                            </span>
-                          }
+                        <td class="p-4 text-sm font-medium text-gray-600">
+                          {{ bundle.lessons.length }} lessons
                         </td>
                         <td class="p-4">
                           <span class="font-bold">{{ bundle.price }} RON</span>

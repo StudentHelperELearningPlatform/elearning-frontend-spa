@@ -62,20 +62,9 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
                   <textarea id="bundle-description" formControlName="description" rows="3" class="w-full px-4 py-2 border-2 border-black rounded-xl font-medium focus:ring-2 focus:ring-[#0ABAB5] outline-none" placeholder="Describe the bundle contents..."></textarea>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="bundle-price">Price (RON)</label>
-                    <input type="number" id="bundle-price" formControlName="price" min="0.01" step="0.01" class="w-full px-4 py-2 border-2 border-black rounded-xl font-medium focus:ring-2 focus:ring-[#0ABAB5] outline-none">
-                  </div>
-                  <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="bundle-grade">Grade Level</label>
-                    <input type="number" id="bundle-grade" formControlName="grade" min="1" max="12" class="w-full px-4 py-2 border-2 border-black rounded-xl font-medium focus:ring-2 focus:ring-[#0ABAB5] outline-none">
-                  </div>
-                </div>
-
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-1" for="bundle-subjects">Subjects (comma separated)</label>
-                  <input type="text" id="bundle-subjects" formControlName="subjects" class="w-full px-4 py-2 border-2 border-black rounded-xl font-medium focus:ring-2 focus:ring-[#0ABAB5] outline-none" placeholder="e.g. Math, Geometry">
+                  <label class="block text-sm font-bold text-gray-700 mb-1" for="bundle-price">Price (RON)</label>
+                  <input type="number" id="bundle-price" formControlName="price" min="0.01" step="0.01" class="w-full px-4 py-2 border-2 border-black rounded-xl font-medium focus:ring-2 focus:ring-[#0ABAB5] outline-none">
                 </div>
               </form>
             </div>
@@ -135,12 +124,9 @@ export class BundleEditorComponent implements OnInit {
     name: ['', Validators.required],
     description: [''],
     price: [0, [Validators.required, Validators.min(0.01)]],
-    grade: [null as number | null],
-    subjects: ['']
   });
 
   ngOnInit() {
-    // Load content to populate lesson selector
     if (this.contentStore.lessons().length === 0) {
       this.contentStore.loadDashboard();
     }
@@ -153,22 +139,17 @@ export class BundleEditorComponent implements OnInit {
   }
 
   loadExistingBundle(id: string) {
-    // Ensure bundles are loaded first
     if (this.bundleStore.bundles().length === 0) {
       this.bundleStore.loadBundles();
     }
 
-    // In a real app we might fetch the single bundle if not in state
     const existing = this.bundleStore.bundles().find(b => b.id === id);
     if (existing) {
       this.form.patchValue({
         name: existing.name,
         description: existing.description,
         price: existing.price,
-        grade: existing.grade,
-        subjects: existing.subjects.join(', ')
       });
-      // Try to match based on available lessons or IDs
       this.selectedLessonIds.set(existing.lessons.map(l => l.id));
     }
   }
@@ -197,9 +178,6 @@ export class BundleEditorComponent implements OnInit {
     }
 
     const val = this.form.value;
-    const subjectsArray = val.subjects
-      ? val.subjects.split(',').map(s => s.trim()).filter(s => s.length > 0)
-      : [];
 
     const lessonsMetadata: BundleLesson[] = lessonIds.map((lid) => {
       const match = this.availableLessons().find((l) => l.id === lid);
@@ -207,7 +185,6 @@ export class BundleEditorComponent implements OnInit {
         id: lid,
         title: match?.title ?? '',
         subject: match?.subject ?? '',
-        grade: typeof match?.grade === 'number' ? match.grade : undefined,
       };
     });
 
@@ -217,8 +194,6 @@ export class BundleEditorComponent implements OnInit {
         description: val.description ?? '',
         price: val.price ?? 0,
         lessonIds,
-        grade: val.grade ?? null,
-        subjects: subjectsArray,
         lessonsMetadata,
       });
 
@@ -241,8 +216,6 @@ export class BundleEditorComponent implements OnInit {
       price: val.price ?? 0,
       teacherId,
       lessonIds,
-      grade: val.grade ?? null,
-      subjects: subjectsArray,
       lessonsMetadata,
     });
 

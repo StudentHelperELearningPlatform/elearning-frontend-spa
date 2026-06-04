@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
@@ -19,9 +19,9 @@ export interface StudentProgressRow {
   userId?: string;
   studentId: string;
   studentName: string;
-  lessonsCompleted: number;
-  averageScore: number;
-  lastActive: string | Date;
+  lessonsCompleted: number | null;
+  averageScore: number | null;
+  lastActive: string | Date | null;
 }
 
 export interface LessonBreakdown {
@@ -36,22 +36,40 @@ export interface StudentDetail {
   userId?: string;
   studentId: string;
   studentName: string;
-  totalLessonsCompleted: number;
-  averageScore: number;
-  lastActive: string | Date;
+  totalLessonsCompleted: number | null;
+  averageScore: number | null;
+  lastActive: string | Date | null;
   history: LessonBreakdown[];
 }
 
 interface TeacherProgressState {
   classSummary: ClassStatsSummary | null;
   classStudents: StudentProgressRow[];
+
   selectedStudentDetail: StudentDetail | null;
-  
-  // Melora's properties for S6-stats-03 (stubbed out for coordination)
+  detailLoading: boolean;
+  detailError: string | null;
+
   allStudents: StudentProgressRow[];
-  
+
   loading: boolean;
   error: string | null;
+}
+
+function describeError(err: unknown): string {
+  if (err instanceof HttpErrorResponse) {
+    if (err.status === 404) {
+      return 'This data is not available yet.';
+    }
+    if (err.status === 0) {
+      return 'Cannot reach the server. Check your connection and try again.';
+    }
+    return `Server error (${err.status}). Please try again later.`;
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return 'Something went wrong.';
 }
 
 export const TeacherProgressStore = signalStore(
@@ -60,6 +78,8 @@ export const TeacherProgressStore = signalStore(
     classSummary: null,
     classStudents: [],
     selectedStudentDetail: null,
+    detailLoading: false,
+    detailError: null,
     allStudents: [],
     loading: false,
     error: null,
@@ -69,15 +89,14 @@ export const TeacherProgressStore = signalStore(
       pipe(
         tap(() => patchState(store, { loading: true, error: null })),
         switchMap((classId) =>
-          // Assuming classId is passed as query param per typical Spring controllers
           http.get<{ summary: ClassStatsSummary; students: StudentProgressRow[] }>(`${apiBase}/progress/professor/class-stats`, { params: { classId } }).pipe(
             tapResponse({
-              next: (response) => patchState(store, { 
+              next: (response) => patchState(store, {
                 classSummary: response.summary,
                 classStudents: response.students,
-                loading: false 
+                loading: false
               }),
-              error: (err: Error) => patchState(store, { error: err.message || 'Failed to load class stats', loading: false }),
+              error: (err: unknown) => patchState(store, { error: describeError(err), loading: false }),
             })
           )
         )
@@ -86,27 +105,33 @@ export const TeacherProgressStore = signalStore(
 
     loadStudentDetail: rxMethod<string>(
       pipe(
-        tap(() => patchState(store, { loading: true, error: null, selectedStudentDetail: null })),
+        tap(() => patchState(store, { detailLoading: true, detailError: null, selectedStudentDetail: null })),
         switchMap((studentId) =>
           http.get<StudentDetail>(`${apiBase}/progress/professor/students/${studentId}`).pipe(
             tapResponse({
-              next: (detail) => patchState(store, { selectedStudentDetail: detail, loading: false }),
-              error: (err: Error) => patchState(store, { error: err.message || 'Failed to load student detail', loading: false }),
+              next: (detail) => patchState(store, { selectedStudentDetail: detail, detailLoading: false }),
+              error: (err: unknown) => patchState(store, { detailError: describeError(err), detailLoading: false }),
             })
           )
         )
       )
     ),
 
-    // S6-stats-03 stub for Melora
+    clearStudentDetail() {
+      patchState(store, { selectedStudentDetail: null, detailError: null, detailLoading: false });
+    },
+
     loadAllStudents: rxMethod<{ classId: string }>(
       pipe(
         tap(() => patchState(store, { loading: true, error: null })),
         switchMap(({ classId }) =>
           http.get<StudentProgressRow[]>(`${apiBase}/progress/teacher/students`, { params: { classId } }).pipe(
             tapResponse({
-              next: (students) => patchState(store, { allStudents: students, loading: false }),
-              error: (err: Error) => patchState(store, { error: err.message || 'Failed to load all students', loading: false }),
+              next: (students) => patchState(store, {
+                allStudents: Array.isArray(students) ? students : [],
+                loading: false,
+              }),
+              error: (err: unknown) => patchState(store, { error: describeError(err), loading: false }),
             })
           )
         )
