@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, forkJoin, of } from 'rxjs';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { PaymentStore } from './payment.store';
 import { AuthStore } from '@features/auth/store/auth.store';
@@ -11,23 +11,57 @@ export interface BundleApiItem {
   id: string;
   name: string;
   description: string;
-  price: number;           // RON cu zecimale, NU în cenți
+  price: number;
   teacherId: string;
   lessonIds: string[];
+}
+
+interface LessonApiResponse {
+  id: string;
+  title: string;
+  subject: string;
+  difficultyLevel: string;   // 'EASY' | 'MEDIUM' | 'HARD' etc.
+  estimatedDurationMinutes: number;
+  status: string;
+  shortDescription: string;
 }
 
 interface PagedResponse<T> {
   content: T[];
   totalElements: number;
   totalPages: number;
-  number: number;         // pageNumber curent
+  number: number;
   size: number;
   last: boolean;
   first: boolean;
   empty: boolean;
 }
 
-// ─── Model intern (folosit în UI) ─────────────────────────────────────────────
+// ─── Model intern ─────────────────────────────────────────────────────────────
+
+export interface BundleLessonRef {
+  id: string;
+  title?: string;
+  subject?: string;
+  duration?: string;
+  difficulty?: string;
+  grade?: number;
+}
+
+export interface Bundle {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  teacherId: string;
+  lessonIds: string[];
+  priceInCents: number;
+  currency: string;
+  lessons: BundleLessonRef[];
+  isPopular: boolean;
+  grade: number | null;
+  subjects: string[];
+}
 
 export interface BundleLesson {
   id: string;
@@ -38,44 +72,21 @@ export interface BundleLesson {
   duration: string;
 }
 
-export interface Bundle {
-  id: string;
-  name: string;
-  description: string;
-  price: number;           // RON cu zecimale (ex: 150.00)
-  teacherId: string;
-  lessonIds: string[];
+export type CreateBundlePayload = Pick<Bundle, 'name' | 'description' | 'price'> & {
+  lessonIds?: string[];
+};
+export type UpdateBundlePayload = Partial<CreateBundlePayload>;
 
-  // ── Câmpuri de compatibilitate cu componenta existentă ──────────────────────
-  /** price × 100, pentru logica de tier din bundles-page (≥ 4000, ≥ 6000 cenți) */
-  priceInCents: number;
-  /** Mereu 'RON' — backend-ul nu returnează currency, dar componenta îl cere */
-  currency: string;
-  /** Alias pentru lessonIds — componenta iterează bundle.lessons */
-  lessons: BundleLessonRef[];
-
-  // ── Câmpuri opționale / viitor ───────────────────────────────────────────────
-  isPopular: boolean;
-  grade: number | null;
-  subjects: string[];
+export interface BundlePage {
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  isLast: boolean;
 }
 
-/**
- * Referință la o lecție în interiorul unui bundle.
- * `id` e singurul câmp garantat azi — câmpurile de afișare sunt opționale și
- * vor fi populate când /bundles/{id} va returna obiecte complete. Template-ul
- * de pe bundles-page le citește cu siguranță (`?? ''`).
- */
-export interface BundleLessonRef {
-  id: string;
-  title?: string;
-  subject?: string;
-  duration?: string;
-  difficulty?: string;
-  grade?: number;
-}
+// ─── Mapping ──────────────────────────────────────────────────────────────────
 
-/** Mapează răspunsul brut al API-ului la modelul intern */
 function mapBundle(item: BundleApiItem): Bundle {
   const lessonIds = item.lessonIds ?? [];
   return {
@@ -85,30 +96,25 @@ function mapBundle(item: BundleApiItem): Bundle {
     price: item.price,
     teacherId: item.teacherId,
     lessonIds,
-    // ── câmpuri de compatibilitate ───────────────────────────────────────────
     priceInCents: Math.round(item.price * 100),
     currency: 'RON',
     lessons: lessonIds.map((id) => ({ id })),
-    // ── valori default ───────────────────────────────────────────────────────
     isPopular: false,
     grade: null,
     subjects: [],
   };
 }
 
-export type CreateBundlePayload = Pick<Bundle, 'name' | 'description' | 'price'> & {
-  lessonIds?: string[];
-};
-export type UpdateBundlePayload = Partial<CreateBundlePayload>;
-
-// ─── Pagination state ─────────────────────────────────────────────────────────
-
-export interface BundlePage {
-  totalElements: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
-  isLast: boolean;
+function mapLesson(r: LessonApiResponse): BundleLessonRef {
+  return {
+    id: r.id,
+    title: r.title,
+    subject: r.subject,
+    difficulty: r.difficultyLevel,
+    duration: r.estimatedDurationMinutes
+      ? `${r.estimatedDurationMinutes} min`
+      : undefined,
+  };
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -125,7 +131,6 @@ export class BundleStore {
   error = signal<string | null>(null);
   pagination = signal<BundlePage | null>(null);
 
-  /** Bundle IDs pe care studentul le-a cumpărat deja */
   private readonly purchasedBundleIds = computed(() =>
     new Set(
       this.paymentStore
@@ -139,7 +144,42 @@ export class BundleStore {
     return this.purchasedBundleIds().has(bundleId);
   }
 
-  // ─── GET /api/v1/bundles ────────────────────────────────────────────────────
+  // ─── Încarcă lecțiile pentru o listă de bundle-uri ────────────────────────
+
+  private async populateLessons(bundles: Bundle[]): Promise<Bundle[]> {
+    // Colectează toate lessonId-urile unice din toate bundle-urile
+    const allLessonIds = [...new Set(bundles.flatMap((b) => b.lessonIds))];
+
+    if (allLessonIds.length === 0) return bundles;
+
+    // Fetch în paralel pentru toate lecțiile unice
+    const lessonResults = await Promise.allSettled(
+      allLessonIds.map((id) =>
+        firstValueFrom(
+          this.http.get<LessonApiResponse>(`${this.apiBase}/lessons/${id}`),
+        ),
+      ),
+    );
+
+    // Construiește un map id → BundleLessonRef
+    const lessonMap = new Map<string, BundleLessonRef>();
+    lessonResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        const mapped = mapLesson(result.value);
+        lessonMap.set(allLessonIds[index], mapped);
+      }
+    });
+
+    // Populează fiecare bundle cu lecțiile găsite
+    return bundles.map((bundle) => ({
+      ...bundle,
+      lessons: bundle.lessonIds.map(
+        (id) => lessonMap.get(id) ?? { id },  // fallback la { id } dacă fetch-ul a picat
+      ),
+    }));
+  }
+
+  // ─── GET /api/v1/bundles ───────────────────────────────────────────────────
 
   loadBundles(page = 0, size = 10): void {
     this.loading.set(true);
@@ -150,10 +190,14 @@ export class BundleStore {
         params: { page: String(page), size: String(size) },
       })
       .subscribe({
-        next: (res) => {
-          // extrage array-ul din wrapper-ul paginat
+        next: async (res) => {
           const items = Array.isArray(res.content) ? res.content : [];
-          this.bundles.set(items.map(mapBundle));
+          const bundles = items.map(mapBundle);
+
+          // Populează lecțiile în paralel
+          const populated = await this.populateLessons(bundles);
+
+          this.bundles.set(populated);
           this.pagination.set({
             totalElements: res.totalElements,
             totalPages: res.totalPages,
@@ -170,7 +214,7 @@ export class BundleStore {
       });
   }
 
-  // ─── GET /api/v1/bundles/my ─────────────────────────────────────────────────
+  // ─── GET /api/v1/bundles/my ────────────────────────────────────────────────
 
   loadMyBundles(page = 0, size = 10): void {
     this.loading.set(true);
@@ -181,9 +225,12 @@ export class BundleStore {
         params: { page: String(page), size: String(size) },
       })
       .subscribe({
-        next: (res) => {
+        next: async (res) => {
           const items = Array.isArray(res.content) ? res.content : [];
-          this.bundles.set(items.map(mapBundle));
+          const bundles = items.map(mapBundle);
+          const populated = await this.populateLessons(bundles);
+
+          this.bundles.set(populated);
           this.pagination.set({
             totalElements: res.totalElements,
             totalPages: res.totalPages,
@@ -200,21 +247,23 @@ export class BundleStore {
       });
   }
 
-  // ─── GET /api/v1/bundles/{id} ───────────────────────────────────────────────
+  // ─── GET /api/v1/bundles/{id} ──────────────────────────────────────────────
 
   async getBundle(bundleId: string): Promise<Bundle | null> {
     try {
       const item = await firstValueFrom(
         this.http.get<BundleApiItem>(`${this.apiBase}/bundles/${bundleId}`),
       );
-      return mapBundle(item);
+      const bundle = mapBundle(item);
+      const [populated] = await this.populateLessons([bundle]);
+      return populated;
     } catch {
       this.error.set('Failed to fetch bundle.');
       return null;
     }
   }
 
-  // ─── POST /api/v1/bundles ───────────────────────────────────────────────────
+  // ─── POST /api/v1/bundles ──────────────────────────────────────────────────
 
   async createBundle(payload: CreateBundlePayload): Promise<Bundle | null> {
     this.loading.set(true);
@@ -224,9 +273,10 @@ export class BundleStore {
       const item = await firstValueFrom(
         this.http.post<BundleApiItem>(`${this.apiBase}/bundles`, payload),
       );
-      const created = mapBundle(item);
-      this.bundles.update((list) => [...list, created]);
-      return created;
+      const bundle = mapBundle(item);
+      const [populated] = await this.populateLessons([bundle]);
+      this.bundles.update((list) => [...list, populated]);
+      return populated;
     } catch {
       this.error.set('Failed to create bundle.');
       return null;
@@ -235,7 +285,7 @@ export class BundleStore {
     }
   }
 
-  // ─── PUT /api/v1/bundles/{id} ───────────────────────────────────────────────
+  // ─── PUT /api/v1/bundles/{id} ──────────────────────────────────────────────
 
   async updateBundle(bundleId: string, payload: UpdateBundlePayload): Promise<Bundle | null> {
     this.loading.set(true);
@@ -245,11 +295,12 @@ export class BundleStore {
       const item = await firstValueFrom(
         this.http.put<BundleApiItem>(`${this.apiBase}/bundles/${bundleId}`, payload),
       );
-      const updated = mapBundle(item);
+      const bundle = mapBundle(item);
+      const [populated] = await this.populateLessons([bundle]);
       this.bundles.update((list) =>
-        list.map((b) => (b.id === bundleId ? updated : b)),
+        list.map((b) => (b.id === bundleId ? populated : b)),
       );
-      return updated;
+      return populated;
     } catch {
       this.error.set('Failed to update bundle.');
       return null;
@@ -258,7 +309,7 @@ export class BundleStore {
     }
   }
 
-  // ─── DELETE /api/v1/bundles/{id} ────────────────────────────────────────────
+  // ─── DELETE /api/v1/bundles/{id} ──────────────────────────────────────────
 
   async deleteBundle(bundleId: string): Promise<boolean> {
     this.loading.set(true);
@@ -278,7 +329,7 @@ export class BundleStore {
     }
   }
 
-  // ─── Checkout ───────────────────────────────────────────────────────────────
+  // ─── Checkout ──────────────────────────────────────────────────────────────
 
   async checkoutBundle(bundleId: string): Promise<void> {
     const studentId = this.authStore.user()?.id;
@@ -296,13 +347,8 @@ export class BundleStore {
     }
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  // ─── Helpers ──────────────────────────────────────────────────────────────
 
-  /**
-   * Formatează prețul pentru afișare.
-   * Acceptă atât `bundle.price` (RON zecimale) cât și `bundle.priceInCents` (cenți).
-   * Dacă valoarea e > 500 se presupune că e în cenți și se împarte la 100 automat.
-   */
   formatPrice(priceOrCents: number, currency = 'RON'): string {
     const value = priceOrCents > 500 ? priceOrCents / 100 : priceOrCents;
     try {
@@ -312,5 +358,3 @@ export class BundleStore {
     }
   }
 }
-
-// hi
