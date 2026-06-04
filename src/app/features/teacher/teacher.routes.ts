@@ -41,6 +41,13 @@ export default [
   { path: 'bundles/new', component: BundleEditorComponent },
   { path: 'bundles/:id/edit', component: BundleEditorComponent },
 
+  // Balance / Revenues
+  {
+    path: 'balance',
+    loadComponent: () =>
+      import('./balance/balance-page.component').then((m) => m.BalancePageComponent),
+  },
+
   // Builder Routes
   { path: 'path-builder', component: PathBuilderComponent },
   
