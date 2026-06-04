@@ -31,8 +31,11 @@ describe('AnalyticsDashboardComponent', () => {
     selectedStudentDetail: WritableSignal<StudentDetail | null>;
     loading: WritableSignal<boolean>;
     error: WritableSignal<string | null>;
+    detailLoading: WritableSignal<boolean>;
+    detailError: WritableSignal<string | null>;
     loadAllStudents: ReturnType<typeof vi.fn>;
     loadStudentDetail: ReturnType<typeof vi.fn>;
+    clearStudentDetail: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -65,8 +68,11 @@ describe('AnalyticsDashboardComponent', () => {
       selectedStudentDetail: signal(null),
       loading: signal(false),
       error: signal(null),
+      detailLoading: signal(false),
+      detailError: signal(null),
       loadAllStudents: vi.fn(),
       loadStudentDetail: vi.fn(),
+      clearStudentDetail: vi.fn(),
     };
 
     await TestBed.configureTestingModule({

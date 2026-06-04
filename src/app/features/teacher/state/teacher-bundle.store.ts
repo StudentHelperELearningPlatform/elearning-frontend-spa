@@ -16,9 +16,6 @@ export interface BundleLesson {
   id: string;
   title: string;
   subject: string;
-  grade?: number;
-  difficulty?: string;
-  duration?: string;
 }
 
 export interface TeacherBundle {
@@ -26,8 +23,6 @@ export interface TeacherBundle {
   name: string;
   description: string;
   price: number;
-  grade: number | null;
-  subjects: string[];
   lessons: BundleLesson[];
 }
 
@@ -59,9 +54,7 @@ export interface CreateBundlePayload {
   price: number;
   teacherId: string;
   lessonIds: string[];
-  // Local-only metadata (not persisted on the backend, used for listing UI)
-  grade?: number | null;
-  subjects?: string[];
+  // Local-only metadata for display purposes (not persisted by the backend).
   lessonsMetadata?: BundleLesson[];
 }
 
@@ -70,8 +63,6 @@ export interface UpdateBundlePayload {
   description?: string;
   price?: number;
   lessonIds?: string[];
-  grade?: number | null;
-  subjects?: string[];
   lessonsMetadata?: BundleLesson[];
 }
 
@@ -102,8 +93,6 @@ function mapBundle(item: BundleApiResponse, hint?: Partial<TeacherBundle>): Teac
     name: item.name,
     description: item.description ?? '',
     price: item.price,
-    grade: hint?.grade ?? null,
-    subjects: hint?.subjects ?? [],
     lessons,
   };
 }
@@ -164,12 +153,7 @@ export const TeacherBundleStore = signalStore(
           http.post<BundleApiResponse>(`${apiBase}/bundles`, body),
         );
 
-        const hint: Partial<TeacherBundle> = {
-          grade: payload.grade ?? null,
-          subjects: payload.subjects ?? [],
-          lessons: payload.lessonsMetadata ?? [],
-        };
-        const bundle = mapBundle(item, hint);
+        const bundle = mapBundle(item, { lessons: payload.lessonsMetadata ?? [] });
 
         patchState(store, (state) => ({
           bundles: [...state.bundles, bundle],
@@ -201,12 +185,7 @@ export const TeacherBundleStore = signalStore(
           http.put<BundleApiResponse>(`${apiBase}/bundles/${id}`, body),
         );
 
-        const hint: Partial<TeacherBundle> = {
-          grade: payload.grade ?? null,
-          subjects: payload.subjects ?? [],
-          lessons: payload.lessonsMetadata ?? [],
-        };
-        const updated = mapBundle(item, hint);
+        const updated = mapBundle(item, { lessons: payload.lessonsMetadata ?? [] });
 
         patchState(store, (state) => ({
           bundles: state.bundles.map((b) => (b.id === id ? updated : b)),

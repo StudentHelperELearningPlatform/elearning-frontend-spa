@@ -49,32 +49,33 @@ describe('TeacherProgressStore', () => {
       req.flush('Error Message', { status: 500, statusText: 'Server Error' });
 
       expect(store.loading()).toBe(false);
-      expect(store.error()).toContain('Http failure response');
+      expect(store.error()).toBe('Server error (500). Please try again later.');
     });
   });
 
   describe('loadStudentDetail', () => {
     it('should successfully load a student detail', () => {
       store.loadStudentDetail('stu-1');
-      expect(store.loading()).toBe(true);
+      expect(store.detailLoading()).toBe(true);
 
       const req = httpMock.expectOne(`${mockApiUrl}/progress/professor/students/stu-1`);
       expect(req.request.method).toBe('GET');
 
       req.flush({ studentId: 'stu-1', studentName: 'Bob', history: [] });
 
-      expect(store.loading()).toBe(false);
+      expect(store.detailLoading()).toBe(false);
       expect(store.selectedStudentDetail()?.studentName).toBe('Bob');
     });
 
-    it('should set error state if loadStudentDetail fails', () => {
+    it('should set detailError but leave directory error untouched on 404', () => {
       store.loadStudentDetail('stu-1');
       const req = httpMock.expectOne(`${mockApiUrl}/progress/professor/students/stu-1`);
 
-      req.error(new ProgressEvent('Network error'));
+      req.flush('Not Found', { status: 404, statusText: 'Not Found' });
 
-      expect(store.loading()).toBe(false);
-      expect(store.error()).toContain('Http failure response');
+      expect(store.detailLoading()).toBe(false);
+      expect(store.detailError()).toBe('This data is not available yet.');
+      expect(store.error()).toBeNull();
     });
   });
 
@@ -102,7 +103,7 @@ describe('TeacherProgressStore', () => {
       req.flush('Not Found', { status: 404, statusText: 'Not Found' });
 
       expect(store.loading()).toBe(false);
-      expect(store.error()).toContain('Http failure response');
+      expect(store.error()).toBe('This data is not available yet.');
     });
   });
 });
