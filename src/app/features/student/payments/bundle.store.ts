@@ -146,35 +146,47 @@ export class BundleStore {
 
   // ─── Încarcă lecțiile pentru o listă de bundle-uri ────────────────────────
 
+  private async fetchLessonWithRetry(
+    id: string,
+    retries = 3,
+    delayMs = 1000,
+  ): Promise<LessonApiResponse | null> {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        return await firstValueFrom(
+          this.http.get<LessonApiResponse>(`${this.apiBase}/lessons/${id}`),
+        );
+      } catch {
+        if (attempt < retries - 1) {
+          // Exponential backoff: 1s, 2s, 4s
+          await new Promise((res) => setTimeout(res, delayMs * Math.pow(2, attempt)));
+        }
+      }
+    }
+    return null;
+  }
+
   private async populateLessons(bundles: Bundle[]): Promise<Bundle[]> {
-    // Colectează toate lessonId-urile unice din toate bundle-urile
     const allLessonIds = [...new Set(bundles.flatMap((b) => b.lessonIds))];
 
     if (allLessonIds.length === 0) return bundles;
 
-    // Fetch în paralel pentru toate lecțiile unice
-    const lessonResults = await Promise.allSettled(
-      allLessonIds.map((id) =>
-        firstValueFrom(
-          this.http.get<LessonApiResponse>(`${this.apiBase}/lessons/${id}`),
-        ),
-      ),
+    // Fetch în paralel cu retry pentru fiecare lecție
+    const lessonResults = await Promise.all(
+      allLessonIds.map((id) => this.fetchLessonWithRetry(id)),
     );
 
-    // Construiește un map id → BundleLessonRef
     const lessonMap = new Map<string, BundleLessonRef>();
     lessonResults.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        const mapped = mapLesson(result.value);
-        lessonMap.set(allLessonIds[index], mapped);
+      if (result) {
+        lessonMap.set(allLessonIds[index], mapLesson(result));
       }
     });
 
-    // Populează fiecare bundle cu lecțiile găsite
     return bundles.map((bundle) => ({
       ...bundle,
       lessons: bundle.lessonIds.map(
-        (id) => lessonMap.get(id) ?? { id },  // fallback la { id } dacă fetch-ul a picat
+        (id) => lessonMap.get(id) ?? { id },
       ),
     }));
   }

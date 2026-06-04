@@ -80,7 +80,7 @@ export class NotificationStore {
     this.notifications.update((list) =>
       list.map((n) => ({ ...n, read: true, isRead: true })),
     );
-    this.http.put(`${this.apiBase}/notifications/me/read-all`, {}, SILENT).subscribe({
+    this.http.put(`${this.apiBase}/notifications/me/read-all`, {}).subscribe({
       error: () => this.notifications.set(previous),
     });
   }

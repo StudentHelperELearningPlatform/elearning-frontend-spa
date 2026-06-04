@@ -89,7 +89,7 @@ describe('NotificationBellComponent', () => {
     httpMock.expectOne('/api/v1/notifications/me/read-all').flush({});
   });
 
-  it('dismiss marks notification as read and removes it from the list', () => {
+  it('marks unread notification as read when clicked', () => {
     fixture.detectChanges();
     const markSpy = vi.spyOn(store, 'markRead');
 
@@ -105,6 +105,23 @@ describe('NotificationBellComponent', () => {
 
     expect(markSpy).toHaveBeenCalledWith('n1');
     httpMock.expectOne('/api/v1/notifications/n1/read').flush({});
+  });
+
+  it('does not mark already-read notifications', () => {
+    fixture.detectChanges();
+    const markSpy = vi.spyOn(store, 'markRead');
+
+    component.openNotification({
+      id: 'n2',
+      type: 'SYSTEM',
+      title: 't',
+      message: 'm',
+      isRead: true,
+      read: true,
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+
+    expect(markSpy).not.toHaveBeenCalled();
   });
 
   it('maps notification types to icons', () => {

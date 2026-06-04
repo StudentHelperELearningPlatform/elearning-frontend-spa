@@ -117,8 +117,10 @@ export class NotificationBellComponent {
     this.store.markAllRead();
   }
 
-  dismiss(n: AppNotification) {
-    this.store.markRead(n.id);
+  openNotification(n: AppNotification) {
+    if (!n.read) {
+      this.store.markRead(n.id);
+    }
   }
 
   iconFor(type: AppNotification['type']): string {
