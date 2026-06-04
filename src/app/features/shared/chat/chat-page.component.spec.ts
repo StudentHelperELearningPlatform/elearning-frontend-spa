@@ -31,13 +31,20 @@ describe('ChatPageComponent', () => {
       error: () => null,
       sending: () => false,
       sendError: () => null,
+      startingChat: () => false,
+      startChatError: () => null,
+      searchLoading: () => false,
+      searchResults: () => [],
       selectedContactId: () => 'u1',
       conversations: () => mockConversations,
       selectedConversation: () => mockConversations[0],
       hasActiveConversations: () => true,
       loadInbox: vi.fn(),
       selectContact: vi.fn(),
-      sendMessage: vi.fn()
+      sendMessage: vi.fn(),
+      searchUsersByName: vi.fn(),
+      selectSearchResult: vi.fn(),
+      startConversationByUserId: vi.fn(),
     };
 
     const mockAuthStore = {
