@@ -35,6 +35,7 @@ describe('ChatPageComponent', () => {
       startChatError: () => null,
       searchLoading: () => false,
       searchResults: () => [],
+      searchTargetRole: () => 'TEACHER',
       selectedContactId: () => 'u1',
       conversations: () => mockConversations,
       selectedConversation: () => mockConversations[0],
