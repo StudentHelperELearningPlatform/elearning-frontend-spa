@@ -98,7 +98,7 @@ describe('ChatStore', () => {
       id: 'me-id', role: 'STUDENT', email: 'me@example.com',
     } as unknown as { id: string; role: 'STUDENT' | 'TEACHER' | 'ADMIN'; email: string });
 
-    store.startConversationByUserId(target);
+    store.loadInbox();
 
     expect(store.loading()).toBe(false);
     expect(store.conversations().length).toBe(0);
