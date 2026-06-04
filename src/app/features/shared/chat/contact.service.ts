@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 
 export interface InboxMessage {
@@ -60,4 +60,20 @@ export class ContactService {
   getUser(userId: string) {
     return this.http.get<UserProfile>(`${this.apiBase}/users/${userId}`);
   }
+
+  /**
+   * Search students and teachers by name/email via the backend's
+   * GET /api/v1/users/search endpoint. Returns the PagedUserResponse shape.
+   */
+  searchUsers(query: string, size = 10) {
+    const params = new HttpParams().set('query', query).set('size', String(size));
+    return this.http.get<PagedUserSearchResponse>(`${this.apiBase}/users/search`, { params });
+  }
+}
+
+export interface PagedUserSearchResponse {
+  users: UserProfile[];
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
 }
