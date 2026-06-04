@@ -219,7 +219,7 @@ describe('ClassDetailComponent', () => {
       comp.studentSearch.set('jane');
       comp.performSearch();
 
-      const req = httpTestingController.expectOne((r) => r.url.includes('/users/search') && r.params.get('name') === 'jane');
+      const req = httpTestingController.expectOne((r) => r.url.includes('/users/search') && r.params.get('query') === 'jane');
       req.flush([
         { id: 's2', firstName: 'Jane', lastName: 'Smith', role: 'STUDENT' }
       ]);
