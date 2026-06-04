@@ -70,7 +70,7 @@ const toCreatePayload = (lesson: LessonDraft) => ({
   difficultyLevel: lesson.difficulty_level || 'BEGINNER',
   estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
   shortDescription: lesson.short_description || '',
-  priceInCents: lesson.priceInCents ?? null,
+  priceInCents: lesson.priceInCents ?? 0,
   subcapitols:
     lesson.modules.length > 0
       ? lesson.modules.map((module, index) => ({
@@ -86,7 +86,7 @@ const toUpdatePayload = (lesson: LessonDraft) => ({
   difficultyLevel: lesson.difficulty_level || 'BEGINNER',
   estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
   shortDescription: lesson.short_description || '',
-  priceInCents: lesson.priceInCents ?? null,
+  priceInCents: lesson.priceInCents ?? 0,
 });
 
 const getStringValue = (source: Record<string, unknown>, keys: string[], fallback = ''): string => {
