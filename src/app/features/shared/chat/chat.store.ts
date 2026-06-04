@@ -92,13 +92,16 @@ export class ChatStore {
           new Date(a.lastMessage.sentAt).getTime(),
       );
 
-    if (activeConvs.length > 0) return activeConvs;
-
-    return this._discoverableContacts().map((contact) => {
-      const contactName = names.get(contact.id) ?? contact.name;
-      return {
+    // Always include discoverable contacts (search picks + teacher rosters)
+    // that aren't already in the active list, so a newly-picked contact is
+    // visible alongside existing conversations and the right panel can
+    // resolve `selectedConversation`.
+    const activeIds = new Set(activeConvs.map((c) => c.contactId));
+    const discoverableConvs: Conversation[] = this._discoverableContacts()
+      .filter((c) => !activeIds.has(c.id))
+      .map((contact) => ({
         contactId: contact.id,
-        contactName,
+        contactName: names.get(contact.id) ?? contact.name,
         messages: [],
         lastMessage: {
           id: '',
@@ -108,8 +111,9 @@ export class ChatStore {
           isRead: true,
           sentAt: new Date().toISOString(),
         },
-      };
-    });
+      }));
+
+    return [...activeConvs, ...discoverableConvs];
   });
 
   readonly selectedConversation = computed(() =>
@@ -212,7 +216,10 @@ export class ChatStore {
   }
 
   /**
-   * Live-search students and teachers by name via GET /api/v1/users/search.
+   * Live-search by name via GET /api/v1/users/search. Students may only chat
+   * with teachers and vice-versa, so we send the *opposite* role as a filter;
+   * this also makes the backend lookup fast because it can scope to
+   * `findAllByRole` instead of scanning the whole users table.
    * Empty/short queries clear results. Concurrent calls are guarded with a
    * monotonic counter so the latest query wins regardless of network order.
    */
@@ -223,10 +230,11 @@ export class ChatStore {
       this.searchLoading.set(false);
       return;
     }
-    const me = this.authStore.user()?.id;
+    const me = this.authStore.user();
+    const targetRole = this._targetSearchRole(me?.role);
     const ticket = ++this._searchCounter;
     this.searchLoading.set(true);
-    this.contactService.searchUsers(q).pipe(catchError(() => of(null))).subscribe((res) => {
+    this.contactService.searchUsers(q, 10, targetRole).pipe(catchError(() => of(null))).subscribe((res) => {
       if (ticket !== this._searchCounter) return; // stale response
       const list: UserSearchResult[] = (res?.users ?? [])
         .map((u) => ({
@@ -235,11 +243,28 @@ export class ChatStore {
           email: u.email ?? '',
           role: u.role ?? '',
         }))
-        .filter((u) => u.id && u.id !== me);
+        .filter((u) => u.id && u.id !== me?.id);
       this.searchResults.set(list);
       this.searchLoading.set(false);
     });
   }
+
+  /**
+   * Which backend Role a user should be searching against. Students see only
+   * teachers; teachers/professors see only students. Admins or unknown roles
+   * fall back to "no filter" so the legacy "search anyone" behavior survives.
+   */
+  private _targetSearchRole(myRole?: string): string | undefined {
+    const r = (myRole || '').toUpperCase();
+    if (r === 'STUDENT') return 'TEACHER';
+    if (r === 'TEACHER' || r === 'PROFESSOR') return 'STUDENT';
+    return undefined;
+  }
+
+  /** Role the current user is searching for, exposed for template copy. */
+  readonly searchTargetRole = computed(() =>
+    this._targetSearchRole(this.authStore.user()?.role),
+  );
 
   clearSearch(): void {
     this._searchCounter++;

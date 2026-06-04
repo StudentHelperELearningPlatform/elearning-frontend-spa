@@ -75,8 +75,9 @@ export class ContactService {
     return this.http.get<UserProfile>(`${this.apiBase}/users/${userId}`);
   }
 
-  searchUsers(query: string, size = 10) {
-    const params = new HttpParams().set('query', query).set('size', String(size));
+  searchUsers(query: string, size = 10, role?: string) {
+    let params = new HttpParams().set('query', query).set('size', String(size));
+    if (role) params = params.set('role', role);
     return this.http.get<PagedUserSearchResponse>(`${this.apiBase}/users/search`, { params });
   }
 }

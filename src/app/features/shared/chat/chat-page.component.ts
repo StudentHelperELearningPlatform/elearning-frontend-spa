@@ -4,6 +4,7 @@ import {
   ElementRef,
   OnInit,
   ViewChild,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -89,9 +90,9 @@ function getInitials(name?: string): string {
                 type="text"
                 [ngModel]="searchQuery()"
                 (ngModelChange)="onSearchChange($event)"
-                placeholder="Search by name (e.g. Ioana Popescu)"
+                [placeholder]="searchPlaceholder()"
                 class="w-full rounded-xl border-2 border-black px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
-                aria-label="Search students and teachers by name"
+                [attr.aria-label]="searchPlaceholder()"
               />
               @if (searchQuery().trim().length >= 2) {
                 <div class="absolute z-20 left-0 right-0 mt-1 bg-white border-2 border-black rounded-xl shadow-[3px_3px_0_rgba(0,0,0,1)] max-h-64 overflow-y-auto">
@@ -322,6 +323,13 @@ export class ChatPageComponent implements OnInit {
   readonly draft = signal('');
   readonly searchQuery = signal('');
   private searchDebounceId: ReturnType<typeof setTimeout> | null = null;
+
+  readonly searchPlaceholder = computed(() => {
+    const target = this.store.searchTargetRole();
+    if (target === 'TEACHER') return 'Search a teacher by name';
+    if (target === 'STUDENT') return 'Search a student by name';
+    return 'Search by name (e.g. Ioana Popescu)';
+  });
 
   private readonly AVATAR_PALETTE = [
     '#0ABAB5', '#6366f1', '#f59e0b', '#ec4899', '#10b981',
