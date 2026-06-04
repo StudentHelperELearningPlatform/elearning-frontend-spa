@@ -141,7 +141,7 @@ export class ClassDetailComponent implements OnInit {
 
     this.http
       .get<UserSearchItem[] | { users: UserSearchItem[] }>(`${this.userApi}/users/search`, {
-        params: { name: q }
+        params: { query: q }
       })
       .pipe(
         catchError(() => of([]))
