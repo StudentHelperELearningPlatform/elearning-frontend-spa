@@ -56,16 +56,17 @@ describe('NotificationBellComponent', () => {
     expect(store.notifications()).toEqual([]);
   });
 
-  it('loads notifications when toggled open and schedules markAllRead', () => {
+  it('loads notifications when toggled open and does not auto-mark them', () => {
     fixture.detectChanges();
 
     component.toggle();
     httpMock.expectOne('/api/v1/notifications/me/unread').flush(fixtureNotifs);
     expect(store.notifications()).toEqual(fixtureNotifs);
 
-    // After 1500ms, should automatically mark all read
-    vi.advanceTimersByTime(1500);
-    httpMock.expectOne('/api/v1/notifications/me/read-all').flush({});
+    // Notifications should NOT be auto-marked as read on open
+    vi.advanceTimersByTime(5000);
+    httpMock.expectNone('/api/v1/notifications/me/read-all');
+    expect(store.unreadCount()).toBe(1);
   });
 
   it('toggles the panel open and closed without extra fetches', () => {
@@ -88,11 +89,11 @@ describe('NotificationBellComponent', () => {
     httpMock.expectOne('/api/v1/notifications/me/read-all').flush({});
   });
 
-  it('marks unread notification as read when clicked', () => {
+  it('dismiss marks notification as read and removes it from the list', () => {
     fixture.detectChanges();
     const markSpy = vi.spyOn(store, 'markRead');
 
-    component.openNotification({
+    component.dismiss({
       id: 'n1',
       type: 'ACHIEVEMENT',
       title: 't',
@@ -104,23 +105,6 @@ describe('NotificationBellComponent', () => {
 
     expect(markSpy).toHaveBeenCalledWith('n1');
     httpMock.expectOne('/api/v1/notifications/n1/read').flush({});
-  });
-
-  it('does not mark already-read notifications', () => {
-    fixture.detectChanges();
-    const markSpy = vi.spyOn(store, 'markRead');
-
-    component.openNotification({
-      id: 'n2',
-      type: 'SYSTEM',
-      title: 't',
-      message: 'm',
-      isRead: true,
-      read: true,
-      createdAt: '2026-01-01T00:00:00Z',
-    });
-
-    expect(markSpy).not.toHaveBeenCalled();
   });
 
   it('maps notification types to icons', () => {

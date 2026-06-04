@@ -1,6 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
+
+const SILENT = { headers: new HttpHeaders({ 'X-Skip-Error-Notification': 'true' }) };
 
 export type NotificationType =
   | 'SYSTEM'
@@ -45,7 +47,7 @@ export class NotificationStore {
   load() {
     this.loading.set(true);
     this.error.set(null);
-    this.http.get<RawNotification[]>(`${this.apiBase}/notifications/me/unread`).subscribe({
+    this.http.get<RawNotification[]>(`${this.apiBase}/notifications/me/unread`, SILENT).subscribe({
       next: (data) => {
         const mapped: AppNotification[] = (Array.isArray(data) ? data : []).map(
           (n) => ({ ...n, type: n.type as NotificationType, read: n.isRead }),
@@ -64,7 +66,7 @@ export class NotificationStore {
     this.notifications.update((list) =>
       list.map((n) => (n.id === id ? { ...n, read: true, isRead: true } : n)),
     );
-    this.http.put(`${this.apiBase}/notifications/${id}/read`, {}).subscribe({
+    this.http.put(`${this.apiBase}/notifications/${id}/read`, {}, SILENT).subscribe({
       error: () => {
         this.notifications.update((list) =>
           list.map((n) => (n.id === id ? { ...n, read: false, isRead: false } : n)),
@@ -78,7 +80,7 @@ export class NotificationStore {
     this.notifications.update((list) =>
       list.map((n) => ({ ...n, read: true, isRead: true })),
     );
-    this.http.put(`${this.apiBase}/notifications/me/read-all`, {}).subscribe({
+    this.http.put(`${this.apiBase}/notifications/me/read-all`, {}, SILENT).subscribe({
       error: () => this.notifications.set(previous),
     });
   }
