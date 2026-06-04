@@ -1,14 +1,37 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { PaymentRecord, PaymentStore } from './payment.store';
+import { PaymentStore } from './payment.store';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
 
-const records: PaymentRecord[] = [
+// Forma reală a răspunsului din backend
+const apiRecords = [
+  {
+    purchaseId: 'p1',
+    studentId: 'student-1',
+    itemType: 'LESSON',
+    itemId: 'l1',
+    purchasedAt: '2026-01-01T00:00:00Z',
+    amountPaid: 999,
+    status: 'SUCCESS',
+  },
+  {
+    purchaseId: 'p2',
+    studentId: 'student-1',
+    itemType: 'BUNDLE',
+    itemId: 'b1',
+    purchasedAt: '2026-01-02T00:00:00Z',
+    amountPaid: 4999,
+    status: 'PENDING',
+  },
+];
+
+// Forma internă după mapping — ce ne așteptăm să fie în store
+const mappedRecords = [
   {
     id: 'p1',
     itemType: 'LESSON',
     itemId: 'l1',
-    itemTitle: 'Algebra',
+    itemTitle: '',
     amount: 999,
     currency: 'RON',
     status: 'SUCCESS',
@@ -18,7 +41,7 @@ const records: PaymentRecord[] = [
     id: 'p2',
     itemType: 'BUNDLE',
     itemId: 'b1',
-    itemTitle: 'Math Bundle',
+    itemTitle: '',
     amount: 4999,
     currency: 'RON',
     status: 'PENDING',
@@ -56,23 +79,22 @@ describe('PaymentStore', () => {
 
       const req = httpMock.expectOne('/api/v1/payments/history');
       expect(req.request.method).toBe('GET');
-      req.flush(records);
+      req.flush(apiRecords);
 
       expect(store.historyLoading()).toBe(false);
-      expect(store.history()).toEqual(records);
+      expect(store.history()).toEqual(mappedRecords);
+      // totalSpent numără doar SUCCESS: 999 (p2 e PENDING)
       expect(store.totalSpent()).toBe(999);
     });
 
     it('coerces non-array responses to empty', () => {
       store.loadHistory();
-
       httpMock.expectOne('/api/v1/payments/history').flush(null);
       expect(store.history()).toEqual([]);
     });
 
     it('sets error on failure', () => {
       store.loadHistory();
-
       httpMock
         .expectOne('/api/v1/payments/history')
         .error(new ErrorEvent('boom'));
@@ -138,7 +160,7 @@ describe('PaymentStore', () => {
   describe('hasPurchased', () => {
     it('returns true only for SUCCESS records with matching itemId', () => {
       store.loadHistory();
-      httpMock.expectOne('/api/v1/payments/history').flush(records);
+      httpMock.expectOne('/api/v1/payments/history').flush(apiRecords);
 
       expect(store.hasPurchased('l1')).toBe(true);
       expect(store.hasPurchased('b1')).toBe(false); // PENDING
