@@ -32,7 +32,6 @@ interface ProgressStoreTestDouble {
 }
 
 interface LessonViewerPrivateAccess {
-  checkoutOpen: SignalWithSet<boolean>;
   explanationOpen: SignalWithSet<boolean>;
   lessonId: SignalWithSet<string>;
   subcapitolAttempts: SignalWithSet<Record<string, QuizAttemptMock[]>>;
@@ -164,16 +163,6 @@ describe('LessonViewerComponent', () => {
     component.ngOnDestroy();
 
     expect(spy).toHaveBeenCalled();
-  });
-
-  it('unlockLesson opens the checkout modal', () => {
-    fixture.detectChanges();
-
-    expect(privateComponent().checkoutOpen()).toBe(false);
-
-    component.unlockLesson();
-
-    expect(privateComponent().checkoutOpen()).toBe(true);
   });
 
   it('displays the lesson title in the sidebar header', () => {
