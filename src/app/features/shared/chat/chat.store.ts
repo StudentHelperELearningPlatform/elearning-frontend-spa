@@ -211,6 +211,107 @@ export class ChatStore {
     }
   }
 
+  /**
+   * Live-search students and teachers by name via GET /api/v1/users/search.
+   * Empty/short queries clear results. Concurrent calls are guarded with a
+   * monotonic counter so the latest query wins regardless of network order.
+   */
+  searchUsersByName(query: string): void {
+    const q = query.trim();
+    if (q.length < 2) {
+      this.searchResults.set([]);
+      this.searchLoading.set(false);
+      return;
+    }
+    const me = this.authStore.user()?.id;
+    const ticket = ++this._searchCounter;
+    this.searchLoading.set(true);
+    this.contactService.searchUsers(q).pipe(catchError(() => of(null))).subscribe((res) => {
+      if (ticket !== this._searchCounter) return; // stale response
+      const list: UserSearchResult[] = (res?.users ?? [])
+        .map((u) => ({
+          id: u.id,
+          name: displayNameOf(u),
+          email: u.email ?? '',
+          role: u.role ?? '',
+        }))
+        .filter((u) => u.id && u.id !== me);
+      this.searchResults.set(list);
+      this.searchLoading.set(false);
+    });
+  }
+
+  clearSearch(): void {
+    this._searchCounter++;
+    this.searchResults.set([]);
+    this.searchLoading.set(false);
+    this.startChatError.set(null);
+  }
+
+  /** Start a conversation with one of the search results. */
+  selectSearchResult(r: UserSearchResult): void {
+    const nameMap = new Map(this._userNames());
+    nameMap.set(r.id, r.name);
+    this._userNames.set(nameMap);
+
+    const discoverable = this._discoverableContacts();
+    if (!discoverable.some((c) => c.id === r.id)) {
+      this._discoverableContacts.set([...discoverable, { id: r.id, name: r.name }]);
+    }
+    this.selectedContactId.set(r.id);
+    this.clearSearch();
+  }
+
+  /**
+   * Look up a user by UUID and add them as a discoverable contact so the user
+   * can send the first message. Backend exposes `GET /api/v1/users/{id}` to
+   * any authenticated user, which is the only generic discovery path for
+   * students.
+   */
+  startConversationByUserId(rawId: string): void {
+    const id = rawId.trim();
+    this.startChatError.set(null);
+
+    if (!UUID_RE.test(id)) {
+      this.startChatError.set('Enter a valid user ID (UUID).');
+      return;
+    }
+
+    const me = this.authStore.user();
+    if (me && id === me.id) {
+      this.startChatError.set("You can't start a chat with yourself.");
+      return;
+    }
+
+    // Already a known contact? Just select it.
+    const existingName = this._userNames().get(id);
+    if (existingName) {
+      this.selectedContactId.set(id);
+      return;
+    }
+
+    this.startingChat.set(true);
+    this.contactService.getUser(id).subscribe({
+      next: (profile) => {
+        const name = displayNameOf({ ...profile, id });
+        const nameMap = new Map(this._userNames());
+        nameMap.set(id, name);
+        this._userNames.set(nameMap);
+
+        const discoverable = this._discoverableContacts();
+        if (!discoverable.some((c) => c.id === id)) {
+          this._discoverableContacts.set([...discoverable, { id, name }]);
+        }
+        this.selectedContactId.set(id);
+        this.startingChat.set(false);
+      },
+      error: () => {
+        this.startingChat.set(false);
+        this.startChatError.set('No user found with that ID.');
+      },
+    });
+  }
+
   selectContact(contactId: string) {
     this.selectedContactId.set(contactId);
   }

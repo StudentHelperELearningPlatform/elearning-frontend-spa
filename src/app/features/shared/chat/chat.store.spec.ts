@@ -98,7 +98,7 @@ describe('ChatStore', () => {
       id: 'me-id', role: 'STUDENT', email: 'me@example.com',
     } as unknown as { id: string; role: 'STUDENT' | 'TEACHER' | 'ADMIN'; email: string });
 
-    store.loadInbox();
+    store.startConversationByUserId(target);
 
     expect(store.loading()).toBe(false);
     expect(store.conversations().length).toBe(0);
@@ -114,6 +114,7 @@ describe('ChatStore', () => {
     expect(store.conversations().length).toBe(1);
     expect(store.conversations()[0].contactId).toBe('u1');
     expect(store.conversations()[0].contactName).toBe('Alice');
+    expect(store.conversations()[0].contactId).toBe('u1');
   });
 
   it('handles an empty class list for TEACHER', () => {
@@ -240,5 +241,19 @@ describe('ChatStore', () => {
     store.startConversationByUserId('not-a-uuid');
     expect(store.startChatError()).toBe('Enter a valid user ID (UUID).');
     expect(store.selectedContactId()).toBeNull();
+  });
+
+  it('uses firstName + lastName from UserResponse when resolving contact names', () => {
+    const messages: InboxMessage[] = [
+      { id: 'm1', senderId: 'u1', subject: 'Hi', body: 'Hi', isRead: false, sentAt: new Date().toISOString() },
+    ];
+    vi.spyOn(contactService, 'getInbox').mockReturnValue(of(messages));
+    vi.spyOn(contactService, 'getUser').mockReturnValue(
+      of({ id: 'u1', firstName: 'Alice', lastName: 'Cooper', email: 'a@x.io' }),
+    );
+
+    store.loadInbox();
+
+    expect(store.conversations()[0].contactName).toBe('Alice Cooper');
   });
 });

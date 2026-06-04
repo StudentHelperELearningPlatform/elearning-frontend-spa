@@ -28,7 +28,6 @@ export interface LessonDraft {
   status: LessonStatus;
   modules: LessonModuleDraft[];
   /** Price in smallest currency unit (bani for RON). null = free lesson */
-  priceInCents: number | null;
 }
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'unsaved' | 'error';
@@ -50,7 +49,6 @@ const blankLesson: LessonDraft = {
   short_description: '',
   status: 'DRAFT',
   modules: [],
-  priceInCents: null,
 };
 
 const initialState: LessonEditorState = {
@@ -70,7 +68,6 @@ const toCreatePayload = (lesson: LessonDraft) => ({
   difficultyLevel: lesson.difficulty_level || 'BEGINNER',
   estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
   shortDescription: lesson.short_description || '',
-  priceInCents: lesson.priceInCents ?? null,
   subcapitols:
     lesson.modules.length > 0
       ? lesson.modules.map((module, index) => ({
@@ -86,7 +83,6 @@ const toUpdatePayload = (lesson: LessonDraft) => ({
   difficultyLevel: lesson.difficulty_level || 'BEGINNER',
   estimatedDurationMinutes: lesson.estimated_duration_minutes || 30,
   shortDescription: lesson.short_description || '',
-  priceInCents: lesson.priceInCents ?? null,
 });
 
 const getStringValue = (source: Record<string, unknown>, keys: string[], fallback = ''): string => {
@@ -207,7 +203,6 @@ const mapFromResponse = (
     saved['estimated_duration_minutes']) as number,
   short_description: (saved['shortDescription'] ?? saved['short_description'] ?? '') as string,
   status: saved['status'] as LessonStatus,
-  priceInCents: (saved['priceInCents'] as number | null | undefined) ?? null,
 
   modules:
     ((saved['subcapitols'] ?? saved['modules']) as Record<string, unknown>[])?.map(
@@ -590,7 +585,6 @@ export const LessonEditorStore = signalStore(
               | 'difficulty_level'
               | 'estimated_duration_minutes'
               | 'short_description'
-              | 'priceInCents'
             >
           >,
         ) {

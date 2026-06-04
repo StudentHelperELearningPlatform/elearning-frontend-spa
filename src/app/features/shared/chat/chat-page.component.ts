@@ -338,6 +338,29 @@ export class ChatPageComponent implements OnInit {
     setTimeout(() => this.scrollToBottom(), 50);
   }
 
+  onSearchChange(value: string) {
+    this.searchQuery.set(value);
+    if (this.searchDebounceId !== null) clearTimeout(this.searchDebounceId);
+    this.searchDebounceId = setTimeout(() => {
+      this.store.searchUsersByName(value);
+    }, 250);
+  }
+
+  pickSearchResult(r: UserSearchResult) {
+    this.store.selectSearchResult(r);
+    this.searchQuery.set('');
+    if (this.searchDebounceId !== null) clearTimeout(this.searchDebounceId);
+    setTimeout(() => this.scrollToBottom(), 50);
+  }
+
+  roleLabel(role: string): string {
+    const normalized = (role || '').toUpperCase();
+    if (normalized === 'TEACHER' || normalized === 'PROFESSOR') return 'Teacher';
+    if (normalized === 'STUDENT') return 'Student';
+    if (normalized === 'ADMIN') return 'Admin';
+    return normalized || 'User';
+  }
+
   isMe(senderId: string): boolean {
     return senderId === this.authStore.user()?.id;
   }
