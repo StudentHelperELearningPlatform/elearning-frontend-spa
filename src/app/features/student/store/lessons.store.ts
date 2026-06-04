@@ -130,6 +130,9 @@ interface LessonsState {
   /** Set of lesson IDs the user has access to */
   accessibleLessonIds: Set<string>;
   accessibleLessonsLoading: boolean;
+  /** Lessons unlocked via purchased bundles */
+  purchasedLessons: Lesson[];
+  purchasedLessonsLoading: boolean;
 }
 
 export const LessonsStore = signalStore(
@@ -148,6 +151,8 @@ export const LessonsStore = signalStore(
     explanationBlockId: null,
     accessibleLessonIds: new Set<string>(),
     accessibleLessonsLoading: false,
+    purchasedLessons: [],
+    purchasedLessonsLoading: false,
   }),
 
   withComputed((state) => ({
@@ -255,6 +260,35 @@ export const LessonsStore = signalStore(
         error: () => {
           patchState(store, { accessibleLessonsLoading: false });
         }
+      });
+    },
+
+    loadPurchasedLessons(bundleIds: string[]): void {
+      if (!bundleIds.length) {
+        patchState(store, { purchasedLessons: [], purchasedLessonsLoading: false });
+        return;
+      }
+      patchState(store, { purchasedLessonsLoading: true });
+      const params = new URLSearchParams();
+      bundleIds.forEach((id) => params.append('bundleIds', id));
+      params.set('page', '0');
+      params.set('size', '100');
+      http.get<unknown>(`${apiBase}/lessons/purchased?${params.toString()}`).subscribe({
+        next: (response) => {
+          let data: BackendLesson[] = [];
+          if (Array.isArray(response)) {
+            data = response as BackendLesson[];
+          } else if (response && Array.isArray((response as Record<string, unknown>)['content'])) {
+            data = (response as Record<string, unknown>)['content'] as BackendLesson[];
+          }
+          patchState(store, {
+            purchasedLessons: data.map(mapLessonResponse),
+            purchasedLessonsLoading: false,
+          });
+        },
+        error: () => {
+          patchState(store, { purchasedLessons: [], purchasedLessonsLoading: false });
+        },
       });
     },
 
