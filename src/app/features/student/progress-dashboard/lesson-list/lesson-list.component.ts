@@ -12,7 +12,7 @@ import { BundlesPageComponent } from '../../payments/bundles-page.component';
 import { CheckoutModalComponent } from '../../payments/checkout-modal.component';
 import { PaymentStore } from '../../payments/payment.store';
 
-type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles';
+type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles' | 'purchased';
 
 @Component({
   selector: 'app-lesson-list',
@@ -96,6 +96,14 @@ type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles';
           </span>
         </button>
         <button
+          id="tab-purchased"
+          (click)="setTab('purchased')"
+          [class]="activeTab() === 'purchased' ? 'bg-emerald-500 text-white' : 'bg-white text-black'"
+          class="px-5 py-3 rounded-xl border-4 border-black font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all text-sm"
+        >
+          📦 Purchased
+        </button>
+        <button
           id="tab-history"
           (click)="setTab('history')"
           [class]="activeTab() === 'history' ? 'bg-[#FF6B6B] text-white' : 'bg-white text-black'"
@@ -167,6 +175,35 @@ type ActiveTab = 'browser' | 'my-lessons' | 'history' | 'bundles';
           <!-- ── Bundles ─────────────────────────────────────────────── -->
           @case ('bundles') {
             <app-bundles-page></app-bundles-page>
+          }
+
+          <!-- ── Purchased ───────────────────────────────────────────── -->
+          @case ('purchased') {
+            @if (lessonsStore.purchasedLessonsLoading()) {
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                @for (i of [1, 2, 3]; track i) {
+                  <div class="bg-gray-200 animate-pulse h-80 rounded-3xl border-4 border-black"></div>
+                }
+              </div>
+            } @else if (purchasedBundleIds().length === 0) {
+              <app-empty-state
+                [title]="'No purchased bundles'"
+                [description]="'Buy a bundle to unlock lessons here.'"
+                [icon]="'inventory_2'"
+              ></app-empty-state>
+            } @else if (lessonsStore.purchasedLessons().length === 0) {
+              <app-empty-state
+                [title]="'No lessons in your bundles yet'"
+                [description]="'Bundles you have purchased do not contain any lessons.'"
+                [icon]="'inventory_2'"
+              ></app-empty-state>
+            } @else {
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                @for (lesson of lessonsStore.purchasedLessons(); track lesson.id) {
+                  <ng-container *ngTemplateOutlet="lessonCard; context: { $implicit: lesson, type: 'purchased' }"/>
+                }
+              </div>
+            }
           }
 
           <!-- ── History ─────────────────────────────────────────────── -->
@@ -301,6 +338,18 @@ export class LessonListComponent implements OnInit {
 
   activeTab = signal<ActiveTab>('browser');
 
+  /** UUIDs of bundles the student has successfully purchased. */
+  protected readonly purchasedBundleIds = computed(() =>
+    Array.from(
+      new Set(
+        this.paymentStore
+          .history()
+          .filter((p) => p.itemType === 'BUNDLE' && p.status === 'SUCCESS')
+          .map((p) => p.itemId),
+      ),
+    ),
+  );
+
   // For the unlock modal triggered from browser tab
   protected readonly unlockModalOpen = signal(false);
   protected readonly unlockLesson = signal<Lesson | null>(null);
@@ -325,11 +374,19 @@ export class LessonListComponent implements OnInit {
     // Sync tab from query param (?tab=bundles from payment redirect)
     effect(() => {
       const tab = this.route.snapshot.queryParamMap.get('tab') as ActiveTab | null;
-      if (tab && ['browser', 'my-lessons', 'bundles', 'history'].includes(tab)) {
+      if (tab && ['browser', 'my-lessons', 'bundles', 'history', 'purchased'].includes(tab)) {
         this.activeTab.set(tab);
         // Clean up the URL after reading
         this.router.navigate([], { queryParams: {}, replaceUrl: true });
       }
+    });
+
+    // When the Purchased tab is active and payment history is ready,
+    // refetch lessons whenever the set of purchased bundle IDs changes.
+    effect(() => {
+      if (this.activeTab() !== 'purchased') return;
+      const ids = this.purchasedBundleIds();
+      untracked(() => this.lessonsStore.loadPurchasedLessons(ids));
     });
   }
 
