@@ -56,6 +56,10 @@ import { AuthStore } from '../../../features/auth/store/auth.store';
             <span class="material-icons text-3xl">forum</span>
             <span>Chat</span>
           </a>
+          <a routerLink="/teacher/balance" routerLinkActive="bg-[#0ABAB5]/10 text-[#0ABAB5] border-[#0ABAB5]" class="flex items-center space-x-4 px-4 py-4 rounded-2xl border-2 border-transparent hover:border-black hover:bg-gray-50 transition-all text-gray-500 font-bold text-lg">
+            <span class="material-icons text-3xl">account_balance_wallet</span>
+            <span>Balance</span>
+          </a>
         }
 
         @if (authStore.isAdmin()) {
