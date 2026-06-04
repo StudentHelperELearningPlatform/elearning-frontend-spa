@@ -29,6 +29,29 @@ interface CheckoutParams {
   bundleId?: string;
 }
 
+// ─── Forma brută returnată de backend ────────────────────────────────────────
+interface PaymentApiRecord {
+  purchaseId: string;
+  studentId: string;
+  itemType: string;
+  itemId: string;
+  purchasedAt: string;
+  amountPaid: number;
+}
+
+function mapPaymentRecord(r: PaymentApiRecord): PaymentRecord {
+  return {
+    id:        r.purchaseId,
+    itemType:  r.itemType,
+    itemId:    r.itemId,
+    itemTitle: '',
+    amount:    r.amountPaid,
+    currency:  'RON',
+    status:    'SUCCESS',
+    createdAt: r.purchasedAt,
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class PaymentStore {
   private readonly http = inject(HttpClient);
@@ -51,10 +74,10 @@ export class PaymentStore {
     this.historyLoading.set(true);
     this.historyError.set(null);
     this.http
-      .get<PaymentRecord[]>(`${this.apiBase}/payments/history`)
+      .get<PaymentApiRecord[]>(`${this.apiBase}/payments/history`)
       .subscribe({
         next: (data) => {
-          this.history.set(Array.isArray(data) ? data : []);
+          this.history.set(Array.isArray(data) ? data.map(mapPaymentRecord) : []);
           this.historyLoading.set(false);
         },
         error: () => {

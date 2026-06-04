@@ -2,21 +2,19 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { WritableSignal } from '@angular/core';
 import { PaymentHistoryComponent } from './payment-history.component';
-import { PaymentRecord } from './payment.store';
 import { AuthStore } from '@features/auth/store/auth.store';
 import { createAuthStoreStub } from '../../../../test-utils/auth-testing';
 import { provideApiMocks } from '../../../../test-utils/api-testing';
 
-const records: PaymentRecord[] = [
+// FIX: forma reală a răspunsului din backend, nu PaymentRecord
+const apiRecords = [
   {
-    id: 'p1',
+    purchaseId: 'p1',
+    studentId: 'student-1',
     itemType: 'LESSON',
     itemId: 'l1',
-    itemTitle: 'Algebra',
-    amount: 999,
-    currency: 'RON',
-    status: 'SUCCESS',
-    createdAt: '2026-01-01T00:00:00Z',
+    purchasedAt: '2026-01-01T00:00:00Z',
+    amountPaid: 999,
   },
 ];
 
@@ -51,7 +49,8 @@ describe('PaymentHistoryComponent', () => {
     fixture.detectChanges();
     const req = httpMock.expectOne('/api/v1/payments/history');
     expect(req.request.method).toBe('GET');
-    req.flush(records);
+    // FIX: flush cu forma reală a API-ului
+    req.flush(apiRecords);
   });
 
   it('does nothing when no student is authenticated', () => {
@@ -63,11 +62,12 @@ describe('PaymentHistoryComponent', () => {
   it('formatAmount returns a localized currency string', () => {
     const formatted = component.formatAmount(999, 'RON');
     expect(typeof formatted).toBe('string');
-    expect(formatted).toContain('9');
+    expect(formatted).toContain('999');
   });
 
   it('formatAmount falls back when currency is invalid', () => {
-    expect(component.formatAmount(100, 'XYZZZZ' as unknown as string)).toMatch(/1\.00/);
+    // FIX: nu mai împărțim la 100, deci 100 → '100.00 XYZZZZ'
+    expect(component.formatAmount(100, 'XYZZZZ' as unknown as string)).toMatch(/100\.00/);
   });
 
   it('statusLabel capitalizes status text', () => {
