@@ -22,6 +22,7 @@ describe('ChatStore', () => {
   beforeEach(() => {
     const mockContactService = {
       getInbox: () => of([]),
+      getSent: () => of([]),
       sendMessage: () => of('Success'),
       getUser: () => of({ id: 'u1', name: 'Alice' })
     };
@@ -31,8 +32,8 @@ describe('ChatStore', () => {
     };
 
     const mockClassService = {
-      getClassDetail: () => of({ id: 'class-1', students: [{ id: 'u1', name: 'Alice' }] }),
-      getClasses: () => of([{ id: 'class-1', name: 'Class 1' }])
+      getClasses: () => of([{ id: 'class-1', name: 'Class 1' }]),
+      getStudents: () => of([{ userId: 'u1', firstName: 'Alice', lastName: '', email: 'alice@x.io' }]),
     };
 
     TestBed.configureTestingModule({
@@ -77,11 +78,33 @@ describe('ChatStore', () => {
     expect(store.conversations()[0].contactName).toBe('Alice');
   });
 
-  it('should handle error when loadInbox fails', () => {
+  it('should handle error when loadInbox fails on both endpoints', () => {
     vi.spyOn(contactService, 'getInbox').mockReturnValue(throwError(() => new Error('Error')));
+    vi.spyOn(contactService, 'getSent').mockReturnValue(throwError(() => new Error('Error')));
     store.loadInbox();
     expect(store.loading()).toBe(false);
-    expect(store.error()).toBe('Failed to load messages');
+    // forkJoin with catchError on each branch yields empty arrays, so we
+    // fall through to discoverable contacts rather than the error path.
+    expect(store.error()).toBeNull();
+    expect(store.conversations().length).toBe(0);
+  });
+
+  it('merges sent messages with the inbox so outgoing threads survive a refresh', () => {
+    const myId = 'me-id';
+    const partner = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    vi.spyOn(contactService, 'getInbox').mockReturnValue(of([]));
+    vi.spyOn(contactService, 'getSent').mockReturnValue(of([
+      { id: 's1', senderId: myId, receiverId: partner, subject: 'Hi', body: 'Yo', isRead: true, sentAt: '2026-01-01T00:00:00Z' },
+    ]));
+    vi.spyOn(contactService, 'getUser').mockReturnValue(
+      of({ id: partner, firstName: 'Bob', lastName: 'Smith', email: 'b@x.io' }),
+    );
+
+    store.loadInbox();
+
+    expect(store.conversations().length).toBe(1);
+    expect(store.conversations()[0].contactId).toBe(partner);
+    expect(store.conversations()[0].contactName).toBe('Bob Smith');
   });
 
   it('should handle empty user profile resolution and failed getUser calls', () => {
@@ -96,34 +119,33 @@ describe('ChatStore', () => {
     expect(store.conversations()[0].contactName).toContain('User …');
   });
 
-  it('should load discoverable classmates for STUDENT', () => {
+  it('leaves students with empty discoverable contacts (no user-search endpoint exposed to them)', () => {
     vi.spyOn(authStore, 'user').mockReturnValue({ id: 'me-id', role: 'STUDENT', email: 'me@example.com' } as unknown as { id: string; role: 'STUDENT' | 'TEACHER' | 'ADMIN'; email: string });
-    const studentProfile = {
-      enrolledClasses: ['class-1']
-    };
 
     store.loadInbox();
 
-    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/profile`);
-    expect(req.request.method).toBe('GET');
-    req.flush(studentProfile);
-
-    expect(store.conversations().length).toBe(1);
-    expect(store.conversations()[0].contactName).toBe('Alice');
+    expect(store.loading()).toBe(false);
+    expect(store.conversations().length).toBe(0);
   });
 
-  it('should handle empty/null enrolledClasses for STUDENT', () => {
+  it('lets a student start a new conversation by user ID via GET /users/{id}', () => {
     vi.spyOn(authStore, 'user').mockReturnValue({ id: 'me-id', role: 'STUDENT', email: 'me@example.com' } as unknown as { id: string; role: 'STUDENT' | 'TEACHER' | 'ADMIN'; email: string });
-    const studentProfile = {
-      enrolledClasses: []
-    };
+    const target = '11111111-1111-1111-1111-111111111111';
+    const getUserSpy = vi.spyOn(contactService, 'getUser').mockReturnValue(
+      of({ id: target, firstName: 'Bob', lastName: 'Smith', email: 'bob@x.io' }),
+    );
 
-    store.loadInbox();
+    store.startConversationByUserId(target);
 
-    const req = httpTestingController.expectOne(`${mockApiUrl}/students/me/profile`);
-    req.flush(studentProfile);
+    expect(getUserSpy).toHaveBeenCalledWith(target);
+    expect(store.selectedContactId()).toBe(target);
+    expect(store.contactNameFor(target)).toBe('Bob Smith');
+  });
 
-    expect(store.conversations().length).toBe(0);
+  it('rejects a non-UUID input from startConversationByUserId', () => {
+    store.startConversationByUserId('not-a-uuid');
+    expect(store.startChatError()).toBe('Enter a valid user ID (UUID).');
+    expect(store.selectedContactId()).toBeNull();
   });
 
   it('should load discoverable students for TEACHER/PROFESSOR', () => {
@@ -133,6 +155,7 @@ describe('ChatStore', () => {
 
     expect(store.conversations().length).toBe(1);
     expect(store.conversations()[0].contactName).toBe('Alice');
+    expect(store.conversations()[0].contactId).toBe('u1');
   });
 
   it('should handle empty classes list for TEACHER', () => {
@@ -191,5 +214,19 @@ describe('ChatStore', () => {
     vi.spyOn(authStore, 'user').mockReturnValue({ id: 'me-id', role: 'ADMIN', email: 'admin@example.com' } as unknown as { id: string; role: 'STUDENT' | 'TEACHER' | 'ADMIN'; email: string });
     store.loadInbox();
     expect(store.conversations().length).toBe(0);
+  });
+
+  it('uses firstName + lastName from UserResponse when resolving contact names', () => {
+    const messages: InboxMessage[] = [
+      { id: 'm1', senderId: 'u1', subject: 'Hi', body: 'Hi', isRead: false, sentAt: new Date().toISOString() },
+    ];
+    vi.spyOn(contactService, 'getInbox').mockReturnValue(of(messages));
+    vi.spyOn(contactService, 'getUser').mockReturnValue(
+      of({ id: 'u1', firstName: 'Alice', lastName: 'Cooper', email: 'a@x.io' }),
+    );
+
+    store.loadInbox();
+
+    expect(store.conversations()[0].contactName).toBe('Alice Cooper');
   });
 });
