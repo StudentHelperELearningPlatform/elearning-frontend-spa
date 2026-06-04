@@ -10,7 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthStore } from '@features/auth/store/auth.store';
-import { ChatStore, Conversation } from './chat.store';
+import { ChatStore, Conversation, UserSearchResult } from './chat.store';
 
 function getInitials(name?: string): string {
   if (!name) return '?';
@@ -83,23 +83,45 @@ function getInitials(name?: string): string {
             <p class="text-xs font-black uppercase tracking-widest text-gray-400">
               {{ store.hasActiveConversations() ? 'Conversations' : 'Start a Chat' }}
             </p>
-            <div class="flex gap-2">
+            <div class="relative">
               <input
-                id="chat-new-user-id"
+                id="chat-user-search"
                 type="text"
-                [(ngModel)]="newUserId"
-                placeholder="Paste a user ID to start chatting"
-                class="flex-1 min-w-0 rounded-xl border-2 border-black px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
-                [disabled]="store.startingChat()"
+                [ngModel]="searchQuery()"
+                (ngModelChange)="onSearchChange($event)"
+                placeholder="Search by name (e.g. Alex Popescu)"
+                class="w-full rounded-xl border-2 border-black px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
+                aria-label="Search students and teachers by name"
               />
-              <button
-                type="button"
-                class="px-3 py-2 rounded-xl bg-[#0ABAB5] border-2 border-black text-white text-xs font-black uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
-                [disabled]="!newUserId().trim() || store.startingChat()"
-                (click)="startNewChat()"
-              >
-                {{ store.startingChat() ? '…' : 'Start' }}
-              </button>
+              @if (searchQuery().trim().length >= 2) {
+                <div class="absolute z-20 left-0 right-0 mt-1 bg-white border-2 border-black rounded-xl shadow-[3px_3px_0_rgba(0,0,0,1)] max-h-64 overflow-y-auto">
+                  @if (store.searchLoading()) {
+                    <div class="px-3 py-2 text-[11px] font-bold text-gray-400">Searching…</div>
+                  } @else if (store.searchResults().length === 0) {
+                    <div class="px-3 py-2 text-[11px] font-bold text-gray-400">No matches</div>
+                  } @else {
+                    <ul>
+                      @for (r of store.searchResults(); track r.id) {
+                        <li>
+                          <button
+                            type="button"
+                            class="w-full text-left px-3 py-2 hover:bg-[#0ABAB5]/10 border-b border-black/5 last:border-b-0"
+                            (click)="pickSearchResult(r)"
+                          >
+                            <div class="flex items-baseline justify-between gap-2">
+                              <span class="font-black text-xs truncate">{{ r.name }}</span>
+                              <span class="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border border-black/40 bg-white">
+                                {{ roleLabel(r.role) }}
+                              </span>
+                            </div>
+                            <p class="text-[10px] text-gray-500 truncate">{{ r.email }}</p>
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </div>
+              }
             </div>
             @if (store.startChatError()) {
               <p class="text-[11px] font-bold text-red-600">{{ store.startChatError() }}</p>
@@ -298,7 +320,8 @@ export class ChatPageComponent implements OnInit {
   @ViewChild('threadRef') threadRef?: ElementRef<HTMLDivElement>;
 
   readonly draft = signal('');
-  readonly newUserId = signal('');
+  readonly searchQuery = signal('');
+  private searchDebounceId: ReturnType<typeof setTimeout> | null = null;
 
   private readonly AVATAR_PALETTE = [
     '#0ABAB5', '#6366f1', '#f59e0b', '#ec4899', '#10b981',
@@ -315,11 +338,27 @@ export class ChatPageComponent implements OnInit {
     setTimeout(() => this.scrollToBottom(), 50);
   }
 
-  startNewChat() {
-    const id = this.newUserId().trim();
-    if (!id) return;
-    this.store.startConversationByUserId(id);
-    this.newUserId.set('');
+  onSearchChange(value: string) {
+    this.searchQuery.set(value);
+    if (this.searchDebounceId !== null) clearTimeout(this.searchDebounceId);
+    this.searchDebounceId = setTimeout(() => {
+      this.store.searchUsersByName(value);
+    }, 250);
+  }
+
+  pickSearchResult(r: UserSearchResult) {
+    this.store.selectSearchResult(r);
+    this.searchQuery.set('');
+    if (this.searchDebounceId !== null) clearTimeout(this.searchDebounceId);
+    setTimeout(() => this.scrollToBottom(), 50);
+  }
+
+  roleLabel(role: string): string {
+    const normalized = (role || '').toUpperCase();
+    if (normalized === 'TEACHER' || normalized === 'PROFESSOR') return 'Teacher';
+    if (normalized === 'STUDENT') return 'Student';
+    if (normalized === 'ADMIN') return 'Admin';
+    return normalized || 'User';
   }
 
   isMe(senderId: string): boolean {

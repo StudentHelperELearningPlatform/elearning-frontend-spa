@@ -7,6 +7,13 @@ import { TeacherClassService } from '@core/services/teacher-class.service';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export interface UserSearchResult {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export interface Conversation {
   contactId: string;
   contactName: string;
@@ -27,6 +34,10 @@ export class ChatStore {
   readonly selectedContactId = signal<string | null>(null);
   readonly startingChat = signal(false);
   readonly startChatError = signal<string | null>(null);
+
+  readonly searchLoading = signal(false);
+  readonly searchResults = signal<UserSearchResult[]>([]);
+  private _searchCounter = 0;
 
   private readonly _allMessages = signal<InboxMessage[]>([]);
   private readonly _userNames = signal<Map<string, string>>(new Map());
@@ -220,6 +231,57 @@ export class ChatStore {
   }
 
   /**
+   * Live-search students and teachers by name via GET /api/v1/users/search.
+   * Empty/short queries clear results. Concurrent calls are guarded with a
+   * monotonic counter so the latest query wins regardless of network order.
+   */
+  searchUsersByName(query: string): void {
+    const q = query.trim();
+    if (q.length < 2) {
+      this.searchResults.set([]);
+      this.searchLoading.set(false);
+      return;
+    }
+    const me = this.authStore.user()?.id;
+    const ticket = ++this._searchCounter;
+    this.searchLoading.set(true);
+    this.contactService.searchUsers(q).pipe(catchError(() => of(null))).subscribe((res) => {
+      if (ticket !== this._searchCounter) return; // stale response
+      const list: UserSearchResult[] = (res?.users ?? [])
+        .map((u) => ({
+          id: u.id,
+          name: displayNameOf(u),
+          email: u.email ?? '',
+          role: u.role ?? '',
+        }))
+        .filter((u) => u.id && u.id !== me);
+      this.searchResults.set(list);
+      this.searchLoading.set(false);
+    });
+  }
+
+  clearSearch(): void {
+    this._searchCounter++;
+    this.searchResults.set([]);
+    this.searchLoading.set(false);
+    this.startChatError.set(null);
+  }
+
+  /** Start a conversation with one of the search results. */
+  selectSearchResult(r: UserSearchResult): void {
+    const nameMap = new Map(this._userNames());
+    nameMap.set(r.id, r.name);
+    this._userNames.set(nameMap);
+
+    const discoverable = this._discoverableContacts();
+    if (!discoverable.some((c) => c.id === r.id)) {
+      this._discoverableContacts.set([...discoverable, { id: r.id, name: r.name }]);
+    }
+    this.selectedContactId.set(r.id);
+    this.clearSearch();
+  }
+
+  /**
    * Look up a user by UUID and add them as a discoverable contact so the user
    * can send the first message. Backend exposes `GET /api/v1/users/{id}` to
    * any authenticated user, which is the only generic discovery path for
@@ -285,13 +347,15 @@ export class ChatStore {
 
     this.sending.set(true);
     this.sendError.set(null);
+    const trimmedBody = body.trim();
+    const sentAt = Date.now();
 
     this.contactService
       .sendMessage({
         senderId: me.id,
         receiverId,
         subject,
-        body: body.trim(),
+        body: trimmedBody,
       })
       .subscribe({
         next: () => {
@@ -300,7 +364,7 @@ export class ChatStore {
             senderId: me.id,
             receiverId,
             subject,
-            body: body.trim(),
+            body: trimmedBody,
             isRead: true,
             sentAt: new Date().toISOString(),
           };
@@ -308,8 +372,33 @@ export class ChatStore {
           this.sending.set(false);
         },
         error: () => {
-          this.sending.set(false);
-          this.sendError.set('Failed to send. Try again.');
+          // The gateway often returns 503 from its circuit breaker even when
+          // the user-platform-service successfully persists the message.
+          // Re-fetch /me/sent and see if our message actually made it through
+          // before deciding to surface an error.
+          this.contactService.getSent().pipe(catchError(() => of([] as InboxMessage[]))).subscribe((sent) => {
+            const persisted = (sent ?? []).find(
+              (m) =>
+                m.senderId === me.id &&
+                m.receiverId === receiverId &&
+                m.body === trimmedBody &&
+                Math.abs(new Date(m.sentAt).getTime() - sentAt) < 60_000,
+            );
+            if (persisted) {
+              // Merge so the persisted row replaces any earlier optimistic copy.
+              this._allMessages.update((list) => {
+                const byId = new Map<string, InboxMessage>();
+                for (const m of [...list, persisted]) {
+                  if (m && m.id) byId.set(m.id, m);
+                }
+                return [...byId.values()];
+              });
+              this.sending.set(false);
+            } else {
+              this.sending.set(false);
+              this.sendError.set('Failed to send. Try again.');
+            }
+          });
         },
       });
   }
