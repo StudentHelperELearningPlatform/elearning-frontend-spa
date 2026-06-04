@@ -79,10 +79,31 @@ function getInitials(name?: string): string {
 
         <!-- ──────── Left: contact list ──────── -->
         <aside class="w-80 flex-shrink-0 border-r-4 border-black bg-white flex flex-col">
-          <div class="px-4 py-4 border-b-2 border-black bg-[#0ABAB5]/8">
+          <div class="px-4 py-4 border-b-2 border-black bg-[#0ABAB5]/8 flex flex-col gap-3">
             <p class="text-xs font-black uppercase tracking-widest text-gray-400">
               {{ store.hasActiveConversations() ? 'Conversations' : 'Start a Chat' }}
             </p>
+            <div class="flex gap-2">
+              <input
+                id="chat-new-user-id"
+                type="text"
+                [(ngModel)]="newUserId"
+                placeholder="Paste a user ID to start chatting"
+                class="flex-1 min-w-0 rounded-xl border-2 border-black px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0ABAB5]"
+                [disabled]="store.startingChat()"
+              />
+              <button
+                type="button"
+                class="px-3 py-2 rounded-xl bg-[#0ABAB5] border-2 border-black text-white text-xs font-black uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+                [disabled]="!newUserId().trim() || store.startingChat()"
+                (click)="startNewChat()"
+              >
+                {{ store.startingChat() ? '…' : 'Start' }}
+              </button>
+            </div>
+            @if (store.startChatError()) {
+              <p class="text-[11px] font-bold text-red-600">{{ store.startChatError() }}</p>
+            }
           </div>
 
           <div class="flex-1 overflow-y-auto">
@@ -277,6 +298,7 @@ export class ChatPageComponent implements OnInit {
   @ViewChild('threadRef') threadRef?: ElementRef<HTMLDivElement>;
 
   readonly draft = signal('');
+  readonly newUserId = signal('');
 
   private readonly AVATAR_PALETTE = [
     '#0ABAB5', '#6366f1', '#f59e0b', '#ec4899', '#10b981',
@@ -291,6 +313,13 @@ export class ChatPageComponent implements OnInit {
     this.store.selectContact(conv.contactId);
     // Scroll to bottom after view updates
     setTimeout(() => this.scrollToBottom(), 50);
+  }
+
+  startNewChat() {
+    const id = this.newUserId().trim();
+    if (!id) return;
+    this.store.startConversationByUserId(id);
+    this.newUserId.set('');
   }
 
   isMe(senderId: string): boolean {

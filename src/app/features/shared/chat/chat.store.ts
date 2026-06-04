@@ -1,16 +1,11 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { ContactService, InboxMessage, UserProfile } from './contact.service';
+import { ContactService, InboxMessage, UserProfile, displayNameOf } from './contact.service';
 import { AuthStore } from '@features/auth/store/auth.store';
-import { USER_PLATFORM_API_URL } from '@core/tokens/api.token';
 import { TeacherClassService } from '@core/services/teacher-class.service';
-import { TeacherClassDetail } from '@features/teacher/models/class-detail.model';
 
-interface StudentProfile {
-  enrolledClasses?: string[];
-}
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface Conversation {
   contactId: string;
@@ -23,8 +18,6 @@ export interface Conversation {
 export class ChatStore {
   private readonly contactService = inject(ContactService);
   private readonly authStore = inject(AuthStore);
-  private readonly http = inject(HttpClient);
-  private readonly apiBase = inject(USER_PLATFORM_API_URL);
   private readonly classService = inject(TeacherClassService);
 
   readonly loading = signal(false);
@@ -32,6 +25,8 @@ export class ChatStore {
   readonly sending = signal(false);
   readonly sendError = signal<string | null>(null);
   readonly selectedContactId = signal<string | null>(null);
+  readonly startingChat = signal(false);
+  readonly startChatError = signal<string | null>(null);
 
   private readonly _allMessages = signal<InboxMessage[]>([]);
   private readonly _userNames = signal<Map<string, string>>(new Map());
@@ -118,11 +113,24 @@ export class ChatStore {
     this.loading.set(true);
     this.error.set(null);
 
-    this.contactService.getInbox().subscribe({
-      next: (msgs) => {
-        const safeMessages = Array.isArray(msgs) ? msgs : [];
-        this._allMessages.set(safeMessages);
-        this._resolveContactNames(safeMessages);
+    forkJoin({
+      inbox: this.contactService.getInbox().pipe(catchError(() => of([] as InboxMessage[]))),
+      sent: this.contactService.getSent().pipe(catchError(() => of([] as InboxMessage[]))),
+    }).subscribe({
+      next: ({ inbox, sent }) => {
+        const safeInbox = Array.isArray(inbox) ? inbox : [];
+        const safeSent = Array.isArray(sent) ? sent : [];
+
+        // Merge by id so an optimistic sent message added before the server
+        // round-trip doesn't appear twice once persisted state is loaded.
+        const byId = new Map<string, InboxMessage>();
+        for (const m of [...safeInbox, ...safeSent]) {
+          if (m && m.id) byId.set(m.id, m);
+        }
+        const merged = [...byId.values()];
+
+        this._allMessages.set(merged);
+        this._resolveContactNames(merged);
         this._loadDiscoverableContacts();
       },
       error: () => {
@@ -134,9 +142,11 @@ export class ChatStore {
 
   private _resolveContactNames(msgs: InboxMessage[]) {
     const me = this.authStore.user()?.id;
-    const uniqueIds = [
-      ...new Set(msgs.map((m) => m.senderId).filter((id) => id !== me)),
-    ];
+    // Partner is the other party — senderId for received, receiverId for sent.
+    const partnerIds = msgs.flatMap((m) =>
+      [m.senderId, m.receiverId].filter((id): id is string => !!id && id !== me),
+    );
+    const uniqueIds = [...new Set(partnerIds)];
     if (uniqueIds.length === 0) return;
 
     const requests = uniqueIds.map((id) =>
@@ -147,34 +157,11 @@ export class ChatStore {
       const map = new Map(this._userNames());
       profiles.forEach((p: UserProfile | null, i) => {
         if (p) {
-          map.set(
-            uniqueIds[i],
-            p.name ?? p.username ?? p.email ?? `User …${uniqueIds[i].slice(-6)}`,
-          );
+          map.set(uniqueIds[i], displayNameOf({ ...p, id: uniqueIds[i] }));
         }
       });
       this._userNames.set(map);
     });
-  }
-
-  private _extractUniqueStudents(
-    details: (TeacherClassDetail | null)[],
-    myId: string,
-  ): { id: string; name: string }[] {
-    const studentsMap = new Map<string, string>();
-    for (const detail of details) {
-      if (detail && Array.isArray(detail.students)) {
-        for (const s of detail.students) {
-          if (s.id && s.id !== myId) {
-            studentsMap.set(
-              s.id,
-              s.name || s.email || `Student …${s.id.slice(-6)}`,
-            );
-          }
-        }
-      }
-    }
-    return Array.from(studentsMap.entries()).map(([id, name]) => ({ id, name }));
   }
 
   private _loadDiscoverableContacts() {
@@ -187,31 +174,9 @@ export class ChatStore {
     const role = me.role;
     const myId = me.id;
 
-    if (role === 'STUDENT') {
-      this.http.get<StudentProfile>(`${this.apiBase}/students/me/profile`).pipe(
-        catchError(() => of(null))
-      ).subscribe((profile) => {
-        if (!profile || !Array.isArray(profile.enrolledClasses) || profile.enrolledClasses.length === 0) {
-          this.loading.set(false);
-          return;
-        }
-
-        const requests = profile.enrolledClasses.map((classId: string) =>
-          this.classService.getClassDetail(classId).pipe(catchError(() => of(null)))
-        );
-
-        forkJoin(requests).subscribe((details) => {
-          const list = this._extractUniqueStudents(details, myId);
-          this._discoverableContacts.set(list);
-
-          const nameMap = new Map(this._userNames());
-          list.forEach(item => nameMap.set(item.id, item.name));
-          this._userNames.set(nameMap);
-
-          this.loading.set(false);
-        });
-      });
-    } else if (role === 'PROFESSOR' || role === 'TEACHER') {
+    if (role === 'PROFESSOR' || role === 'TEACHER') {
+      // Teachers can list their classes and roster each one through
+      // GET /api/v1/teachers/classes/{id}/students.
       this.classService.getClasses().pipe(
         catchError(() => of([]))
       ).subscribe((classes) => {
@@ -221,23 +186,87 @@ export class ChatStore {
         }
 
         const requests = classes.map((c) =>
-          this.classService.getClassDetail(c.id).pipe(catchError(() => of(null)))
+          this.classService.getStudents(c.id).pipe(catchError(() => of([])))
         );
 
-        forkJoin(requests).subscribe((details) => {
-          const list = this._extractUniqueStudents(details, myId);
+        forkJoin(requests).subscribe((rosters) => {
+          const map = new Map<string, string>();
+          for (const roster of rosters) {
+            for (const s of roster) {
+              // Backend returns StudentNameResponse(userId, firstName, lastName, email)
+              const studentId = (s as { userId?: string }).userId ?? s.id;
+              if (studentId && studentId !== myId) {
+                map.set(studentId, displayNameOf({ ...s, id: studentId }));
+              }
+            }
+          }
+          const list = Array.from(map, ([id, name]) => ({ id, name }));
           this._discoverableContacts.set(list);
 
           const nameMap = new Map(this._userNames());
-          list.forEach(item => nameMap.set(item.id, item.name));
+          list.forEach((item) => nameMap.set(item.id, item.name));
           this._userNames.set(nameMap);
 
           this.loading.set(false);
         });
       });
     } else {
+      // Students (and other roles) have no exposed user/roster lookup,
+      // so we leave the discoverable list empty — they start chats via
+      // startConversationByUserId().
+      this._discoverableContacts.set([]);
       this.loading.set(false);
     }
+  }
+
+  /**
+   * Look up a user by UUID and add them as a discoverable contact so the user
+   * can send the first message. Backend exposes `GET /api/v1/users/{id}` to
+   * any authenticated user, which is the only generic discovery path for
+   * students.
+   */
+  startConversationByUserId(rawId: string): void {
+    const id = rawId.trim();
+    this.startChatError.set(null);
+
+    if (!UUID_RE.test(id)) {
+      this.startChatError.set('Enter a valid user ID (UUID).');
+      return;
+    }
+
+    const me = this.authStore.user();
+    if (me && id === me.id) {
+      this.startChatError.set("You can't start a chat with yourself.");
+      return;
+    }
+
+    // Already a known contact? Just select it.
+    const existingName = this._userNames().get(id);
+    if (existingName) {
+      this.selectedContactId.set(id);
+      return;
+    }
+
+    this.startingChat.set(true);
+    this.contactService.getUser(id).subscribe({
+      next: (profile) => {
+        const name = displayNameOf({ ...profile, id });
+        const nameMap = new Map(this._userNames());
+        nameMap.set(id, name);
+        this._userNames.set(nameMap);
+
+        const discoverable = this._discoverableContacts();
+        if (!discoverable.some((c) => c.id === id)) {
+          this._discoverableContacts.set([...discoverable, { id, name }]);
+        }
+        this.selectedContactId.set(id);
+        this.startingChat.set(false);
+      },
+      error: () => {
+        this.startingChat.set(false);
+        this.startChatError.set('No user found with that ID.');
+      },
+    });
   }
 
   selectContact(contactId: string) {
